@@ -1,0 +1,41 @@
+.textareaWrapper {
+  width: 100%;
+  max-width: 680px;
+  margin: 12px auto 30px;
+  position: relative;
+}
+
+.needsTextarea {
+  width: 100%;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--white);
+  outline: none;
+  resize: none;
+  transition: all 0.2s ease;
+}
+
+.needsTextarea:focus {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.needsTextarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 300;
+}
+
+.charCounter {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+}

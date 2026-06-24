@@ -1,0 +1,54 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.fullWidth {
+  display: flex;
+  width: 100%;
+}
+
+.buttonFullWidth {
+  width: 100%;
+}
+
+.buttonIcon:global(.btn__icon) {
+  background: transparent !important;
+  color: inherit !important;
+  transition: transform 0.3s ease;
+}
+
+.buttonIcon:global(.btn__icon) img {
+  display: block;
+}
+
+.primaryButton:hover .buttonIcon:global(.btn__icon) {
+  transform: rotate(45deg);
+}
+
+.buttonText:global(.btn__text) {
+  display: block !important;
+  overflow: hidden;
+  height: 1em;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.labelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.primaryButton:hover .labelTrack {
+  transform: translateY(-50%);
+}
+
+.labelUp {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}

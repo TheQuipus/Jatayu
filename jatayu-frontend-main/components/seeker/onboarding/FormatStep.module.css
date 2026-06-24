@@ -1,0 +1,295 @@
+.recommendationPill {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  padding: 10px 24px;
+  margin: 0 auto 32px;
+  max-width: 600px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(5px);
+}
+
+.recommendationContent {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.recommendationContent strong {
+  color: var(--white);
+  font-weight: 600;
+}
+
+.sparkleIcon {
+  font-size: 14px;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+.formatGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto 24px;
+}
+
+.cardContainer {
+  position: relative;
+  width: 100%;
+}
+
+.popularBadge {
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  z-index: 20;
+  background: linear-gradient(135deg, #7C3AED, #4F46E5);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+}
+
+.formatCard {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 224px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  outline: none;
+}
+
+.hasPopularBadge {
+  /* Offset card top border shadow slightly if badge is present */
+}
+
+.formatCard:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.formatCardSelected {
+  border-color: #E9681E;
+  box-shadow: 0 0 0 1px #E9681E, 0 0 24px rgba(233, 104, 30, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.formatCardSelected:hover {
+  border-color: #E9681E;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Custom Radio Indicator */
+.radioIndicator {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.formatCard:hover .radioIndicator {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.radioSelected {
+  border-color: #E9681E !important;
+  background: rgba(233, 104, 30, 0.1);
+}
+
+.radioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #E9681E;
+  animation: scaleUp 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Icon Wrap */
+.iconWrap {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: rgba(255, 255, 255, 0.75);
+  transition: all 0.25s ease;
+}
+
+.formatCard:hover .iconWrap {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--white);
+}
+
+.formatCardSelected .iconWrap {
+  background: rgba(233, 104, 30, 0.15);
+  border-color: rgba(233, 104, 30, 0.3);
+  color: #E9681E;
+}
+
+.formatIcon {
+  transition: transform 0.25s ease;
+}
+
+.formatCard:hover .formatIcon {
+  transform: scale(1.05);
+}
+
+/* Titles */
+.cardTitle {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0 0 6px;
+  line-height: 1.2;
+}
+
+.cardDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+}
+
+.formatCardSelected .cardDesc {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* Footer Section of Cards */
+.cardFooterArea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  padding-top: 16px;
+  margin-top: 20px;
+}
+
+.innerTag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+/* Different Tag colors matching premium designs */
+.cardContainer:nth-child(1) .innerTag {
+  color: #C084FC;
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.cardContainer:nth-child(2) .innerTag {
+  color: #60A5FA;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.cardContainer:nth-child(3) .innerTag {
+  color: #2DD4BF;
+  background: rgba(45, 212, 191, 0.1);
+}
+
+.cardContainer:nth-child(4) .innerTag {
+  color: #F472B6;
+  background: rgba(236, 72, 153, 0.1);
+}
+
+.bulletRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.greenDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+  display: inline-block;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .recommendationPill {
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+  }
+
+  .formatGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .formatCard {
+    min-height: auto;
+    gap: 8px;
+  }
+}

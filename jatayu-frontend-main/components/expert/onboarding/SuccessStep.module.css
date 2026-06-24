@@ -1,0 +1,218 @@
+/* Onboarding Success Screen Styles */
+
+.statusBadgeUnderReview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(229, 59, 23, 0.08);
+  border: 1px solid rgba(229, 59, 23, 0.25);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: #E53B17;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.statusDotUnderReview {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #E53B17;
+  animation: successDotPulse 2s infinite ease-in-out;
+}
+
+@keyframes successDotPulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+}
+
+.successMainBody {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.successRingWrapper {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  margin-top: 16px;
+}
+
+.successRingPhoto {
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.successRingPhotoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.successRingSvg {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.successRingCircle {
+  fill: none;
+  stroke: #E53B17;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  animation: successCircleDraw 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes successCircleDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.badgeUnlockedCard {
+  background: rgba(229, 59, 23, 0.05);
+  border: 1px solid rgba(229, 59, 23, 0.15);
+  border-radius: 14px;
+  padding: 14px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  text-align: left;
+  max-width: 320px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.badgeAwardIconWrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(229, 59, 23, 0.1);
+  display: grid;
+  place-items: center;
+  color: #E53B17;
+  flex-shrink: 0;
+}
+
+.badgeTextWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.badgeLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+  margin: 0;
+}
+
+.badgeValue {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.timelineWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 10px 0;
+}
+
+.timelineTrack {
+  position: absolute;
+  top: 22px;
+  left: 20px;
+  right: 20px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  z-index: 1;
+}
+
+.timelineNodes {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.timelineNode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.timelineCircle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #14171d;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.timelineLabelText {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+}
+
+/* Timeline State Modifiers */
+.timelineNodeDone .timelineCircle {
+  border-color: #E53B17;
+  background: #E53B17;
+  color: var(--white);
+}
+
+.timelineNodeDone .timelineLabelText {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.timelineNodeActive .timelineCircle {
+  border-color: #E53B17;
+  box-shadow: 0 0 12px rgba(229, 59, 23, 0.3);
+  color: #E53B17;
+}
+
+.timelineNodeActive .timelineLabelText {
+  color: #E53B17;
+  font-weight: 600;
+}

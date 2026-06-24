@@ -1,0 +1,426 @@
+.workflow {
+  padding: 120px 0 140px;
+}
+
+.workflowTop {
+  display: grid;
+  grid-template-columns: repeat(4, var(--grid-col));
+  gap: 0;
+  align-items: start;
+  margin-bottom: 94px;
+}
+
+.workflowTop :global(.eyebrow) {
+  grid-column: 1 / 2;
+  justify-self: start;
+  align-self: start;
+  width: fit-content;
+}
+
+.workflowTop :global(.display) {
+  grid-column: 2 / 5;
+  justify-self: start;
+  margin: 0;
+  font-size: 100px;
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+}
+
+.workflowLines {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  pointer-events: none;
+}
+
+.workflowBottom {
+  display: grid;
+  grid-template-columns: repeat(4, var(--grid-col));
+  gap: 0;
+  align-items: end;
+}
+
+.workflowLeft {
+  grid-column: 1 / 2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.workflowDesc {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  color: var(--silver-chalice);
+}
+
+.workflowRule {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, .2);
+  position: relative;
+}
+
+.workflowRule::before {
+  content: "✦";
+  color: #34363B;
+  z-index: 1;
+  font-size: 24px;
+  line-height: 1;
+  position: absolute;
+  top: 50%;
+  left: -10px;
+  transform: translateY(-50%);
+}
+
+.workflowCta {
+  margin-top: 86px;
+  /* min-width: 348px; */
+  width: 100%;
+}
+
+.workflowShowcase {
+  grid-column: 3 / 5;
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: 169px 340px 169px;
+  gap: 0;
+  align-items: start;
+}
+
+.workflowShowcase>.carouselViewport:first-of-type {
+  position: relative;
+  z-index: 1;
+  margin-right: -46px;
+  /* Overlap to match the top-left sloped clip-path cut-in of the large image */
+  width: 215px;
+  /* 169px base + 46px overlap so content is not clipped by overflow:hidden */
+}
+
+.workflowShowcase>.carouselViewport:last-of-type {
+  position: relative;
+  z-index: 1;
+  margin-left: -34px;
+  /* Overlap to match the top-right sloped clip-path cut-in of the large image */
+  width: 203px;
+  /* 169px base + 34px overlap so content is not clipped by overflow:hidden */
+}
+
+.workflowShowcase>.cutCardLarge {
+  align-self: end;
+  position: relative;
+  z-index: 2;
+}
+
+.cutCard {
+  position: relative;
+  overflow: hidden;
+  background: #111;
+  clip-path: polygon(10% 3.179%,
+      12.647% 0%,
+      91.177% 0%,
+      96.765% 4.48%,
+      96.765% 53.757%,
+      100% 57.659%,
+      100% 95.376%,
+      95.294% 100%,
+      0% 100%,
+      0% 19.364%,
+      10% 8.736%,
+      10% 3.179%);
+  -webkit-clip-path: polygon(10% 3.179%,
+      12.647% 0%,
+      91.177% 0%,
+      96.765% 4.48%,
+      96.765% 53.757%,
+      100% 57.659%,
+      100% 95.376%,
+      95.294% 100%,
+      0% 100%,
+      0% 19.364%,
+      10% 8.736%,
+      10% 3.179%);
+}
+
+.carouselViewport {
+  position: relative;
+  overflow: hidden;
+}
+
+.cutCardSmall {
+  width: 169px;
+  height: 204px;
+  --slide-w: 169px;
+}
+
+.cutCardSlide {
+  flex: 0 0 var(--slide-w);
+  width: var(--slide-w);
+  height: 100%;
+}
+
+.cutCardSlide::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 16, 0.3) 0%, rgba(8, 10, 16, 0.5) 49.56%, rgba(8, 10, 16, 0.7) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cutCardLarge {
+  width: 340px;
+  height: 394px;
+  cursor: pointer;
+}
+
+.cutCardLarge::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 16, 0) 0%, rgba(8, 10, 16, 0) 49.56%, rgba(8, 10, 16, 0.5) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cutCardBottomArea {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  z-index: 3;
+}
+
+.cutCardHover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.workflowShowcase > .cutCardLarge:hover .cutCardHover {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.cutCardHoverBtn {
+  width: 100%;
+}
+
+.cutCard img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.carouselTrack {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  width: max-content;
+  will-change: transform;
+}
+
+/* The track holds two copies of the card set, so a 50% shift loops seamlessly. */
+.carouselLtr {
+  animation: workflowScrollLtr 18s linear infinite;
+}
+
+.carouselRtl {
+  animation: workflowScrollRtl 18s linear infinite;
+}
+
+@keyframes workflowScrollLtr {
+  from {
+    transform: translateX(-50%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes workflowScrollRtl {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .carouselLtr,
+  .carouselRtl {
+    animation: none;
+  }
+}
+
+
+.showcaseCaption {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.workflowShowcase > .cutCardLarge:hover .showcaseCaption {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.showcaseCaption :global(.mark) {
+  width: 6px;
+  height: 6px;
+}
+
+.showcaseCaption span {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, .85);
+}
+
+.showcaseCaption small {
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.15;
+  color: rgba(255, 255, 255, .7);
+}
+
+.showcaseNav {
+  width: calc(var(--grid-col) * 2);
+  max-width: 100%;
+  margin-left: calc(var(--grid-col) * 2);
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0px;
+}
+
+.showcaseNav button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: #626262;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.showcaseNav button svg {
+  display: block;
+}
+
+@media (max-width: 1200px) {
+  .workflowBottom {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .workflowLeft,
+  .workflowShowcase {
+    grid-column: 1;
+  }
+
+  .workflowCta {
+    margin-top: 24px;
+  }
+
+  .workflowShowcase,
+  .showcaseNav {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 1024px) {
+  .workflowTop {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-bottom: 50px;
+  }
+
+  .workflowTop :global(.display) {
+    grid-column: auto;
+    font-size: clamp(44px, 9vw, 76px);
+  }
+
+  .workflowLines {
+    display: none;
+  }
+
+  .workflowDesc {
+    font-size: 18px;
+  }
+
+  .workflowShowcase {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .workflowShowcase>.carouselViewport:first-of-type,
+  .workflowShowcase>.carouselViewport:last-of-type {
+    margin-right: 0;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .cutCardLarge {
+    width: 100%;
+    height: 320px;
+    grid-column: 1 / -1;
+  }
+
+  .cutCardSmall {
+    width: 100%;
+    height: 200px;
+    --slide-w: 169px;
+  }
+
+  .showcaseNav {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .workflow {
+    padding: 90px 0 100px;
+  }
+
+  .workflowShowcase {
+    grid-template-columns: 1fr;
+  }
+
+  .cutCardSmall,
+  .cutCardLarge {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 340 / 394;
+  }
+
+  .cutCardSmall {
+    height: 320px;
+    aspect-ratio: auto;
+    --slide-w: 220px;
+  }
+
+  .cutCardLarge {
+    grid-column: auto;
+  }
+}

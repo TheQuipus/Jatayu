@@ -1,0 +1,323 @@
+.card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1024px;
+  min-height: 760px;
+  background: rgba(30, 30, 30, .95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0px 25px 50px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cardHeader {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 48px 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.cardHeader .progressContainer {
+  margin-bottom: 0;
+}
+
+.cardBody {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  min-height: 559px;
+  max-height: 559px;
+}
+
+.cardBody::-webkit-scrollbar {
+  width: 14px;
+}
+
+.cardBody::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 16px 0;
+}
+
+.cardBody::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 4px solid transparent;
+  background-clip: padding-box;
+  border-radius: 10px;
+}
+
+.cardBody::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.accentWord {
+  color: var(--white);
+  /* --pomegranate brand color */
+  text-shadow: 0 0 40px rgba(229, 59, 23, 0.15);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.topHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.headerTitleCompact {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 2.8;
+  letter-spacing: 0.45px;
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.95;
+}
+
+.headerIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--white);
+  flex-shrink: 0;
+}
+
+.stepPill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.progressContainer {
+  width: 100%;
+  margin-bottom: 48px;
+}
+
+.progressTextRow {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.progressBarBg {
+  width: 100%;
+  height: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+.progressBarSegment {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  transition: background 0.3s ease, opacity 0.2s ease;
+}
+
+.progressBarSegment:disabled {
+  cursor: default;
+}
+
+.progressBarSegmentFilled {
+  background: #E53B17;
+}
+
+.progressBarSegmentClickable {
+  cursor: pointer;
+}
+
+.progressBarSegmentClickable:hover {
+  opacity: 0.85;
+}
+
+.progressBarSegmentClickable:focus-visible {
+  outline: 2px solid rgba(229, 59, 23, 0.6);
+  outline-offset: 2px;
+}
+
+.questionTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 36px;
+  line-height: 48px;
+  letter-spacing: -1.2px;
+  color: #9E9E9E;
+  max-width: 650px;
+  width: 100%;
+  margin: 16px auto 12px;
+  text-align: center;
+  display: block;
+}
+
+.questionSubtitle {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 18px;
+  line-height: 28px;
+  color: #9E9E9E;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto 36px;
+  text-align: center;
+}
+
+.onboardingFooter {
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 40px 48px;
+  gap: 20px;
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.avatarMiniWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+}
+
+.avatarMini {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.footerTip {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.footerTip small {
+  display: block;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 1px;
+  font-size: 12px;
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.textBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.2s ease;
+  outline: none;
+  padding: 6px;
+}
+
+.textBtn:focus-visible {
+  color: var(--white);
+}
+
+.continueBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  border-radius: 30px;
+  min-height: 44px;
+  padding: 0 20px;
+  background: #E53B17;
+  color: var(--white);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(229, 59, 23, 0.25);
+  transition: all 0.25s ease;
+}
+
+.continueBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.continueBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@media (max-width: 600px) {
+  .cardHeader {
+    padding: 36px 24px 20px;
+  }
+
+  .cardBody {
+    padding: 20px 24px;
+  }
+
+  .onboardingFooter {
+    padding: 24px 24px 36px;
+  }
+}
+
+@media (max-width: 768px) {
+  .onboardingFooter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 24px;
+  }
+
+  .footerLeft {
+    justify-content: center;
+  }
+
+  .footerActions {
+    justify-content: space-between;
+  }
+}

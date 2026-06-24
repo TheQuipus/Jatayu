@@ -1,0 +1,116 @@
+.categoryGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 768px;
+  max-width: 768px;
+  margin: 0 auto 16px;
+  flex: none;
+}
+
+.categoryCard {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 14px 24px;
+  gap: 8px;
+  height: 54px;
+  width: fit-content;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  outline: none;
+}
+
+.categoryCardSelected {
+  background: #080A10;
+  border-color: #E53B17;
+  color: var(--white);
+  box-shadow: 0 0 16px rgba(229, 59, 23, 0.2);
+}
+
+.categoryIcon {
+  width: 14px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.categoryCardSelected .categoryIcon {
+  color: #E53B17;
+}
+
+.customInputWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  margin: 24px auto 30px;
+}
+
+.customInput {
+  width: 100%;
+  height: 54px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 48px 0 24px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  outline: none;
+  transition: border-color 0.2s ease;
+  border-radius: 9999px;
+}
+
+.customInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.customInput:focus {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.customInputBtn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.customInputBtn:focus-visible {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .categoryGrid {
+    width: 100%;
+    max-width: 100%;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

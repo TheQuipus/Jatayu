@@ -1,0 +1,281 @@
+.expertCardShell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.categoryBadgeWrap {
+  position: absolute;
+  top: 12px;
+  left: 55px;
+  z-index: 10;
+}
+
+.categoryBadge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 14px;
+  gap: 12px;
+  height: 33px;
+  width: fit-content;
+  background: #E6E6E6;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 17px;
+  letter-spacing: -0.56px;
+  text-transform: uppercase;
+  color: #686868;
+  white-space: nowrap;
+}
+
+.badgeDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 10px;
+  background: #087C75;
+  flex-shrink: 0;
+}
+
+.expertCardLink {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  color: inherit;
+}
+
+.bookmarkBtn {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  color: var(--bunker);
+  background: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.bookmarkBtn[aria-pressed="true"] svg {
+  fill: var(--orange);
+  color: var(--orange);
+}
+
+.bookmarkBtn:hover {
+  transform: scale(1.08);
+}
+
+.expertCard {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  clip-path: polygon(10% 3.179%,
+      12.647% 0%,
+      91.177% 0%,
+      96.765% 4.48%,
+      96.765% 53.757%,
+      100% 57.659%,
+      100% 95.376%,
+      95.294% 100%,
+      0% 100%,
+      0% 19.364%,
+      10% 8.736%,
+      10% 3.179%);
+  -webkit-clip-path: polygon(10% 3.179%,
+      12.647% 0%,
+      91.177% 0%,
+      96.765% 4.48%,
+      96.765% 53.757%,
+      100% 57.659%,
+      100% 95.376%,
+      95.294% 100%,
+      0% 100%,
+      0% 19.364%,
+      10% 8.736%,
+      10% 3.179%);
+  padding: 24px 32px 24px 10px;
+  min-height: 394px;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+
+.expertCardBody {
+  display: flex;
+  flex: 1;
+  position: relative;
+  margin-bottom: 24px;
+  z-index: 2;
+}
+
+.languagesSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 2;
+  margin-top: 65px;
+}
+
+.languagesLabel {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  letter-spacing: 0.08em;
+}
+
+.languagesList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.languagesList li {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  color: #5E5E5E;
+}
+
+.expertImageWrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.expertImageWrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 16, 0.01) 30%, #080A0F 100%);
+  pointer-events: none;
+}
+
+.expertImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.expertMeta {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+}
+
+.expertNameRow {
+  display: flex;
+  align-items: center;
+}
+
+.expertName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--white);
+  line-height: 1.7;
+}
+
+.verificationBadge {
+  flex-shrink: 0;
+  margin-top: -2px;
+}
+
+.verificationBadge path:first-of-type {
+  fill: var(--orange);
+  stroke: var(--orange);
+}
+
+.verificationBadge path:last-of-type {
+  fill: none;
+  stroke: var(--white);
+  stroke-width: 2.5px;
+}
+
+.expertStats {
+  margin: 0 0 12px 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--silver-chalice);
+  letter-spacing: -0.01em;
+}
+
+.divider {
+  height: 1px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.16);
+  margin-bottom: 11px;
+}
+
+.bottomInteractiveArea {
+  position: relative;
+  height: 42px;
+  width: 100%;
+  overflow: visible;
+}
+
+.expertDesc {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.hoverBtn {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) translateY(20px);
+  width: 100%;
+  min-height: 48px;
+  font-size: 13px;
+  gap: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.expertCardShell:not(.disableHover):hover .expertDesc {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.expertCardShell:not(.disableHover):hover .hoverBtn {
+  opacity: 1;
+  transform: translateY(-50%) translateY(0);
+  pointer-events: auto;
+}

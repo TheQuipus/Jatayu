@@ -1,0 +1,214 @@
+.registerFormIntro {
+  align-self: stretch;
+  margin: 0 0 28px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #FFFFFF;
+}
+
+.registerForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.nameFieldsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-width: 0;
+}
+
+.nameFieldGroup {
+  min-width: 0;
+}
+
+.fieldErrorBelow {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: #FF3B30;
+}
+
+.textFieldWithToggle {
+  padding-right: 0;
+}
+
+.passwordToggle {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  z-index: 1;
+}
+
+.passwordToggle:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.passwordStrengthRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.passwordStrengthBars {
+  display: flex;
+  gap: 4px;
+}
+
+.passwordStrengthBar {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  transition: background 0.2s ease;
+}
+
+.passwordStrengthLabels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 14px;
+}
+
+.passwordStrengthLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.passwordHint {
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.phonePrefix {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  padding-right: 10px;
+  margin-right: 2px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  user-select: none;
+}
+
+.registerSubmitBtn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 56px;
+  padding: 0;
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 40px;
+  background: #E53B17;
+  color: var(--white);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(229, 59, 23, 0.3);
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.registerSubmitBtn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.registerSubmitBtn:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.registerSubmitBtnInactive {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.registerSubmitBtnInactive:hover {
+  opacity: 1;
+}
+
+.registerDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+.registerDividerLine {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.registerDividerText {
+  display: flex;
+  align-items: center;
+  flex: none;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  text-transform: uppercase;
+  color: #6B7280;
+  white-space: nowrap;
+}
+
+.socialButtonsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.socialButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--white);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.socialButton:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 600px) {
+  .nameFieldsRow {
+    grid-template-columns: 1fr;
+  }
+}

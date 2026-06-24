@@ -1,0 +1,389 @@
+/* Onboarding Step 10 Styles - Review Profile */
+.questionTitle {
+  text-align: left !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  max-width: 100% !important;
+  margin-top: 0px !important;
+  margin-bottom: 0px !important;
+  color: #9E9E9E !important;
+}
+
+.questionSubtitle {
+  text-align: left !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  max-width: 100% !important;
+}
+
+.reviewTopRow {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr;
+  gap: 20px;
+  width: 100%;
+  text-align: left;
+}
+
+.strengthReportCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.strengthReportInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.strengthReportLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+}
+
+.strengthReportValue {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.strengthGradeBadge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid #E53B17;
+  background: rgba(229, 59, 23, 0.08);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 16px rgba(229, 59, 23, 0.15);
+  flex-shrink: 0;
+}
+
+.strengthGradeBadge span {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.finalTipCard {
+  background: rgba(229, 59, 23, 0.04);
+  border: 1px solid rgba(229, 59, 23, 0.12);
+  padding: 20px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.finalTipIconWrap {
+  font-size: 18px;
+  margin-top: 1px;
+}
+
+.finalTipTextWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.finalTipTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: #E53B17;
+  margin: 0;
+}
+
+.finalTipDesc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+.reviewBlockCard {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 24px;
+  text-align: left;
+}
+
+.reviewBlockHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.reviewBlockTitle {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.reviewEditBtn {
+  background: transparent;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: #E53B17;
+  cursor: pointer;
+  outline: none;
+  padding: 4px 8px;
+}
+
+.reviewProfileDetails {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.reviewAvatarContainer {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2.5px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.reviewAvatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reviewProfileContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.reviewProfileName {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.reviewProfileTagline {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+}
+
+.reviewTagsCluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.previewTagMini {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.reviewSplitRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+}
+
+.reviewBlockContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reviewDetailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reviewDetailLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.reviewDetailValue {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.termsBar {
+  width: 100%;
+  padding: 16px 20px 16px 0;
+  margin-bottom: 40px;
+}
+
+.termsLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.termsCheckbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid #fff;
+  border-radius: 3px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.termsCheckbox::before {
+  content: "✓";
+  font-size: 11px;
+  color: #E53B17;
+  font-weight: 900;
+  display: none;
+}
+
+.termsCheckbox:checked {
+  background: #fff;
+}
+
+.termsCheckbox:checked::before {
+  display: block;
+}
+
+.termsText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.4;
+}
+
+.termsText a {
+  color: #e53b17;
+  text-decoration: underline;
+}
+
+.continueBtnDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .reviewTopRow {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .reviewSplitRow {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .reviewProfileDetails {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+
+  .reviewProfileContent {
+    align-items: center;
+  }
+
+  .reviewTagsCluster {
+    justify-content: center;
+  }
+}
+
+.expertCardWrapper {
+  width: 336px;
+  height: 396px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.reviewIdentityColumns {
+  display: grid;
+  grid-template-columns: 336px 1fr;
+  gap: 32px;
+  align-items: start;
+  width: 100%;
+}
+
+.reviewLeftCol {
+  flex-shrink: 0;
+}
+
+.reviewCenterCol {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  padding: 0 0 0 24px !important;
+}
+
+.reviewCenterCol h1,
+.reviewCenterCol h1 span,
+.reviewCenterCol p,
+.reviewCenterCol span,
+.reviewCenterCol strong,
+.reviewCenterCol svg {
+  color: var(--white) !important;
+}
+
+.reviewCenterCol h1 span.t-muted {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.reviewCenterCol div[class*="starDivider"] span[class*="dividerLine"] {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.reviewCenterCol div[class*="starDivider"] span[class*="dividerStar"] {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.reviewCenterCol div[class*="metaIconBadge"] {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--white) !important;
+}
+
+.reviewCenterCol div[class*="metaItemGreen"],
+.reviewCenterCol div[class*="metaItemGreen"] span,
+.reviewCenterCol div[class*="metaItemGreen"] svg {
+  color: var(--green) !important;
+}

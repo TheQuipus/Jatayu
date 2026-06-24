@@ -1,0 +1,6 @@
+.scrollSpacer {
+  position: relative;
+  z-index: 1;
+  min-height: 340vh;
+  pointer-events: none;
+}

@@ -1,0 +1,195 @@
+.aboutUs {
+  padding: 120px 0;
+}
+
+.aboutUsTop {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.aboutUsTitle {
+  font-size: 70px;
+  grid-column: 1 / span 2;
+}
+
+.titleIndia {
+  color: var(--orange);
+}
+
+.titleAccess {
+  color: var(--green);
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.aboutUsCta {
+  grid-column: 3;
+  align-self: end;
+  display: flex;
+  justify-content: flex-start;
+  padding-bottom: 8px;
+  width: 100%;
+}
+
+.aboutUsMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  grid-column: 4;
+  justify-self: end;
+}
+
+.aboutUsDescRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0px;
+  margin-top: 40px;
+}
+
+.aboutUsDesc {
+  grid-column: 3 / span 2;
+  max-width: 450px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--silver-chalice);
+}
+
+.aboutUsRuleRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-top: -10px;
+  margin-bottom: 60px;
+}
+
+.aboutUsRule {
+  grid-column: 2 / span 1;
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.aboutUsRule::before {
+  content: "✦";
+  color: #34363B;
+  z-index: 1;
+  font-size: 24px;
+  line-height: 1;
+  position: absolute;
+  top: 50%;
+  left: -10px;
+  transform: translateY(-50%);
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.featureCard {
+  position: relative;
+  background: var(--woodsmoke);
+  min-height: 200px;
+  padding: 10px 24px 24px;
+  clip-path: polygon(10% 3.179%,
+      12.647% 0%,
+      91.177% 0%,
+      96.765% 4.48%,
+      96.765% 53.757%,
+      100% 57.659%,
+      100% 95.376%,
+      95.294% 100%,
+      0% 100%,
+      0% 19.364%,
+      10% 8.736%,
+      10% 3.179%);
+  -webkit-clip-path: polygon(10% 3.179%,
+      12.647% 0%,
+      91.177% 0%,
+      96.765% 4.48%,
+      96.765% 53.757%,
+      100% 57.659%,
+      100% 95.376%,
+      95.294% 100%,
+      0% 100%,
+      0% 19.364%,
+      10% 8.736%,
+      10% 3.179%);
+  overflow: hidden;
+}
+
+.featureTitle {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.28;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin: 0 0 8px;
+  padding-top: 45px;
+  max-width: 90%;
+}
+
+.featureDesc {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--silver-chalice);
+  max-width: 92%;
+}
+
+
+@media (max-width: 1024px) {
+  .aboutUsTop {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .aboutUsMeta {
+    justify-self: start;
+  }
+
+  .aboutUsCta {
+    grid-column: auto;
+    align-self: start;
+  }
+
+  .aboutUsDescRow {
+    grid-template-columns: 1fr;
+    margin-top: 20px;
+  }
+
+  .aboutUsRuleRow {
+    grid-template-columns: 1fr;
+    margin-top: 12px;
+    margin-bottom: 24px;
+  }
+
+  .aboutUsDesc {
+    grid-column: auto;
+  }
+
+  .aboutUsRule {
+    grid-column: auto;
+  }
+
+  .featureGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .aboutUs {
+    padding: 96px 0;
+  }
+
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+
+}

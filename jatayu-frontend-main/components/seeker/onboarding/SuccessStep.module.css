@@ -1,0 +1,126 @@
+.loadingWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 40px;
+  width: 100%;
+}
+
+.radarContainer {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 32px;
+}
+
+.loadingIcon {
+  color: #E53B17;
+  z-index: 2;
+  animation: pulseIcon 2s infinite ease-in-out;
+}
+
+.radarPulse,
+.radarPulse2 {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(229, 59, 23, 0.15);
+  border: 1px solid rgba(229, 59, 23, 0.3);
+  z-index: 1;
+  transform: scale(0.6);
+  opacity: 1;
+}
+
+.radarPulse {
+  animation: radarScan 2.5s infinite linear;
+}
+
+.radarPulse2 {
+  animation: radarScan 2.5s infinite linear;
+  animation-delay: 1.25s;
+}
+
+@keyframes radarScan {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes pulseIcon {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.loadingTitle {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--white);
+  margin-bottom: 16px;
+}
+
+.loadingSubtitle {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.statusBadge {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(52, 199, 89, 0.08);
+  border: 1px solid rgba(52, 199, 89, 0.15);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #34C759;
+}
+
+.checkIcon {
+  color: #34C759;
+}
+
+.matchesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 40px;
+}
+
+.matchCardShell {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .matchesGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 360px;
+    margin: 0 auto 36px;
+  }
+}

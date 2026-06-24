@@ -1,0 +1,266 @@
+.budgetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto 32px;
+}
+
+.budgetCard {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  outline: none;
+  height: 176px;
+  width: 100%;
+}
+
+.budgetCard:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.budgetCardSelected {
+  border-color: #E9681E;
+  box-shadow: 0 0 0 1px #E9681E, 0 0 24px rgba(233, 104, 30, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.budgetCardSelected:hover {
+  border-color: #E9681E;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.checkBadge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #E9681E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border: 1.5px solid #080A10;
+}
+
+.checkIcon {
+  color: var(--white);
+}
+
+.cardHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.emoji {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.expertsBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.budgetCardSelected .expertsBadge {
+  color: rgba(255, 255, 255, 0.75);
+  border-color: rgba(233, 104, 30, 0.3);
+  background: rgba(233, 104, 30, 0.08);
+}
+
+.textWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardTitle {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 2px;
+}
+
+.priceValue {
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #E9681E;
+}
+
+.priceLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.cardDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+}
+
+.budgetCardSelected .cardDesc {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* Slider Section */
+.sliderContainer {
+  width: 100%;
+  max-width: 840px;
+  margin: 16px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.sliderHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.sliderTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sliderValueWrap {
+  display: flex;
+  align-items: baseline;
+}
+
+.sliderValue {
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 700;
+  color: #E9681E;
+}
+
+.sliderUnit {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.sliderTrackWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rangeInput {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  border: none;
+  margin: 0;
+  transition: background 0.1s ease;
+}
+
+/* Chrome/Safari/Edge Thumb */
+.rangeInput::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #E9681E;
+  border: 2.5px solid #080A10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rangeInput:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 2px 12px rgba(233, 104, 30, 0.4);
+}
+
+/* Firefox Thumb */
+.rangeInput::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #E9681E;
+  border: 2.5px solid #080A10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.rangeInput:hover::-moz-range-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 2px 12px rgba(233, 104, 30, 0.4);
+}
+
+.tickLabelRow {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .budgetGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .budgetCard {
+    height: auto;
+    min-height: 140px;
+    gap: 16px;
+  }
+}
