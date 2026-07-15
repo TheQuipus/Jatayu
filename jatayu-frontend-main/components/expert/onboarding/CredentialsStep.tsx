@@ -2,271 +2,582 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { AnimatePresence, motion } from "motion/react";
 import {
-  ArrowRight,
-  Globe,
-  FileText,
-  X,
-  Check,
-  Plus,
   Upload,
+  CreditCard,
+  BookOpen,
+  IdCard,
+  Car,
+  X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import ContinueButton from "@/components/ui/ContinueButton";
+import KycVerificationPanel from "./KycVerificationPanel";
 import shared from "./onboarding.shared.module.css";
 import styles from "./CredentialsStep.module.css";
+import type {
+  ExpertCertificate,
+  GovernmentIdData,
+  GovernmentIdType,
+} from "@/lib/expertApplicationSubmission";
 
 type CredentialsStepProps = {
   userName: string;
+  kycVideoSrc: string;
+  onKycVideoChange: (src: string) => void;
+  governmentId: GovernmentIdData | null;
+  onGovernmentIdChange: (data: GovernmentIdData | null) => void;
+  certificates: ExpertCertificate[];
+  onCertificatesChange: (certificates: ExpertCertificate[]) => void;
   stepCompletion: boolean[];
   onStepCompleteChange?: (step: number, complete: boolean) => void;
   onBack: () => void;
-  onContinue: (data: {
-    credentials: Array<{
-      type: string;
-      title: string;
-      institution: string;
-      startYear: number;
-      endYear?: number | null;
-      description?: string | null;
-    }>;
-  }) => void;
+  onContinue: () => void;
   onJumpToStep?: (step: number) => void;
 };
 
-type CertificateFile = {
+type IdSide = "front" | "back";
+
+type CertificateEntry = {
   id: string;
   name: string;
-  progress: number;
-  size?: string;
-  status: "uploading" | "complete";
+  issuer: string;
+  fileName?: string;
+  fileSize?: string;
+  fileUrl?: string;
 };
+
+type UploadedSide = {
+  name: string;
+  size: string;
+  url?: string;
+};
+
+const ID_TYPES: { id: GovernmentIdType; label: string; icon: LucideIcon }[] = [
+  { id: "aadhaar", label: "Aadhaar Card", icon: CreditCard },
+  { id: "pan", label: "PAN Card", icon: CreditCard },
+  { id: "passport", label: "Passport", icon: BookOpen },
+  { id: "voter", label: "Voter ID", icon: IdCard },
+  { id: "driving", label: "Driving Licence", icon: Car },
+];
+
+const MAX_DOC_BYTES = 5 * 1024 * 1024;
+const MAX_CERT_BYTES = 2 * 1024 * 1024;
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("Failed to read file"));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function isImageFileUrl(url: string, fileName?: string): boolean {
+  if (url.startsWith("data:image/")) return true;
+  return Boolean(fileName && /\.(jpe?g|png|webp|gif)$/i.test(fileName));
+}
+
+function isPdfFileUrl(url: string, fileName?: string): boolean {
+  if (url.startsWith("data:application/pdf")) return true;
+  return Boolean(fileName && /\.pdf$/i.test(fileName));
+}
+
+function certificatesToEntries(certs: ExpertCertificate[]): CertificateEntry[] {
+  if (certs.length === 0) {
+    return [{ id: crypto.randomUUID(), name: "", issuer: "" }];
+  }
+  return certs.map((cert) => ({
+    id: cert.id,
+    name: cert.name,
+    issuer: cert.issuer ?? "",
+    fileName: cert.fileName,
+    fileSize: cert.size,
+    fileUrl: cert.url,
+  }));
+}
+
+function entriesToCertificates(entries: CertificateEntry[]): ExpertCertificate[] {
+  return entries
+    .filter((entry) => entry.name.trim() && entry.fileUrl)
+    .map((entry) => ({
+      id: entry.id,
+      name: entry.name.trim(),
+      issuer: entry.issuer.trim() || undefined,
+      size: entry.fileSize,
+      url: entry.fileUrl,
+      fileName: entry.fileName,
+    }));
+}
 
 export default function CredentialsStep({
   userName,
+  kycVideoSrc,
+  onKycVideoChange,
+  governmentId,
+  onGovernmentIdChange,
+  certificates,
+  onCertificatesChange,
   stepCompletion,
   onStepCompleteChange,
   onBack,
   onContinue,
   onJumpToStep,
 }: CredentialsStepProps) {
-  const [linkedin, setLinkedin] = useState("");
-  const [portfolio, setPortfolio] = useState("");
-  const [certificates, setCertificates] = useState<CertificateFile[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
+  const certFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const [selectedIdType, setSelectedIdType] = useState<GovernmentIdType | "">(
+    governmentId?.type ?? "",
+  );
+  const [idFront, setIdFront] = useState<UploadedSide | null>(
+    governmentId?.front ?? null,
+  );
+  const [idBack, setIdBack] = useState<UploadedSide | null>(
+    governmentId?.back ?? null,
+  );
+  const [certificateEntries, setCertificateEntries] = useState<CertificateEntry[]>(() =>
+    certificatesToEntries(certificates),
+  );
+
+  const hasKycVideo = Boolean(kycVideoSrc);
+  const canContinue = hasKycVideo && Boolean(selectedIdType) && Boolean(idFront);
 
   useEffect(() => {
-    onStepCompleteChange?.(5, linkedin.trim().length > 0);
-  }, [linkedin, onStepCompleteChange]);
+    onStepCompleteChange?.(5, canContinue);
+  }, [canContinue, onStepCompleteChange]);
 
   useEffect(() => {
-    const uploading = certificates.find((c) => c.status === "uploading");
-    if (!uploading) return;
+    onCertificatesChange(entriesToCertificates(certificateEntries));
+  }, [certificateEntries, onCertificatesChange]);
 
-    if (uploading.progress >= 100) {
-      setCertificates((prev) =>
-        prev.map((cert) =>
-          cert.id === uploading.id && cert.status === "uploading"
-            ? { ...cert, status: "complete", size: "2.4 MB" }
-            : cert,
-        ),
-      );
+  const syncGovernmentId = (
+    type: GovernmentIdType | "",
+    front: UploadedSide | null,
+    back: UploadedSide | null,
+  ) => {
+    if (!type || !front) {
+      onGovernmentIdChange(null);
       return;
     }
-
-    const timer = setTimeout(() => {
-      setCertificates((prev) =>
-        prev.map((cert) =>
-          cert.id === uploading.id
-            ? { ...cert, progress: Math.min(cert.progress + 1, 100) }
-            : cert,
-        ),
-      );
-    }, 120);
-
-    return () => clearTimeout(timer);
-  }, [certificates]);
-
-  const handleRemoveCertificate = (id: string) => {
-    setCertificates((prev) => prev.filter((cert) => cert.id !== id));
+    onGovernmentIdChange({ type, front, back: back ?? undefined });
   };
 
-  const handleAddDocument = (file: File) => {
-    const id = crypto.randomUUID();
-    setCertificates((prev) => [
+  const handleIdUpload = async (side: IdSide, file: File) => {
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf";
+    if (!isImage && !isPdf) return;
+    if (file.size > MAX_DOC_BYTES) return;
+
+    const url = await readFileAsDataUrl(file);
+    const uploaded: UploadedSide = {
+      name: file.name,
+      size: formatFileSize(file.size),
+      url,
+    };
+
+    if (side === "front") {
+      setIdFront(uploaded);
+      syncGovernmentId(selectedIdType, uploaded, idBack);
+    } else {
+      setIdBack(uploaded);
+      syncGovernmentId(selectedIdType, idFront, uploaded);
+    }
+  };
+
+  const handleIdTypeSelect = (type: GovernmentIdType) => {
+    if (selectedIdType === type) {
+      setSelectedIdType("");
+      setIdFront(null);
+      setIdBack(null);
+      syncGovernmentId("", null, null);
+    } else {
+      setSelectedIdType(type);
+      syncGovernmentId(type, idFront, idBack);
+    }
+  };
+
+  const handleRemoveIdSide = (side: IdSide) => {
+    if (side === "front") {
+      setIdFront(null);
+      syncGovernmentId(selectedIdType, null, idBack);
+    } else {
+      setIdBack(null);
+      syncGovernmentId(selectedIdType, idFront, null);
+    }
+  };
+
+  const renderDocPreview = (
+    url: string,
+    fileName: string,
+    alt: string,
+    onRemove: () => void,
+  ) => (
+    <div className={styles.docPreview}>
+      {isImageFileUrl(url, fileName) ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={alt} className={styles.docPreviewImage} />
+      ) : isPdfFileUrl(url, fileName) ? (
+        <div className={styles.docPreviewClip}>
+          <iframe
+            src={`${url}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=FitH`}
+            title={alt}
+            className={styles.docPreviewFrame}
+            scrolling="no"
+            tabIndex={-1}
+          />
+        </div>
+      ) : (
+        <div className={styles.docPreviewClip}>
+          <iframe
+            src={url}
+            title={alt}
+            className={styles.docPreviewFrame}
+            scrolling="no"
+            tabIndex={-1}
+          />
+        </div>
+      )}
+      <button
+        type="button"
+        className={styles.docPreviewRemoveBtn}
+        aria-label={`Remove ${fileName || "file"}`}
+        onClick={onRemove}
+      >
+        <X size={14} aria-hidden="true" />
+      </button>
+    </div>
+  );
+
+  const updateCertificateEntry = (id: string, patch: Partial<CertificateEntry>) => {
+    setCertificateEntries((prev) =>
+      prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
+    );
+  };
+
+  const handleCertificateFile = async (entryId: string, file: File) => {
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf";
+    if (!isImage && !isPdf) return;
+    if (file.size > MAX_CERT_BYTES) return;
+
+    const url = await readFileAsDataUrl(file);
+    updateCertificateEntry(entryId, {
+      fileName: file.name,
+      fileSize: formatFileSize(file.size),
+      fileUrl: url,
+    });
+  };
+
+  const handleRemoveCertificateFile = (id: string) => {
+    updateCertificateEntry(id, {
+      fileName: undefined,
+      fileSize: undefined,
+      fileUrl: undefined,
+    });
+  };
+
+  const handleAddCertificate = () => {
+    setCertificateEntries((prev) => [
       ...prev,
-      { id, name: file.name, progress: 0, status: "uploading" },
+      { id: crypto.randomUUID(), name: "", issuer: "" },
     ]);
+  };
+
+  const handleRemoveCertificate = (id: string) => {
+    setCertificateEntries((prev) =>
+      prev.length === 1
+        ? [{ id: crypto.randomUUID(), name: "", issuer: "" }]
+        : prev.filter((entry) => entry.id !== id),
+    );
+  };
+
+  const handleContinue = () => {
+    onContinue();
   };
 
   return (
     <section className={shared.card}>
-      <svg width="0" height="0" style={{ position: "absolute", pointerEvents: "none" }} aria-hidden="true">
-        <defs>
-          <clipPath id="custom-clip" clipPathUnits="objectBoundingBox">
-            <path d="M0,0.086 L0.018,0 H0.676 L0.696,0.086 H0.978 L1,0.311 V0.743 L0.984,0.839 L0.955,0.845 L0.9,1 H0 V0.086 Z" fillOpacity="0.05" strokeOpacity="0.1"/>
-          </clipPath>
-        </defs>
-      </svg>
       <div className={shared.cardHeader}>
         <div className={shared.topHeader}>
           <OnboardingStepTitle userName={userName} />
-          <div className={shared.stepPill}>
-            <span>Step 5 of 9 · Proof of Expertise</span>
-          </div>
         </div>
 
-        <OnboardingProgressBar currentStep={5} stepCompletion={stepCompletion} onStepClick={onJumpToStep} />
+        <OnboardingProgressBar
+          currentStep={5}
+          stepCompletion={stepCompletion}
+          onStepClick={onJumpToStep}
+        />
       </div>
 
       <div className={shared.cardBody}>
         <h1 className={`${shared.questionTitle} ${styles.questionTitle}`}>
-          Back up your <span className={shared.accentWord}>credentials</span>
+          Back up your <span className={shared.accentWord}>credentials</span> & <span className={shared.accentWord}>KYC</span>
         </h1>
 
-        <p className={styles.credentialsSubtitle}>
+        <p className={shared.questionSubtitle}>
           Verified profiles receive 3x more consultation requests.
         </p>
 
-        <div className={styles.credentialsRow}>
-          <div className={styles.fieldGroup}>
-            <label htmlFor="linkedin-input" className={styles.fieldLabel}>
-              LinkedIn Profile
-            </label>
-            <div className={styles.inputWithIconWrap}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className={styles.inputInnerIcon}
-                aria-hidden="true"
-              >
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 4.126 0 2.063 2.063 0 0 1-2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-              </svg>
-              <input
-                id="linkedin-input"
-                type="text"
-                placeholder="linkedin.com/in/username"
-                value={linkedin}
-                onChange={(e) => setLinkedin(e.target.value)}
-                className={styles.textFieldWithIcon}
-              />
+        <div className={styles.sectionsStack}>
+          {/* 1. Identity Verification */}
+          <article>
+            <KycVerificationPanel videoSrc={kycVideoSrc} onVideoChange={onKycVideoChange} />
+          </article>
+
+          {/* 2. Government ID */}
+          <article>
+            <header className={styles.sectionCardHeader}>
+              <div className={styles.sectionCardTitleWrap}>
+                <h2 className={styles.sectionCardTitle}>
+                  Select Government ID you are using for verification <span className={styles.requiredMark}>*</span>
+                </h2>
+              </div>
+            </header>
+
+            <div className={styles.idTypeGrid}>
+              {ID_TYPES.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`${styles.idTypeBtn} ${
+                    selectedIdType === id ? styles.idTypeBtnSelected : ""
+                  }`}
+                  onClick={() => handleIdTypeSelect(id)}
+                >
+                  <Icon size={14} aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
             </div>
-          </div>
 
-          <div className={styles.fieldGroup}>
-            <label htmlFor="portfolio-input" className={styles.fieldLabel}>
-              Portfolio / Website{" "}
-              <span className={styles.optionalLabel}>(Optional)</span>
-            </label>
-            <div className={styles.inputWithIconWrap}>
-              <Globe className={styles.inputInnerIcon} size={15} />
-              <input
-                id="portfolio-input"
-                type="text"
-                placeholder="yourwebsite.com"
-                value={portfolio}
-                onChange={(e) => setPortfolio(e.target.value)}
-                className={styles.textFieldWithIcon}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.certificatesSection}>
-          <span className={styles.fieldLabel}>
-            Certificates & Licenses{" "}
-            <span className={styles.optionalLabel}>(Optional)</span>
-          </span>
-
-          {certificates.length === 0 ? (
-            <button
-              type="button"
-              className={styles.uploadBtn}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload size={28} strokeWidth={1.5} />
-              <span className={styles.uploadBtnTitle}>Upload certificate or license</span>
-              <span className={styles.uploadBtnHint}>PDF or DOCX (max. 5 MB)</span>
-            </button>
-          ) : (
-            <>
-              <div className={styles.fileCardList}>
-                {certificates.map((cert) => (
-                  <div key={cert.id} className={styles.fileCard}>
-                    <div className={styles.fileCardInner}>
+            <AnimatePresence initial={false}>
+              {selectedIdType && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  style={{ overflow: "hidden" }}
+                >
+                  <div className={styles.idUploadRow} style={{ paddingTop: "4px", paddingBottom: "4px" }}>
+                    <div className={styles.idUploadCol}>
+                      <span className={styles.idUploadLabel}>
+                        Front Side <span className={styles.requiredMark}>*</span>
+                      </span>
                       <div
-                        className={
-                          cert.status === "complete"
-                            ? styles.fileIconBoxComplete
-                            : styles.fileIconBox
-                        }
+                        className={`${styles.idUploadZone} ${
+                          idFront?.url ? styles.idUploadZoneDone : ""
+                        }`}
                       >
-                        <FileText size={18} />
+                        {idFront?.url ? (
+                          renderDocPreview(
+                            idFront.url,
+                            idFront.name,
+                            idFront.name || "Front side preview",
+                            () => handleRemoveIdSide("front"),
+                          )
+                        ) : (
+                          <button
+                            type="button"
+                            className={styles.idUploadTrigger}
+                            onClick={() => frontInputRef.current?.click()}
+                          >
+                            <Upload size={20} strokeWidth={1.5} className={styles.uploadZoneIcon} />
+                            <span>Upload Front</span>
+                            <span className={styles.uploadZoneHint}>JPG, PNG, PDF · Max 5MB</span>
+                          </button>
+                        )}
                       </div>
-                      <div className={styles.fileInfo}>
-                        <span className={styles.fileName}>{cert.name}</span>
-                        <span
-                          className={
-                            cert.status === "complete"
-                              ? styles.fileStatusComplete
-                              : styles.fileStatusUploading
-                          }
-                        >
-                          {cert.status === "complete"
-                            ? `${cert.size ?? "2.4 MB"} · Complete`
-                            : `Uploading... ${cert.progress}%`}
-                        </span>
+                    </div>
+
+                    <div className={styles.idUploadCol}>
+                      <span className={styles.idUploadLabel}>
+                        Back Side{" "}
+                        <span className={styles.optionalTag}>(If Applicable)</span>
+                      </span>
+                      <div
+                        className={`${styles.idUploadZone} ${
+                          idBack?.url ? styles.idUploadZoneDone : ""
+                        }`}
+                      >
+                        {idBack?.url ? (
+                          renderDocPreview(
+                            idBack.url,
+                            idBack.name,
+                            idBack.name || "Back side preview",
+                            () => handleRemoveIdSide("back"),
+                          )
+                        ) : (
+                          <button
+                            type="button"
+                            className={styles.idUploadTrigger}
+                            onClick={() => backInputRef.current?.click()}
+                          >
+                            <Upload size={20} strokeWidth={1.5} className={styles.uploadZoneIcon} />
+                            <span>Upload Back</span>
+                            <span className={styles.uploadZoneHint}>JPG, PNG, PDF · Max 5MB</span>
+                          </button>
+                        )}
                       </div>
-                      {cert.status === "complete" && (
-                        <div className={styles.fileCheckWrap}>
-                          <Check size={12} />
-                        </div>
-                      )}
+                    </div>
+                  </div>
+
+                  <input
+                    ref={frontInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf"
+                    className={styles.hiddenFileInput}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleIdUpload("front", file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <input
+                    ref={backInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf"
+                    className={styles.hiddenFileInput}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleIdUpload("back", file);
+                      e.target.value = "";
+                    }}
+                  />
+
+                  <p className={styles.idPrivacyNote}>
+                    Your government ID is used only for identity verification. It will never be
+                    displayed on your public profile or shared with seekers.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+          </article>
+
+          {/* 3. Professional Certificates */}
+          <article>
+            <header className={styles.sectionCardHeader}>
+              <div className={styles.sectionCardTitleWrap}>
+                <h2 className={styles.sectionCardTitle}>Professional Certificates</h2>
+                <p className={styles.sectionCardHint}>
+                  Degrees, diplomas, licences, and professional certifications
+                </p>
+              </div>
+            </header>
+
+            <div className={styles.certificateGrid}>
+            {certificateEntries.map((entry, index) => (
+              <div key={entry.id} className={styles.certificateCardWrap}>
+                <div className={styles.certificateCardHeader}>
+                  <span className={styles.certificateCardIndex}>
+                    Certificate {index + 1}
+                  </span>
+                  {certificateEntries.length > 1 ? (
+                    <button
+                      type="button"
+                      className={styles.certificateRemoveBtn}
+                      onClick={() => handleRemoveCertificate(entry.id)}
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className={styles.certificateCard}>
+                  <input
+                    id={`cert-name-${entry.id}`}
+                    type="text"
+                    className={styles.certificateField}
+                    placeholder="Certificate name"
+                    value={entry.name}
+                    onChange={(e) =>
+                      updateCertificateEntry(entry.id, { name: e.target.value })
+                    }
+                    aria-label={`Certificate ${index + 1} name`}
+                  />
+                  <input
+                    id={`cert-issuer-${entry.id}`}
+                    type="text"
+                    className={styles.certificateField}
+                    placeholder="Issuing authority"
+                    value={entry.issuer}
+                    onChange={(e) =>
+                      updateCertificateEntry(entry.id, { issuer: e.target.value })
+                    }
+                    aria-label={`Certificate ${index + 1} issuing authority`}
+                  />
+
+                  <div
+                    className={`${styles.certUploadZone} ${
+                      entry.fileUrl ? styles.certUploadZoneDone : ""
+                    }`}
+                  >
+                    {entry.fileUrl ? (
+                      renderDocPreview(
+                        entry.fileUrl,
+                        entry.fileName || "",
+                        entry.fileName || "Certificate preview",
+                        () => handleRemoveCertificateFile(entry.id),
+                      )
+                    ) : (
                       <button
                         type="button"
-                        className={styles.fileCloseBtn}
-                        onClick={() => handleRemoveCertificate(cert.id)}
-                        aria-label={`Remove ${cert.name}`}
+                        className={styles.certUploadTrigger}
+                        onClick={() => certFileInputRefs.current[entry.id]?.click()}
                       >
-                        <X size={15} />
+                        <span className={styles.certUploadTitle}>Upload</span>
+                        <span className={styles.certUploadHint}>PDF, PNG max 2 mb</span>
                       </button>
-                    </div>
-                    {cert.status === "uploading" && (
-                      <div className={styles.fileProgressBarBg}>
-                        <div
-                          className={styles.fileProgressBarFill}
-                          style={{ width: `${cert.progress}%` }}
-                        />
-                      </div>
                     )}
                   </div>
-                ))}
-              </div>
 
-              <button
-                type="button"
-                className={styles.addDocumentBtn}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Plus size={14} />
-                <span>Add another document</span>
-              </button>
-            </>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            className={styles.hiddenFileInput}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleAddDocument(file);
-              e.target.value = "";
-            }}
-          />
+                  <input
+                    ref={(el) => {
+                      certFileInputRefs.current[entry.id] = el;
+                    }}
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf"
+                    className={styles.hiddenFileInput}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleCertificateFile(entry.id, file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              className={styles.addCertificateCard}
+              onClick={handleAddCertificate}
+            >
+              Add another
+            </button>
+          </div>
+
+            <p className={styles.idPrivacyNote}>
+              Verified certificates unlock the &apos;Credentials Verified&apos; badge on your profile
+              — seekers filter for this.
+            </p>
+          </article>
         </div>
       </div>
 
@@ -291,31 +602,10 @@ export default function CredentialsStep({
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
           </button>
-          <button type="button" className={shared.textBtn} onClick={() => onContinue({ credentials: [] })}>
+          <button type="button" className={shared.textBtn} onClick={handleContinue}>
             Skip
           </button>
-          <button
-            type="button"
-            className={shared.continueBtn}
-            onClick={() => {
-              const creds = [];
-              if (linkedin.trim()) {
-                creds.push({
-                  type: "linkedin",
-                  title: "LinkedIn Profile",
-                  institution: linkedin.trim(),
-                  startYear: new Date().getFullYear(),
-                  endYear: null,
-                  description: portfolio.trim() || null,
-                });
-              }
-              onContinue({ credentials: creds });
-            }}
-            disabled={!linkedin.trim()}
-          >
-            <span>Continue</span>
-            <ArrowRight size={14} />
-          </button>
+          <ContinueButton onClick={handleContinue} disabled={!canContinue} />
         </div>
       </div>
     </section>

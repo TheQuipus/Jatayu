@@ -1,236 +1,346 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowRight, Check } from "lucide-react";
+import { Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
+import MatchingProgress from "./MatchingProgress";
+import type { ProgressCompletion, ProgressStepKey } from "./MatchingProgress";
+import ContinueButton from "@/components/ui/ContinueButton";
+import ExpertCard from "@/components/ui/ExpertCard";
+import { type Expert } from "@/lib/experts";
 import shared from "./onboarding.shared.module.css";
 import styles from "./PersonalisationStep.module.css";
+import register from "./register.shared.module.css";
+export function isPersonalisationFormComplete(selectedLanguages: string[]): boolean {
+  return selectedLanguages.length > 0;
+}
 
 type PersonalisationStepProps = {
   userName: string;
-  firstName: string;
-  onChangeFirstName: (val: string) => void;
-  experienceLevel: string;
-  onChangeExperienceLevel: (val: string) => void;
-  communicationStyle: string;
-  onChangeCommunicationStyle: (val: string) => void;
-  ageRange: string;
-  onChangeAgeRange: (val: string) => void;
+  categoryLabel: string;
+  needsText: string;
+  profilePhotoSrc: string;
+  onProfilePhotoChange: (src: string) => void;
+  selectedLanguages: string[];
+  onSelectedLanguagesChange: (val: string[]) => void;
   location: string;
   onChangeLocation: (val: string) => void;
   additionalContext: string;
   onChangeAdditionalContext: (val: string) => void;
   onBack: () => void;
   onContinue: () => void;
+  progressCompletion: ProgressCompletion;
+  onProgressStepClick: (step: ProgressStepKey) => void;
 };
 
-const completionChecklist = [
-  { id: "needs", label: "Needs Defined", icon: "✓" },
-  { id: "topics", label: "Topics Chosen", icon: "✓" },
-  { id: "challenge", label: "Challenge Described", icon: "✓" },
-  { id: "outcome", label: "Outcome Set", icon: "✓" },
-  { id: "format", label: "Format Selected", icon: "✓" },
-  { id: "almost", label: "Almost there!", icon: "✨" },
-];
-
-const experienceLevels = [
-  "Beginner / Just starting",
-  "Intermediate / Some experience",
-  "Advanced / Experienced",
-  "Expert / Leading in the field",
-];
-
-const communicationStyles = [
-  { id: "direct", label: "Direct & Concise" },
-  { id: "collaborative", label: "Collaborative & Warm" },
-  { id: "analytical", label: "Detailed & Analytical" },
-];
-
-const ageRanges = ["18–24", "25–34", "35–44", "45–54", "55+"];
+const profileLanguageOptions = [
+  { id: "english", label: "English" },
+  { id: "hindi", label: "Hindi" },
+  { id: "bengali", label: "Bengali" },
+  { id: "marathi", label: "Marathi" },
+  { id: "telugu", label: "Telugu" },
+  { id: "tamil", label: "Tamil" },
+  { id: "gujarati", label: "Gujarati" },
+  { id: "kannada", label: "Kannada" },
+  { id: "malayalam", label: "Malayalam" },
+  { id: "odia", label: "Odia" },
+  { id: "punjabi", label: "Punjabi" },
+] as const;
 
 export default function PersonalisationStep({
   userName,
-  firstName,
-  onChangeFirstName,
-  experienceLevel,
-  onChangeExperienceLevel,
-  communicationStyle,
-  onChangeCommunicationStyle,
-  ageRange,
-  onChangeAgeRange,
+  categoryLabel,
+  needsText,
+  profilePhotoSrc,
+  onProfilePhotoChange,
+  selectedLanguages,
+  onSelectedLanguagesChange,
   location,
   onChangeLocation,
   additionalContext,
   onChangeAdditionalContext,
   onBack,
   onContinue,
+  progressCompletion,
+  onProgressStepClick,
 }: PersonalisationStepProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showAddLanguage, setShowAddLanguage] = useState(false);
+  const [newLanguage, setNewLanguage] = useState("");
+  const [photoError, setPhotoError] = useState("");
+  const presetLanguageIds: Set<string> = new Set(profileLanguageOptions.map((lang) => lang.id));
+  const maxPhotoBytes = 5 * 1024 * 1024;
+  const isUploadedPhoto =
+    profilePhotoSrc.startsWith("blob:") || profilePhotoSrc.startsWith("data:");
+  const previewLanguages = selectedLanguages.map((langId) => {
+    const preset = profileLanguageOptions.find((lang) => lang.id === langId);
+    return preset?.label ?? langId;
+  });
+  const previewExpert: Expert = {
+    name: userName.trim() || "Your Name",
+    role: location.trim() || "Seeker",
+    desc:
+      needsText.trim() ||
+      "Describe your challenge so experts know how to help you best.",
+    image: profilePhotoSrc,
+    category: categoryLabel.trim() || "Domain not selected",
+    topics: [],
+    languages: previewLanguages.length > 0 ? previewLanguages : ["Add languages"],
+    price: 0,
+    rating: 0,
+    replyTime: "—",
+  };
+  const previewStatsText = location.trim()
+    ? `Based in ${location.trim()}`
+    : "Add your location to complete your profile";
+  const canContinue = selectedLanguages.length > 0;
+
+  useEffect(() => {
+    return () => {
+      if (profilePhotoSrc.startsWith("blob:")) {
+        URL.revokeObjectURL(profilePhotoSrc);
+      }
+    };
+  }, [profilePhotoSrc]);
+
+  const handleToggleLanguage = (id: string) => {
+    if (selectedLanguages.includes(id)) {
+      onSelectedLanguagesChange(selectedLanguages.filter((langId) => langId !== id));
+      return;
+    }
+    onSelectedLanguagesChange([...selectedLanguages, id]);
+  };
+
+  const handleAddCustomLanguage = () => {
+    const trimmed = newLanguage.trim();
+    if (!trimmed) return;
+
+    const normalized = trimmed.toLowerCase();
+    const matchedPreset = profileLanguageOptions.find(
+      (lang) => lang.id === normalized || lang.label.toLowerCase() === normalized,
+    );
+    const languageValue = matchedPreset?.id ?? trimmed;
+
+    const alreadySelected = selectedLanguages.some(
+      (lang) => lang.toLowerCase() === languageValue.toLowerCase(),
+    );
+
+    if (!alreadySelected) {
+      onSelectedLanguagesChange([...selectedLanguages, languageValue]);
+    }
+
+    setNewLanguage("");
+    setShowAddLanguage(false);
+  };
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please upload an image file.");
+      return;
+    }
+
+    if (file.size > maxPhotoBytes) {
+      setPhotoError("Image must be 5MB or smaller.");
+      return;
+    }
+
+    setPhotoError("");
+    if (profilePhotoSrc.startsWith("blob:")) {
+      URL.revokeObjectURL(profilePhotoSrc);
+    }
+    onProfilePhotoChange(URL.createObjectURL(file));
+  };
+
   return (
-    <section className={shared.card} style={{ minHeight: "820px" }}>
+    <section className={shared.card}>
       <div className={shared.cardHeader}>
         <div className={shared.topHeader}>
           <OnboardingStepTitle userName={userName} />
-          
-          <div className={styles.headerRightSide}>
-            <span className={styles.saveIndicator}>
-              <span className={styles.greenDot} /> Changes saved automatically
-            </span>
-            <div className={shared.stepPill}>
-              <span>Step 10 of 12 · Personalisation</span>
-            </div>
-          </div>
         </div>
+
+        <MatchingProgress
+          currentStep="personalisation"
+          completion={progressCompletion}
+          onStepClick={onProgressStepClick}
+        />
       </div>
 
-      <div className={shared.cardBody} style={{ minHeight: "619px", maxHeight: "none" }}>
-        {/* Heading */}
-        <h1 className={shared.questionTitle} style={{ margin: "0 auto 12px" }}>
+      <div className={shared.cardBody}>
+        <h1 className={`${shared.questionTitle} ${styles.questionTitle}`}>
           Tell us a <span className={shared.accentWord}>bit about yourself</span>
         </h1>
 
-        <p className={shared.questionSubtitle} style={{ margin: "0 auto 24px" }}>
+        <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
           A few quick details help us fine-tune your expert match for the best possible connection.
         </p>
 
-        {/* Checklist Cluster */}
-        <div className={styles.checklistRow}>
-          {completionChecklist.map((item) => (
-            <div
-              key={item.id}
-              className={`${styles.checklistPill} ${
-                item.id === "almost" ? styles.almostPill : ""
-              }`}
-            >
-              <span className={item.id === "almost" ? styles.sparkleIcon : styles.checkIcon}>
-                {item.icon}
-              </span>
-              <span>{item.label}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className={styles.trackerLabel}>PROFILE COMPLETION TRACKER</div>
-
-        {/* Form Container */}
         <form className={styles.formContainer} onSubmit={(e) => e.preventDefault()}>
-          {/* Row 1: Name and Experience level */}
-          <div className={styles.formRow2Col}>
-            <div className={styles.fieldGroup}>
-              <label className={styles.fieldLabel} htmlFor="firstName">
-                Your first name
-              </label>
-              <input
-                id="firstName"
-                type="text"
-                placeholder="e.g. Alex"
-                value={firstName}
-                onChange={(e) => onChangeFirstName(e.target.value)}
-                className={styles.textInput}
-              />
-            </div>
-
-            <div className={styles.fieldGroup}>
-              <label className={styles.fieldLabel} htmlFor="experienceLevel">
-                Your experience level in this area
-              </label>
-              <div className={styles.selectWrapper}>
-                <select
-                  id="experienceLevel"
-                  value={experienceLevel}
-                  onChange={(e) => onChangeExperienceLevel(e.target.value)}
-                  className={styles.selectInput}
+          <div className={styles.splitLayout}>
+            <div className={styles.formInputsColumn}>
+              <div className={styles.photoUploadContainer}>
+                <label
+                  htmlFor="seeker-profile-photo-upload"
+                  className={styles.photoAvatarWrap}
+                  aria-label="Upload profile photo"
                 >
-                  <option value="">Select level</option>
-                  {experienceLevels.map((lvl) => (
-                    <option key={lvl} value={lvl}>
-                      {lvl}
-                    </option>
-                  ))}
-                </select>
+                  <span className={styles.photoAvatarInner}>
+                    {isUploadedPhoto ? (
+                      <img
+                        src={profilePhotoSrc}
+                        alt="Seeker profile"
+                        className={styles.photoAvatar}
+                      />
+                    ) : (
+                      <Image
+                        src={profilePhotoSrc}
+                        alt="Seeker profile"
+                        width={80}
+                        height={80}
+                        className={styles.photoAvatar}
+                      />
+                    )}
+                  </span>
+                  <span className={styles.photoPlusBtn} aria-hidden="true">
+                    <Plus size={14} />
+                  </span>
+                </label>
+                <input
+                  ref={fileInputRef}
+                  id="seeker-profile-photo-upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className={styles.hiddenFileInput}
+                  onChange={handlePhotoChange}
+                />
+                <div className={styles.photoUploadInfo}>
+                  <h3 className={styles.photoUploadTitle}>Profile Photo</h3>
+                  <p className={`${styles.photoUploadDesc} ${photoError ? styles.photoUploadDescError : ""}`}>
+                    {photoError || "Clear, professional headshot. Max 5MB."}
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.fieldGroup}>
+                <label className={styles.fieldLabel}>Languages you speak</label>
+                <div className={styles.profileLanguagesRow}>
+                  {profileLanguageOptions.map((lang) => {
+                    const isSelected = selectedLanguages.includes(lang.id);
+                    return (
+                      <button
+                        key={lang.id}
+                        type="button"
+                        onClick={() => handleToggleLanguage(lang.id)}
+                        className={`${styles.profileLanguagePill} ${isSelected ? styles.profileLanguagePillSelected : ""}`}
+                        aria-pressed={isSelected}
+                      >
+                        <span>{lang.label}</span>
+                      </button>
+                    );
+                  })}
+                  {selectedLanguages
+                    .filter((lang) => !presetLanguageIds.has(lang))
+                    .map((lang) => (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => handleToggleLanguage(lang)}
+                        className={`${styles.profileLanguagePill} ${styles.profileLanguagePillSelected}`}
+                        aria-pressed="true"
+                      >
+                        <span>{lang}</span>
+                      </button>
+                    ))}
+
+                  {!showAddLanguage ? (
+                    <button
+                      type="button"
+                      className={styles.profileLanguageAddOther}
+                      onClick={() => setShowAddLanguage(true)}
+                    >
+                      + Add Other
+                    </button>
+                  ) : (
+                    <div className={styles.addLanguageFormInline}>
+                      <input
+                        type="text"
+                        value={newLanguage}
+                        onChange={(e) => setNewLanguage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddCustomLanguage();
+                          }
+                        }}
+                        placeholder="Language name..."
+                        className={styles.addLanguageInputInline}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomLanguage}
+                        className={styles.addLanguageSubmitInline}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.fieldGroup}>
+                <label className={styles.fieldLabel} htmlFor="location">
+                  Where are you based? <span className={styles.optionalText}>(optional)</span>
+                </label>
+                <div className={register.inputWithIconWrap}>
+                  <input
+                    id="location"
+                    type="text"
+                    placeholder="City, Country"
+                    value={location}
+                    onChange={(e) => onChangeLocation(e.target.value)}
+                    className={register.textFieldWithIcon}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.fieldGroup}>
+                <label className={styles.fieldLabel} htmlFor="additionalContext">
+                  Any additional context <span className={styles.optionalText}>(optional)</span>
+                </label>
+                <div className={register.textareaWrap}>
+                  <textarea
+                    id="additionalContext"
+                    placeholder="Anything else you want your expert to know?"
+                    value={additionalContext}
+                    onChange={(e) => onChangeAdditionalContext(e.target.value)}
+                    className={`${register.textareaField} ${styles.additionalContextTextarea}`}
+                    rows={4}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Row 2: Preferred communication style */}
-          <div className={styles.fieldGroup}>
-            <label className={styles.fieldLabel}>
-              Preferred expert communication style
-            </label>
-            <div className={styles.stylePillsRow}>
-              {communicationStyles.map((style) => {
-                const isSelected = communicationStyle === style.id;
-                return (
-                  <button
-                    key={style.id}
-                    type="button"
-                    onClick={() => onChangeCommunicationStyle(style.id)}
-                    className={`${styles.stylePill} ${
-                      isSelected ? styles.stylePillSelected : ""
-                    }`}
-                  >
-                    {style.label}
-                  </button>
-                );
-              })}
+            <div className={styles.previewColumn}>
+              <div className={styles.expertCardWrapper}>
+                <ExpertCard
+                  expert={previewExpert}
+                  linkToDetail={false}
+                  disableHover
+                  showCategoryBadge={true}
+                  statsText={previewStatsText}
+                />
+              </div>
             </div>
-          </div>
-
-          {/* Row 3: Age range */}
-          <div className={styles.fieldGroup}>
-            <label className={styles.fieldLabel}>Age range (optional)</label>
-            <div className={styles.agePillsRow}>
-              {ageRanges.map((range) => {
-                const isSelected = ageRange === range;
-                return (
-                  <button
-                    key={range}
-                    type="button"
-                    onClick={() => onChangeAgeRange(range)}
-                    className={`${styles.agePill} ${
-                      isSelected ? styles.agePillSelected : ""
-                    }`}
-                  >
-                    {range}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Row 4: Where are you based */}
-          <div className={styles.fieldGroup}>
-            <label className={styles.fieldLabel} htmlFor="location">
-              Where are you based?
-            </label>
-            <input
-              id="location"
-              type="text"
-              placeholder="City, Country"
-              value={location}
-              onChange={(e) => onChangeLocation(e.target.value)}
-              className={styles.textInput}
-            />
-          </div>
-
-          {/* Row 5: Additional context */}
-          <div className={styles.fieldGroup}>
-            <label className={styles.fieldLabel} htmlFor="additionalContext">
-              Any additional context
-            </label>
-            <textarea
-              id="additionalContext"
-              placeholder="Anything else you want your expert to know?"
-              value={additionalContext}
-              onChange={(e) => onChangeAdditionalContext(e.target.value)}
-              className={styles.textareaInput}
-              rows={4}
-            />
           </div>
         </form>
       </div>
 
-      {/* Footer */}
       <div className={shared.onboardingFooter}>
         <div className={shared.footerLeft}>
           <div className={shared.avatarMiniWrap}>
@@ -256,15 +366,10 @@ export default function PersonalisationStep({
           >
             Back
           </button>
-          <button
-            type="button"
-            className={shared.continueBtn}
-            onClick={onContinue}
-            disabled={!firstName || !experienceLevel || !communicationStyle}
-          >
-            <span>Continue</span>
-            <ArrowRight size={14} />
+          <button type="button" className={shared.textBtn} onClick={onContinue}>
+            Skip
           </button>
+          <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>
     </section>

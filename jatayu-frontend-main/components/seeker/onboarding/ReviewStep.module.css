@@ -1,210 +1,335 @@
-.reviewGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  width: 100%;
-  max-width: 840px;
-  margin: 0 auto 32px;
+
+.reviewBody {
+  align-items: stretch !important;
+  text-align: left !important;
+  min-width: 0;
 }
 
-.reviewCard {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 20px;
+.reviewTopRow {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr;
+  gap: 20px;
+  width: 100%;
+  text-align: left;
+}
+
+.strengthReportCard {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.strengthReportInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
   text-align: left;
+  min-width: 0;
+}
+
+.strengthReportLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+}
+
+.strengthReportValue {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.strengthGradeBadge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid #e53b17;
+  background: rgba(229, 59, 23, 0.08);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 16px rgba(229, 59, 23, 0.15);
+  flex-shrink: 0;
+}
+
+.strengthGradeBadge span {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.finalTipCard {
+  background: rgba(229, 59, 23, 0.04);
+  border: 1px solid rgba(229, 59, 23, 0.12);
+  padding: 20px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.finalTipIconWrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  margin-top: 1px;
+  color: var(--pomegranate);
+}
+
+.finalTipTextWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+  min-width: 0;
+}
+
+.finalTipTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: #e53b17;
+  margin: 0;
+}
+
+.finalTipDesc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+.reviewBlockCard {
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 24px;
+  text-align: left;
 }
 
-.fullWidthCard {
-  grid-column: span 2;
+.reviewSplitRow .reviewBlockCard {
+  margin-bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.cardHeaderRow {
+.reviewSplitRow .reviewBlockContent {
+  flex: 1;
+}
+
+.reviewBlockHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  margin-bottom: 16px;
 }
 
-.labelWrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.cardIcon {
-  color: rgba(255, 255, 255, 0.5);
-  flex-shrink: 0;
-}
-
-.cardLabel {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.editBtn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.35);
-  outline: none;
-  transition: color 0.2s ease;
-  padding: 4px;
-}
-
-.editBtn:hover {
-  color: #E9681E;
-}
-
-.cardValue {
-  font-family: var(--font-body);
+.reviewBlockTitle {
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 600;
   color: var(--white);
   margin: 0;
-  line-height: 1.45;
 }
 
-.readMore {
-  color: #A78BFA;
+.reviewEditBtn {
+  background: transparent;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 12px;
   font-weight: 600;
+  color: #e53b17;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  outline: none;
+  padding: 4px 8px;
 }
 
-.readMore:hover {
-  opacity: 0.8;
-}
-
-/* Bottom section */
-.bottomSection {
+.reviewSplitRow {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   width: 100%;
-  max-width: 840px;
-  margin: 0 auto 24px;
-  box-sizing: border-box;
+  align-items: stretch;
 }
 
-.accuracyCard {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  text-align: left;
-}
-
-.accuracyHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--white);
-}
-
-.accuracyIcon {
-  color: #10B981;
-}
-
-.accuracyContent {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.percentageGlow {
-  font-family: var(--font-display);
-  font-size: 48px;
-  font-weight: 700;
-  color: #E9681E;
-  text-shadow: 0 0 24px rgba(233, 104, 30, 0.45);
-  line-height: 1;
-}
-
-.accuracyMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.accuracyMeta strong {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--white);
-}
-
-.accuracyMeta span {
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.45);
-  line-height: 1.4;
-}
-
-/* Match Tips Box */
-.tipsCard {
+.reviewBlockContent {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
+  width: 100%;
+}
+
+.reviewDetailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
   text-align: left;
 }
 
-.tipsTitle {
+.reviewDetailLabel {
   font-family: var(--font-body);
-  font-size: 14.5px;
-  font-weight: 700;
-  color: var(--white);
-  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: left;
 }
 
-.tipsList {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 0;
-  padding-left: 16px;
+.reviewDetailValue {
   font-family: var(--font-body);
-  font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 13px;
   line-height: 1.45;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
 }
 
-.tipsList strong {
+.termsBar {
+  width: 100%;
+  padding: 16px 20px 16px 0;
+  margin-bottom: 40px;
+}
+
+.termsLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.termsCheckbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid #fff;
+  border-radius: 3px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.termsCheckbox::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  display: none;
+  background-color: var(--white);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.termsCheckbox:checked {
+  background: var(--pomegranate);
+  border-color: var(--pomegranate);
+}
+
+.termsCheckbox:checked::before {
+  display: block;
+}
+
+.termsText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.95);
+  line-height: 1.4;
+}
+
+.termsText a {
+  color: #e53b17;
+  text-decoration: underline;
+}
+
+.expertCardWrapper {
+  width: 336px;
+  height: 396px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.reviewIdentityColumns {
+  display: grid;
+  grid-template-columns: 336px 1fr;
+  gap: 32px;
+  align-items: start;
+  width: 100%;
+}
+
+.reviewLeftCol {
+  flex-shrink: 0;
+}
+
+.reviewCenterCol {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  padding: 0 0 0 24px !important;
+}
+
+.reviewCenterCol h1,
+.reviewCenterCol h1 span,
+.reviewCenterCol p,
+.reviewCenterCol span,
+.reviewCenterCol strong,
+.reviewCenterCol svg {
+  color: var(--white) !important;
+}
+
+.reviewCenterCol h1 span.t-muted {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.reviewCenterCol div[class*="starDivider"] span[class*="dividerLine"] {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.reviewCenterCol div[class*="starDivider"] span[class*="dividerStar"] {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.reviewCenterCol div[class*="metaIconBadge"] {
+  background: var(--border-chip) !important;
+  color: var(--white) !important;
+}
+
+.reviewCenterCol div[class*="metaItemGreen"],
+.reviewCenterCol div[class*="metaItemGreen"] span,
+.reviewCenterCol div[class*="metaItemGreen"] svg {
+  color: var(--green) !important;
 }
 
 @media (max-width: 768px) {
-  .reviewGrid {
+  .reviewTopRow {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
-  .fullWidthCard {
-    grid-column: span 1;
-  }
-
-  .bottomSection {
+  .reviewSplitRow {
     grid-template-columns: 1fr;
     gap: 16px;
   }

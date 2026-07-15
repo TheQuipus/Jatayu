@@ -139,7 +139,7 @@ export default function Portfolio() {
         <div className="container">
           <div className={styles.portfolioHead}>
             <span className="eyebrow eyebrow--light">
-              <i className="dot"></i>03&nbsp;&nbsp;Why Choose Us
+              <i className="dot"></i>Why Choose Us
             </span>
             <h2 className="display">
               <span className={`t-dark ${styles.titleFirstLine}`}>

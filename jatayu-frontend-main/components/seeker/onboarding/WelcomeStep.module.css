@@ -253,7 +253,7 @@
   align-items: center;
   gap: 10px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-chip);
   border-radius: 9999px;
   padding: 6px 14px 6px 6px;
   font-family: var(--font-body);
@@ -282,7 +282,7 @@
   max-width: 720px;
   border: 0;
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-chip);
   margin: 16px auto 24px;
 }
 
@@ -296,9 +296,17 @@
 }
 
 .trustItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-body);
   font-size: 13px;
   color: rgba(255, 255, 255, 0.55);
+}
+
+.trustIcon {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .actionsRow {
@@ -373,7 +381,7 @@
 }
 
 .browseBtn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-chip);
   border-color: rgba(255, 255, 255, 0.15);
 }
 

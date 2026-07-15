@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { ArrowRight, Check, Plus, Rocket, Building, Briefcase, Store } from "lucide-react";
+import { Check, Rocket, Building, Briefcase, Store, X } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./AudienceStep.module.css";
 
@@ -13,7 +14,8 @@ type AudienceStepProps = {
   stepCompletion: boolean[];
   onStepCompleteChange?: (step: number, complete: boolean) => void;
   onBack: () => void;
-  onContinue: (data: { targetAudience: string[]; focusAreas: string[] }) => void;
+  onContinue: () => void;
+  onContinueWithAudience?: (data: { languages: string[]; audiences: string[] }) => void;
   onJumpToStep?: (step: number) => void;
 };
 
@@ -57,11 +59,12 @@ export default function AudienceStep({
   onStepCompleteChange,
   onBack,
   onContinue,
+  onContinueWithAudience,
   onJumpToStep,
 }: AudienceStepProps) {
   const [languages, setLanguages] = useState<string[]>([]);
+  const [customLanguages, setCustomLanguages] = useState<string[]>([]);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
-  const [showAddLanguage, setShowAddLanguage] = useState(false);
   const [newLanguage, setNewLanguage] = useState("");
 
   const canContinue = languages.length > 0 && selectedAudiences.length > 0;
@@ -69,6 +72,11 @@ export default function AudienceStep({
   useEffect(() => {
     onStepCompleteChange?.(7, canContinue);
   }, [canContinue, onStepCompleteChange]);
+
+  const handleContinue = () => {
+    onContinueWithAudience?.({ languages, audiences: selectedAudiences });
+    onContinue();
+  };
 
   const presetLanguages = [
     "English",
@@ -97,11 +105,32 @@ export default function AudienceStep({
   const handleAddCustomLanguage = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = newLanguage.trim();
-    if (trimmed && !languages.includes(trimmed)) {
-      setLanguages([...languages, trimmed]);
+    if (!trimmed) return;
+
+    const exists =
+      presetLanguages.some((lang) => lang.toLowerCase() === trimmed.toLowerCase()) ||
+      customLanguages.some((lang) => lang.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      const existing =
+        presetLanguages.find((lang) => lang.toLowerCase() === trimmed.toLowerCase()) ||
+        customLanguages.find((lang) => lang.toLowerCase() === trimmed.toLowerCase());
+      if (existing && !languages.includes(existing)) {
+        setLanguages([...languages, existing]);
+      }
       setNewLanguage("");
-      setShowAddLanguage(false);
+      return;
     }
+
+    setCustomLanguages([...customLanguages, trimmed]);
+    setLanguages([...languages, trimmed]);
+    setNewLanguage("");
+  };
+
+  const handleRemoveCustomLanguage = (lang: string) => {
+    setCustomLanguages(
+      customLanguages.filter((item) => item.toLowerCase() !== lang.toLowerCase()),
+    );
+    setLanguages(languages.filter((item) => item.toLowerCase() !== lang.toLowerCase()));
   };
 
   const maxAudiences = 3;
@@ -133,9 +162,6 @@ export default function AudienceStep({
       <div className={shared.cardHeader}>
       <div className={shared.topHeader}>
         <OnboardingStepTitle userName={userName} />
-        <div className={shared.stepPill}>
-          <span>Step 7 of 9 - Languages & Audience</span>
-        </div>
       </div>
 
       {/* Progress Tracker */}
@@ -149,86 +175,83 @@ export default function AudienceStep({
         Define your <span className={shared.accentWord}>target audience</span>
       </h1>
 
-      <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`} style={{ marginBottom: "36px" }}>
+      <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
         Help us match you with the right clients by selecting your languages and ideal audience.
       </p>
 
       {/* Languages Selection section */}
-      <div className={styles.audienceSection} style={{ marginBottom: "32px" }}>
+      <div className={styles.audienceSection}>
         <div className={styles.sectionHeaderRow}>
           <h3 className={styles.preferencesSectionLabel}>Languages you consult in</h3>
         </div>
 
         <div className={styles.languagesCluster}>
-          {presetLanguages.map((lang) => {
-            const isSelected = languages.includes(lang);
-            return (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => handleToggleLanguage(lang)}
-                className={`${styles.languagePill} ${isSelected ? styles.languagePillSelected : ""}`}
-              >
-                <span
-                  className={`${styles.languageCheckbox} ${isSelected ? styles.languageCheckboxSelected : ""}`}
-                  aria-hidden="true"
+          <div className={styles.languagesRow}>
+            {presetLanguages.map((lang) => {
+              const isSelected = languages.includes(lang);
+              return (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => handleToggleLanguage(lang)}
+                  className={`${styles.languagePill} ${isSelected ? styles.languagePillSelected : ""}`}
                 >
-                  {isSelected && <Check size={8} strokeWidth={3} />}
-                </span>
-                <span>{lang}</span>
-              </button>
-            );
-          })}
+                  {lang}
+                </button>
+              );
+            })}
+          </div>
 
-          {/* Render custom added languages if not in preset */}
-          {languages
-            .filter((lang) => !presetLanguages.includes(lang))
-            .map((lang) => (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => handleToggleLanguage(lang)}
-                className={`${styles.languagePill} ${styles.languagePillSelected}`}
-              >
-                <span className={`${styles.languageCheckbox} ${styles.languageCheckboxSelected}`} aria-hidden="true">
-                  <Check size={8} strokeWidth={3} />
-                </span>
-                <span>{lang}</span>
-              </button>
-            ))}
+          {customLanguages.length > 0 ? (
+            <div className={styles.languagesRow}>
+              {customLanguages.map((lang) => {
+                const isSelected = languages.includes(lang);
+                return (
+                  <div
+                    key={lang}
+                    className={`${styles.languagePill} ${styles.languagePillRemovable} ${
+                      isSelected ? styles.languagePillSelected : ""
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLanguage(lang)}
+                      className={styles.languagePillMain}
+                    >
+                      {lang}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.languageRemoveBtn}
+                      aria-label={`Remove ${lang}`}
+                      onClick={() => handleRemoveCustomLanguage(lang)}
+                    >
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
 
-          {!showAddLanguage ? (
-            <button
-              type="button"
-              onClick={() => setShowAddLanguage(true)}
-              className={styles.addLanguageBtn}
-            >
-              <Plus size={14} />
-              <span>Add Other</span>
-            </button>
-          ) : (
-            <form onSubmit={handleAddCustomLanguage} className={styles.addLanguageForm}>
-              <input
-                type="text"
-                value={newLanguage}
-                onChange={(e) => setNewLanguage(e.target.value)}
-                placeholder="Language name..."
-                className={styles.addLanguageInput}
-                autoFocus
-              />
-              <button type="submit" className={styles.addLanguageSubmit}>
-                Add
-              </button>
-            </form>
-          )}
+          <form
+            className={`${styles.languagePill} ${styles.languagePillInput}`}
+            onSubmit={handleAddCustomLanguage}
+          >
+            <input
+              type="text"
+              value={newLanguage}
+              onChange={(e) => setNewLanguage(e.target.value)}
+              placeholder="Add custom language..."
+              className={styles.languageInlineInput}
+              aria-label="Add custom language"
+            />
+          </form>
         </div>
       </div>
 
       {/* Ideal Clients / Audiences selection section */}
       <div className={styles.audienceSection} style={{ marginBottom: "40px" }}>
-        <div className={styles.sectionHeaderRow}>
-          <h3 className={styles.preferencesSectionLabel}>Your ideal clients</h3>
-        </div>
         <p className={styles.sectionInstruction}>{audienceInstructionText}</p>
 
         <div className={styles.audiencesGrid}>
@@ -254,12 +277,14 @@ export default function AudienceStep({
                   />
                 </svg>
 
-                <div className={styles.audienceIconWrap}>
-                  <Icon className={styles.audienceCardIcon} />
-                </div>
-                <div className={styles.audienceTextWrap}>
-                  <h4 className={styles.audienceTitle}>{aud.title}</h4>
-                  <p className={styles.audienceDesc}>{aud.desc}</p>
+                <div className={styles.audienceCardInner}>
+                  <div className={styles.audienceIconWrap}>
+                    <Icon className={styles.audienceCardIcon} />
+                  </div>
+                  <div className={styles.audienceTextWrap}>
+                    <h4 className={styles.audienceTitle}>{aud.title}</h4>
+                    <p className={styles.audienceDesc}>{aud.desc}</p>
+                  </div>
                 </div>
                 <div
                   className={`${styles.audienceCheckbox} ${isSelected ? styles.audienceCheckboxSelected : ""}`}
@@ -297,18 +322,13 @@ export default function AudienceStep({
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
           </button>
-          <button type="button" className={shared.textBtn} onClick={() => onContinue({ targetAudience: selectedAudiences, focusAreas: languages })}>
+          <button type="button" className={shared.textBtn} onClick={handleContinue}>
             Skip
           </button>
-          <button
-            type="button"
-            className={shared.continueBtn}
-            onClick={() => onContinue({ targetAudience: selectedAudiences, focusAreas: languages })}
+          <ContinueButton
+            onClick={handleContinue}
             disabled={languages.length === 0 || selectedAudiences.length === 0}
-          >
-            <span>Continue</span>
-            <ArrowRight size={14} />
-          </button>
+          />
         </div>
       </div>
     </section>

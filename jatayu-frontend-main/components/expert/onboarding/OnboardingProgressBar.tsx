@@ -31,12 +31,16 @@ export default function OnboardingProgressBar({
   return (
     <div className={shared.progressContainer}>
       <div className={shared.progressTextRow}>
-        <span>Application Progress</span>
-        <span>{percent}%</span>
+        <div className={shared.progressMeta}>
+          <span>Progress</span>
+          <span>{percent}%</span>
+        </div>
+        <span>{`${currentStep}/${TOTAL_STEPS}`}</span>
       </div>
       <div className={shared.progressBarBg}>
         {Array.from({ length: TOTAL_STEPS }, (_, index) => {
           const stepNumber = index + 1;
+          const isCurrent = stepNumber === currentStep;
           const isFilled = Boolean(stepCompletion[index]);
           const isPrevious = stepNumber < currentStep;
           const isClickable = Boolean(onStepClick && isPrevious);
@@ -46,11 +50,15 @@ export default function OnboardingProgressBar({
               key={stepNumber}
               type="button"
               className={`${shared.progressBarSegment} ${
-                isFilled ? shared.progressBarSegmentFilled : ""
+                isCurrent
+                  ? shared.progressBarSegmentCurrent
+                  : isFilled
+                    ? shared.progressBarSegmentFilled
+                    : ""
               } ${isClickable ? shared.progressBarSegmentClickable : ""}`}
               disabled={!isClickable}
               aria-label={`Go to step ${stepNumber}`}
-              aria-current={stepNumber === currentStep ? "step" : undefined}
+              aria-current={isCurrent ? "step" : undefined}
               onClick={() => onStepClick?.(stepNumber)}
             />
           );

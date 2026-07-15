@@ -1,0 +1,43 @@
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  color: var(--dove-gray);
+}
+
+.breadcrumbLink {
+  color: var(--dove-gray);
+  transition: color 0.2s ease;
+  white-space: nowrap;
+}
+
+.breadcrumbLink:hover {
+  color: var(--ink);
+}
+
+.breadcrumbText {
+  white-space: nowrap;
+}
+
+.breadcrumbSeparator {
+  flex-shrink: 0;
+  color: var(--silver-chalice);
+}
+
+.breadcrumbCurrent {
+  color: var(--ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .breadcrumbs {
+    font-size: 11px;
+  }
+}

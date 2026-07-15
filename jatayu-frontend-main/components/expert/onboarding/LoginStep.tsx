@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import ContinueButton from "@/components/ui/ContinueButton";
 import RegisterLeftPanel from "@/components/expert/onboarding/RegisterLeftPanel";
-import { login as apiLogin, googleLogin as apiGoogleLogin, setToken, setExpertId } from "@/lib/api";
 import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
+import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 
 type LoginStepProps = {
-  onContinue: (data: { email: string; fullName: string; onboardingStep: string }) => void;
+  onContinue: (data: { email: string }) => void;
   onSwitchToRegister?: () => void;
   registerHref?: string;
 };
@@ -29,9 +30,7 @@ function getFieldError(
 
   switch (field) {
     case "email":
-      if (!email.trim()) return "Required";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Invalid email";
-      return null;
+      return getEmailValidationError(email);
     case "password":
       if (!password) return "Required";
       if (password.length < 8) return "Min 8 characters";
@@ -58,8 +57,6 @@ export default function LoginStep({
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState(emptyTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState("");
 
   const values = { email, password };
   const canSubmit = isFormComplete(email, password);
@@ -82,48 +79,11 @@ export default function LoginStep({
       .filter(Boolean)
       .join(" ");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitAttempted(true);
     if (!canSubmit) return;
-
-    setIsLoading(true);
-    setApiError("");
-    try {
-      const res = await apiLogin({ email: email.trim(), password });
-      setToken(res.token);
-      setExpertId(res.user.id);
-      onContinue({
-        email: res.user.email,
-        fullName: res.user.fullName,
-        onboardingStep: res.user.onboardingStep,
-      });
-    } catch (err: unknown) {
-      setApiError(
-        err instanceof Error ? err.message : "Login failed. Check your credentials."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    setApiError("");
-    try {
-      const res = await apiGoogleLogin({ idToken: "mock-google-token" });
-      setToken(res.token);
-      setExpertId(res.user.id);
-      onContinue({
-        email: res.user.email,
-        fullName: res.user.fullName,
-        onboardingStep: res.user.onboardingStep,
-      });
-    } catch (err: unknown) {
-      setApiError(err instanceof Error ? err.message : "Google login failed.");
-    } finally {
-      setIsLoading(false);
-    }
+    onContinue({ email: normalizeEmail(email) });
   };
 
   return (
@@ -138,21 +98,23 @@ export default function LoginStep({
             <label className={register.registerFieldLabel} htmlFor="loginEmail">
               Email Address
             </label>
-            <div className={inputWrapClass("email")}>
-              <Mail className={register.inputInnerIcon} size={16} />
-              <input
-                id="loginEmail"
-                type="email"
-                className={register.textFieldWithIcon}
-                placeholder="Aryan23@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onBlur={() => markTouched("email")}
-                autoComplete="email"
-                aria-invalid={Boolean(fieldError("email"))}
-              />
+            <div className={register.inputFieldWrap}>
+              <div className={inputWrapClass("email")}>
+                <Mail className={register.inputInnerIcon} size={16} />
+                <input
+                  id="loginEmail"
+                  type="email"
+                  className={register.textFieldWithIcon}
+                  placeholder="Aryan23@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => markTouched("email")}
+                  autoComplete="email"
+                  aria-invalid={Boolean(fieldError("email"))}
+                />
+              </div>
               {fieldError("email") && (
-                <span className={register.fieldErrorInline}>{fieldError("email")}</span>
+                <span className={register.fieldErrorBelow}>{fieldError("email")}</span>
               )}
             </div>
           </div>
@@ -174,9 +136,6 @@ export default function LoginStep({
                 autoComplete="current-password"
                 aria-invalid={Boolean(fieldError("password"))}
               />
-              {fieldError("password") && (
-                <span className={register.fieldErrorInline}>{fieldError("password")}</span>
-              )}
               <button
                 type="button"
                 className={styles.passwordToggle}
@@ -192,20 +151,13 @@ export default function LoginStep({
             </div>
           </div>
 
-          {apiError && (
-            <p className={styles.fieldErrorBelow} style={{ marginBottom: "8px", textAlign: "center" }}>
-              {apiError}
-            </p>
-          )}
-
-          <button
+          <ContinueButton
             type="submit"
-            disabled={isLoading}
-            className={`${styles.registerSubmitBtn} ${canSubmit && !isLoading ? "" : styles.registerSubmitBtnInactive}`}
-          >
-            <span>{isLoading ? "Logging in..." : "Login"}</span>
-            {!isLoading && <ArrowRight size={16} />}
-          </button>
+            label="Login"
+            aria-disabled={!canSubmit}
+            className={`${styles.registerSubmitBtn} ${canSubmit ? "" : styles.registerSubmitBtnInactive}`}
+            arrowSize={16}
+          />
 
           <div className={styles.registerDivider}>
             <span className={styles.registerDividerLine} />
@@ -217,8 +169,7 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
+              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
             >
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
                 <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.616z" />
@@ -231,16 +182,15 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
+              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                 <path
-                  fill="currentColor"
-                  d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+                  fill="#0A66C2"
+                  d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 4.126 0 2.063 2.063 0 0 1-2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
                 />
               </svg>
-              <span>Apple</span>
+              <span>LinkedIn</span>
             </button>
           </div>
 

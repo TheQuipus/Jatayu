@@ -10,6 +10,9 @@ import {
   Shield,
   Zap,
   ArrowRight,
+  Lock,
+  ShieldCheck,
+  Mail,
 } from "lucide-react";
 import RegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
 import register from "./register.shared.module.css";
@@ -24,7 +27,7 @@ export default function WelcomeStep({ onStart }: WelcomeStepProps) {
     <section className={register.registerCard}>
       <RegisterLeftPanel />
 
-      <div className={register.registerRight} style={{ maxHeight: "760px", overflowY: "auto", scrollbarWidth: "thin" }}>
+      <div className={`${register.registerRight} ${register.registerRightScroll}`}>
         {/* Main Header */}
         <h1 className={styles.mainTitle} style={{ textAlign: "left", marginTop: 0, fontSize: "32px", lineHeight: "1.2" }}>
           Find Your Perfect <br className={styles.mobileBreak} />
@@ -134,13 +137,16 @@ export default function WelcomeStep({ onStart }: WelcomeStepProps) {
         {/* Security & Checkpoint Row */}
         <div className={styles.trustItemsRow} style={{ justifyContent: "flex-start", gap: "16px", marginBottom: "24px" }}>
           <div className={styles.trustItem} style={{ fontSize: "12px" }}>
-            <span>🔒 SSL Encrypted</span>
+            <Lock size={12} className={styles.trustIcon} />
+            <span>SSL Encrypted</span>
           </div>
           <div className={styles.trustItem} style={{ fontSize: "12px" }}>
-            <span>🛡️ 100% Compliant</span>
+            <ShieldCheck size={12} className={styles.trustIcon} />
+            <span>100% Compliant</span>
           </div>
           <div className={styles.trustItem} style={{ fontSize: "12px" }}>
-            <span>✉️ No spam</span>
+            <Mail size={12} className={styles.trustIcon} />
+            <span>No spam</span>
           </div>
         </div>
 

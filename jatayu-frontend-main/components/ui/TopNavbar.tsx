@@ -5,12 +5,25 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./TopNavbar.module.css";
 
+function isOnboardingPath(pathname: string | null) {
+  return (
+    pathname?.startsWith("/expert/expert-onboarding") ||
+    pathname?.startsWith("/seeker/seeker-onboarding")
+  );
+}
+
 export default function TopNavbar() {
   const pathname = usePathname();
-  const [onDark, setOnDark] = useState(pathname === "/");
+  const onboarding = isOnboardingPath(pathname);
+  const [onDark, setOnDark] = useState(pathname === "/" || onboarding);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    if (isOnboardingPath(pathname)) {
+      setOnDark(true);
+      return;
+    }
+
     if (pathname !== "/") {
       setOnDark(false);
       return;
@@ -44,7 +57,33 @@ export default function TopNavbar() {
     };
   }, [pathname]);
 
-  if (pathname?.startsWith("/serene-scene")) return null;
+function isSeekerAppPath(pathname: string | null) {
+  return (
+    pathname?.startsWith("/seeker/dashboard") ||
+    pathname?.startsWith("/seeker/discover") ||
+    pathname?.startsWith("/seeker/bookings") ||
+    pathname?.startsWith("/seeker/bookmark") ||
+    pathname?.startsWith("/seeker/expert")
+  );
+}
+
+function isExpertAppPath(pathname: string | null) {
+  return (
+    pathname?.startsWith("/expert/dashboard") ||
+    pathname?.startsWith("/expert/availability") ||
+    pathname?.startsWith("/expert/requests") ||
+    pathname?.startsWith("/expert/profile")
+  ) ?? false;
+}
+
+  if (
+    pathname?.startsWith("/serene-scene") ||
+    pathname?.startsWith("/admin") ||
+    isSeekerAppPath(pathname) ||
+    isExpertAppPath(pathname)
+  ) {
+    return null;
+  }
 
   return (
     <>
@@ -97,6 +136,9 @@ export default function TopNavbar() {
               </Link>
               <Link href="/login?role=user" onClick={() => setIsOpen(false)} className={styles.loginLink}>
                 User Login
+              </Link>
+              <Link href="/admin" onClick={() => setIsOpen(false)} className={styles.loginLink}>
+                Admin Console
               </Link>
             </div>
 

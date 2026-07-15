@@ -120,14 +120,14 @@ export default function Services() {
               </h2>
               <div className={styles.speaksRight}>
                 <span className="eyebrow eyebrow--dark">
-                  <i className="dot"></i>04&nbsp;&nbsp;top categories
+                  <i className="dot"></i>top categories
                 </span>
               </div>
               <span className={styles.speaksRule} aria-hidden="true"></span>
               <p className={styles.speaksDesc}>
                 Guidance that feels human. Have a closer look at expertise before you book.
               </p>
-              <a href="/expert" className={styles.viewAll}>
+              <a href="/expert#from-home" className={styles.viewAll}>
                 <span className={styles.viewAllText}>
                   <span className={styles.viewAllLabel}>View all</span>
                   <span className={styles.viewAllLabel} aria-hidden="true">
@@ -169,7 +169,7 @@ export default function Services() {
                     key={`${expert.name}-${i}`}
                     expert={expert}
                     className={styles.expertCardSlide}
-                    priority={i === 0}
+                    priority={i < 2}
                   />
                 ))}
               </div>

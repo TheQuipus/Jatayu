@@ -234,7 +234,7 @@
       10% 8.736%,
       10% 3.179%);
   background: var(--bunker);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-chip);
 }
 
 .expertImageWrap {

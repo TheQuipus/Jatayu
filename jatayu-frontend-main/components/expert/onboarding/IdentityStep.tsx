@@ -2,9 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowRight, Plus, Sparkles } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import ContinueButton from "@/components/ui/ContinueButton";
+import ExpertCard from "@/components/ui/ExpertCard";
+import ShinyText from "@/components/ui/ShinyText";
+import { type Expert } from "@/lib/experts";
 import shared from "./onboarding.shared.module.css";
 import styles from "./IdentityStep.module.css";
 
@@ -48,6 +53,7 @@ export default function IdentityStep({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoError, setPhotoError] = useState("");
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
+  const [hasUsedAi, setHasUsedAi] = useState(false);
 
   const maxChars = 160;
   const maxPhotoBytes = 5 * 1024 * 1024;
@@ -96,6 +102,7 @@ export default function IdentityStep({
   };
 
   const handleAiBioAssist = async () => {
+    setHasUsedAi(true);
     setIsGeneratingBio(true);
 
     const role = professionalTitle.trim() || "professional";
@@ -107,22 +114,29 @@ export default function IdentityStep({
     setIsGeneratingBio(false);
   };
 
-  const previewName = userName.trim() || "Your Name";
-  const previewTitle = professionalTitle.trim() || "Professional Title";
-  const previewTagline = tagLine.trim() || "Your tag line appears here.";
-  const previewIntro =
-    bio.trim() ||
-    "Your professional bio will appear here. A compelling bio dramatically increases your chances of matching with the right clients.";
-  const previewTags = selectedSkills.slice(0, 2);
+  const previewExpert: Expert = {
+    name: userName.trim() || "Your Name",
+    role: professionalTitle.trim() || "Professional Title",
+    desc: tagLine.trim() || "Your tag line appears here.",
+    image: profilePhotoSrc,
+    category: categoryLabel.trim() || "Category",
+    topics: [],
+    languages: [],
+    price: 0,
+    rating: 0,
+    replyTime: "—",
+    bio: bio.trim(),
+  };
+  const previewStatsText = professionalTitle.trim()
+    ? professionalTitle.trim()
+    : "Add your professional title";
+  const canUseAiBioAssist = bio.trim().length > 0 && !hasUsedAi;
 
   return (
     <section className={shared.card}>
       <div className={shared.cardHeader}>
       <div className={shared.topHeader}>
         <OnboardingStepTitle userName={userName} />
-        <div className={shared.stepPill}>
-          <span>Step 4 of 9 - Identity</span>
-        </div>
       </div>
 
       {/* Progress Tracker */}
@@ -196,7 +210,7 @@ export default function IdentityStep({
             <input
                 id="title-input"
                 type="text"
-                value={professionalTitle}
+                value={professionalTitle ?? ""}
                 onChange={(e) => onProfessionalTitleChange(e.target.value)}
                 className={styles.textField}
                 placeholder="e.g. Senior Software Engineer"
@@ -212,7 +226,7 @@ export default function IdentityStep({
             <div className={styles.textareaWrapper}>
               <textarea
                 id="tagline-input"
-                value={tagLine}
+                value={tagLine ?? ""}
                 onChange={(e) => onTagLineChange(e.target.value.slice(0, maxChars))}
                 className={`${styles.textareaField} ${styles.textareaWithInlineCounter}`}
                 rows={3}
@@ -230,75 +244,64 @@ export default function IdentityStep({
               <label htmlFor="intro-input" className={styles.fieldLabel}>
                 Brief Introduction
               </label>
-              <span className={styles.charCounter}>
-                {introCharCount}/{maxChars} characters
-              </span>
             </div>
-            <textarea
-              id="intro-input"
-              value={bio}
-              onChange={(e) => onBioChange(e.target.value.slice(0, maxChars))}
-              className={styles.textareaField}
-              rows={4}
-              placeholder="e.g. I'm a product leader with 8+ years guiding teams through complex launches. I focus on clarity, user research, and shipping work that moves the needle."
-            />
-            <button
-              type="button"
-              className={styles.aiBioBtn}
-              onClick={handleAiBioAssist}
-              disabled={isGeneratingBio}
-            >
-              <Sparkles size={14} aria-hidden="true" />
-              <span>{isGeneratingBio ? "Writing..." : "AI Assisted bio writing"}</span>
-            </button>
+            <div className={styles.textareaWrapper}>
+              <textarea
+                id="intro-input"
+                value={bio ?? ""}
+                onChange={(e) => onBioChange(e.target.value.slice(0, maxChars))}
+                className={`${styles.textareaField} ${styles.textareaWithBioFooter}`}
+                rows={5}
+                placeholder="e.g. I'm a product leader with 8+ years guiding teams through complex launches. I focus on clarity, user research, and shipping work that moves the needle."
+              />
+              <div className={styles.textareaFooterInline}>
+                <AnimatePresence>
+                  {canUseAiBioAssist && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      type="button"
+                      className={styles.aiBioInlineBtn}
+                      onClick={handleAiBioAssist}
+                      disabled={isGeneratingBio}
+                    >
+                      {isGeneratingBio ? (
+                        <span className={styles.aiBioLoadingText}>Writing...</span>
+                      ) : (
+                        <ShinyText
+                          text="Improve with AI"
+                          icon="sparkles"
+                          iconSize={14}
+                          speed={2.5}
+                          color="#E53B17"
+                          shineColor="#ffffff"
+                          className={styles.aiBioShinyText}
+                        />
+                      )}
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+                <span className={styles.textareaFooterCounter}>
+                  {introCharCount}/{maxChars}
+                </span>
+              </div>
+            </div>
           </div>
+
         </div>
 
         {/* Right Side: Live Preview */}
         <div className={styles.previewColumn}>
-          <span className={styles.livePreviewLabel}>Live Preview</span>
-          <div className={styles.previewCard}>
-            <div className={styles.previewCardInner}>
-              <div className={styles.previewAvatarWrap}>
-                {isUploadedPhoto ? (
-                  <img
-                    src={profilePhotoSrc}
-                    alt=""
-                    className={styles.previewAvatar}
-                  />
-                ) : (
-                  <Image
-                    src={profilePhotoSrc}
-                    alt=""
-                    width={72}
-                    height={72}
-                    className={styles.previewAvatar}
-                  />
-                )}
-              </div>
-
-              <h3 className={styles.previewName}>{previewName}</h3>
-              <p className={styles.previewTitle}>{previewTitle}</p>
-              <p className={`${styles.previewTagline} ${!tagLine.trim() ? styles.previewPlaceholder : ""}`}>
-                {previewTagline}
-              </p>
-
-              <div className={styles.previewDivider} />
-
-              <p className={`${styles.previewIntro} ${!bio.trim() ? styles.previewPlaceholder : ""}`}>
-                {previewIntro}
-              </p>
-
-              {previewTags.length > 0 && (
-                <div className={styles.previewTags}>
-                  {previewTags.map((skill) => (
-                    <span key={skill} className={styles.previewTag}>
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className={styles.expertCardWrapper}>
+            <ExpertCard
+              expert={previewExpert}
+              linkToDetail={false}
+              disableHover
+              showLanguages={false}
+              statsText={previewStatsText}
+            />
           </div>
         </div>
       </div>
@@ -330,15 +333,7 @@ export default function IdentityStep({
           <button type="button" className={shared.textBtn} onClick={onContinue}>
             Skip
           </button>
-          <button
-            type="button"
-            className={shared.continueBtn}
-            onClick={onContinue}
-            disabled={!canContinue}
-          >
-            <span>Continue</span>
-            <ArrowRight size={14} />
-          </button>
+          <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>
     </section>

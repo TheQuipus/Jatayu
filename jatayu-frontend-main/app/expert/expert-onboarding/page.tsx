@@ -28,11 +28,29 @@ import AvailabilityStep from "@/components/expert/onboarding/AvailabilityStep";
 import ReviewStep from "@/components/expert/onboarding/ReviewStep";
 import SuccessStep from "@/components/expert/onboarding/SuccessStep";
 import { EXPERT_ONBOARDING_STEPS } from "@/components/expert/onboarding/OnboardingProgressBar";
+import { EXPERT_DASHBOARD_HREF } from "@/lib/expertDashboard";
 import {
-  updateProfile,
-  submitOnboarding,
-  getExpertId,
-} from "@/lib/api";
+  createEmptyEducationDegree,
+  createEmptyEmploymentPosition,
+  deriveExperienceLevel,
+  type EducationDegree,
+  type EmploymentPosition,
+  type ExperienceLevel,
+} from "@/lib/expertEmployment";
+import { saveExpertProfile } from "@/lib/expertStore";
+import { submitExpertApplication } from "@/lib/expertApplicationsStore";
+import {
+  deriveLocationFromTimezone,
+  persistMediaUrl,
+  persistPortfolioSamples,
+} from "@/lib/expertApplicationMedia";
+import type {
+  ExpertCertificate,
+  GovernmentIdData,
+  PortfolioLink,
+  PortfolioSampleFile,
+} from "@/lib/expertApplicationSubmission";
+import type { TimeSlot } from "@/lib/expertAvailability";
 
 const categories = [
   { id: "software", label: "Software Engineering", icon: Code },
@@ -155,24 +173,17 @@ type OnboardingStep =
   | "review"
   | "success";
 
-type ExperienceLevel = "emerging" | "established" | "leader";
-type SelectedExperienceLevel = ExperienceLevel | "";
-
-/** Silently calls PUT /api/expert/profile; logs error but doesn't block step transition */
-async function persistStep(payload: Parameters<typeof updateProfile>[0]) {
-  try {
-    await updateProfile(payload);
-  } catch (err) {
-    console.error("[Jatayu] Failed to persist step:", err);
-  }
-}
-
 function ExpertOnboardingPageContent() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<OnboardingStep>("register");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [experienceLevel, setExperienceLevel] = useState<SelectedExperienceLevel>("");
+  const [employmentPositions, setEmploymentPositions] = useState<EmploymentPosition[]>([
+    createEmptyEmploymentPosition(),
+  ]);
+  const [educationDegrees, setEducationDegrees] = useState<EducationDegree[]>([
+    createEmptyEducationDegree(),
+  ]);
   const [professionalTitle, setProfessionalTitle] = useState("");
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
   const [selectedLengths, setSelectedLengths] = useState<string[]>([]);
@@ -187,8 +198,41 @@ function ExpertOnboardingPageContent() {
   const [registeredPhone, setRegisteredPhone] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registeredName, setRegisteredName] = useState("");
-  const [registeredExpertId, setRegisteredExpertId] = useState("");
   const [internalStepComplete, setInternalStepComplete] = useState<Record<number, boolean>>({});
+  const [linkedin, setLinkedin] = useState("");
+  const [portfolio, setPortfolio] = useState("");
+  const [portfolioSamples, setPortfolioSamples] = useState<PortfolioSampleFile[]>([]);
+  const [certificates, setCertificates] = useState<ExpertCertificate[]>([]);
+  const [governmentId, setGovernmentId] = useState<GovernmentIdData | null>(null);
+  const [kycVideoUrl, setKycVideoUrl] = useState("");
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
+  const [timezone, setTimezone] = useState("");
+  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[]>([]);
+  const [acceptCustomRequests, setAcceptCustomRequests] = useState(false);
+  const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
+
+  function buildPortfolioLinks(linkedinUrl: string, portfolioUrl: string): PortfolioLink[] {
+    const links: PortfolioLink[] = [];
+
+    if (linkedinUrl.trim()) {
+      links.push({
+        id: "portfolio-linkedin",
+        url: linkedinUrl.trim(),
+        platform: "LinkedIn",
+      });
+    }
+
+    if (portfolioUrl.trim()) {
+      links.push({
+        id: "portfolio-site",
+        url: portfolioUrl.trim(),
+        platform: "Portfolio",
+      });
+    }
+
+    return links;
+  }
 
   const handleStepCompleteChange = useCallback((step: number, complete: boolean) => {
     setInternalStepComplete((prev) => {
@@ -201,7 +245,7 @@ function ExpertOnboardingPageContent() {
     () => [
       Boolean(selectedCategory),
       selectedSkills.length === 5,
-      Boolean(experienceLevel),
+      Boolean(internalStepComplete[3]),
       Boolean(internalStepComplete[4]),
       Boolean(internalStepComplete[5]),
       Boolean(internalStepComplete[6]),
@@ -209,7 +253,7 @@ function ExpertOnboardingPageContent() {
       Boolean(internalStepComplete[8]),
       Boolean(internalStepComplete[9]),
     ],
-    [selectedCategory, selectedSkills, experienceLevel, internalStepComplete],
+    [selectedCategory, selectedSkills, internalStepComplete],
   );
 
   useEffect(() => {
@@ -221,10 +265,6 @@ function ExpertOnboardingPageContent() {
       setRegisteredName(decodeURIComponent(nameParam));
     }
 
-    // Restore expertId from localStorage if available (e.g. after Google login)
-    const storedId = getExpertId();
-    if (storedId) setRegisteredExpertId(storedId);
-
     if (resume === "category") {
       setStep("category");
       setRegisteredName((prev) => prev || "Expert");
@@ -233,50 +273,23 @@ function ExpertOnboardingPageContent() {
     }
   }, [searchParams]);
 
-  // -------------------------------------------------------------------------
-  // Auth step handlers
-  // -------------------------------------------------------------------------
-
   const handleRegisterComplete = ({
     phone,
     fullName,
     email,
-    expertId,
   }: {
     phone: string;
     fullName: string;
     email: string;
-    expertId: string;
   }) => {
     setRegisteredPhone(phone);
     setRegisteredEmail(email);
     setRegisteredName(fullName);
-    setRegisteredExpertId(expertId);
     setStep("otp");
   };
 
-  const handleLoginComplete = ({
-    email,
-    fullName,
-    onboardingStep,
-  }: {
-    email: string;
-    fullName: string;
-    onboardingStep: string;
-  }) => {
-    setRegisteredEmail(email);
-    setRegisteredName(fullName || email.split("@")[0]?.replace(/[._-]+/g, " ") || "Expert");
-
-    // Auto-resume from the step stored on the server
-    const resumableSteps: OnboardingStep[] = [
-      "category", "skills", "experience", "identity",
-      "credentials", "preferences", "audience", "availability", "review",
-    ];
-    const resumeTarget = resumableSteps.includes(onboardingStep as OnboardingStep)
-      ? (onboardingStep as OnboardingStep)
-      : "category";
-
-    setStep(resumeTarget);
+  const handleLoginComplete = () => {
+    window.location.assign(EXPERT_DASHBOARD_HREF);
   };
 
   const handleOtpComplete = () => {
@@ -291,13 +304,7 @@ function ExpertOnboardingPageContent() {
     setStep("register");
   };
 
-  // -------------------------------------------------------------------------
-  // Onboarding step handlers — each persists data to backend before advancing
-  // -------------------------------------------------------------------------
-
   const handleCategoryContinue = () => {
-    const activeCat = allCategories.find((c) => c.id === selectedCategory);
-    persistStep({ step: "category", category: activeCat?.label ?? selectedCategory });
     setStep("skills");
   };
 
@@ -328,18 +335,27 @@ function ExpertOnboardingPageContent() {
     setSelectedSkills([]);
   };
 
-  const allCategories = [...categories, ...customCategories];
-
-  const handleBackToWelcome = () => {
-    setStep("otp");
+  const handleRemoveCustomCategory = (id: string) => {
+    setCustomCategories((prev) => prev.filter((cat) => cat.id !== id));
+    if (selectedCategory === id) {
+      setSelectedCategory("");
+      setSelectedSkills([]);
+    }
+    setCustomSkills((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
+
+  const allCategories = [...categories, ...customCategories];
 
   const handleBackToCategory = () => {
     setStep("category");
   };
 
   const handleSkillsContinue = () => {
-    persistStep({ step: "skills", skills: selectedSkills });
     setStep("experience");
   };
 
@@ -348,7 +364,6 @@ function ExpertOnboardingPageContent() {
   };
 
   const handleExperienceContinue = () => {
-    persistStep({ step: "experience", experienceLevel });
     setStep("identity");
   };
 
@@ -357,13 +372,6 @@ function ExpertOnboardingPageContent() {
   };
 
   const handleIdentityContinue = () => {
-    persistStep({
-      step: "identity",
-      professionalTitle,
-      tagLine,
-      bio,
-      profilePhotoSrc,
-    });
     setStep("credentials");
   };
 
@@ -371,17 +379,7 @@ function ExpertOnboardingPageContent() {
     setStep("identity");
   };
 
-  const handleCredentialsContinue = (data: {
-    credentials: Array<{
-      type: string;
-      title: string;
-      institution: string;
-      startYear: number;
-      endYear?: number | null;
-      description?: string | null;
-    }>;
-  }) => {
-    persistStep({ step: "credentials", credentials: data.credentials });
+  const handleCredentialsContinue = () => {
     setStep("preferences");
   };
 
@@ -390,12 +388,6 @@ function ExpertOnboardingPageContent() {
   };
 
   const handlePreferencesContinue = () => {
-    persistStep({
-      step: "preferences",
-      selectedFormats,
-      selectedLengths,
-      formatPrices,
-    });
     setStep("audience");
   };
 
@@ -403,15 +395,7 @@ function ExpertOnboardingPageContent() {
     setStep("preferences");
   };
 
-  const handleAudienceContinue = (data: {
-    targetAudience: string[];
-    focusAreas: string[];
-  }) => {
-    persistStep({
-      step: "audience",
-      targetAudience: data.targetAudience,
-      focusAreas: data.focusAreas,
-    });
+  const handleAudienceContinue = () => {
     setStep("availability");
   };
 
@@ -419,19 +403,7 @@ function ExpertOnboardingPageContent() {
     setStep("audience");
   };
 
-  const handleAvailabilityContinue = (data: {
-    slots: Array<{ id: string; days: string[]; from: string; to: string }>;
-    timezone: string;
-  }) => {
-    const availabilitySlots = data.slots
-      .filter((s) => s.days.length > 0 && s.from && s.to)
-      .map((s) => ({ days: s.days, from: s.from, to: s.to }));
-
-    persistStep({
-      step: "availability",
-      timezone: data.timezone,
-      availabilitySlots,
-    });
+  const handleAvailabilityContinue = () => {
     setStep("review");
   };
 
@@ -439,13 +411,86 @@ function ExpertOnboardingPageContent() {
     setStep("availability");
   };
 
-  const handleReviewContinue = async () => {
+  const handleReviewContinue = async ({
+    name,
+    professionalTitle: submittedProfessionalTitle,
+    termsAccepted,
+  }: {
+    name: string;
+    professionalTitle: string;
+    termsAccepted: boolean;
+  }) => {
+    if (!termsAccepted || isSubmittingApplication) return;
+
+    setIsSubmittingApplication(true);
+
     try {
-      await submitOnboarding();
-    } catch (err) {
-      console.error("[Jatayu] Submit onboarding failed:", err);
+      const resolvedExperienceLevel = deriveExperienceLevel(employmentPositions);
+      const resolvedLocation = deriveLocationFromTimezone(timezone);
+      const persistedAvatar = await persistMediaUrl(profilePhotoSrc);
+      const persistedKycVideo = kycVideoUrl ? await persistMediaUrl(kycVideoUrl) : undefined;
+      const persistedPortfolioSamples = await persistPortfolioSamples(portfolioSamples);
+      const portfolioLinks = buildPortfolioLinks(linkedin, portfolio);
+      const resolvedProfessionalTitle =
+        submittedProfessionalTitle || professionalTitle || activeCategoryLabel || "Expert";
+
+      const profilePayload = {
+        name: name || registeredName || "Expert",
+        role: resolvedProfessionalTitle,
+        avatar: persistedAvatar,
+        tagLine: tagLine || "",
+        bio: bio || "",
+        category: activeCategoryLabel || selectedCategory || "Product Design",
+        skills: selectedSkills.length > 0 ? selectedSkills : ["UX Strategy", "Product Research"],
+        experienceLevel: resolvedExperienceLevel,
+        phone: registeredPhone,
+        email: registeredEmail,
+        formats: selectedFormats,
+        lengths: selectedLengths,
+        prices: formatPrices,
+        languages: languages.length > 0 ? languages : ["English", "Hindi"],
+        location: resolvedLocation,
+      };
+
+      saveExpertProfile(profilePayload);
+
+      submitExpertApplication({
+        name: name || registeredName || "Expert",
+        email: registeredEmail,
+        phone: registeredPhone,
+        categoryId: selectedCategory,
+        categoryLabel: activeCategoryLabel || selectedCategory || "General",
+        skills: selectedSkills,
+        experienceLevel: resolvedExperienceLevel,
+        professionalTitle: resolvedProfessionalTitle,
+        tagLine,
+        bio,
+        avatar: persistedAvatar,
+        location: resolvedLocation,
+        linkedin,
+        portfolio,
+        portfolioSamples: persistedPortfolioSamples,
+        portfolioLinks,
+        governmentId: governmentId ?? undefined,
+        kycVideoUrl: persistedKycVideo,
+        certificates,
+        formats: selectedFormats,
+        lengths: selectedLengths,
+        formatPrices,
+        languages: languages.length > 0 ? languages : ["English"],
+        audiences: selectedAudiences,
+        timezone,
+        availabilitySlots,
+        employmentPositions,
+        educationDegrees,
+        acceptCustomRequests,
+        termsAcceptedAt: new Date().toISOString(),
+      });
+
+      setStep("success");
+    } finally {
+      setIsSubmittingApplication(false);
     }
-    setStep("success");
   };
 
   const handleJumpToStepNumber = (stepNumber: number) => {
@@ -497,12 +542,24 @@ function ExpertOnboardingPageContent() {
     }
   };
 
+  const handleRemoveCustomSkill = (skill: string) => {
+    const categoryCustomList = customSkills[selectedCategory] || [];
+    setCustomSkills({
+      ...customSkills,
+      [selectedCategory]: categoryCustomList.filter(
+        (s) => s.toLowerCase() !== skill.toLowerCase(),
+      ),
+    });
+    setSelectedSkills(
+      selectedSkills.filter((s) => s.toLowerCase() !== skill.toLowerCase()),
+    );
+  };
+
   // Retrieve current category options
   const activeCategoryInfo = allCategories.find((c) => c.id === selectedCategory);
   const activeCategoryLabel = activeCategoryInfo ? activeCategoryInfo.label : "";
   const baseSkills = skillsByCategory[selectedCategory] || [];
   const activeCustomSkills = customSkills[selectedCategory] || [];
-  const currentSkillsList = [...baseSkills, ...activeCustomSkills];
 
   return (
     <main className={styles.pageContainer}>
@@ -532,7 +589,6 @@ function ExpertOnboardingPageContent() {
         <OtpStep
           phone={registeredPhone}
           email={registeredEmail}
-          expertId={registeredExpertId}
           onBack={handleBackToRegister}
           onContinue={handleOtpComplete}
         />
@@ -542,7 +598,6 @@ function ExpertOnboardingPageContent() {
         <CategoryStep
           userName={registeredName}
           categories={allCategories}
-          presetCategoryIds={categories.map((c) => c.id)}
           selectedCategory={selectedCategory}
           stepCompletion={stepCompletion}
           onSelectCategory={(id) => {
@@ -550,7 +605,8 @@ function ExpertOnboardingPageContent() {
             setSelectedSkills([]);
           }}
           onAddCustomCategory={handleAddCustomCategory}
-          onBack={handleBackToWelcome}
+          onRemoveCustomCategory={handleRemoveCustomCategory}
+          onBack={handleBackToRegister}
           onContinue={handleCategoryContinue}
           onJumpToStep={handleJumpToStepNumber}
         />
@@ -560,11 +616,13 @@ function ExpertOnboardingPageContent() {
         <SkillsStep
           userName={registeredName}
           activeCategoryLabel={activeCategoryLabel}
-          currentSkillsList={currentSkillsList}
+          currentSkillsList={baseSkills}
+          customSkillsList={activeCustomSkills}
           selectedSkills={selectedSkills}
           stepCompletion={stepCompletion}
           onToggleSkill={handleToggleSkill}
           onAddCustomSkill={handleAddCustomSkill}
+          onRemoveCustomSkill={handleRemoveCustomSkill}
           onBack={handleBackToCategory}
           onContinue={handleSkillsContinue}
           onJumpToStep={handleJumpToStepNumber}
@@ -574,9 +632,18 @@ function ExpertOnboardingPageContent() {
       {step === "experience" && (
         <ExperienceStep
           userName={registeredName}
-          experienceLevel={experienceLevel}
+          employmentPositions={employmentPositions}
+          educationDegrees={educationDegrees}
+          linkedin={linkedin}
+          portfolio={portfolio}
+          portfolioSamples={portfolioSamples}
           stepCompletion={stepCompletion}
-          onSelectLevel={setExperienceLevel}
+          onStepCompleteChange={handleStepCompleteChange}
+          onEmploymentPositionsChange={setEmploymentPositions}
+          onEducationDegreesChange={setEducationDegrees}
+          onLinkedinChange={setLinkedin}
+          onPortfolioChange={setPortfolio}
+          onPortfolioSamplesChange={setPortfolioSamples}
           onBack={handleBackToSkills}
           onContinue={handleExperienceContinue}
           onJumpToStep={handleJumpToStepNumber}
@@ -607,6 +674,12 @@ function ExpertOnboardingPageContent() {
       {step === "credentials" && (
         <CredentialsStep
           userName={registeredName}
+          kycVideoSrc={kycVideoUrl}
+          onKycVideoChange={setKycVideoUrl}
+          governmentId={governmentId}
+          onGovernmentIdChange={setGovernmentId}
+          certificates={certificates}
+          onCertificatesChange={setCertificates}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToIdentity}
@@ -624,6 +697,8 @@ function ExpertOnboardingPageContent() {
           onSelectedLengthsChange={setSelectedLengths}
           formatPrices={formatPrices}
           onFormatPricesChange={setFormatPrices}
+          acceptCustomRequests={acceptCustomRequests}
+          onAcceptCustomRequestsChange={setAcceptCustomRequests}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToCredentials}
@@ -639,6 +714,10 @@ function ExpertOnboardingPageContent() {
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToPreferences}
           onContinue={handleAudienceContinue}
+          onContinueWithAudience={({ languages: nextLanguages, audiences }) => {
+            setLanguages(nextLanguages);
+            setSelectedAudiences(audiences);
+          }}
           onJumpToStep={handleJumpToStepNumber}
         />
       )}
@@ -650,6 +729,10 @@ function ExpertOnboardingPageContent() {
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToAudience}
           onContinue={handleAvailabilityContinue}
+          onScheduleChange={({ timezone: nextTimezone, slots }) => {
+            setTimezone(nextTimezone);
+            setAvailabilitySlots(slots);
+          }}
           onJumpToStep={handleJumpToStepNumber}
         />
       )}
@@ -658,7 +741,8 @@ function ExpertOnboardingPageContent() {
         <ReviewStep
           userName={registeredName}
           selectedSkills={selectedSkills}
-          experienceLevel={experienceLevel}
+          employmentPositions={employmentPositions}
+          educationDegrees={educationDegrees}
           professionalTitle={professionalTitle}
           tagLine={tagLine}
           bio={bio}
@@ -666,22 +750,44 @@ function ExpertOnboardingPageContent() {
           categoryLabel={
             allCategories.find((c) => c.id === selectedCategory)?.label ?? "Not selected"
           }
+          linkedin={linkedin}
+          portfolio={portfolio}
+          portfolioSamples={portfolioSamples}
+          governmentId={governmentId}
+          kycVideoUrl={kycVideoUrl}
+          certificates={certificates}
+          languages={languages}
+          selectedAudiences={selectedAudiences}
+          timezone={timezone}
+          availabilitySlots={availabilitySlots}
           selectedFormats={selectedFormats}
           selectedLengths={selectedLengths}
           formatPrices={formatPrices}
+          profilePhotoSrc={profilePhotoSrc}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToAvailability}
           onSubmit={handleReviewContinue}
           onJumpToStep={(targetStep) => {
-            setStep(targetStep);
+            setStep(targetStep as OnboardingStep);
           }}
           onProgressStepClick={handleJumpToStepNumber}
         />
       )}
 
       {step === "success" && (
-        <SuccessStep userName={registeredName} profilePhotoSrc={profilePhotoSrc} />
+        <SuccessStep
+          userName={registeredName}
+          professionalTitle={professionalTitle}
+          tagLine={tagLine}
+          bio={bio}
+          categoryLabel={
+            allCategories.find((c) => c.id === selectedCategory)?.label ?? "Not selected"
+          }
+          languages={languages}
+          formatPrices={formatPrices}
+          profilePhotoSrc={profilePhotoSrc}
+        />
       )}
     </main>
   );

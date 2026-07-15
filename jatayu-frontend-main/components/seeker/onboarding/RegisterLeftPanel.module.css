@@ -25,7 +25,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 16px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--background-chip);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
   margin-bottom: 32px;
@@ -40,7 +40,7 @@
 .verifiedIcon {
   width: 14px;
   height: 14px;
-  color: #E53B17;
+  color: var(--silver);
   flex-shrink: 0;
 }
 
@@ -50,21 +50,18 @@
   flex-direction: row;
   align-items: center;
   gap: 12px;
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
-  line-height: 20px;
-  color: #E6E6E6;
-  width: fit-content;
+  padding: 12px 0px;
+  line-height: 18px;
+  color: #E5E5E5;
 }
 
 .featureIcon {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
   color: rgba(255, 255, 255, 0.8);
   flex-shrink: 0;
 }
@@ -76,8 +73,6 @@
   justify-content: center;
   padding: 48px 40px;
   overflow: hidden;
-  background: rgba(20, 20, 20, 0.9);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .registerLeftContent {
@@ -91,9 +86,6 @@
   margin-bottom: 24px;
 }
 
-.registerLeftContent .verifiedPill {
-  margin-bottom: 63px;
-}
 
 .registerTitle {
   font-size: 48px;
@@ -121,15 +113,11 @@
 }
 
 .registerFeaturesGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  max-width: 393px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
 }
 
-.registerFeaturesGrid .featureTag {
-  flex: none;
-}
 
 @media (max-width: 900px) {
   .registerLeft {

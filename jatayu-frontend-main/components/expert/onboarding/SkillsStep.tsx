@@ -1,168 +1,347 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import { ArrowRight, Plus } from "lucide-react";
+import { Medal, Tag, X, Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./SkillsStep.module.css";
+
+const MAX_SKILLS = 5;
+const BADGE_SEGMENT_COUNT = 5;
+
+function polarToCartesian(cx: number, cy: number, radius: number, angleDeg: number) {
+  const angleRad = ((angleDeg - 90) * Math.PI) / 180;
+  return {
+    x: cx + radius * Math.cos(angleRad),
+    y: cy + radius * Math.sin(angleRad),
+  };
+}
+
+function describeArc(
+  cx: number,
+  cy: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number,
+) {
+  const start = polarToCartesian(cx, cy, radius, endAngle);
+  const end = polarToCartesian(cx, cy, radius, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+}
+
+function SkillBadgeRing({ progress, size = 48 }: { progress: number; size?: number }) {
+  const filled = Math.min(Math.max(progress, 0), BADGE_SEGMENT_COUNT);
+  const strokeWidth = 2.5;
+  const gapDeg = 12;
+  const segmentDeg = (360 - BADGE_SEGMENT_COUNT * gapDeg) / BADGE_SEGMENT_COUNT;
+  const radius = (size - strokeWidth) / 2 - 0.5;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className={styles.footerTagRing}
+      aria-hidden="true"
+    >
+      {Array.from({ length: BADGE_SEGMENT_COUNT }, (_, index) => {
+        const startAngle = index * (segmentDeg + gapDeg);
+        const endAngle = startAngle + segmentDeg;
+
+        return (
+          <path
+            key={index}
+            d={describeArc(cx, cy, radius, startAngle, endAngle)}
+            fill="none"
+            className={
+              index < filled ? styles.footerTagRingSegmentFilled : styles.footerTagRingSegment
+            }
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+          />
+        );
+      })}
+    </svg>
+  );
+}
 
 type SkillsStepProps = {
   userName: string;
   activeCategoryLabel: string;
   currentSkillsList: string[];
+  customSkillsList: string[];
   selectedSkills: string[];
   stepCompletion: boolean[];
   onToggleSkill: (skill: string) => void;
   onAddCustomSkill: (skill: string) => void;
+  onRemoveCustomSkill: (skill: string) => void;
   onBack: () => void;
   onContinue: () => void;
   onJumpToStep?: (step: number) => void;
 };
 
-const MAX_SKILLS = 5;
-
 export default function SkillsStep({
   userName,
   activeCategoryLabel,
   currentSkillsList,
+  customSkillsList,
   selectedSkills,
   stepCompletion,
   onToggleSkill,
   onAddCustomSkill,
+  onRemoveCustomSkill,
   onBack,
   onContinue,
   onJumpToStep,
 }: SkillsStepProps) {
   const [newSkillInput, setNewSkillInput] = useState<string>("");
-  const isCustomInputDisabled = selectedSkills.length >= MAX_SKILLS;
+  const [showInput, setShowInput] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isCustomInputDisabled) return;
     const trimmed = newSkillInput.trim();
     if (!trimmed) return;
     onAddCustomSkill(trimmed);
     setNewSkillInput("");
+    setShowInput(false);
   };
+
+  const handleBlur = () => {
+    const trimmed = newSkillInput.trim();
+    if (trimmed) {
+      onAddCustomSkill(trimmed);
+      setNewSkillInput("");
+    }
+    setShowInput(false);
+  };
+
+  const isBadgeUnlocked = selectedSkills.length >= BADGE_SEGMENT_COUNT;
+  // Directory layout grouping - predefined skills only
+  const grouped = currentSkillsList.reduce((acc, skill) => {
+    const label = skill.trim();
+    if (!label) return acc;
+    const firstChar = label[0].toUpperCase();
+    const isLetter = /^[A-Z]$/.test(firstChar);
+    const key = isLetter ? firstChar : "#";
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(skill);
+    return acc;
+  }, {} as Record<string, string[]>);
+
+  Object.keys(grouped).forEach((key) => {
+    grouped[key].sort((a, b) => a.localeCompare(b));
+  });
+
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const activeLetters = new Set(Object.keys(grouped));
 
   return (
     <section className={shared.card}>
       <div className={shared.cardHeader}>
-      <div className={shared.topHeader}>
-        <OnboardingStepTitle userName={userName} />
-        <div className={shared.stepPill}>
-          <span>Step 2 of 9 - Skills</span>
+        <div className={shared.topHeader}>
+          <OnboardingStepTitle userName={userName} />
         </div>
-      </div>
 
-      {/* Progress Tracker */}
-      <OnboardingProgressBar currentStep={2} stepCompletion={stepCompletion} onStepClick={onJumpToStep} />
-
+        <OnboardingProgressBar
+          currentStep={2}
+          stepCompletion={stepCompletion}
+          onStepClick={onJumpToStep}
+        />
       </div>
 
       <div className={`${shared.cardBody} ${styles.skillsCardBody}`}>
-{/* Heading */}
-      <h1 className={shared.questionTitle}>
-        What are your <span className={shared.accentWord}>specific skills</span>?
-      </h1>
+        <h1 className={shared.questionTitle}>
+          What are your <span className={shared.accentWord}>specific skills</span>?
+        </h1>
 
-      <p className={shared.questionSubtitle}>
-        Select 5 sub-skills related to {activeCategoryLabel}. <br/>This refines your expert profile.
-      </p>
+        <p className={shared.questionSubtitle}>
+          Select 5 sub-skills related to {activeCategoryLabel}. This refines your expert profile.
+        </p>
 
-      {/* Counter Badge */}
-      <div className={styles.selectedBadge}>
-        Selected: {selectedSkills.length} / {MAX_SKILLS}
-      </div>
-
-      <div className={styles.skillsBodyContent}>
-        {/* Skills Cluster */}
-        <div className={styles.skillsClusterScroll}>
-          <div className={styles.skillsCluster}>
-            {currentSkillsList.map((skill) => {
-              const isSelected = selectedSkills.includes(skill);
+        {/* Directory Wrapper */}
+        <div className={styles.directoryWrapper}>
+          <div className={styles.alphabetBar}>
+            {alphabet.map((letter) => {
+              const isActive = activeLetters.has(letter);
+              const scrollToGroup = () => {
+                if (isActive) {
+                  const element = document.getElementById(`group-${letter}`);
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }
+              };
 
               return (
                 <button
-                  key={skill}
+                  key={letter}
                   type="button"
-                  onClick={() => onToggleSkill(skill)}
-                  className={`${styles.skillPill} ${isSelected ? styles.skillPillSelected : ""}`}
+                  onClick={scrollToGroup}
+                  disabled={!isActive}
+                  className={`${styles.alphabetLetter} ${isActive ? styles.alphabetLetterActive : ""
+                    }`}
                 >
-                  {skill}
+                  {letter}
                 </button>
               );
             })}
           </div>
+
+          <div className={styles.groupsContainer}>
+            {alphabet.map((letter) => {
+              const items = grouped[letter];
+              if (!items || items.length === 0) return null;
+
+              return (
+                <div key={letter} id={`group-${letter}`} className={styles.groupRow}>
+                  <div className={styles.letterBadgeWrap}>
+                    <div className={styles.letterBadge}>{letter}</div>
+                  </div>
+
+                  <div className={styles.groupItems}>
+                    {items.map((skill) => {
+                      const isSelected = selectedSkills.includes(skill);
+
+                      return (
+                        <div className={styles.skillPillWrapper} key={skill}>
+                          <button
+                            type="button"
+                            onClick={() => onToggleSkill(skill)}
+                            className={`${styles.skillPill} ${
+                              isSelected ? styles.skillPillSelected : ""
+                            }`}
+                          >
+                            {skill}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Custom Skill Input Form */}
+            <div className={styles.customInputContainer}>
+              {customSkillsList.length > 0 && (
+                <div className={styles.customChipsList}>
+                  {customSkillsList.map((skill) => {
+                    const isSelected = selectedSkills.includes(skill);
+                    return (
+                      <div className={styles.skillPillWrapper} key={skill}>
+                        <div
+                          className={`${styles.skillPill} ${styles.skillPillRemovable} ${
+                            isSelected ? styles.skillPillSelected : ""
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => onToggleSkill(skill)}
+                            className={styles.skillPillMain}
+                          >
+                            {skill}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.skillRemoveBtn}
+                            aria-label={`Remove ${skill}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveCustomSkill(skill);
+                            }}
+                          >
+                            <X size={12} aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <h3 className={styles.customHeading}>
+                Didn&apos;t find what you&apos;re looking for?
+              </h3>
+              {showInput ? (
+                <div className={`${styles.skillPill} ${styles.skillPillInput}`}>
+                  <form onSubmit={handleSubmit} style={{ width: "100%", display: "flex" }}>
+                    <input
+                      type="text"
+                      placeholder="Add custom skill..."
+                      value={newSkillInput}
+                      onChange={(e) => setNewSkillInput(e.target.value)}
+                      className={styles.skillInlineInput}
+                      onBlur={handleBlur}
+                      autoFocus
+                      aria-label="Add custom skill"
+                    />
+                  </form>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowInput(true)}
+                  className={styles.skillPill}
+                >
+                  <Plus size={14} />
+                  <span>Add custom</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-
-        {/* Custom Skill Input */}
-        <form className={styles.customInputWrapper} onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Add custom skill..."
-            value={newSkillInput}
-            onChange={(e) => setNewSkillInput(e.target.value)}
-            className={styles.customInput}
-            disabled={isCustomInputDisabled}
-          />
-          <button
-            type="submit"
-            className={styles.customInputBtn}
-            aria-label="Add custom skill"
-            disabled={isCustomInputDisabled}
-          >
-            <Plus size={16} />
-          </button>
-        </form>
-      </div>
-
-      {/* Step 2 Footer */}
       </div>
 
       <div className={shared.onboardingFooter}>
         <div className={shared.footerLeft}>
-          <div className={shared.avatarMiniWrap}>
-            <Image
-              src="/assets/img/avatar1.png"
-              alt="Expert advisor"
-              width={36}
-              height={36}
-              className={shared.avatarMini}
-            />
+          <div
+            className={`${styles.footerTagIconWrap} ${isBadgeUnlocked ? styles.footerTagIconWrapUnlocked : ""
+              }`}
+            aria-label={
+              isBadgeUnlocked
+                ? "Skill Specialist badge unlocked"
+                : `${Math.min(selectedSkills.length, BADGE_SEGMENT_COUNT)} of ${BADGE_SEGMENT_COUNT
+                } skills selected`
+            }
+          >
+            <SkillBadgeRing progress={selectedSkills.length} />
+            <div className={styles.footerTagIcon}>
+              {isBadgeUnlocked ? (
+                <Medal className={styles.footerMedalIconSvg} size={18} />
+              ) : (
+                <Tag className={styles.footerTagIconSvg} size={18} />
+              )}
+            </div>
           </div>
           <div className={shared.footerTip}>
-            <strong>Looking specific!</strong>
-            <small>Detailed skills attract the right clients.</small>
+            {isBadgeUnlocked ? (
+              <strong>Skill Specialist Unlocked!</strong>
+            ) : (
+              <>
+                <strong>Skill Specialist</strong>
+                <small>Select 5 skills to unlock badge</small>
+              </>
+            )}
           </div>
         </div>
 
         <div className={shared.footerActions}>
-          <button
-            type="button"
-            className={shared.textBtn}
-            onClick={onBack}
-          >
+          <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
           </button>
-          <button
-            type="button"
-            className={shared.textBtn}
-            onClick={onContinue}
-          >
+          <button type="button" className={shared.textBtn} onClick={onContinue}>
             Skip
           </button>
-          <button
-            type="button"
-            className={shared.continueBtn}
+          <ContinueButton
             onClick={onContinue}
             disabled={selectedSkills.length !== MAX_SKILLS}
-          >
-            <span>Continue</span>
-            <ArrowRight size={14} />
-          </button>
+          />
         </div>
       </div>
     </section>

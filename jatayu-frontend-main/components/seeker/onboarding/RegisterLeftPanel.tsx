@@ -1,4 +1,11 @@
-import { Box, Shield, Globe, Zap, Compass } from "lucide-react";
+import {
+  Shield,
+  Compass,
+  Sparkles,
+  Target,
+  MessageSquare,
+  Calendar,
+} from "lucide-react";
 import styles from "./RegisterLeftPanel.module.css";
 
 type RegisterLeftPanelProps = {
@@ -16,14 +23,12 @@ export default function RegisterLeftPanel({ variant = "register" }: RegisterLeft
           <span>Jatayu</span>
         </div>
 
-        <div className={styles.verifiedPill}>
-          <Shield className={styles.verifiedIcon} size={14} />
-          <span>
-            {isLogin
-              ? "Secure sign-in for users"
-              : "Connect with top 1% experts in India"}
-          </span>
-        </div>
+        {isLogin && (
+          <div className={styles.verifiedPill}>
+            <Shield className={styles.verifiedIcon} size={14} />
+            <span>Secure sign-in for users</span>
+          </div>
+        )}
 
         <h1 className={`display ${styles.registerTitle}`}>
           {isLogin ? (
@@ -36,7 +41,7 @@ export default function RegisterLeftPanel({ variant = "register" }: RegisterLeft
             <>
               <span className="t-muted">Find Your</span>
               <br />
-              <span className="t-white">Perfect Guide</span>
+              <span className="t-white">Perfect<br/> Expert Guide</span>
             </>
           )}
         </h1>
@@ -44,25 +49,27 @@ export default function RegisterLeftPanel({ variant = "register" }: RegisterLeft
         <p className={styles.registerDescription}>
           {isLogin
             ? "Sign in to manage your matches, schedule calls, and review session notes."
-            : "Create your seeker account to schedule calls, track expert matches, and access direct consultation channels."}
+            : "Answer a few questions and we'll match you with verified experts tailored exactly to your needs."}
         </p>
 
         <div className={styles.registerFeaturesGrid}>
           <div className={styles.featureTag}>
-            <Globe className={styles.featureIcon} size={16} />
-            <span>10k+ Experts</span>
+            <Sparkles className={styles.featureIcon} size={16} />
+            <span>
+              Tell us your needs
+            </span>
           </div>
           <div className={styles.featureTag}>
-            <Zap className={styles.featureIcon} size={16} />
-            <span>98% Accuracy</span>
+            <Target className={styles.featureIcon} size={16} />
+            <span>Match with experts</span>
           </div>
           <div className={styles.featureTag}>
-            <Zap className={styles.featureIcon} size={16} />
-            <span>Instant booking</span>
+            <MessageSquare className={styles.featureIcon} size={16} />
+            <span>Mode of Consultation</span>
           </div>
           <div className={styles.featureTag}>
-            <Shield className={styles.featureIcon} size={16} />
-            <span>SSL Secured</span>
+            <Calendar className={styles.featureIcon} size={16} />
+            <span>Book your session</span>
           </div>
         </div>
       </div>

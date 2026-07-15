@@ -8,8 +8,8 @@
 
 .categoryBadgeWrap {
   position: absolute;
-  top: 12px;
-  left: 55px;
+  top: 5px;
+  left: 36px;
   z-index: 10;
 }
 
@@ -29,7 +29,7 @@
   line-height: 17px;
   letter-spacing: -0.56px;
   text-transform: uppercase;
-  color: #686868;
+  color: var(--dove-gray);
   white-space: nowrap;
 }
 
@@ -51,7 +51,7 @@
 
 .bookmarkBtn {
   position: absolute;
-  top: 24px;
+  top: 17px;
   right: 24px;
   z-index: 10;
   display: grid;
@@ -124,14 +124,6 @@
   gap: 5px;
   z-index: 2;
   margin-top: 65px;
-}
-
-.languagesLabel {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--dove-gray);
-  letter-spacing: 0.08em;
 }
 
 .languagesList {

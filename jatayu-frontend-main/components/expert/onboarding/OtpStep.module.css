@@ -1,7 +1,6 @@
 /* OTP Verification Step — matches Figma node 621:9766 */
 .otpRightPanel {
-  justify-content: flex-start;
-  padding-top: 48px;
+  justify-content: center;
 }
 
 .otpBackBtn {
@@ -13,7 +12,7 @@
   padding: 0;
   margin-bottom: 24px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 20px;
   color: var(--white);
@@ -32,7 +31,7 @@
 
 .otpSentText {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 20px;
   color: var(--white);
@@ -47,13 +46,13 @@
 }
 
 .otpFieldLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  color: #FFFFFF;
+  color: var(--silver-chalice);
 }
 
 .otpInputRow {
@@ -66,16 +65,15 @@
   height: 48px;
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 13px 17px;
   font-family: var(--font-body);
   font-size: 16px;
   font-weight: 400;
   color: var(--white);
-  text-align: center;
+  text-align: left;
   outline: none;
-  caret-color: transparent;
   transition: border-color 0.2s ease;
 }
 

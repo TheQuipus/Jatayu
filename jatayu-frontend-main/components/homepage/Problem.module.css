@@ -34,10 +34,11 @@
   letter-spacing: -0.06em;
   text-transform: uppercase;
   margin: 22px 0 0 0px;
+  color: #000;
 }
 
-.problemTitle .tMuted {
-  color: var(--scorpion);
+.problemTitle :global(.problemTitleMuted) {
+  color: #5e5e5e;
 }
 
 .problemKicker {
@@ -49,8 +50,7 @@
   font-size: 14px;
   letter-spacing: -0.03em;
   color: var(--bunker);
-  margin-top: 0;
-  margin-bottom: 4px;
+  margin-top: 10px;
 }
 
 .problemDescWrap {
@@ -60,6 +60,7 @@
   display: flex;
   flex-direction: column;
   min-height: calc(18px * 1.4 * 2);
+  max-width: 700px;
 }
 
 .problemDesc {
@@ -67,7 +68,7 @@
   font-size: 18px;
   line-height: 1.4;
   color: var(--scorpion);
-  max-width: 100%;
+  max-width: 80%;
   min-height: calc(18px * 1.4 * 2);
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -192,6 +193,7 @@
   color: var(--bunker);
   white-space: normal;
   transition: color 0.3s;
+  min-height: 40px;
 }
 
 .scardMiniRule {
@@ -332,6 +334,47 @@
     inset: 0;
     width: 100%;
     height: 100%;
+    opacity: 0;
+    transform-origin: center 600px;
+  }
+
+  .preview::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: #000;
+    clip-path: polygon(10% 3.179%,
+        12.647% 0%,
+        91.177% 0%,
+        96.765% 4.48%,
+        96.765% 53.757%,
+        100% 57.659%,
+        100% 95.376%,
+        95.294% 100%,
+        0% 100%,
+        0% 19.364%,
+        10% 8.736%,
+        10% 3.179%);
+    -webkit-clip-path: polygon(10% 3.179%,
+        12.647% 0%,
+        91.177% 0%,
+        96.765% 4.48%,
+        96.765% 53.757%,
+        100% 57.659%,
+        100% 95.376%,
+        95.294% 100%,
+        0% 100%,
+        0% 19.364%,
+        10% 8.736%,
+        10% 3.179%);
+  }
+
+  .previewImage {
+    display: block;
+    position: absolute;
+    inset: 5px;
+    width: calc(100% - 10px);
+    height: calc(100% - 10px);
     object-fit: cover;
     clip-path: polygon(10% 3.179%,
         12.647% 0%,
@@ -357,10 +400,8 @@
         0% 19.364%,
         10% 8.736%,
         10% 3.179%);
-    opacity: 0;
-    transform-origin: center 600px;
   }
-
+  
   .preview.active {
     opacity: 1;
   }
@@ -369,7 +410,7 @@
     font-size: 12px;
     line-height: 1.2;
     min-height: calc(14px * 1.2 * 2);
-    padding: 0 12px 12px 26px;
+    padding: 0 0px 12px 15px;
   }
 
   .scardMiniQuote {

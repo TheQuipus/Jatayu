@@ -81,6 +81,8 @@
   color: rgba(255, 255, 255, 0.55);
   max-width: 440px;
   margin: 0 auto;
+  min-height: 24px;
+  transition: opacity 0.25s ease;
 }
 
 .statusBadge {
@@ -104,6 +106,110 @@
   color: #34C759;
 }
 
+.resultsCard {
+  max-width: 1024px;
+}
+
+.successHeader {
+  margin-bottom: 0;
+}
+
+.resultsBody {
+  min-height: 559px;
+  max-height: 559px;
+  overflow-y: auto;
+  align-items: stretch;
+  text-align: left;
+  gap: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.resultsBody::-webkit-scrollbar {
+  display: none;
+}
+
+.resultsReveal {
+  animation: resultsReveal 0.45s ease;
+}
+
+@keyframes resultsReveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.resultsFooter {
+  margin-top: 12px;
+  padding-top: 38px;
+  padding-bottom: 38px;
+}
+
+.resultsTitle {
+  margin: 0 0 0px;
+  text-align: left;
+}
+
+.resultsSubtitle {
+  max-width: 100%;
+  margin: 0 0 28px;
+  text-align: left;
+}
+
+
+
+.featuredHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.featuredTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.featuredHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.browseMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.2s ease;
+}
+
+.browseMoreBtn:hover {
+  opacity: 0.9;
+}
+
+.browseMoreShinyText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
 .matchesGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -116,7 +222,32 @@
   width: 100%;
 }
 
+.footerTipTitle,
+.footerTipSubtitle {
+  animation: footerTipFadeIn 0.45s ease;
+}
+
+@keyframes footerTipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 900px) {
+
+
+  .featuredHeaderRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   .matchesGrid {
     grid-template-columns: 1fr;
     gap: 16px;

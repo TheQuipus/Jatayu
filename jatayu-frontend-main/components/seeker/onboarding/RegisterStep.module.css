@@ -25,14 +25,6 @@
   min-width: 0;
 }
 
-.fieldErrorBelow {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1;
-  color: #FF3B30;
-}
-
 .textFieldWithToggle {
   padding-right: 0;
 }
@@ -41,7 +33,7 @@
   flex-shrink: 0;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--silver);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -95,6 +87,11 @@
   color: rgba(255, 255, 255, 0.35);
 }
 
+.passwordHintError {
+  color: #FF3B30;
+  font-weight: 500;
+}
+
 .phonePrefix {
   flex-shrink: 0;
   font-family: var(--font-body);
@@ -103,54 +100,25 @@
   color: rgba(255, 255, 255, 0.65);
   padding-right: 10px;
   margin-right: 2px;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid var(--border-chip);
   user-select: none;
 }
 
 .registerSubmitBtn {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
   width: 100%;
-  height: 56px;
-  padding: 0;
   margin-top: 4px;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border-radius: 40px;
-  background: #E53B17;
-  color: var(--white);
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(229, 59, 23, 0.3);
-  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-}
-
-.registerSubmitBtn:hover:not(:disabled) {
-  opacity: 0.92;
-}
-
-.registerSubmitBtn:disabled {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.35);
-  cursor: not-allowed;
-  box-shadow: none;
 }
 
 .registerSubmitBtnInactive {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-chip);
   color: rgba(255, 255, 255, 0.35);
   cursor: pointer;
   box-shadow: none;
 }
 
-.registerSubmitBtnInactive:hover {
-  opacity: 1;
+.registerSubmitBtnInactive:hover:not(:disabled) {
+  background: var(--border-chip);
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .registerDivider {
@@ -163,7 +131,7 @@
 .registerDividerLine {
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-chip);
 }
 
 .registerDividerText {
@@ -192,8 +160,8 @@
   gap: 10px;
   min-height: 48px;
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 9999px;
+  border: 1px solid var(--border-chip);
+  border-radius: 12px;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;

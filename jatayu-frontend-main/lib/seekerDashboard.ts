@@ -1,0 +1,411 @@
+import { featuredExperts, getExpertDetailHref, type Expert } from "@/lib/experts";
+import {
+  buildGoogleCalendarUrl,
+  calculateBookingTotal,
+  getConsultationPrice,
+  type ConsultationType,
+} from "@/lib/booking";
+
+export type SeekerNavItem = {
+  id: string;
+  label: string;
+  href: string;
+  badge?: number;
+};
+
+export type CalendarBooking = {
+  id: string;
+  expert: Expert;
+  specialty: string;
+  dayOffset: number;
+  startHour: number;
+  startMinute: number;
+  durationMinutes: number;
+  status: "confirmed" | "pending";
+};
+
+export type BookingAttachment = {
+  name: string;
+  size: string;
+  kind: "pdf" | "docx" | "image";
+};
+
+export type BookingDetail = CalendarBooking & {
+  referenceId: string;
+  consultationType: ConsultationType;
+  consultationLabel: string;
+  placedOnLabel: string;
+  scheduledDateLabel: string;
+  scheduledTimeLabel: string;
+  durationLabel: string;
+  paymentStatus: "paid" | "pending";
+  consultationFee: number;
+  platformFee: number;
+  gst: number;
+  walletApplied: number;
+  totalPaid: number;
+  invoiceId: string;
+  calendarUrl: string;
+  subject: string;
+  context: string;
+  attachments: BookingAttachment[];
+};
+
+export type UpcomingBooking = CalendarBooking;
+
+export type ExpertUpdate = {
+  id: string;
+  expert: Expert;
+  timeAgo: string;
+  text: string;
+};
+
+export type SeekerNotification = {
+  id: string;
+  title: string;
+  body: string;
+  timeAgo: string;
+  unread: boolean;
+  href?: string;
+  expert?: Expert;
+};
+
+export type SavedExpertEntry = {
+  expert: Expert;
+  rating: number;
+};
+
+export const SEEKER_PROFILE = {
+  name: "Priya Sharma",
+  avatar: "/assets/img/avatar1.png",
+  isPro: true,
+  greeting: "Good morning",
+};
+
+export const WALLET_BALANCE = 2450;
+
+export const ACTIVITY_STATS = [
+  { label: "Total Sessions", value: "24" },
+  { label: "Hours Consulted", value: "18.5h" },
+  { label: "Experts Connected", value: "8" },
+  { label: "Open Tickets", value: "1" },
+] as const;
+
+export const MAIN_NAV: SeekerNavItem[] = [
+  { id: "home", label: "Home", href: "/seeker/dashboard" },
+  { id: "discover", label: "Discover", href: "/seeker/discover" },
+  { id: "bookings", label: "Bookings", href: "/seeker/bookings", badge: 2 },
+  { id: "messages", label: "Messages", href: "/seeker/dashboard#messages", badge: 5 },
+];
+
+export const PROFILE_NAV: SeekerNavItem = {
+  id: "profile",
+  label: "Profile",
+  href: "/seeker/dashboard#profile",
+};
+
+export const QUICK_LINKS: SeekerNavItem[] = [
+  { id: "tickets", label: "My Tickets", href: "/seeker/dashboard#tickets" },
+  { id: "saved", label: "Saved Experts", href: "/seeker/bookmark" },
+  { id: "support", label: "Support", href: "/seeker/dashboard#support" },
+];
+
+export const TRENDING_CATEGORIES = [
+  "Finance",
+  "Legal",
+  "Technology",
+  "Career",
+  "Marketing",
+  "Education",
+] as const;
+
+export const CALENDAR_START_HOUR = 8;
+export const CALENDAR_END_HOUR = 20;
+export const CALENDAR_HOUR_HEIGHT = 64;
+
+function daysUntilFriday(from = new Date()): number {
+  const day = from.getDay();
+  const diff = (5 - day + 7) % 7;
+  return diff === 0 && day !== 5 ? 7 : diff;
+}
+
+export const UPCOMING_BOOKINGS: CalendarBooking[] = [
+  {
+    id: "booking-1",
+    expert: featuredExperts[0],
+    specialty: "Startup Advisor",
+    dayOffset: 1,
+    startHour: 10,
+    startMinute: 0,
+    durationMinutes: 60,
+    status: "confirmed",
+  },
+  {
+    id: "booking-2",
+    expert: featuredExperts[4],
+    specialty: "Growth Strategist",
+    dayOffset: daysUntilFriday(),
+    startHour: 15,
+    startMinute: 30,
+    durationMinutes: 30,
+    status: "pending",
+  },
+  {
+    id: "booking-3",
+    expert: featuredExperts[2],
+    specialty: "Tax & Finance",
+    dayOffset: 1,
+    startHour: 14,
+    startMinute: 0,
+    durationMinutes: 45,
+    status: "confirmed",
+  },
+];
+
+const CONSULTATION_DISPLAY: Record<ConsultationType, string> = {
+  text: "Text Messaging",
+  video: "1:1 Video Call",
+  live: "Group Q&A",
+  audio: "Shoutout",
+};
+
+function formatPlacedOn(daysAgo: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatScheduledDate(dayOffset: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + dayOffset);
+  const formatted = date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  if (dayOffset === 0) return `Today, ${formatted}`;
+  if (dayOffset === 1) return `Tomorrow, ${formatted}`;
+
+  return date.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatScheduledTimeRange(
+  startHour: number,
+  startMinute: number,
+  durationMinutes: number
+): string {
+  const start = new Date();
+  start.setHours(startHour, startMinute, 0, 0);
+
+  const end = new Date(start);
+  end.setMinutes(end.getMinutes() + durationMinutes);
+
+  const format = (value: Date) =>
+    value.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+
+  return `${format(start)} - ${format(end)} (IST)`;
+}
+
+function formatDurationLabel(minutes: number): string {
+  if (minutes >= 60 && minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `${hours} Hour${hours > 1 ? "s" : ""}`;
+  }
+  return `${minutes} Minutes`;
+}
+
+function buildBookingDetail(
+  booking: CalendarBooking,
+  options: {
+    referenceId: string;
+    consultationType: ConsultationType;
+    placedDaysAgo: number;
+    walletApplied: number;
+    invoiceId: string;
+    subject: string;
+    context: string;
+    attachments: BookingAttachment[];
+  }
+): BookingDetail {
+  const consultationFee = getConsultationPrice(booking.expert.price, options.consultationType);
+  const breakdown = calculateBookingTotal(
+    consultationFee,
+    options.walletApplied + 500,
+    options.walletApplied > 0
+  );
+
+  return {
+    ...booking,
+    referenceId: options.referenceId,
+    consultationType: options.consultationType,
+    consultationLabel: CONSULTATION_DISPLAY[options.consultationType],
+    placedOnLabel: formatPlacedOn(options.placedDaysAgo),
+    scheduledDateLabel: formatScheduledDate(booking.dayOffset),
+    scheduledTimeLabel: formatScheduledTimeRange(
+      booking.startHour,
+      booking.startMinute,
+      booking.durationMinutes
+    ),
+    durationLabel: formatDurationLabel(booking.durationMinutes),
+    paymentStatus: booking.status === "confirmed" ? "paid" : "pending",
+    consultationFee: breakdown.consultationFee,
+    platformFee: breakdown.platformFee,
+    gst: breakdown.gst,
+    walletApplied: breakdown.walletApplied,
+    totalPaid: breakdown.total,
+    invoiceId: options.invoiceId,
+    subject: options.subject,
+    context: options.context,
+    attachments: options.attachments,
+    calendarUrl: buildGoogleCalendarUrl({
+      expertName: booking.expert.name,
+      dateId: `date-${booking.dayOffset}`,
+      slotTime: (() => {
+        const start = new Date();
+        start.setHours(booking.startHour, booking.startMinute, 0, 0);
+        return start.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+      })(),
+      bookingId: options.invoiceId,
+    }),
+  };
+}
+
+export const BOOKING_DETAILS: BookingDetail[] = [
+  buildBookingDetail(UPCOMING_BOOKINGS[0], {
+    referenceId: "BK-98274",
+    consultationType: "live",
+    placedDaysAgo: 2,
+    walletApplied: 1250,
+    invoiceId: "JTY-20261022-98274",
+    subject: "Seed round term sheet guidance",
+    context:
+      "I am raising a seed round for my SaaS startup and need help structuring the term sheet. Specifically looking for advice on valuation caps, pro-rata rights, and board seat negotiations with early-stage micro-VCs.",
+    attachments: [
+      { name: "Draft_Term_Sheet_v2.pdf", size: "2.4 MB", kind: "pdf" },
+    ],
+  }),
+  buildBookingDetail(UPCOMING_BOOKINGS[1], {
+    referenceId: "BK-98275",
+    consultationType: "video",
+    placedDaysAgo: 1,
+    walletApplied: 0,
+    invoiceId: "JTY-20261023-98275",
+    subject: "D2C retention strategy review",
+    context:
+      "We are spending heavily on paid acquisition but retention drops after month two. I want a recorded walkthrough of retention loops we can test before the next funding milestone.",
+    attachments: [],
+  }),
+  buildBookingDetail(UPCOMING_BOOKINGS[2], {
+    referenceId: "BK-98276",
+    consultationType: "text",
+    placedDaysAgo: 3,
+    walletApplied: 450,
+    invoiceId: "JTY-20261021-98276",
+    subject: "GST filing for creator income",
+    context:
+      "I earn from brand deals and affiliate income as a solo creator. Need clarity on GST registration thresholds, quarterly filing, and how to treat mixed business and personal expenses.",
+    attachments: [
+      { name: "Income_Summary_Q3.xlsx", size: "840 KB", kind: "docx" },
+    ],
+  }),
+];
+
+export function getBookingById(id: string): BookingDetail | undefined {
+  return BOOKING_DETAILS.find((booking) => booking.id === id);
+}
+
+export function getBookingDetailHref(id: string): string {
+  return `/seeker/bookings/${id}`;
+}
+
+export const RECOMMENDED_EXPERTS = featuredExperts.slice(0, 3);
+
+export const SAVED_EXPERTS: SavedExpertEntry[] = [
+  { expert: featuredExperts[6], rating: 4.7 },
+  { expert: featuredExperts[1], rating: 4.9 },
+  { expert: featuredExperts[4], rating: 4.8 },
+];
+
+export const EXPERT_UPDATES: ExpertUpdate[] = [
+  {
+    id: "update-1",
+    expert: featuredExperts[0],
+    timeAgo: "2h ago",
+    text: "Just published a guide on seed round valuation for Indian SaaS startups. Book a session if you want personalized feedback.",
+  },
+  {
+    id: "update-2",
+    expert: featuredExperts[2],
+    timeAgo: "5h ago",
+    text: "New slots open this week for GST and creator income planning consultations.",
+  },
+  {
+    id: "update-3",
+    expert: featuredExperts[4],
+    timeAgo: "1d ago",
+    text: "Shared a framework for D2C retention loops — useful if you're scaling paid acquisition.",
+  },
+];
+
+export const SEEKER_NOTIFICATIONS: SeekerNotification[] = [
+  {
+    id: "notif-1",
+    title: "Session confirmed",
+    body: "Your call with Rahul Mehta is confirmed for tomorrow at 10:00 AM.",
+    timeAgo: "30m ago",
+    unread: true,
+    href: "/seeker/bookings/booking-1",
+    expert: featuredExperts[0],
+  },
+  {
+    id: "notif-2",
+    title: "New message",
+    body: "Ananya Kapoor replied to your question about GST filing.",
+    timeAgo: "2h ago",
+    unread: true,
+    href: "/seeker/dashboard#messages",
+    expert: featuredExperts[2],
+  },
+  {
+    id: "notif-3",
+    title: "Booking reminder",
+    body: "Your session with Vikram Singh starts in 24 hours.",
+    timeAgo: "5h ago",
+    unread: true,
+    href: "/seeker/bookings/booking-1",
+    expert: featuredExperts[4],
+  },
+  {
+    id: "notif-4",
+    title: "Expert update",
+    body: "Priya Nair shared a new guide on D2C retention loops.",
+    timeAgo: "1d ago",
+    unread: false,
+    expert: featuredExperts[4],
+  },
+  {
+    id: "notif-5",
+    title: "Wallet credited",
+    body: "₹500 added to your wallet. Ready for your next consultation.",
+    timeAgo: "2d ago",
+    unread: false,
+  },
+];
+
+export function formatCurrency(amount: number): string {
+  return `₹${amount.toLocaleString("en-IN")}`;
+}
+
+export function getExpertHref(expert: Expert): string {
+  return getExpertDetailHref(expert, { seeker: true });
+}

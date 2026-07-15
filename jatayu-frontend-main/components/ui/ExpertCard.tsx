@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Bookmark as BookmarkIcon } from "lucide-react";
-import { expertSlug, type Expert } from "@/lib/experts";
+import { getExpertDetailHref, type Expert } from "@/lib/experts";
 import buttonStyles from "./PrimaryButton.module.css";
 import styles from "./ExpertCard.module.css";
 
@@ -13,9 +13,12 @@ type ExpertCardProps = {
   onBookmarkToggle?: () => void;
   className?: string;
   linkToDetail?: boolean;
+  seeker?: boolean;
   disableHover?: boolean;
   showLanguages?: boolean;
+  showCategoryBadge?: boolean;
   priority?: boolean;
+  statsText?: string;
 };
 
 export default function ExpertCard({
@@ -24,11 +27,17 @@ export default function ExpertCard({
   onBookmarkToggle,
   className = "",
   linkToDetail = true,
+  seeker = false,
   disableHover = false,
   showLanguages = true,
+  showCategoryBadge = true,
   priority = false,
+  statsText,
 }: ExpertCardProps) {
-  const detailHref = `/expert/${expertSlug(expert.name)}`;
+  const detailHref = getExpertDetailHref(expert, { seeker });
+  const formattedReplyTime = expert.replyTime
+    .replace(/\bhours?\b/gi, "hr")
+    .replace(/\bminutes?\b/gi, "min");
 
   const cardBody = (
     <>
@@ -49,12 +58,14 @@ export default function ExpertCard({
       )}
 
       <article className={styles.expertCard}>
-        <div className={styles.categoryBadgeWrap}>
-          <span className={styles.categoryBadge}>
-            <span className={styles.badgeDot} />
-            {(expert.category || expert.topics[0] || "General").toUpperCase()}
-          </span>
-        </div>
+        {showCategoryBadge && (
+          <div className={styles.categoryBadgeWrap}>
+            <span className={styles.categoryBadge}>
+              <span className={styles.badgeDot} />
+              {(expert.category || expert.topics[0] || "General").toUpperCase()}
+            </span>
+          </div>
+        )}
 
         <div className={styles.expertImageWrap}>
           {expert.image.startsWith("blob:") || expert.image.startsWith("data:") ? (
@@ -79,7 +90,6 @@ export default function ExpertCard({
         {showLanguages && (
           <div className={styles.expertCardBody}>
             <div className={styles.languagesSection}>
-              <span className={styles.languagesLabel}>LANGUAGES</span>
               <ul className={styles.languagesList}>
                 {expert.languages.map((lang) => (
                   <li key={lang}>{lang}</li>
@@ -103,7 +113,8 @@ export default function ExpertCard({
           </div>
 
           <p className={styles.expertStats}>
-            From ₹{expert.price} / Rating {expert.rating} / Reply {expert.replyTime}
+            {statsText ??
+              `From ₹${expert.price} / Rating ${expert.rating} / Reply ${formattedReplyTime}`}
           </p>
 
           <div className={styles.divider} />

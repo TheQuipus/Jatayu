@@ -27,7 +27,7 @@ export default function Workflow() {
         <div className="container">
           <div className={styles.workflowTop}>
             <span className="eyebrow eyebrow--dark">
-              <i className="dot"></i>10&nbsp;&nbsp;become a verified expert
+              <i className="dot"></i>become a verified expert
             </span>
             <h2 className="display">
               <span className="t-white">Your knowledge</span>
@@ -69,6 +69,7 @@ export default function Workflow() {
                         alt="Expert portrait"
                         width={169}
                         height={204}
+                        priority={src === "/assets/img/team1.png" && i === 1}
                       />
                     </figure>
                   ))}
@@ -110,6 +111,7 @@ export default function Workflow() {
                         alt="Expert portrait"
                         width={169}
                         height={204}
+                        priority={src === "/assets/img/team1.png" && i === 3}
                       />
                     </figure>
                   ))}

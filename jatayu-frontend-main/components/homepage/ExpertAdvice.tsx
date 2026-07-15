@@ -29,7 +29,7 @@ const steps = [
     num: "004",
     title: "Get human guidance",
     image: "/assets/img/team2.png",
-    desc: "Talk through WhatsApp, chat, call, video, or scheduled consultation.",
+    desc: "Talk through chat, call, video, or scheduled consultation.",
   },
   {
     num: "005",
@@ -68,7 +68,7 @@ export default function ExpertAdvice() {
           <div className={styles.expertInner}>
             <div className={styles.top}>
               <span className={`eyebrow eyebrow--dark ${styles.topEyebrow}`}>
-                <i className="dot"></i>05&nbsp;&nbsp;its quick &amp; simple
+                <i className="dot"></i>its quick &amp; simple
               </span>
               <h2 className={styles.title}>
                 <span className={styles.titleLead}>Expert advice</span>

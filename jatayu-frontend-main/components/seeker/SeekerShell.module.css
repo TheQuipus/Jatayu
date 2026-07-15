@@ -1,0 +1,239 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--gallery);
+  color: var(--ink);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  align-self: flex-start;
+  width: 240px;
+  height: 100vh;
+  max-height: 100vh;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px 64px;
+  background: var(--white);
+  border-right: 1px solid var(--mercury);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 24px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.brandMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bunker);
+  color: var(--white);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.navSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navLabel {
+  padding: 16px 12px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--scorpion);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.navLink:hover {
+  background: var(--seashell);
+  color: var(--ink);
+}
+
+.navLinkActive {
+  background: var(--bunker);
+  color: var(--white);
+}
+
+.navLinkActive:hover {
+  background: var(--bunker);
+  color: var(--white);
+}
+
+.navBadge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 8%, var(--white));
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.navLinkActive .navBadge {
+  background: color-mix(in srgb, var(--white) 18%, transparent);
+  color: var(--white);
+}
+
+.upgradeCard {
+  margin-top: auto;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bunker);
+  color: var(--white);
+}
+
+.profileLink {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+}
+
+.upgradeTitle {
+  margin: 8px 0 4px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.upgradeCopy {
+  margin: 0 0 14px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--white) 72%, transparent);
+}
+
+.upgradeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--bunker);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.upgradeBtn:hover {
+  opacity: 0.92;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  --seeker-sticky-top: 56px;
+}
+
+.gridWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 16px 0 0;
+  background: linear-gradient(
+    to bottom,
+    var(--gallery) 70%,
+    color-mix(in srgb, var(--gallery) 0%, transparent)
+  );
+}
+
+.topBarInner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 40px;
+}
+
+.breadcrumbsSlot {
+  flex: 1;
+  min-width: 0;
+}
+
+.content {
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--mercury);
+    padding-bottom: 64px;
+    overflow-y: visible;
+  }
+
+  .upgradeCard {
+    margin-top: 16px;
+  }
+
+  .profileLink {
+    position: absolute;
+    bottom: 16px;
+  }
+
+  .topBar {
+    padding-top: 12px;
+  }
+
+  .main {
+    --seeker-sticky-top: 52px;
+  }
+}

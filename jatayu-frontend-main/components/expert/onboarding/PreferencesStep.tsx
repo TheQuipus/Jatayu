@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./PreferencesStep.module.css";
 import {
@@ -27,6 +28,8 @@ type PreferencesStepProps = {
   onSelectedLengthsChange: (lengths: string[]) => void;
   formatPrices: Record<string, string>;
   onFormatPricesChange: (prices: Record<string, string>) => void;
+  acceptCustomRequests: boolean;
+  onAcceptCustomRequestsChange: (value: boolean) => void;
   stepCompletion: boolean[];
   onStepCompleteChange?: (step: number, complete: boolean) => void;
   onBack: () => void;
@@ -49,6 +52,8 @@ export default function PreferencesStep({
   onSelectedLengthsChange,
   formatPrices,
   onFormatPricesChange,
+  acceptCustomRequests,
+  onAcceptCustomRequestsChange,
   stepCompletion,
   onStepCompleteChange,
   onBack,
@@ -57,13 +62,18 @@ export default function PreferencesStep({
 }: PreferencesStepProps) {
   const formatPriceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const [acceptCustomRequests, setAcceptCustomRequests] = useState<boolean>(false);
-
   const isTextOnly =
     selectedFormats.length === 1 && selectedFormats[0] === "written";
 
+  const hasPricesForAllSelected = selectedFormats.every((id) => {
+    const price = formatPrices[id];
+    return price && parseInt(price, 10) > 0;
+  });
+
   const canContinue =
-    selectedFormats.length > 0 && (isTextOnly || selectedLengths.length > 0);
+    selectedFormats.length > 0 &&
+    hasPricesForAllSelected &&
+    (isTextOnly || selectedLengths.length > 0);
 
   useEffect(() => {
     if (isTextOnly) {
@@ -131,9 +141,6 @@ export default function PreferencesStep({
       <div className={shared.cardHeader}>
       <div className={shared.topHeader}>
         <OnboardingStepTitle userName={userName} />
-        <div className={shared.stepPill}>
-          <span>Step 6 of 9 - Consultation Preferences</span>
-        </div>
       </div>
 
       {/* Progress Tracker */}
@@ -147,16 +154,12 @@ export default function PreferencesStep({
         Define your <span className={shared.accentWord}>consultation style</span>
       </h1>
 
-      <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`} style={{ marginBottom: "36px" }}>
+      <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
         Choose how you want to interact with clients to ensure the best matches.
       </p>
 
       {/* Available Formats Section */}
       <div className={styles.preferencesSection}>
-        <div className={styles.sectionHeaderRow}>
-          <h2 className={styles.preferencesSectionLabel}>Preferred Consultation Formats</h2>
-        </div>
-
         {/* 2x2 Formats Grid */}
         <div className={styles.formatsGrid}>
           {formats.map((fmt) => {
@@ -240,7 +243,7 @@ export default function PreferencesStep({
         className={`${styles.preferencesSection} ${isTextOnly ? styles.lengthsSectionDisabled : ""}`}
         style={{ marginBottom: "28px" }}
       >
-        <h2 className={styles.preferencesSectionLabel} style={{ marginBottom: "16px" }}>
+        <h2 className={styles.preferencesSectionLabel}>
           Preferred Session Lengths
         </h2>
         {isTextOnly && (
@@ -276,7 +279,7 @@ export default function PreferencesStep({
         </div>
         <button
           type="button"
-          onClick={() => setAcceptCustomRequests(!acceptCustomRequests)}
+          onClick={() => onAcceptCustomRequestsChange(!acceptCustomRequests)}
           className={`${styles.switchTrack} ${acceptCustomRequests ? styles.switchTrackActive : ""}`}
           aria-pressed={acceptCustomRequests}
           aria-label="Accept Custom Requests Toggle"
@@ -312,15 +315,7 @@ export default function PreferencesStep({
           <button type="button" className={shared.textBtn} onClick={onContinue}>
             Skip
           </button>
-          <button
-            type="button"
-            className={shared.continueBtn}
-            onClick={onContinue}
-            disabled={!canContinue}
-          >
-            <span>Continue</span>
-            <ArrowRight size={14} />
-          </button>
+          <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>
     </section>

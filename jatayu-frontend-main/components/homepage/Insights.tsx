@@ -18,7 +18,7 @@ export default function Insights() {
           <div className={styles.blogHead}>
             <div>
               <span className="eyebrow eyebrow--light">
-                <i className="dot"></i>12&nbsp;&nbsp;insights
+                <i className="dot"></i>insights
               </span>
               <h2 className="display">
                 <span className="t-dark">Latest From<br /></span>

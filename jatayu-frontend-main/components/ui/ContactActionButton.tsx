@@ -13,9 +13,12 @@ type ContactActionButtonProps = {
   wrapperClassName?: string;
   href?: string;
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  onButtonClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   type?: ButtonHTMLAttributes<HTMLButtonElement>["type"];
-  variant?: "light" | "dark";
+  variant?: "light" | "dark" | "orange";
   fullWidth?: boolean;
+  staticLabel?: boolean;
+  disabled?: boolean;
 };
 
 export default function ContactActionButton({
@@ -26,9 +29,12 @@ export default function ContactActionButton({
   wrapperClassName = "",
   href,
   onClick,
+  onButtonClick,
   type = "button",
   variant,
   fullWidth,
+  staticLabel,
+  disabled,
 }: ContactActionButtonProps) {
   return (
     <div
@@ -49,6 +55,7 @@ export default function ContactActionButton({
           className={className}
           variant={variant}
           fullWidth={fullWidth}
+          staticLabel={staticLabel}
         />
       ) : (
         <PrimaryButton
@@ -57,6 +64,9 @@ export default function ContactActionButton({
           className={className}
           variant={variant}
           fullWidth={fullWidth}
+          staticLabel={staticLabel}
+          onClick={onButtonClick}
+          disabled={disabled}
         />
       )}
     </div>

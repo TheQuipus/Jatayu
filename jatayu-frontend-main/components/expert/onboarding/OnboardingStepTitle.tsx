@@ -2,9 +2,18 @@ import { Compass } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import shared from "./onboarding.shared.module.css";
 
+function formatDisplayName(fullName: string): string {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export function formatUserGreeting(fullName: string): string {
-  const first = fullName.trim().split(/\s+/)[0];
-  return first ? `Hi ${first}` : "Hi there";
+  const name = formatDisplayName(fullName);
+  return name ? `Hi ${name}` : "Hi there";
 }
 
 type OnboardingStepTitleProps = {

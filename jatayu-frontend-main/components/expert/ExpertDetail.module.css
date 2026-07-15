@@ -3,8 +3,23 @@
   background: var(--gallery);
 }
 
+.detailSeeker {
+  padding-top: 25px;
+  padding-bottom: 64px;
+}
+
+.detailAdminPreview {
+  padding: 32px 0 64px;
+  background: var(--gallery);
+}
+
 .detailInner {
   position: relative;
+}
+
+.breadcrumbWrap {
+  margin-bottom: 24px;
+  transform: translateY(-75px);
 }
 
 /* Three-column Desktop Grid Layout aligned with the 4-column system */
@@ -39,36 +54,6 @@
 
 
 /* COLUMN 1 Elements */
-.breadcrumbs {
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: -0.01em;
-  color: var(--dove-gray);
-}
-
-.breadcrumbLink {
-  color: var(--dove-gray);
-  transition: color 0.2s ease;
-}
-
-.breadcrumbLink:hover {
-  color: var(--ink);
-}
-
-.breadcrumbSeparator {
-  color: var(--silver-chalice);
-}
-
-.breadcrumbCurrent {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-/* Portrait Card & Image */
 .portraitCard {
   position: relative;
   background: var(--woodsmoke);
@@ -106,92 +91,13 @@
   transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Bookmark Button */
-.bookmarkBtn {
-  position: absolute;
-  top: 10px;
-  right: 24px;
-  z-index: 10;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: none;
-  color: var(--bunker);
-  background: none;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.bookmarkBtn[aria-pressed="true"] svg {
-  fill: var(--orange);
-  color: var(--orange);
-}
-
-.bookmarkBtn:hover {
-  transform: scale(1.08);
-}
-
-/* Card Badges and Labels */
-.cardBadge {
-  position: absolute;
-  top: 10px;
-  left: 50px;
-  z-index: 5;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 6px 34px;
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--dove-gray);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  width: fit-content;
-}
-
-.cardBadgeDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--green);
-}
-
 .cardOverlay {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  padding: 24px;
+  padding: 24px 32px 24px 10px;
   z-index: 3;
-  color: var(--white);
-}
-
-.cardName {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.cardNameBullet {
-  color: var(--thunderbird);
-  font-size: 9px;
-}
-
-.cardDescription {
-  font-family: var(--font-body);
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 500;
   color: var(--white);
 }
 
@@ -494,19 +400,11 @@
   margin: 0;
   background: transparent;
   text-align: left;
-  cursor: pointer;
   display: flex;
   flex-direction: column;
   transition: background 0.2s ease;
 }
 
-.optionGroup:hover .optionHeaderRow {
-  background: #efefef;
-}
-
-.optionGroupActive .optionHeaderRow {
-  background: #ebebeb;
-}
 
 .optionHeaderRow {
   display: flex;
@@ -613,14 +511,13 @@
 
 .ctaButtonRow :global(.btn__avatar) {
   transform: translate(calc(var(--contact-avatar-offset-ratio) * 0%), -50%) !important;
-  width: 66px !important;
-  height: 66px !important;
+  width: 56px !important;
+  height: 56px !important;
   border: 1px solid var(--white) !important;
 }
 
 .bookNowButton {
   width: 100% !important;
-  min-height: 66px !important;
   justify-content: center !important;
   background-color: #e53b17 !important;
   color: #ffffff !important;
@@ -831,6 +728,11 @@
     padding: 110px 0 72px;
   }
 
+  .detailSeeker {
+    padding-top: 25px;
+    padding-bottom: 48px;
+  }
+
   .mainGrid {
     grid-template-columns: 1fr;
   }
@@ -845,10 +747,6 @@
     grid-row: auto;
     position: static;
     padding: 0;
-  }
-
-  .breadcrumbs {
-    justify-content: center;
   }
 
   .portraitCard {
@@ -942,6 +840,11 @@
 @media (max-width: 600px) {
   .detail {
     padding: 92px 0 64px;
+  }
+
+  .detailSeeker {
+    padding-top: 25px;
+    padding-bottom: 48px;
   }
 
   .displayName {

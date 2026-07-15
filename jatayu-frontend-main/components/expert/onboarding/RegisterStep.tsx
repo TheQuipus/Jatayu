@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { register as apiRegister, googleLogin as apiGoogleLogin, setToken, setExpertId } from "@/lib/api";
 import Link from "next/link";
 import {
   User,
@@ -10,14 +9,23 @@ import {
   Phone,
   Eye,
   EyeOff,
-  ArrowRight,
 } from "lucide-react";
 import RegisterLeftPanel from "@/components/expert/onboarding/RegisterLeftPanel";
+import ContinueButton from "@/components/ui/ContinueButton";
 import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
+import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
+import {
+  buildPasswordContext,
+  getPasswordHint,
+  getPasswordStrength,
+  getPasswordStrengthColor,
+  getPasswordStrengthLabel,
+  getPasswordValidationError,
+} from "@/lib/passwordValidation";
 
 type RegisterStepProps = {
-  onContinue: (data: { phone: string; fullName: string; email: string; expertId: string }) => void;
+  onContinue: (data: { phone: string; fullName: string; email: string }) => void;
   onSwitchToLogin?: () => void;
   loginHref?: string;
 };
@@ -32,52 +40,6 @@ const emptyTouched: Record<FieldKey, boolean> = {
   phone: false,
 };
 
-const strengthColors = ["#FF3B30", "#FF9500", "#007AFF", "#34C759"];
-const strengthLabels = ["Weak", "Moderate", "Good", "Strong"];
-
-const PASSWORD_RULES = [
-  { id: "length", label: "At least 8 characters", test: (password: string) => password.length >= 8 },
-  { id: "uppercase", label: "One uppercase letter", test: (password: string) => /[A-Z]/.test(password) },
-  { id: "lowercase", label: "One lowercase letter", test: (password: string) => /[a-z]/.test(password) },
-  { id: "number", label: "One number", test: (password: string) => /\d/.test(password) },
-  {
-    id: "special",
-    label: "One special character",
-    test: (password: string) => /[^A-Za-z0-9]/.test(password),
-  },
-] as const;
-
-function getPasswordChecks(password: string) {
-  return PASSWORD_RULES.map((rule) => ({
-    ...rule,
-    met: rule.test(password),
-  }));
-}
-
-function isPasswordValid(password: string) {
-  return getPasswordChecks(password).every((rule) => rule.met);
-}
-
-function getPasswordStrength(password: string): number {
-  if (!password) return 0;
-
-  const checks = getPasswordChecks(password);
-  const metCount = checks.filter((rule) => rule.met).length;
-
-  if (checks.every((rule) => rule.met)) {
-    return 4;
-  }
-
-  if (metCount <= 1) return 1;
-  if (metCount <= 3) return 2;
-  return 2;
-}
-
-function getPasswordHint(password: string) {
-  if (isPasswordValid(password)) return "";
-  return getPasswordChecks(password).find((rule) => !rule.met)?.label ?? "";
-}
-
 function getFieldError(
   field: FieldKey,
   values: {
@@ -89,6 +51,7 @@ function getFieldError(
   },
 ): string | null {
   const { firstName, lastName, email, password, phone } = values;
+  const passwordContext = buildPasswordContext({ email, firstName, lastName });
 
   switch (field) {
     case "firstName":
@@ -100,13 +63,9 @@ function getFieldError(
       if (lastName.trim().length < 2) return "Too short";
       return null;
     case "email":
-      if (!email.trim()) return "Required";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Invalid email";
-      return null;
+      return getEmailValidationError(email);
     case "password":
-      if (!password) return "At least 8 characters";
-      if (!isPasswordValid(password)) return getPasswordHint(password) || "Password requirements not met";
-      return null;
+      return getPasswordValidationError(password, passwordContext);
     case "phone":
       if (!phone) return "Required";
       if (phone.length !== 10) return "Enter 10-digit number";
@@ -150,12 +109,13 @@ export default function RegisterStep({
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState(emptyTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState("");
 
   const values = { firstName, lastName, email, password, phone };
-  const strength = getPasswordStrength(password);
-  const passwordHint = getPasswordHint(password);
+  const passwordContext = buildPasswordContext({ email, firstName, lastName });
+  const strength = getPasswordStrength(password, passwordContext);
+  const strengthColor = getPasswordStrengthColor(password, passwordContext);
+  const strengthLabel = getPasswordStrengthLabel(password, passwordContext);
+  const passwordHint = getPasswordHint(password, passwordContext);
   const canSubmit = isFormComplete(firstName, lastName, email, password, phone);
   const fullName = buildFullName(firstName, lastName);
 
@@ -177,45 +137,17 @@ export default function RegisterStep({
       .filter(Boolean)
       .join(" ");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitAttempted(true);
     if (!canSubmit) return;
-
-    setIsLoading(true);
-    setApiError("");
-    try {
-      const res = await apiRegister({ fullName, email, password, phone: `+91${phone}` });
-      setExpertId(res.expertId);
-      onContinue({ phone, fullName, email, expertId: res.expertId });
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Registration failed. Please try again.";
-      setApiError(message);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } finally {
-      setIsLoading(false);
-    }
+    onContinue({ phone, fullName, email: normalizeEmail(email) });
   };
 
-  const handleGoogleSignup = async () => {
-    setIsLoading(true);
-    setApiError("");
-    try {
-      const res = await apiGoogleLogin({ idToken: "mock-google-token" });
-      setToken(res.token);
-      setExpertId(res.user.id);
-      onContinue({
-        phone: res.user.phone || "",
-        fullName: res.user.fullName,
-        email: res.user.email,
-        expertId: res.user.id,
-      });
-    } catch (err: unknown) {
-      setApiError(err instanceof Error ? err.message : "Google sign-in failed.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleValidatedContinue = () => {
+    setSubmitAttempted(true);
+    if (!canSubmit) return;
+    onContinue({ phone, fullName, email: normalizeEmail(email) });
   };
 
   return (
@@ -233,45 +165,49 @@ export default function RegisterStep({
               <label className={register.registerFieldLabel} htmlFor="firstName">
                 First Name
               </label>
-              <div className={inputWrapClass("firstName")}>
-                <User className={register.inputInnerIcon} size={16} />
-                <input
-                  id="firstName"
-                  type="text"
-                  className={register.textFieldWithIcon}
-                  placeholder="Aryan"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  onBlur={() => markTouched("firstName")}
-                  autoComplete="given-name"
-                  aria-invalid={Boolean(fieldError("firstName"))}
-                />
+              <div className={register.inputFieldWrap}>
+                <div className={inputWrapClass("firstName")}>
+                  <User className={register.inputInnerIcon} size={16} />
+                  <input
+                    id="firstName"
+                    type="text"
+                    className={register.textFieldWithIcon}
+                    placeholder="Aryan"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    onBlur={() => markTouched("firstName")}
+                    autoComplete="given-name"
+                    aria-invalid={Boolean(fieldError("firstName"))}
+                  />
+                </div>
+                {fieldError("firstName") && (
+                  <span className={register.fieldErrorBelow}>{fieldError("firstName")}</span>
+                )}
               </div>
-              {fieldError("firstName") && (
-                <span className={styles.fieldErrorBelow}>{fieldError("firstName")}</span>
-              )}
             </div>
 
             <div className={`${register.fieldGroup} ${styles.nameFieldGroup}`}>
               <label className={register.registerFieldLabel} htmlFor="lastName">
                 Last Name
               </label>
-              <div className={inputWrapClass("lastName")}>
-                <input
-                  id="lastName"
-                  type="text"
-                  className={register.textFieldWithIcon}
-                  placeholder="Singh"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  onBlur={() => markTouched("lastName")}
-                  autoComplete="family-name"
-                  aria-invalid={Boolean(fieldError("lastName"))}
-                />
+              <div className={register.inputFieldWrap}>
+                <div className={inputWrapClass("lastName")}>
+                  <input
+                    id="lastName"
+                    type="text"
+                    className={register.textFieldWithIcon}
+                    placeholder="Singh"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    onBlur={() => markTouched("lastName")}
+                    autoComplete="family-name"
+                    aria-invalid={Boolean(fieldError("lastName"))}
+                  />
+                </div>
+                {fieldError("lastName") && (
+                  <span className={register.fieldErrorBelow}>{fieldError("lastName")}</span>
+                )}
               </div>
-              {fieldError("lastName") && (
-                <span className={styles.fieldErrorBelow}>{fieldError("lastName")}</span>
-              )}
             </div>
           </div>
 
@@ -279,21 +215,23 @@ export default function RegisterStep({
             <label className={register.registerFieldLabel} htmlFor="email">
               Email Address
             </label>
-            <div className={inputWrapClass("email")}>
-              <Mail className={register.inputInnerIcon} size={16} />
-              <input
-                id="email"
-                type="email"
-                className={register.textFieldWithIcon}
-                placeholder="Aryan23@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onBlur={() => markTouched("email")}
-                autoComplete="email"
-                aria-invalid={Boolean(fieldError("email"))}
-              />
+            <div className={register.inputFieldWrap}>
+              <div className={inputWrapClass("email")}>
+                <Mail className={register.inputInnerIcon} size={16} />
+                <input
+                  id="email"
+                  type="email"
+                  className={register.textFieldWithIcon}
+                  placeholder="Aryan23@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => markTouched("email")}
+                  autoComplete="email"
+                  aria-invalid={Boolean(fieldError("email"))}
+                />
+              </div>
               {fieldError("email") && (
-                <span className={register.fieldErrorInline}>{fieldError("email")}</span>
+                <span className={register.fieldErrorBelow}>{fieldError("email")}</span>
               )}
             </div>
           </div>
@@ -328,9 +266,6 @@ export default function RegisterStep({
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            {fieldError("password") && (
-              <span className={styles.fieldErrorBelow}>{fieldError("password")}</span>
-            )}
             <div className={styles.passwordStrengthRow}>
               <div className={styles.passwordStrengthBars}>
                 {[0, 1, 2, 3].map((i) => (
@@ -339,28 +274,27 @@ export default function RegisterStep({
                     className={styles.passwordStrengthBar}
                     style={{
                       background:
-                        i < strength
-                          ? strengthColors[Math.min(strength - 1, 3)]
-                          : "rgba(255, 255, 255, 0.08)",
+                        i < strength ? strengthColor : "rgba(255, 255, 255, 0.08)",
                     }}
                   />
                 ))}
               </div>
               <div className={styles.passwordStrengthLabels}>
-                {passwordHint && !fieldError("password") ? (
-                  <span className={styles.passwordHint} aria-live="polite">
+                {strengthLabel ? (
+                  <span
+                    className={styles.passwordStrengthLabel}
+                    style={{ color: strengthColor }}
+                  >
+                    {strengthLabel}
+                  </span>
+                ) : passwordHint ? (
+                  <span
+                    className={`${styles.passwordHint} ${fieldError("password") ? styles.passwordHintError : ""}`}
+                    aria-live="polite"
+                  >
                     {passwordHint}
                   </span>
-                ) : (
-                  isPasswordValid(password) && (
-                    <span
-                      className={styles.passwordStrengthLabel}
-                      style={{ color: strengthColors[3] }}
-                    >
-                      {strengthLabels[3]}
-                    </span>
-                  )
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -369,44 +303,31 @@ export default function RegisterStep({
             <label className={register.registerFieldLabel} htmlFor="phone">
               Phone
             </label>
-            <div className={inputWrapClass("phone")}>
-              <Phone className={register.inputInnerIcon} size={16} />
-              <span className={styles.phonePrefix} aria-hidden="true">
-                +91
-              </span>
-              <input
-                id="phone"
-                type="tel"
-                inputMode="numeric"
-                className={register.textFieldWithIcon}
-                placeholder="9898675444"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                onBlur={() => markTouched("phone")}
-                autoComplete="tel-national"
-                maxLength={10}
-                aria-invalid={Boolean(fieldError("phone"))}
-              />
+            <div className={register.inputFieldWrap}>
+              <div className={inputWrapClass("phone")}>
+                <Phone className={register.inputInnerIcon} size={16} />
+                <span className={styles.phonePrefix} aria-hidden="true">
+                  +91
+                </span>
+                <input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  className={register.textFieldWithIcon}
+                  placeholder="9898675444"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  onBlur={() => markTouched("phone")}
+                  autoComplete="tel-national"
+                  maxLength={10}
+                  aria-invalid={Boolean(fieldError("phone"))}
+                />
+              </div>
               {fieldError("phone") && (
-                <span className={register.fieldErrorInline}>{fieldError("phone")}</span>
+                <span className={register.fieldErrorBelow}>{fieldError("phone")}</span>
               )}
             </div>
           </div>
-
-          {apiError && (
-            <p className={styles.fieldErrorBelow} style={{ marginBottom: "8px", textAlign: "center" }}>
-              {apiError}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`${styles.registerSubmitBtn} ${canSubmit && !isLoading ? "" : styles.registerSubmitBtnInactive}`}
-          >
-            <span>{isLoading ? "Sending..." : "Send Verification Code"}</span>
-            {!isLoading && <ArrowRight size={16} />}
-          </button>
 
           <div className={styles.registerDivider}>
             <span className={styles.registerDividerLine} />
@@ -415,7 +336,7 @@ export default function RegisterStep({
           </div>
 
           <div className={styles.socialButtonsRow}>
-            <button type="button" className={styles.socialButton} onClick={handleGoogleSignup} disabled={isLoading}>
+            <button type="button" className={styles.socialButton} onClick={handleValidatedContinue}>
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
                 <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.616z" />
                 <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
@@ -424,7 +345,7 @@ export default function RegisterStep({
               </svg>
               <span>Google</span>
             </button>
-            <button type="button" className={styles.socialButton} onClick={handleGoogleSignup} disabled={isLoading}>
+            <button type="button" className={styles.socialButton} onClick={handleValidatedContinue}>
               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                 <path
                   fill="#0A66C2"

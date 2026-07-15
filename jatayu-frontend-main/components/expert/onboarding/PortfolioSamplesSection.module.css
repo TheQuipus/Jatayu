@@ -1,0 +1,266 @@
+.section {
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.header {
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--silver-chalice);
+}
+
+.optionalTag {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.uploadList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.uploadItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.uploadBar {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  clip-path: polygon(0% 0%,
+      94.5% 0%,
+      100% 18%,
+      100% 82%,
+      94.5% 100%,
+      0% 100%);
+  -webkit-clip-path: polygon(0% 0%,
+      94.5% 0%,
+      100% 18%,
+      100% 82%,
+      94.5% 100%,
+      0% 100%);
+}
+
+.uploadBarBody {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 14px 40px 16px 14px;
+}
+
+.fileIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--pomegranate) 18%, transparent);
+  color: var(--pomegranate);
+}
+
+.uploadMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fileName {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.uploadStatus {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--pomegranate);
+}
+
+.uploadStatusDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--green);
+}
+
+.cancelBtn {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.cancelBtn:hover {
+  color: var(--white);
+}
+
+.progressTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--pomegranate);
+  transition: width 0.15s ease;
+}
+
+.uploadBarComplete .progressFill {
+  background: var(--green);
+}
+
+.addCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 140px;
+  margin-bottom: 16px;
+  padding: 20px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.addCard:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.addCardIcon {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.addCardTitle {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+}
+
+.addCardHint {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+.addAnotherBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  margin: 0 0 18px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pomegranate);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.addAnotherBtn:hover {
+  opacity: 0.85;
+}
+
+.tipsBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tipsTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+}
+
+.tipsGrid {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: 6px 32px;
+}
+
+.tipItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--silver-chalice);
+}
+
+.tipCheck {
+  color: var(--silver-chalice);
+  flex-shrink: 0;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .tipsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .uploadBarBody {
+    padding-right: 36px;
+  }
+}
