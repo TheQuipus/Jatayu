@@ -329,6 +329,13 @@ export default function RegisterStep({
             </div>
           </div>
 
+          <ContinueButton
+            type="submit"
+            label="Send Verification Code"
+            disabled={!canSubmit}
+            className={`${styles.registerSubmitBtn} ${canSubmit ? "" : styles.registerSubmitBtnInactive}`}
+          />
+
           <div className={styles.registerDivider}>
             <span className={styles.registerDividerLine} />
             <span className={styles.registerDividerText}>Or continue with</span>
