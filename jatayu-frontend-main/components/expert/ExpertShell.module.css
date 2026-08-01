@@ -35,15 +35,20 @@
 }
 
 .brandMark {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   background: var(--pomegranate);
   color: var(--white);
   display: grid;
   place-items: center;
   font-size: 14px;
+  font-weight: 800;
+}
+
+.brandBadge {
   font-weight: 700;
+  color: var(--pomegranate);
 }
 
 .navSection {
@@ -53,11 +58,11 @@
 }
 
 .navLabel {
-  padding: 16px 12px 8px;
+  padding: 20px 12px 8px;
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--silver-chalice);
 }
@@ -248,3 +253,5 @@
     --expert-sticky-top: 52px;
   }
 }
+
+

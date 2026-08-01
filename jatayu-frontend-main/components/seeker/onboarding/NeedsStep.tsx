@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { Target, Zap, Brain, Handshake, ShieldCheck } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
@@ -27,17 +27,28 @@ type ImprovementStyleId = (typeof IMPROVEMENT_STYLES)[number]["id"];
 const DEFAULT_IMPROVE_HINT = "Choose your Goal or describe your challenges and questions";
 
 function getImprovedText(styleId: ImprovementStyleId, current: string): string {
-  if (!current.trim()) return current;
+  const trimmed = current.trim();
+  if (!trimmed) return current;
+
+  const profPrefix = "I am seeking expert guidance on the following challenge:\n";
+  const casualPrefix = "Hey! I'd love help with this:\n";
+
+  let baseText = trimmed;
+  if (baseText.startsWith(profPrefix)) {
+    baseText = baseText.slice(profPrefix.length).trim();
+  } else if (baseText.startsWith(casualPrefix)) {
+    baseText = baseText.slice(casualPrefix.length).trim();
+  }
 
   if (styleId === "professional") {
-    return `I am seeking expert guidance on the following challenge:\n${current}`;
+    return `${profPrefix}${baseText}`;
   }
 
   if (styleId === "casual") {
-    return `Hey! I'd love help with this:\n${current}`;
+    return `${casualPrefix}${baseText}`;
   }
 
-  const sentences = current
+  const sentences = baseText
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
@@ -48,19 +59,24 @@ function getImprovedText(styleId: ImprovementStyleId, current: string): string {
 function getImprovementHint(
   styleId: ImprovementStyleId | null,
   currentText: string,
+  lockedPrefix: string = "",
 ): string {
-  if (!styleId || !currentText.trim()) {
+  const userSuffix = lockedPrefix
+    ? (currentText.startsWith(lockedPrefix) ? currentText.slice(lockedPrefix.length) : "")
+    : currentText;
+
+  if (!styleId || !userSuffix.trim()) {
     return DEFAULT_IMPROVE_HINT;
   }
 
-  return getImprovedText(styleId, currentText.trim());
+  const improved = getImprovedText(styleId, userSuffix.trim());
+  return lockedPrefix ? `${lockedPrefix}${improved}` : improved;
 }
 
 function NeedChipIcon({ chipId, isSelected }: { chipId: string; isSelected?: boolean }) {
-  const iconClass = `${styles.suggestedPillIcon} ${
-    isSelected ? styles.suggestedPillIconSelected : ""
-  }`;
-  const iconProps = { className: iconClass, size: 14, "aria-hidden": true as const };
+  const iconClass = `${styles.suggestedPillIcon} ${isSelected ? styles.suggestedPillIconSelected : ""
+    }`;
+  const iconProps = { className: iconClass, size: 16, "aria-hidden": true as const };
 
   switch (chipId) {
     case "clarity":
@@ -78,10 +94,24 @@ function NeedChipIcon({ chipId, isSelected }: { chipId: string; isSelected?: boo
   }
 }
 
+function detectChipsFromText(text: string): string[] {
+  if (!text) return [];
+  const found: string[] = [];
+  for (const chip of NEED_STEP_CHIPS) {
+    const desc = getSeekerOutcomeDescription(chip.outcomeId);
+    if (desc && text.includes(desc)) {
+      found.push(chip.id);
+    }
+  }
+  return found;
+}
+
 type NeedsStepProps = {
   userName: string;
   needsText: string;
   onChangeNeedsText: (text: string) => void;
+  selectedNeedChips?: string[];
+  onSelectedNeedChipsChange?: (chips: string[]) => void;
   onBack: () => void;
   onContinue: () => void;
   progressCompletion: ProgressCompletion;
@@ -92,6 +122,8 @@ export default function NeedsStep({
   userName,
   needsText,
   onChangeNeedsText,
+  selectedNeedChips: selectedNeedChipsProp,
+  onSelectedNeedChipsChange: onSelectedNeedChipsChangeProp,
   onBack,
   onContinue,
   progressCompletion,
@@ -101,13 +133,21 @@ export default function NeedsStep({
   const [selectedImproveStyle, setSelectedImproveStyle] = useState<ImprovementStyleId | null>(
     null,
   );
-  const [selectedNeedChips, setSelectedNeedChips] = useState<string[]>([]);
-  const hasSelectedNeedChip = selectedNeedChips.length > 0;
-  const canUseAiAssist = needsText.trim().length > 0;
+  const [internalSelectedNeedChips, setInternalSelectedNeedChips] = useState<string[]>(() => {
+    if (selectedNeedChipsProp && selectedNeedChipsProp.length > 0) {
+      return selectedNeedChipsProp;
+    }
+    return detectChipsFromText(needsText);
+  });
 
-  const handleAiAssist = () => {
-    setShowImprovementPanel(true);
+  const selectedNeedChips = selectedNeedChipsProp ?? internalSelectedNeedChips;
+
+  const setSelectedNeedChips = (chips: string[]) => {
+    setInternalSelectedNeedChips(chips);
+    onSelectedNeedChipsChangeProp?.(chips);
   };
+
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const buildTextFromSelectedChips = (chipIds: string[]) =>
     chipIds
@@ -117,6 +157,25 @@ export default function NeedsStep({
       })
       .filter(Boolean)
       .join("\n");
+
+  const getLockedPrefixForChips = (chipIds: string[]) => {
+    if (chipIds.length === 0) return "";
+    const text = buildTextFromSelectedChips(chipIds);
+    return text ? text + "\n" : "";
+  };
+
+  const getLockedPrefix = () => getLockedPrefixForChips(selectedNeedChips);
+
+  const lockedPrefix = getLockedPrefix();
+  const userTypedSuffix = lockedPrefix
+    ? (needsText.startsWith(lockedPrefix) ? needsText.slice(lockedPrefix.length) : "")
+    : needsText;
+  const canUseAiAssist = userTypedSuffix.trim().length > 0;
+
+  const handleAiAssist = () => {
+    setShowImprovementPanel(true);
+    setSelectedImproveStyle("professional");
+  };
 
   const handleNeedChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
     const isSelected = selectedNeedChips.includes(chip.id);
@@ -130,13 +189,93 @@ export default function NeedsStep({
     }
 
     setSelectedNeedChips(nextSelected);
-    onChangeNeedsText(buildTextFromSelectedChips(nextSelected).slice(0, 1000));
+
+    const currentPrefix = getLockedPrefix();
+    let userSuffix = "";
+    if (currentPrefix && needsText.startsWith(currentPrefix)) {
+      userSuffix = needsText.slice(currentPrefix.length);
+    } else if (!currentPrefix && needsText) {
+      userSuffix = needsText;
+    }
+
+    const newPrefix = getLockedPrefixForChips(nextSelected);
+    const updatedText = (newPrefix + userSuffix).slice(0, 1000);
+    onChangeNeedsText(updatedText);
+
+    if (newPrefix) {
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const targetPos = Math.min(newPrefix.length, updatedText.length);
+          textareaRef.current.setSelectionRange(targetPos, targetPos);
+        }
+      }, 0);
+    }
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    const lockedPrefix = getLockedPrefix();
+
+    if (!lockedPrefix) {
+      onChangeNeedsText(val.slice(0, 1000));
+      return;
+    }
+
+    if (val.startsWith(lockedPrefix)) {
+      onChangeNeedsText(val.slice(0, 1000));
+    } else {
+      let userSuffix = "";
+      if (val.length > lockedPrefix.length) {
+        userSuffix = val.slice(lockedPrefix.length);
+      }
+      const restored = (lockedPrefix + userSuffix).slice(0, 1000);
+      onChangeNeedsText(restored);
+    }
+  };
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const lockedPrefix = getLockedPrefix();
+    if (!lockedPrefix) return;
+
+    const target = e.currentTarget;
+    const { selectionStart, selectionEnd } = target;
+
+    if (e.key === "Backspace") {
+      if (selectionStart <= lockedPrefix.length && selectionEnd <= lockedPrefix.length) {
+        e.preventDefault();
+      } else if (selectionStart < lockedPrefix.length) {
+        e.preventDefault();
+        target.setSelectionRange(lockedPrefix.length, selectionEnd);
+      }
+    } else if (e.key === "Delete") {
+      if (selectionStart < lockedPrefix.length) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const ensureCursorAfterPrefix = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const lockedPrefix = getLockedPrefix();
+    if (!lockedPrefix) return;
+
+    const target = e.currentTarget;
+    if (target.selectionStart < lockedPrefix.length) {
+      target.setSelectionRange(lockedPrefix.length, lockedPrefix.length);
+    }
   };
 
   const handleImproveStyle = (styleId: ImprovementStyleId) => {
-    const current = needsText.trim();
-    if (!current) return;
-    onChangeNeedsText(getImprovedText(styleId, current).slice(0, 1000));
+    const currentPrefix = getLockedPrefix();
+    const userSuffix = currentPrefix
+      ? (needsText.startsWith(currentPrefix) ? needsText.slice(currentPrefix.length) : "")
+      : needsText;
+    const trimmed = userSuffix.trim();
+    if (!trimmed) return;
+
+    const improvedSuffix = getImprovedText(styleId, trimmed);
+    const updatedText = currentPrefix ? `${currentPrefix}${improvedSuffix}` : improvedSuffix;
+    onChangeNeedsText(updatedText.slice(0, 1000));
   };
 
   const handleApplyImprovement = () => {
@@ -166,7 +305,7 @@ export default function NeedsStep({
             </h1>
 
             <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
-            Choose your goal, or describe your challenges and questions.
+              Choose your goal, or describe your challenges and questions.
             </p>
 
             <div className={`${register.textareaWrap} ${styles.textareaWrapper}`}>
@@ -178,9 +317,8 @@ export default function NeedsStep({
                     <button
                       key={chip.id}
                       type="button"
-                      className={`${styles.suggestedPill} ${
-                        isSelected ? styles.suggestedPillSelected : ""
-                      }`}
+                      className={`${styles.suggestedPill} ${isSelected ? styles.suggestedPillSelected : ""
+                        }`}
                       onClick={() => handleNeedChipClick(chip)}
                       aria-pressed={isSelected}
                     >
@@ -191,18 +329,22 @@ export default function NeedsStep({
                 })}
               </div>
               <textarea
+                ref={textareaRef}
                 className={`${register.textareaField} ${styles.needsTextarea}`}
                 placeholder={
                   "Eg. I've been in my current job for 3 years and feel stuck. I want to transition into product management but don't know where to start..."
                 }
                 value={needsText}
-                onChange={(e) => onChangeNeedsText(e.target.value)}
+                onChange={handleTextareaChange}
+                onKeyDown={handleTextareaKeyDown}
+                onClick={ensureCursorAfterPrefix}
+                onSelect={ensureCursorAfterPrefix}
                 maxLength={1000}
               />
               <div className={styles.charCounter}>
                 {needsText.length} / 1000
               </div>
-              {hasSelectedNeedChip && !showImprovementPanel ? (
+              {canUseAiAssist && !showImprovementPanel ? (
                 <button
                   type="button"
                   className={styles.aiAssistTextBtn}
@@ -210,7 +352,7 @@ export default function NeedsStep({
                   disabled={!canUseAiAssist}
                 >
                   <ShinyText
-                    text="Improve With AI"
+                    text="Improve With Jatayu's AI"
                     icon="sparkles"
                     iconSize={14}
                     speed={2.5}
@@ -223,7 +365,7 @@ export default function NeedsStep({
               ) : null}
             </div>
 
-            {showImprovementPanel ? (
+            {canUseAiAssist && showImprovementPanel ? (
               <div className={styles.aiImprovePanel}>
                 <div className={styles.improvementChipsWrap}>
                   {IMPROVEMENT_STYLES.map((style) => {
@@ -233,10 +375,9 @@ export default function NeedsStep({
                       <button
                         key={style.id}
                         type="button"
-                        className={`${styles.improvementChip} ${
-                          isSelected ? styles.improvementChipSelected : ""
-                        }`}
-                        onClick={() => setSelectedImproveStyle(style.id)}
+                        className={`${styles.suggestedPill} ${isSelected ? styles.suggestedPillSelected : ""
+                          }`}
+                        onClick={() => setSelectedImproveStyle(isSelected ? null : style.id)}
                         aria-pressed={isSelected}
                       >
                         {style.label}
@@ -245,7 +386,7 @@ export default function NeedsStep({
                   })}
                 </div>
                 <p className={styles.aiImproveHint}>
-                  {getImprovementHint(selectedImproveStyle, needsText)}
+                  {getImprovementHint(selectedImproveStyle, needsText, getLockedPrefix())}
                 </p>
                 <button
                   type="button"
@@ -264,6 +405,7 @@ export default function NeedsStep({
                 </button>
               </div>
             ) : null}
+
 
             {/* Pro Tip */}
             <div className={styles.proTipContainer}>

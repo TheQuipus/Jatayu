@@ -2,9 +2,17 @@
 
 import Link from "next/link";
 import { Search, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ExpertCard from "../ui/ExpertCard";
-import ExpertFilterDropdown, { type ExpertFilterKey } from "./ExpertFilterDropdown";
+import ExpertFilterSection from "./ExpertFilterSection";
+import PriceFilterSection from "./PriceFilterSection";
+
+export type ExpertFilterKey =
+  | "topic"
+  | "language"
+  | "rating"
+  | "price"
+  | "availability";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import {
   availabilityFilters,
@@ -12,24 +20,20 @@ import {
   featuredExperts,
   getAvailableLanguages,
   matchesAvailabilityFilter,
-  matchesPriceRangeFilter,
   matchesRatingFilter,
-  priceRangeFilters,
   ratingFilters,
   type AvailabilityFilterId,
   type ExpertiseTag,
-  type PriceRangeFilterId,
   type RatingFilterId,
 } from "@/lib/experts";
 import { useBookmarks } from "@/lib/useBookmarks";
 import styles from "./Expert.module.css";
 
+const ABSOLUTE_MIN_PRICE = 0;
+const ABSOLUTE_MAX_PRICE = 300000;
+
 const topicOptions = expertiseTags.map((tag) => ({ value: tag, label: tag }));
 const ratingOptions = ratingFilters.map((filter) => ({
-  value: filter.id,
-  label: filter.label,
-}));
-const priceOptions = priceRangeFilters.map((filter) => ({
   value: filter.id,
   label: filter.label,
 }));
@@ -57,12 +61,19 @@ function getOptionLabel(key: ExpertFilterKey, value: string): string {
       return value;
     case "rating":
       return ratingFilters.find((filter) => filter.id === value)?.label ?? value;
-    case "price":
-      return priceRangeFilters.find((filter) => filter.id === value)?.label ?? value;
     case "availability":
       return availabilityFilters.find((filter) => filter.id === value)?.label ?? value;
+    default:
+      return value;
   }
 }
+
+export type SortOption =
+  | "popularity"
+  | "price-asc"
+  | "price-desc"
+  | "alphabetical"
+  | "saving-desc";
 
 export default function Expert({
   seeker = false,
@@ -71,20 +82,20 @@ export default function Expert({
   seeker?: boolean;
   showBreadcrumb?: boolean;
 }) {
-  const topicRowShellRef = useRef<HTMLDivElement>(null);
-  const filterRowRef = useRef<HTMLDivElement>(null);
-  const [isTopicRowStuck, setIsTopicRowStuck] = useState(false);
   const [shouldShowBreadcrumb, setShouldShowBreadcrumb] = useState(showBreadcrumb);
-  const [openDropdown, setOpenDropdown] = useState<ExpertFilterKey | null>(null);
   const { bookmarkedExperts, toggleBookmark } = useBookmarks();
   const [selectedTopics, setSelectedTopics] = useState<ExpertiseTag[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<RatingFilterId[]>([]);
-  const [selectedPriceRanges, setSelectedPriceRanges] = useState<PriceRangeFilterId[]>([]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    ABSOLUTE_MIN_PRICE,
+    ABSOLUTE_MAX_PRICE,
+  ]);
   const [selectedAvailabilities, setSelectedAvailabilities] = useState<AvailabilityFilterId[]>(
     []
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("popularity");
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -110,9 +121,13 @@ export default function Expert({
     selectedRatings.forEach((value) => {
       items.push({ key: "rating", value, label: getOptionLabel("rating", value) });
     });
-    selectedPriceRanges.forEach((value) => {
-      items.push({ key: "price", value, label: getOptionLabel("price", value) });
-    });
+    if (priceRange[0] > ABSOLUTE_MIN_PRICE || priceRange[1] < ABSOLUTE_MAX_PRICE) {
+      items.push({
+        key: "price",
+        value: `${priceRange[0]}-${priceRange[1]}`,
+        label: `₹${priceRange[0].toLocaleString("en-IN")} – ₹${priceRange[1].toLocaleString("en-IN")}`,
+      });
+    }
     selectedAvailabilities.forEach((value) => {
       items.push({ key: "availability", value, label: getOptionLabel("availability", value) });
     });
@@ -122,7 +137,7 @@ export default function Expert({
     selectedTopics,
     selectedLanguages,
     selectedRatings,
-    selectedPriceRanges,
+    priceRange,
     selectedAvailabilities,
   ]);
 
@@ -168,10 +183,7 @@ export default function Expert({
         return false;
       }
 
-      if (
-        selectedPriceRanges.length > 0 &&
-        !selectedPriceRanges.some((priceRange) => matchesPriceRangeFilter(expert, priceRange))
-      ) {
+      if (expert.price < priceRange[0] || expert.price > priceRange[1]) {
         return false;
       }
 
@@ -187,22 +199,38 @@ export default function Expert({
       return true;
     };
 
-    return featuredExperts.filter(
+    const results = featuredExperts.filter(
       (expert) => bookmarkedExperts.has(expert.name) || matchesFilters(expert)
     );
+
+    return [...results].sort((a, b) => {
+      switch (sortBy) {
+        case "price-asc":
+          return a.price - b.price;
+        case "price-desc":
+          return b.price - a.price;
+        case "alphabetical":
+          return a.name.localeCompare(b.name);
+        case "saving-desc":
+          return a.price - b.price;
+        case "popularity":
+        default:
+          if (b.rating !== a.rating) {
+            return b.rating - a.rating;
+          }
+          return (b.reviewsCount || 0) - (a.reviewsCount || 0);
+      }
+    });
   }, [
     normalizedSearchQuery,
     selectedTopics,
     selectedLanguages,
     selectedRatings,
-    selectedPriceRanges,
+    priceRange,
     selectedAvailabilities,
     bookmarkedExperts,
+    sortBy,
   ]);
-
-  const toggleDropdown = (key: ExpertFilterKey) => {
-    setOpenDropdown((current) => (current === key ? null : key));
-  };
 
   const removeAppliedFilter = (key: ExpertFilterKey, value: string) => {
     switch (key) {
@@ -216,7 +244,7 @@ export default function Expert({
         setSelectedRatings((current) => current.filter((item) => item !== value));
         break;
       case "price":
-        setSelectedPriceRanges((current) => current.filter((item) => item !== value));
+        setPriceRange([ABSOLUTE_MIN_PRICE, ABSOLUTE_MAX_PRICE]);
         break;
       case "availability":
         setSelectedAvailabilities((current) => current.filter((item) => item !== value));
@@ -228,69 +256,20 @@ export default function Expert({
     setSelectedTopics([]);
     setSelectedLanguages([]);
     setSelectedRatings([]);
-    setSelectedPriceRanges([]);
+    setPriceRange([ABSOLUTE_MIN_PRICE, ABSOLUTE_MAX_PRICE]);
     setSelectedAvailabilities([]);
     setSearchQuery("");
-    setOpenDropdown(null);
+    setSortBy("popularity");
   };
-
-  useEffect(() => {
-    if (!openDropdown) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (
-        filterRowRef.current &&
-        !filterRowRef.current.contains(event.target as Node)
-      ) {
-        setOpenDropdown(null);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpenDropdown(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [openDropdown]);
-
-  useEffect(() => {
-    const shell = topicRowShellRef.current;
-    if (!shell) return;
-
-    const updateStuckState = () => {
-      if (getComputedStyle(shell).position !== "sticky") {
-        setIsTopicRowStuck(false);
-        return;
-      }
-
-      const stickyTopPx = parseFloat(getComputedStyle(shell).top) || 82;
-      setIsTopicRowStuck(shell.getBoundingClientRect().top <= stickyTopPx + 0.5);
-    };
-
-    updateStuckState();
-    window.addEventListener("scroll", updateStuckState, { passive: true });
-    window.addEventListener("resize", updateStuckState);
-
-    return () => {
-      window.removeEventListener("scroll", updateStuckState);
-      window.removeEventListener("resize", updateStuckState);
-    };
-  }, []);
 
   useEffect(() => {
     const normalizedPath = window.location.pathname.replace(/\/$/, "");
     if (seeker || normalizedPath !== "/expert") return;
 
     if (window.location.hash === "#from-home") {
-      setShouldShowBreadcrumb(true);
+      setTimeout(() => {
+        setShouldShowBreadcrumb(true);
+      }, 0);
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, [seeker]);
@@ -311,24 +290,15 @@ export default function Expert({
           ) : null}
 
           <div className={`${styles.speaks} ${styles.speaksFirst} ${seeker ? styles.speaksSeeker : ""}`}>
-            <h2 className={`display ${styles.speaksTitle}`}>
-              <span className={`t-dark ${styles.keepTogether}`}>Find the right expert</span>
-              <br />
-              <span className={styles.keepTogether}>
-                <span className="t-dark">for </span>
-                <span className="t-muted">your decision</span>
-              </span>
-            </h2>
-            <span className={styles.speaksRule} aria-hidden="true"></span>
-            <p className={styles.speaksDesc}>
-              Guidance that feels human. Have a closer look at expertise before you book.
-            </p>
-
-            <div
-              ref={topicRowShellRef}
-              className={`${styles.topicRowShell} ${isTopicRowStuck ? styles.topicRowShellStuck : ""}`}
-            >
-              <div className={styles.topicRowBackdrop} aria-hidden="true" />
+            <div className={styles.speaksTop}>
+              <h2 className={`display ${styles.speaksTitle}`}>
+                <span className={`t-dark ${styles.keepTogether}`}>Find the right expert</span>
+                <br />
+                <span className={styles.keepTogether}>
+                  <span className="t-dark">for </span>
+                  <span className="t-muted">your decision</span>
+                </span>
+              </h2>
               <div className={styles.filterBookmarkRow}>
                 <Link
                   href={seeker ? "/seeker/bookmark" : "/bookmark"}
@@ -338,154 +308,163 @@ export default function Expert({
                   {String(bookmarkedExperts.size).padStart(2, "0")}&nbsp;&nbsp;BOOKMARKED
                 </Link>
               </div>
-              <div className={styles.filterPanel} ref={filterRowRef}>
-                <div className={styles.topicRow}>
-                  <label className={styles.searchField}>
-                    <Search
-                      size={16}
-                      strokeWidth={2}
-                      className={styles.searchIcon}
-                      aria-hidden="true"
-                    />
-                    <input
-                      type="search"
-                      className={styles.searchInput}
-                      placeholder="Search..."
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      aria-label="Search experts"
-                    />
-                  </label>
-
-                  <ExpertFilterDropdown
-                    filterKey="topic"
-                    triggerId="expert-topic-filter"
-                    placeholder="Categories"
-                    clearLabel="All Topics"
-                    options={topicOptions}
-                    selectedValues={selectedTopics}
-                    openDropdown={openDropdown}
-                    onToggle={toggleDropdown}
-                    onToggleValue={(value) =>
-                      setSelectedTopics((current) =>
-                        toggleSelection(current, value as ExpertiseTag)
-                      )
-                    }
-                    onClear={() => setSelectedTopics([])}
-                  />
-                  <ExpertFilterDropdown
-                    filterKey="language"
-                    triggerId="expert-language-filter"
-                    placeholder="Languages"
-                    clearLabel="All Languages"
-                    options={languageOptions}
-                    selectedValues={selectedLanguages}
-                    openDropdown={openDropdown}
-                    onToggle={toggleDropdown}
-                    onToggleValue={(value) =>
-                      setSelectedLanguages((current) => toggleSelection(current, value))
-                    }
-                    onClear={() => setSelectedLanguages([])}
-                  />
-                  <ExpertFilterDropdown
-                    filterKey="rating"
-                    triggerId="expert-rating-filter"
-                    placeholder="Ratings"
-                    clearLabel="All Ratings"
-                    options={ratingOptions}
-                    selectedValues={selectedRatings}
-                    openDropdown={openDropdown}
-                    onToggle={toggleDropdown}
-                    onToggleValue={(value) =>
-                      setSelectedRatings((current) =>
-                        toggleSelection(current, value as RatingFilterId)
-                      )
-                    }
-                    onClear={() => setSelectedRatings([])}
-                  />
-                  <ExpertFilterDropdown
-                    filterKey="price"
-                    triggerId="expert-price-filter"
-                    placeholder="Price Range"
-                    clearLabel="All Prices"
-                    options={priceOptions}
-                    selectedValues={selectedPriceRanges}
-                    openDropdown={openDropdown}
-                    onToggle={toggleDropdown}
-                    onToggleValue={(value) =>
-                      setSelectedPriceRanges((current) =>
-                        toggleSelection(current, value as PriceRangeFilterId)
-                      )
-                    }
-                    onClear={() => setSelectedPriceRanges([])}
-                  />
-                  <ExpertFilterDropdown
-                    filterKey="availability"
-                    triggerId="expert-availability-filter"
-                    placeholder="Availability"
-                    clearLabel="Any Availability"
-                    options={availabilityOptions}
-                    selectedValues={selectedAvailabilities}
-                    openDropdown={openDropdown}
-                    onToggle={toggleDropdown}
-                    onToggleValue={(value) =>
-                      setSelectedAvailabilities((current) =>
-                        toggleSelection(current, value as AvailabilityFilterId)
-                      )
-                    }
-                    onClear={() => setSelectedAvailabilities([])}
-                  />
-                </div>
-
-                <div className={styles.appliedFiltersRow}>
-                  {appliedFilters.length > 0 && (
-                    <>
-                      <div className={styles.appliedFiltersList}>
-                        {appliedFilters.map((filter) => (
-                          <button
-                            key={`${filter.key}-${filter.value}`}
-                            type="button"
-                            className={styles.appliedFilterChip}
-                            onClick={() => removeAppliedFilter(filter.key, filter.value)}
-                            aria-label={`Remove ${filter.label} filter`}
-                          >
-                            <span>{filter.label}</span>
-                            <X size={12} strokeWidth={2} aria-hidden="true" />
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        className={styles.clearAllBtn}
-                        onClick={clearAllFilters}
-                      >
-                        Clear all
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+              <span className={styles.speaksRule} aria-hidden="true"></span>
+              <p className={styles.speaksDesc}>
+                Guidance that feels human. Have a closer look at expertise before you book.
+              </p>
             </div>
 
-            <div className={styles.speaksCards}>
-              {filteredExperts.length === 0 ? (
-                <p className={styles.noResults}>No experts match your filters yet.</p>
-              ) : (
-                filteredExperts.map((expert, index) => {
-                  const isBookmarked = bookmarkedExperts.has(expert.name);
+            <aside className={styles.sidebar}>
+              <div className={styles.sidebarHeader}>
+                <h3 className={styles.sidebarTitle}>Filters</h3>
+                {appliedFilters.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.clearAllBtn}
+                    onClick={clearAllFilters}
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
 
-                  return (
-                    <ExpertCard
-                      key={expert.name}
-                      expert={expert}
-                      isBookmarked={isBookmarked}
-                      onBookmarkToggle={() => toggleBookmark(expert.name)}
-                      priority={index < 2}
-                      seeker={seeker}
-                    />
-                  );
-                })
+              {appliedFilters.length > 0 && (
+                <div className={styles.appliedFilterChipsGroup}>
+                  {appliedFilters.map((filter) => (
+                    <button
+                      key={`${filter.key}-${filter.value}`}
+                      type="button"
+                      className={styles.appliedFilterChip}
+                      onClick={() => removeAppliedFilter(filter.key, filter.value)}
+                      aria-label={`Remove ${filter.label} filter`}
+                    >
+                      <span>{filter.label}</span>
+                      <X size={12} strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
               )}
+
+              <div className={styles.filterSectionsGroup}>
+                <ExpertFilterSection
+                  filterKey="topic"
+                  placeholder="Categories"
+                  options={topicOptions}
+                  selectedValues={selectedTopics}
+                  onToggleValue={(value) =>
+                    setSelectedTopics((current) =>
+                      toggleSelection(current, value as ExpertiseTag)
+                    )
+                  }
+                  onClear={() => setSelectedTopics([])}
+                  defaultOpen={true}
+                />
+                <ExpertFilterSection
+                  filterKey="language"
+                  placeholder="Languages"
+                  options={languageOptions}
+                  selectedValues={selectedLanguages}
+                  onToggleValue={(value) =>
+                    setSelectedLanguages((current) => toggleSelection(current, value))
+                  }
+                  onClear={() => setSelectedLanguages([])}
+                />
+                <ExpertFilterSection
+                  filterKey="rating"
+                  placeholder="Ratings"
+                  options={ratingOptions}
+                  selectedValues={selectedRatings}
+                  onToggleValue={(value) =>
+                    setSelectedRatings((current) =>
+                      toggleSelection(current, value as RatingFilterId)
+                    )
+                  }
+                  onClear={() => setSelectedRatings([])}
+                />
+                <PriceFilterSection
+                  minPrice={priceRange[0]}
+                  maxPrice={priceRange[1]}
+                  absoluteMin={ABSOLUTE_MIN_PRICE}
+                  absoluteMax={ABSOLUTE_MAX_PRICE}
+                  onChange={(min, max) => setPriceRange([min, max])}
+                  defaultOpen={true}
+                />
+                <ExpertFilterSection
+                  filterKey="availability"
+                  placeholder="Availability"
+                  options={availabilityOptions}
+                  selectedValues={selectedAvailabilities}
+                  onToggleValue={(value) =>
+                    setSelectedAvailabilities((current) =>
+                      toggleSelection(current, value as AvailabilityFilterId)
+                    )
+                  }
+                  onClear={() => setSelectedAvailabilities([])}
+                />
+              </div>
+            </aside>
+
+            <div className={styles.contentArea}>
+              <div className={styles.topBar}>
+                <span className={styles.topBarLine1} aria-hidden="true" />
+                <span className={styles.topBarLine2} aria-hidden="true" />
+                <label className={styles.searchField}>
+                  <Search
+                    size={16}
+                    strokeWidth={2}
+                    className={styles.searchIcon}
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="search"
+                    className={styles.searchInput}
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    aria-label="Search experts"
+                  />
+                </label>
+
+                <div className={styles.sortWrapper}>
+                  <label htmlFor="sort-by" className={styles.sortLabel}>
+                    Sort by:
+                  </label>
+                  <select
+                    id="sort-by"
+                    className={styles.sortSelect}
+                    value={sortBy}
+                    onChange={(event) => setSortBy(event.target.value as SortOption)}
+                    aria-label="Sort experts by"
+                  >
+                    <option value="popularity">Popularity</option>
+                    <option value="price-asc">Price (Low to High)</option>
+                    <option value="price-desc">Price (High to Low)</option>
+                    <option value="alphabetical">Alphabetical</option>
+                    <option value="saving-desc">Saving (High to Low)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.speaksCards}>
+                {filteredExperts.length === 0 ? (
+                  <p className={styles.noResults}>No experts match your filters yet.</p>
+                ) : (
+                  filteredExperts.map((expert, index) => {
+                    const isBookmarked = bookmarkedExperts.has(expert.name);
+
+                    return (
+                      <ExpertCard
+                        key={expert.name}
+                        expert={expert}
+                        isBookmarked={isBookmarked}
+                        onBookmarkToggle={() => toggleBookmark(expert.name)}
+                        priority={index < 2}
+                        seeker={seeker}
+                      />
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>

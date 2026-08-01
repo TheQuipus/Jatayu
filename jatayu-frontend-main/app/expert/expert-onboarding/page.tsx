@@ -244,7 +244,7 @@ function ExpertOnboardingPageContent() {
   const stepCompletion = useMemo(
     () => [
       Boolean(selectedCategory),
-      selectedSkills.length === 5,
+      selectedSkills.length > 0,
       Boolean(internalStepComplete[3]),
       Boolean(internalStepComplete[4]),
       Boolean(internalStepComplete[5]),

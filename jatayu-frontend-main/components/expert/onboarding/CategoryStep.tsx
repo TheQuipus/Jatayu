@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Info } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
@@ -50,8 +50,12 @@ export default function CategoryStep({
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [showInput, setShowInput] = useState(false);
 
+  const customCategories = categories.filter((cat) => isCustomCategory(cat.id));
+  const isMaxCustomReached = customCategories.length >= 1;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isMaxCustomReached) return;
     const trimmed = newCategoryInput.trim();
     if (!trimmed) return;
     onAddCustomCategory(trimmed);
@@ -60,6 +64,10 @@ export default function CategoryStep({
   };
 
   const handleBlur = () => {
+    if (isMaxCustomReached) {
+      setShowInput(false);
+      return;
+    }
     const trimmed = newCategoryInput.trim();
     if (trimmed) {
       onAddCustomCategory(trimmed);
@@ -77,7 +85,6 @@ export default function CategoryStep({
   };
 
   const predefinedCategories = categories.filter((cat) => !isCustomCategory(cat.id));
-  const customCategories = categories.filter((cat) => isCustomCategory(cat.id));
 
   // Directory layout grouping
   const grouped = predefinedCategories.reduce((acc, cat) => {
@@ -228,9 +235,9 @@ export default function CategoryStep({
               <h3 className={styles.customHeading}>
                 Didn&apos;t find what you&apos;re looking for?
               </h3>
-              {showInput ? (
+              {!isMaxCustomReached && showInput ? (
                 <div className={`${styles.categoryItem} ${styles.categoryItemInput}`}>
-                  <form onSubmit={handleSubmit} style={{ width: "100%", display: "flex" }}>
+                  <form onSubmit={handleSubmit} className={styles.categoryInputForm}>
                     <input
                       type="text"
                       placeholder="Add custom category..."
@@ -241,17 +248,34 @@ export default function CategoryStep({
                       autoFocus
                       aria-label="Add custom category"
                     />
+                    <button
+                      type="submit"
+                      className={styles.categoryAddBtn}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label="Add custom category"
+                    >
+                      <Plus size={14} aria-hidden="true" />
+                    </button>
                   </form>
                 </div>
               ) : (
                 <button
                   type="button"
-                  onClick={() => setShowInput(true)}
-                  className={styles.categoryItem}
+                  onClick={() => !isMaxCustomReached && setShowInput(true)}
+                  disabled={isMaxCustomReached}
+                  className={`${styles.categoryItem} ${
+                    isMaxCustomReached ? styles.categoryItemDisabled : ""
+                  }`}
                 >
                   <Plus size={14} />
                   <span>Add custom</span>
                 </button>
+              )}
+              {isMaxCustomReached && (
+                <p className={styles.customLimitMessage}>
+                  <Info size={14} className={styles.infoIcon} aria-hidden="true" />
+                  <span>Only one entry is allowed. Delete to make another</span>
+                </p>
               )}
             </div>
           </div>
@@ -279,9 +303,6 @@ export default function CategoryStep({
         <div className={shared.footerActions}>
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
           </button>
           <ContinueButton onClick={onContinue} disabled={!selectedCategory} />
         </div>

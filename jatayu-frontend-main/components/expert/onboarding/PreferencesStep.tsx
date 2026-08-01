@@ -9,6 +9,7 @@ import {
   FileText,
   Users,
   Check,
+  Sparkles,
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
@@ -39,8 +40,8 @@ type PreferencesStepProps = {
 
 const FORMAT_ICONS = {
   video: Video,
-  audio: Phone,
   written: FileText,
+  shoutout: Phone,
   group: Users,
 } as const;
 
@@ -62,9 +63,6 @@ export default function PreferencesStep({
 }: PreferencesStepProps) {
   const formatPriceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const isTextOnly =
-    selectedFormats.length === 1 && selectedFormats[0] === "written";
-
   const hasPricesForAllSelected = selectedFormats.every((id) => {
     const price = formatPrices[id];
     return price && parseInt(price, 10) > 0;
@@ -73,13 +71,7 @@ export default function PreferencesStep({
   const canContinue =
     selectedFormats.length > 0 &&
     hasPricesForAllSelected &&
-    (isTextOnly || selectedLengths.length > 0);
-
-  useEffect(() => {
-    if (isTextOnly) {
-      onSelectedLengthsChange([]);
-    }
-  }, [isTextOnly, onSelectedLengthsChange]);
+    selectedLengths.length > 0;
 
   useEffect(() => {
     onStepCompleteChange?.(6, canContinue);
@@ -169,7 +161,17 @@ export default function PreferencesStep({
             return (
               <div
                 key={fmt.id}
+                onClick={() => handleToggleFormat(fmt.id)}
                 className={`${styles.formatCard} ${isSelected ? styles.formatCardSelected : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleToggleFormat(fmt.id);
+                  }
+                }}
               >
                 {/* SVG border overlay */}
                 <svg className={styles.cardBorderSvg} viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
@@ -191,29 +193,29 @@ export default function PreferencesStep({
                 </div>
 
                 <div className={styles.formatCardBody}>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleFormat(fmt.id)}
-                    className={styles.formatCardSelect}
-                    aria-pressed={isSelected}
-                  >
-                    <div className={styles.formatCardInner}>
-                      <div className={styles.formatIconCircle}>
-                        <IconComponent className={styles.formatIcon} />
-                      </div>
-                      <div className={styles.formatInfo}>
-                        <h3 className={styles.formatTitle}>{fmt.title}</h3>
-                        <p className={styles.formatDesc}>{fmt.desc}</p>
-                      </div>
+                  <div className={styles.formatCardInner}>
+                    <div className={styles.formatIconCircle}>
+                      <IconComponent className={styles.formatIcon} />
                     </div>
-                  </button>
+                    <div className={styles.formatInfo}>
+                      <h3 className={styles.formatTitle}>{fmt.title}</h3>
+                      <p className={styles.formatDesc}>{fmt.desc}</p>
+                    </div>
+                  </div>
 
                   <div
                     className={`${styles.formatPriceRow} ${!isSelected ? styles.formatPriceRowHidden : ""}`}
+                    onClick={(event) => event.stopPropagation()}
                     onPointerDown={(event) => event.stopPropagation()}
                     aria-hidden={!isSelected}
                   >
-                    <span className={styles.formatPriceCurrency}>₹</span>
+                    <span
+                      className={`${styles.formatPriceCurrency} ${
+                        Boolean(formatPrices[fmt.id]) ? styles.formatPriceActive : ""
+                      }`}
+                    >
+                      ₹
+                    </span>
                     {isSelected ? (
                       <input
                         ref={(element) => {
@@ -222,14 +224,22 @@ export default function PreferencesStep({
                         type="text"
                         inputMode="numeric"
                         className={styles.formatPriceInput}
+                        style={{ width: `${Math.max(1, (formatPrices[fmt.id] ?? "").length || 1)}ch` }}
                         value={formatPrices[fmt.id] ?? ""}
                         onChange={(event) => handleFormatPriceChange(fmt.id, event.target.value)}
                         placeholder="0"
-                        aria-label={`${fmt.title} rate in rupees`}
+                        aria-label={`${fmt.title} rate in rupees per minute`}
                       />
                     ) : (
                       <span className={styles.formatPriceInputPlaceholder}>0</span>
                     )}
+                    <span
+                      className={`${styles.formatPriceUnit} ${
+                        Boolean(formatPrices[fmt.id]) ? styles.formatPriceActive : ""
+                      }`}
+                    >
+                      /min
+                    </span>
                   </div>
                 </div>
               </div>
@@ -240,17 +250,12 @@ export default function PreferencesStep({
 
       {/* Session Lengths Section */}
       <div
-        className={`${styles.preferencesSection} ${isTextOnly ? styles.lengthsSectionDisabled : ""}`}
+        className={styles.preferencesSection}
         style={{ marginBottom: "28px" }}
       >
         <h2 className={styles.preferencesSectionLabel}>
           Preferred Session Lengths
         </h2>
-        {isTextOnly && (
-          <p className={styles.lengthsDisabledHint}>
-            Session length is not required for text messaging.
-          </p>
-        )}
         <div className={styles.lengthsRow}>
           {lengths.map((len) => {
             const isSelected = selectedLengths.includes(len.id);
@@ -261,8 +266,6 @@ export default function PreferencesStep({
                 type="button"
                 onClick={() => handleToggleLength(len.id)}
                 className={`${styles.lengthPill} ${isSelected ? styles.lengthPillSelected : ""}`}
-                disabled={isTextOnly}
-                aria-disabled={isTextOnly}
               >
                 {len.label}
               </button>
@@ -311,9 +314,6 @@ export default function PreferencesStep({
         <div className={shared.footerActions}>
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
           </button>
           <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>

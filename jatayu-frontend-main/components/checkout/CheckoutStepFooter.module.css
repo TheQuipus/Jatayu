@@ -1,0 +1,48 @@
+.stepFooter {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 56px;
+  padding-top: 20px;
+}
+
+.stepFooterLeft {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.mainContinueBtn {
+  min-width: 140px;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  text-transform: uppercase;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--scorpion);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.backBtn:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 1100px) {
+  .stepFooter {
+    margin-top: 24px;
+  }
+}

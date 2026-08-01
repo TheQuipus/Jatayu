@@ -143,9 +143,17 @@
 }
 
 .skillPillInput {
-  width: 240px;
+  width: 250px;
   max-height: 36px;
   cursor: text;
+  padding-right: 6px;
+}
+
+.skillInputForm {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .skillInlineInput {
@@ -164,6 +172,32 @@
 
 .skillInlineInput::placeholder {
   color: rgba(255, 255, 255, 0.4);
+}
+
+.skillAddBtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--silver, #b0b0b0);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.skillAddBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white, #ffffff);
+}
+
+.skillAddBtn:active {
+  transform: scale(0.92);
 }
 
 .skillPillMain {
@@ -195,10 +229,25 @@
   cursor: pointer;
   outline: none;
   flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.skillRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white, #ffffff);
+}
+
+.skillRemoveBtn:active {
+  transform: scale(0.9);
 }
 
 .skillPillSelected .skillRemoveBtn {
   color: rgba(255, 255, 255, 0.7);
+}
+
+.skillPillSelected .skillRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white, #ffffff);
 }
 
 @media (max-width: 768px) {
@@ -274,6 +323,7 @@
 
 .footerTagRingSegmentFilled {
   stroke: var(--orange);
+  transition: opacity 0.2s ease;
 }
 
 .footerTagIconSvg,

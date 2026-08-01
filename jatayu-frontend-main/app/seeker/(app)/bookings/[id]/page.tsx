@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import BookingDetailView from "@/components/seeker/bookings/BookingDetail";
@@ -38,7 +39,9 @@ export default async function SeekerBookingDetailPage({ params }: BookingDetailP
 
   return (
     <div className={styles.page}>
-      <BookingDetailView booking={booking} />
+      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--scorpion)' }}>Loading session details...</div>}>
+        <BookingDetailView booking={booking} />
+      </Suspense>
     </div>
   );
 }

@@ -23,24 +23,6 @@
   flex-wrap: wrap;
 }
 
-.todayBtn {
-  min-height: 36px;
-  padding: 8px 14px;
-  border: 1px solid var(--mercury);
-  background: var(--white);
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--bunker);
-  cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
-}
-
-.todayBtn:hover {
-  border-color: var(--orange);
-  color: var(--orange);
-}
-
 .navGroup {
   display: flex;
   align-items: center;
@@ -125,37 +107,23 @@
 
 .weekDayHead {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 12px 6px;
   border: none;
   border-right: 1px solid var(--mercury);
   background: transparent;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  cursor: default;
 }
 
 .weekDayHead:last-child {
   border-right: none;
 }
 
-.weekDayHead:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--pomegranate) 5%, var(--white));
-}
-
 .weekDayHeadDisabled {
   opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.weekDayHeadToday .weekDayNum {
-  background: var(--pomegranate);
-  color: var(--white);
-}
-
-.weekDayHeadSelected {
-  background: color-mix(in srgb, var(--bunker) 4%, var(--white));
 }
 
 .weekDayName {
@@ -165,24 +133,6 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--dove-gray);
-}
-
-.weekDayNum {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-}
-
-.weekDayHeadSelected .weekDayNum {
-  background: var(--bunker);
-  color: var(--white);
 }
 
 .weekBody {
@@ -219,10 +169,6 @@
 
 .weekDayColumn:last-child {
   border-right: none;
-}
-
-.weekDayColumnSelected {
-  background: color-mix(in srgb, var(--gallery) 45%, var(--white));
 }
 
 .weekDayColumnDisabled {
@@ -348,10 +294,6 @@
   background: color-mix(in srgb, var(--gallery) 35%, var(--white));
 }
 
-.monthCellToday .monthDayNum {
-  background: var(--pomegranate);
-  color: var(--white);
-}
 
 .monthCellSelected {
   background: color-mix(in srgb, var(--bunker) 5%, var(--white));
@@ -375,27 +317,6 @@
   color: var(--white);
 }
 
-.monthSlotCount {
-  margin-top: auto;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--pomegranate);
-  line-height: 1.2;
-}
-
-.monthSlotCountMuted {
-  margin-top: auto;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--silver-chalice);
-  line-height: 1.2;
-}
-
-.monthCellSelected .monthSlotCount {
-  color: var(--bunker);
-}
 
 .monthTimes {
   padding: 16px 18px 20px;
@@ -464,9 +385,5 @@
     padding: 8px 4px;
   }
 
-  .monthSlotCount,
-  .monthSlotCountMuted {
-    text-align: center;
-    font-size: 11px;
-  }
+
 }

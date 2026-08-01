@@ -127,7 +127,7 @@ export default function Services() {
               <p className={styles.speaksDesc}>
                 Guidance that feels human. Have a closer look at expertise before you book.
               </p>
-              <a href="/expert#from-home" className={styles.viewAll}>
+              <a href="/expert/#from-home" className={styles.viewAll}>
                 <span className={styles.viewAllText}>
                   <span className={styles.viewAllLabel}>View all</span>
                   <span className={styles.viewAllLabel} aria-hidden="true">

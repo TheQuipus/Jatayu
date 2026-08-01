@@ -126,15 +126,12 @@ function formatWeekRangeLabel(weekStartOffset: number): string {
   const weekStart = dateFromOffset(weekStartOffset);
   const weekEnd = dateFromOffset(weekStartOffset + 6);
 
-  const sameMonth = weekStart.getMonth() === weekEnd.getMonth();
-  const sameYear = weekStart.getFullYear() === weekEnd.getFullYear();
   const startLabel = weekStart.toLocaleDateString("en-IN", {
     month: "short",
     day: "numeric",
-    ...(sameYear ? {} : { year: "numeric" }),
   });
   const endLabel = weekEnd.toLocaleDateString("en-IN", {
-    month: sameMonth ? undefined : "short",
+    month: "short",
     day: "numeric",
     year: "numeric",
   });
@@ -199,12 +196,6 @@ export default function SlotCalendarView({
     setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
   };
 
-  const handleToday = () => {
-    setWeekStartOffset(0);
-    setViewMonth(startOfMonth(today));
-    onSelectDate("date-0");
-  };
-
   const handleViewModeChange = (mode: CalendarViewMode) => {
     setViewMode(mode);
     if (mode === "week") {
@@ -212,11 +203,6 @@ export default function SlotCalendarView({
     } else {
       setViewMonth(startOfMonth(dateFromOffset(selectedOffset)));
     }
-  };
-
-  const handleDaySelect = (dateId: string, selectable: boolean) => {
-    if (!selectable) return;
-    onSelectDate(dateId);
   };
 
   const handleMonthDaySelect = (cell: MonthCell) => {
@@ -238,9 +224,7 @@ export default function SlotCalendarView({
     <div className={styles.calendar}>
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
-          <button type="button" className={styles.todayBtn} onClick={handleToday}>
-            Today
-          </button>
+
           <div className={styles.navGroup}>
             <button
               type="button"
@@ -287,38 +271,28 @@ export default function SlotCalendarView({
       {viewMode === "week" ? (
         <div className={styles.weekView}>
           <div className={styles.weekHeader}>
-            {weekDays.map((day) => {
-              const isSelected = day.dateId === selectedDate;
-              return (
-                <button
-                  key={day.dateId}
-                  type="button"
-                  className={`${styles.weekDayHead} ${
-                    day.isToday ? styles.weekDayHeadToday : ""
-                  } ${isSelected ? styles.weekDayHeadSelected : ""} ${
-                    !day.selectable ? styles.weekDayHeadDisabled : ""
-                  }`}
-                  disabled={!day.selectable}
-                  onClick={() => handleDaySelect(day.dateId, day.selectable)}
-                >
-                  <span className={styles.weekDayName}>
-                    {DAY_LABELS[day.date.getDay()]}
-                  </span>
-                  <span className={styles.weekDayNum}>{day.date.getDate()}</span>
-                </button>
-              );
-            })}
+            {weekDays.map((day) => (
+              <div
+                key={day.dateId}
+                className={`${styles.weekDayHead} ${
+                  day.isToday ? styles.weekDayHeadToday : ""
+                } ${!day.selectable ? styles.weekDayHeadDisabled : ""}`}
+              >
+                <span className={styles.weekDayName}>
+                  {day.isToday ? "Today" : `${DAY_LABELS[day.date.getDay()]} ${day.date.getDate()}`}
+                </span>
+              </div>
+            ))}
           </div>
 
           <div className={styles.weekBody}>
             {weekDays.map((day) => {
-              const isSelectedDay = day.dateId === selectedDate;
               return (
                 <div
                   key={day.dateId}
                   className={`${styles.weekDayColumn} ${
-                    isSelectedDay ? styles.weekDayColumnSelected : ""
-                  } ${!day.selectable ? styles.weekDayColumnDisabled : ""}`}
+                    !day.selectable ? styles.weekDayColumnDisabled : ""
+                  }`}
                 >
                   {!day.selectable ? null : day.slots.length === 0 ? (
                     <span className={styles.emptyDayNote}>No slots</span>
@@ -372,20 +346,10 @@ export default function SlotCalendarView({
                   disabled={!cell.selectable}
                   className={`${styles.monthCell} ${
                     !cell.inMonth ? styles.monthCellOutside : ""
-                  } ${cell.isToday ? styles.monthCellToday : ""} ${
-                    isSelected ? styles.monthCellSelected : ""
-                  }`}
+                  } ${isSelected ? styles.monthCellSelected : ""}`}
                   onClick={() => handleMonthDaySelect(cell)}
                 >
                   <span className={styles.monthDayNum}>{cell.date.getDate()}</span>
-                  {cell.selectable && cell.availableCount > 0 ? (
-                    <span className={styles.monthSlotCount}>
-                      {cell.availableCount}{" "}
-                      {cell.availableCount === 1 ? "slot" : "slots"}
-                    </span>
-                  ) : cell.selectable ? (
-                    <span className={styles.monthSlotCountMuted}>Full</span>
-                  ) : null}
                 </button>
               );
             })}

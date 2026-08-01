@@ -5,6 +5,16 @@
   z-index: 1;
 }
 
+.timePickerLabel {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--scorpion);
+  margin-bottom: 6px;
+  text-transform: capitalize;
+}
+
 .timePickerDisabled {
   opacity: 0.35;
   pointer-events: none;
@@ -13,6 +23,8 @@
 .timePickerFieldOuter {
   position: relative;
   width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .timePickerField {
@@ -23,13 +35,18 @@
   background-color: var(--white);
   border: 1px solid var(--mercury);
   border-radius: 10px;
-  cursor: pointer;
   text-align: left;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='rgba(0,0,0,0.45)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink);
+  outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.timePickerField::placeholder {
+  color: var(--silver-chalice);
 }
 
 .timePickerField:hover:not(:disabled) {
@@ -40,7 +57,8 @@
   z-index: 20;
 }
 
-.timePickerFieldOpen {
+.timePickerFieldOpen,
+.timePickerField:focus {
   border-color: var(--pomegranate);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--pomegranate) 10%, transparent);
 }
@@ -48,6 +66,28 @@
 .timePickerField:disabled {
   cursor: not-allowed;
   background: var(--seashell);
+}
+
+.clockBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 4px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--silver-chalice);
+  cursor: pointer;
+  outline: none;
+  transition: color 0.2s ease;
+}
+
+.clockBtn:hover:not(:disabled) {
+  color: var(--ink);
 }
 
 .timePickerFieldPlaceholder .timePickerValue {
@@ -66,6 +106,10 @@
 }
 
 .timePickerPopover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
   background: var(--white);
   border: 1px solid var(--mercury);
   border-radius: 12px;

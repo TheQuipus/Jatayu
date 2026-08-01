@@ -23,10 +23,12 @@
   transform: translateY(0);
 }
 
-.continueBtn:disabled {
+.continueBtn:disabled,
+.continueBtn[aria-disabled="true"] {
   opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;
+  pointer-events: none;
 }
 
 .labelText {

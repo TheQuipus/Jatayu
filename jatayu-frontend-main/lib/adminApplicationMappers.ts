@@ -75,9 +75,30 @@ function buildPortfolioItems(app: ExpertApplicationSubmission) {
     type: "link" | "document";
     verified: boolean;
   }[] = [];
+  const seenIds = new Set<string>();
+
+  const pushItem = (item: {
+    id: string;
+    title: string;
+    subtitle: string;
+    url?: string;
+    type: "link" | "document";
+    verified: boolean;
+  }) => {
+    let uniqueId = item.id;
+    let counter = 1;
+    while (seenIds.has(uniqueId)) {
+      uniqueId = `${item.id}-${counter++}`;
+    }
+    seenIds.add(uniqueId);
+    items.push({ ...item, id: uniqueId });
+  };
+
+  const normalizedAppLinkedin = app.linkedin ? app.linkedin.trim().replace(/^https?:\/\//i, "") : "";
+  const normalizedAppPortfolio = app.portfolio ? app.portfolio.trim().replace(/^https?:\/\//i, "") : "";
 
   if (app.linkedin) {
-    items.push({
+    pushItem({
       id: "portfolio-linkedin",
       title: "LinkedIn Profile",
       subtitle: "Professional network profile",
@@ -89,8 +110,15 @@ function buildPortfolioItems(app: ExpertApplicationSubmission) {
 
   for (const link of app.portfolioLinks ?? []) {
     if (!link.url.trim()) continue;
-    items.push({
-      id: link.id,
+    const normalizedLinkUrl = link.url.trim().replace(/^https?:\/\//i, "");
+    if (normalizedAppLinkedin && normalizedLinkUrl === normalizedAppLinkedin) {
+      continue;
+    }
+    if (normalizedAppPortfolio && normalizedLinkUrl === normalizedAppPortfolio) {
+      continue;
+    }
+    pushItem({
+      id: link.id || `portfolio-${link.platform.toLowerCase()}`,
       title: link.platform,
       subtitle: link.url,
       url: link.url.startsWith("http") ? link.url : `https://${link.url}`,
@@ -99,8 +127,14 @@ function buildPortfolioItems(app: ExpertApplicationSubmission) {
     });
   }
 
-  if (app.portfolio && !(app.portfolioLinks ?? []).some((link) => link.url === app.portfolio)) {
-    items.push({
+  if (
+    app.portfolio &&
+    normalizedAppPortfolio !== normalizedAppLinkedin &&
+    !(app.portfolioLinks ?? []).some(
+      (link) => link.url.trim().replace(/^https?:\/\//i, "") === normalizedAppPortfolio,
+    )
+  ) {
+    pushItem({
       id: "portfolio-site",
       title: "Portfolio / Website",
       subtitle: "Work samples and case studies",
@@ -111,8 +145,8 @@ function buildPortfolioItems(app: ExpertApplicationSubmission) {
   }
 
   for (const sample of app.portfolioSamples ?? []) {
-    items.push({
-      id: sample.id,
+    pushItem({
+      id: sample.id ? `sample-${sample.id}` : `sample-${sample.fileName}`,
       title: sample.description.trim() || sample.fileName,
       subtitle: `${sample.fileSize} · ${sample.fileType}`,
       url: sample.url,
@@ -146,6 +180,20 @@ function buildReviewDocuments(app: ExpertApplicationSubmission) {
     url: string | null;
     size?: string;
   }[] = [];
+  const seenIds = new Set<string>();
+
+  const pushDoc = (doc: {
+    id: string;
+    name: string;
+    iconVariant: (typeof DOC_ICON_VARIANTS)[number];
+    verified: boolean;
+    url: string | null;
+    size?: string;
+  }) => {
+    if (seenIds.has(doc.id)) return;
+    seenIds.add(doc.id);
+    docs.push(doc);
+  };
 
   const typeLabels: Record<string, string> = {
     aadhaar: "Aadhaar Card",
@@ -156,7 +204,7 @@ function buildReviewDocuments(app: ExpertApplicationSubmission) {
   };
 
   if (app.avatar && isUserUploadedMedia(app.avatar)) {
-    docs.push({
+    pushDoc({
       id: "profile-photo",
       name: "Profile Photo",
       iconVariant: DOC_ICON_VARIANTS[docs.length % DOC_ICON_VARIANTS.length],
@@ -167,7 +215,7 @@ function buildReviewDocuments(app: ExpertApplicationSubmission) {
 
   if (app.governmentId?.front) {
     const label = typeLabels[app.governmentId.type] ?? "Government ID";
-    docs.push({
+    pushDoc({
       id: "gov-id-front",
       name: `${label} (Front)`,
       iconVariant: DOC_ICON_VARIANTS[docs.length % DOC_ICON_VARIANTS.length],
@@ -179,7 +227,7 @@ function buildReviewDocuments(app: ExpertApplicationSubmission) {
 
   if (app.governmentId?.back) {
     const label = typeLabels[app.governmentId.type] ?? "Government ID";
-    docs.push({
+    pushDoc({
       id: "gov-id-back",
       name: `${label} (Back)`,
       iconVariant: DOC_ICON_VARIANTS[docs.length % DOC_ICON_VARIANTS.length],
@@ -190,26 +238,16 @@ function buildReviewDocuments(app: ExpertApplicationSubmission) {
   }
 
   for (const cert of app.certificates) {
-    docs.push({
-      id: cert.id,
-      name: cert.name,
-      iconVariant: DOC_ICON_VARIANTS[docs.length % DOC_ICON_VARIANTS.length],
-      verified,
-      url: getCertificatePreviewUrl(cert),
-      size: cert.size,
-    });
-  }
-
-  for (const sample of app.portfolioSamples ?? []) {
-    if (!sample.url) continue;
-    docs.push({
-      id: `portfolio-${sample.id}`,
-      name: sample.description.trim() || sample.fileName,
-      iconVariant: DOC_ICON_VARIANTS[docs.length % DOC_ICON_VARIANTS.length],
-      verified: sample.status === "complete" && verified,
-      url: sample.url,
-      size: sample.fileSize,
-    });
+    if (isIdentityDocumentName(cert.name)) {
+      pushDoc({
+        id: cert.id,
+        name: cert.name,
+        iconVariant: DOC_ICON_VARIANTS[docs.length % DOC_ICON_VARIANTS.length],
+        verified,
+        url: getCertificatePreviewUrl(cert),
+        size: cert.size,
+      });
+    }
   }
 
   return docs;
@@ -217,9 +255,15 @@ function buildReviewDocuments(app: ExpertApplicationSubmission) {
 
 function buildReviewCertifications(app: ExpertApplicationSubmission) {
   const verified = isAdminVerified(app);
+  const seenIds = new Set<string>();
 
   return app.certificates
     .filter((cert) => !isIdentityDocumentName(cert.name))
+    .filter((cert) => {
+      if (seenIds.has(cert.id)) return false;
+      seenIds.add(cert.id);
+      return true;
+    })
     .map((cert) => ({
       id: cert.id,
       name: cert.name.replace(/\.pdf$/i, ""),
@@ -231,17 +275,24 @@ function buildReviewCertifications(app: ExpertApplicationSubmission) {
 
 function buildReviewExperience(app: ExpertApplicationSubmission) {
   const positions = getFilledEmploymentPositions(app.employmentPositions ?? []);
+  const seenIds = new Set<string>();
 
   if (positions.length > 0) {
-    return positions.map((position) => ({
-      id: position.id,
-      title: position.jobTitle.trim() || "Role",
-      company: position.company.trim() || "—",
-      level: getExperienceYearsLabel(app.experienceLevel),
-      dates: formatPositionDates(position),
-      description: position.responsibilities.trim() || "No responsibilities provided.",
-      skills: app.skills,
-    }));
+    return positions
+      .filter((position) => {
+        if (seenIds.has(position.id)) return false;
+        seenIds.add(position.id);
+        return true;
+      })
+      .map((position) => ({
+        id: position.id,
+        title: position.jobTitle.trim() || "Role",
+        company: position.company.trim() || "—",
+        level: getExperienceYearsLabel(app.experienceLevel),
+        dates: formatPositionDates(position),
+        description: position.responsibilities.trim() || "No responsibilities provided.",
+        skills: app.skills.slice(0, 3),
+      }));
   }
 
   if (!app.professionalTitle.trim() && !app.bio.trim() && !app.tagLine.trim()) {
@@ -256,32 +307,51 @@ function buildReviewExperience(app: ExpertApplicationSubmission) {
       level: getExperienceYearsLabel(app.experienceLevel),
       dates: "Submitted via onboarding",
       description: app.bio || app.tagLine || "No experience summary provided.",
-      skills: app.skills,
+      skills: app.skills.slice(0, 3),
     },
   ];
 }
 
 function buildReviewEducation(app: ExpertApplicationSubmission) {
-  return getFilledEducationDegrees(app.educationDegrees ?? []).map((degree) => ({
-    id: degree.id,
-    degree: degree.degree.trim() || "Degree",
-    field: degree.fieldOfStudy.trim() || "—",
-    institution: degree.institution.trim() || "—",
-    year: degree.graduationYear.trim() || "—",
-    honours: degree.honours.trim() || undefined,
-  }));
+  const degrees = getFilledEducationDegrees(app.educationDegrees ?? []);
+  const seenIds = new Set<string>();
+
+  return degrees
+    .filter((degree) => {
+      if (seenIds.has(degree.id)) return false;
+      seenIds.add(degree.id);
+      return true;
+    })
+    .map((degree) => ({
+      id: degree.id,
+      degree: degree.degree.trim() || "Degree",
+      field: degree.fieldOfStudy.trim() || "—",
+      institution: degree.institution.trim() || "—",
+      year: degree.graduationYear.trim() || "—",
+      honours: degree.honours.trim() || undefined,
+    }));
 }
 
 function buildReviewAvailability(app: ExpertApplicationSubmission) {
+  const seenKeys = new Set<string>();
+  const slots: { id: string; days: string; hours: string }[] = [];
+
+  for (const slot of app.availabilitySlots ?? []) {
+    const key = `${slot.days.join(",")}_${slot.from}_${slot.to}`;
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    slots.push({
+      id: slot.id,
+      days: slot.days.length > 0 ? slot.days.join(", ") : "No days selected",
+      hours: slot.from && slot.to ? `${slot.from} – ${slot.to}` : "Hours not set",
+    });
+  }
+
   return {
     timezone: app.timezone,
     timezoneLabel: app.timezone ? formatTimezoneLabel(app.timezone) : "Not configured",
     acceptCustomRequests: app.acceptCustomRequests ?? false,
-    slots: (app.availabilitySlots ?? []).map((slot) => ({
-      id: slot.id,
-      days: slot.days.length > 0 ? slot.days.join(", ") : "No days selected",
-      hours: slot.from && slot.to ? `${slot.from} – ${slot.to}` : "Hours not set",
-    })),
+    slots,
   };
 }
 
@@ -521,8 +591,6 @@ export function mapToApplicationReview(app: ExpertApplicationSubmission) {
       { label: "YRS EXP.", value: app.experienceLevel === "leader" ? "10+" : app.experienceLevel === "established" ? "4-9" : "1-3" },
       { label: "SESSIONS", value: "0" },
       { label: "CREDENTIALS", value: String(app.certificates.length) },
-      { label: "EDUCATION", value: String((app.educationDegrees ?? []).filter((degree) => degree.institution.trim() || degree.degree).length) },
-      { label: "PORTFOLIO", value: app.portfolio || (app.portfolioLinks ?? []).length > 0 ? "1" : "0" },
     ],
     certifications: buildReviewCertifications(app),
     documents: buildReviewDocuments(app),
@@ -576,6 +644,10 @@ export function mapApplicationToExpert(app: ExpertApplicationSubmission): Expert
     replyTime: "24 hr",
     location: app.location,
     sampleAnswers,
+    email: app.email,
+    phone: app.phone,
+    formats: app.formats,
+    formatPrices: app.formatPrices,
   };
 }
 
@@ -643,17 +715,28 @@ export function mapToExpertProfile(app: ExpertApplicationSubmission) {
         : [],
     ),
     availabilityNote: app.timezone ? `Timezone: ${app.timezone}` : "Availability set during onboarding.",
-    experience: [
-      {
-        id: "e1",
-        title: app.professionalTitle,
-        company: `${app.categoryLabel} · ${app.location}`,
-        dates: "From onboarding",
-        description: app.bio || app.tagLine,
-        skills: app.skills.slice(0, 3),
-        iconVariant: "purple" as const,
-      },
-    ],
+    experience: (getFilledEmploymentPositions(app.employmentPositions ?? []).length > 0
+      ? getFilledEmploymentPositions(app.employmentPositions ?? []).map((pos) => ({
+          id: pos.id,
+          title: pos.jobTitle.trim() || app.professionalTitle,
+          company: `${pos.company.trim()} · ${app.location}`,
+          dates: formatPositionDates(pos),
+          description: pos.responsibilities.trim() || app.bio || app.tagLine,
+          skills: app.skills.slice(0, 3),
+          iconVariant: "purple" as const,
+        }))
+      : [
+          {
+            id: "e1",
+            title: app.professionalTitle || "Professional",
+            company: `${app.categoryLabel} · ${app.location}`,
+            dates: "From onboarding",
+            description: app.bio || app.tagLine,
+            skills: app.skills.slice(0, 3),
+            iconVariant: "purple" as const,
+          },
+        ]
+    ),
     allSkills: app.skills,
     audiences: app.audiences.map(getAudienceLabel),
     portfolioItems: buildPortfolioItems(app),

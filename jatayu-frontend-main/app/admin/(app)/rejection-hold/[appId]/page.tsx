@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import RejectionHoldHandling from "@/components/admin/rejection-hold/RejectionHoldHandling";
 import { getAdminAppStaticParams } from "@/lib/adminStaticParams";
 
@@ -19,5 +20,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function RejectionHoldPage({ params }: PageProps) {
   const { appId } = await params;
-  return <RejectionHoldHandling appId={appId} />;
+  return (
+    <Suspense>
+      <RejectionHoldHandling appId={appId} />
+    </Suspense>
+  );
 }

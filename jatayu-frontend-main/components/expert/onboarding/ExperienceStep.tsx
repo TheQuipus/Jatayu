@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   Building2,
+  Check,
   FolderOpen,
   Globe,
   GraduationCap,
@@ -24,6 +25,9 @@ import {
   getYearOptions,
   isEducationDegreeStarted,
   isEducationDegreeValid,
+  isEmploymentPositionValid,
+  isGraduationYearInvalid,
+  isPositionDateOrderValid,
   MAX_EDUCATION_DEGREES,
   MAX_EMPLOYMENT_POSITIONS,
   MONTH_OPTIONS,
@@ -75,27 +79,17 @@ export default function ExperienceStep({
     const isPositionStarted = (pos: EmploymentPosition) =>
       Boolean(
         pos.jobTitle.trim() ||
-          pos.company.trim() ||
-          pos.startMonth ||
-          pos.startYear ||
-          pos.endMonth ||
-          pos.endYear ||
-          pos.responsibilities.trim() ||
-          pos.currentlyWorking
+        pos.company.trim() ||
+        pos.startMonth ||
+        pos.startYear ||
+        pos.endMonth ||
+        pos.endYear ||
+        pos.responsibilities.trim() ||
+        pos.currentlyWorking
       );
-
-    const isPositionValid = (pos: EmploymentPosition) => {
-      const hasStart = Boolean(pos.startMonth && pos.startYear);
-      const hasEnd = Boolean(pos.endMonth && pos.endYear);
-      return (
-        Boolean(pos.jobTitle.trim() && pos.company.trim()) &&
-        hasStart &&
-        (pos.currentlyWorking || hasEnd)
-      );
-    };
 
     const allPositionsValid = employmentPositions.every(
-      (pos) => !isPositionStarted(pos) || isPositionValid(pos)
+      (pos) => !isPositionStarted(pos) || isEmploymentPositionValid(pos)
     );
 
     const allDegreesValid = educationDegrees.every(
@@ -103,7 +97,7 @@ export default function ExperienceStep({
     );
 
     const hasAtLeastOneFilled =
-      employmentPositions.some(isPositionValid) ||
+      employmentPositions.some(isEmploymentPositionValid) ||
       educationDegrees.some((deg) => isEducationDegreeStarted(deg) && isEducationDegreeValid(deg)) ||
       Boolean(linkedin.trim() || portfolio.trim() || portfolioSamples.length > 0);
 
@@ -117,6 +111,54 @@ export default function ExperienceStep({
   const [expandedSection, setExpandedSection] = useState<
     "employment" | "education" | "portfolio" | null
   >(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSynced, setIsSynced] = useState(false);
+
+  const handleLinkedinSync = () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+
+    setTimeout(() => {
+      setIsSyncing(false);
+      setIsSynced(true);
+
+      if (!linkedin.trim()) {
+        const slug = userName.trim().toLowerCase().replace(/\s+/g, "");
+        onLinkedinChange(`https://linkedin.com/in/${slug || "expert"}`);
+      }
+
+      if (employmentPositions.length === 0 || !employmentPositions.some((p) => p.jobTitle.trim())) {
+        onEmploymentPositionsChange([
+          {
+            id: Date.now().toString(),
+            jobTitle: "Senior Consultant / Specialist",
+            company: "Enterprise Solutions",
+            startMonth: "1",
+            startYear: "2020",
+            endMonth: "",
+            endYear: "",
+            currentlyWorking: true,
+            responsibilities: "Leading technical strategy, architecture design, and high-impact advisory.",
+          },
+        ]);
+      }
+
+      if (educationDegrees.length === 0 || !educationDegrees.some((d) => d.degree.trim())) {
+        onEducationDegreesChange([
+          {
+            id: Date.now().toString(),
+            institution: "State University",
+            degree: "Bachelor's Degree",
+            fieldOfStudy: "Computer Science / IT",
+            graduationYear: "2019",
+            honours: "",
+          },
+        ]);
+      }
+
+      setExpandedSection("employment");
+    }, 800);
+  };
   const yearOptions = useMemo(() => getYearOptions(), []);
 
   const monthOptions = useMemo(
@@ -147,9 +189,60 @@ export default function ExperienceStep({
 
   const updatePosition = (index: number, patch: Partial<EmploymentPosition>) => {
     onEmploymentPositionsChange(
-      employmentPositions.map((position, positionIndex) =>
-        positionIndex === index ? { ...position, ...patch } : position,
-      ),
+      employmentPositions.map((position, positionIndex) => {
+        if (positionIndex !== index) return position;
+
+        const updated = { ...position, ...patch };
+
+        if (!updated.currentlyWorking && updated.startYear && updated.endYear) {
+          const sYear = Number.parseInt(updated.startYear, 10);
+          const eYear = Number.parseInt(updated.endYear, 10);
+
+          if (eYear < sYear) {
+            updated.endYear = "";
+            updated.endMonth = "";
+          } else if (eYear === sYear && updated.startMonth && updated.endMonth) {
+            const sMonth = Number.parseInt(updated.startMonth, 10);
+            const eMonth = Number.parseInt(updated.endMonth, 10);
+            if (eMonth < sMonth) {
+              updated.endMonth = "";
+            }
+          }
+        }
+
+        if (!updated.currentlyWorking && updated.endYear && updated.startYear) {
+          const sYear = Number.parseInt(updated.startYear, 10);
+          const eYear = Number.parseInt(updated.endYear, 10);
+
+          if (sYear > eYear) {
+            updated.startYear = "";
+            updated.startMonth = "";
+          } else if (sYear === eYear && updated.startMonth && updated.endMonth) {
+            const sMonth = Number.parseInt(updated.startMonth, 10);
+            const eMonth = Number.parseInt(updated.endMonth, 10);
+            if (sMonth > eMonth) {
+              updated.startMonth = "";
+            }
+          }
+        }
+
+        const { month: cMonthStr, year: cYearStr } = getCurrentMonthYear();
+        const cMonth = Number.parseInt(cMonthStr, 10);
+
+        if (updated.startYear === cYearStr && updated.startMonth) {
+          if (Number.parseInt(updated.startMonth, 10) > cMonth) {
+            updated.startMonth = "";
+          }
+        }
+
+        if (!updated.currentlyWorking && updated.endYear === cYearStr && updated.endMonth) {
+          if (Number.parseInt(updated.endMonth, 10) > cMonth) {
+            updated.endMonth = "";
+          }
+        }
+
+        return updated;
+      }),
     );
   };
 
@@ -204,13 +297,30 @@ export default function ExperienceStep({
       </div>
 
       <div className={`${shared.cardBody} ${styles.experienceCardBody}`}>
-        <h1 className={`${shared.questionTitle} ${styles.questionTitle}`}>
-        What is your <span className={shared.accentWord}>experience level</span>?
-        </h1>
+        <div className={styles.questionTitleHeaderRow}>
+          <div>
+            <h1 className={`${shared.questionTitle} ${styles.questionTitle}`}>
+              What is your <span className={shared.accentWord}>experience level</span>?
+            </h1>
+            <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
+              This helps us match you with the right consultation requests.
+            </p>
+          </div>
 
-        <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
-          This helps us match you with the right consultation requests.
-        </p>
+          <button
+            type="button"
+            className={`${styles.linkedinSyncBtn} ${isSynced ? styles.linkedinSyncBtnDone : ""}`}
+            onClick={handleLinkedinSync}
+            disabled={isSyncing}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#0A66C2" aria-hidden="true" className={styles.linkedinIcon}>
+              <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+            </svg>
+            <span className={styles.linkedinBtnText}>
+              {isSyncing ? "Syncing..." : isSynced ? "LinkedIn Synced" : "LinkedIn"}
+            </span>
+          </button>
+        </div>
 
         <ul className={`${styles.accordionList} ${styles.experienceAccordionRoot}`}>
           <ExperienceAccordionItem
@@ -222,142 +332,202 @@ export default function ExperienceStep({
             panelClassName={styles.accPanelEmployment}
           >
             <div className={styles.entryList}>
-              {employmentPositions.map((position, index) => (
-                <div key={position.id} className={styles.entryBlock}>
-                  <div className={styles.entryHeader}>
-                    <span className={styles.entryLabel}>Position {index + 1}</span>
-                    {index > 0 ? (
-                      <button
-                        type="button"
-                        className={styles.entryRemoveBtn}
-                        onClick={() => handleRemovePosition(index)}
-                      >
-                        Remove
-                      </button>
-                    ) : null}
-                  </div>
-                  <div className={styles.entryCard}>
-                  <div className={styles.positionForm}>
-                    <div className={styles.fieldRow}>
-                      <div className={styles.fieldGroup}>
-                        <label htmlFor={`job-title-${position.id}`} className={styles.fieldLabel}>
-                          Job Title *
-                        </label>
-                        <input
-                          id={`job-title-${position.id}`}
-                          type="text"
-                          className={styles.textField}
-                          placeholder="e.g. Co-Founder & CEO"
-                          value={position.jobTitle ?? ""}
-                          onChange={(event) =>
-                            updatePosition(index, { jobTitle: event.target.value })
-                          }
-                        />
-                      </div>
+              {employmentPositions.map((position, index) => {
+                const { month: curMonthStr, year: curYearStr } = getCurrentMonthYear();
+                const curMonthNum = Number.parseInt(curMonthStr, 10);
 
-                      <div className={styles.fieldGroup}>
-                        <label htmlFor={`company-${position.id}`} className={styles.fieldLabel}>
-                          Company / Organisation *
-                        </label>
-                        <input
-                          id={`company-${position.id}`}
-                          type="text"
-                          className={styles.textField}
-                          placeholder="e.g. Zomato, Infosys, Self"
-                          value={position.company ?? ""}
-                          onChange={(event) =>
-                            updatePosition(index, { company: event.target.value })
-                          }
-                        />
-                      </div>
+                const isSameYear = Boolean(
+                  !position.currentlyWorking &&
+                  position.startYear &&
+                  position.endYear &&
+                  position.startYear === position.endYear
+                );
+
+                const isStartCurrentYear = position.startYear === curYearStr;
+                const isEndCurrentYear = !position.currentlyWorking && position.endYear === curYearStr;
+
+                const filteredStartYears = (!position.currentlyWorking && position.endYear)
+                  ? yearOptions.filter((y) => Number.parseInt(y, 10) <= Number.parseInt(position.endYear, 10))
+                  : yearOptions;
+
+                const posStartYearOptions = [
+                  { value: "", label: "Year" },
+                  ...filteredStartYears.map((year) => ({ value: year, label: year })),
+                ];
+
+                const maxStartMonth = Math.min(
+                  isStartCurrentYear ? curMonthNum : 12,
+                  isSameYear && position.endMonth ? Number.parseInt(position.endMonth, 10) : 12
+                );
+
+                const filteredStartMonths = MONTH_OPTIONS.filter(
+                  (m) => Number.parseInt(m.value, 10) <= maxStartMonth
+                );
+
+                const posStartMonthOptions = [
+                  { value: "", label: "Month" },
+                  ...filteredStartMonths.map((m) => ({ value: m.value, label: m.label })),
+                ];
+
+                const filteredEndYears = position.startYear
+                  ? yearOptions.filter((y) => Number.parseInt(y, 10) >= Number.parseInt(position.startYear, 10))
+                  : yearOptions;
+
+                const posEndYearOptions = [
+                  { value: "", label: "Year" },
+                  ...filteredEndYears.map((year) => ({ value: year, label: year })),
+                ];
+
+                const minEndMonth = isSameYear && position.startMonth ? Number.parseInt(position.startMonth, 10) : 1;
+                const maxEndMonth = isEndCurrentYear ? curMonthNum : 12;
+
+                const filteredEndMonths = MONTH_OPTIONS.filter((m) => {
+                  const val = Number.parseInt(m.value, 10);
+                  return val >= minEndMonth && val <= maxEndMonth;
+                });
+
+                const posEndMonthOptions = [
+                  { value: "", label: "Month" },
+                  ...filteredEndMonths.map((m) => ({ value: m.value, label: m.label })),
+                ];
+
+                return (
+                  <div key={position.id} className={styles.entryBlock}>
+                    <div className={styles.entryHeader}>
+                      <span className={styles.entryLabel}>Position {index + 1}</span>
+                      {index > 0 ? (
+                        <button
+                          type="button"
+                          className={styles.entryRemoveBtn}
+                          onClick={() => handleRemovePosition(index)}
+                        >
+                          Remove
+                        </button>
+                      ) : null}
                     </div>
+                    <div className={styles.entryCard}>
+                      <div className={styles.positionForm}>
+                        <div className={styles.fieldRow}>
+                          <div className={styles.fieldGroup}>
+                            <label htmlFor={`job-title-${position.id}`} className={styles.fieldLabel}>
+                              Job Title *
+                            </label>
+                            <input
+                              id={`job-title-${position.id}`}
+                              type="text"
+                              className={styles.textField}
+                              placeholder="e.g. Co-Founder & CEO"
+                              value={position.jobTitle ?? ""}
+                              onChange={(event) =>
+                                updatePosition(index, { jobTitle: event.target.value })
+                              }
+                            />
+                          </div>
 
-                    <div className={styles.fieldRow}>
-                      <div className={styles.fieldGroup}>
-                        <span className={styles.fieldLabel}>Start Date *</span>
-                        <div className={styles.dateRow}>
-                          <ExperienceSelect
-                            value={position.startMonth ?? ""}
-                            options={monthOptions}
-                            onChange={(nextValue) =>
-                              updatePosition(index, { startMonth: nextValue })
-                            }
+                          <div className={styles.fieldGroup}>
+                            <label htmlFor={`company-${position.id}`} className={styles.fieldLabel}>
+                              Company / Organisation *
+                            </label>
+                            <input
+                              id={`company-${position.id}`}
+                              type="text"
+                              className={styles.textField}
+                              placeholder="e.g. Zomato, Infosys, Self"
+                              value={position.company ?? ""}
+                              onChange={(event) =>
+                                updatePosition(index, { company: event.target.value })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className={styles.fieldRow}>
+                          <div className={styles.fieldGroup}>
+                            <span className={styles.fieldLabel}>Start Date *</span>
+                            <div className={styles.dateRow}>
+                              <ExperienceSelect
+                                value={position.startMonth ?? ""}
+                                options={posStartMonthOptions}
+                                onChange={(nextValue) =>
+                                  updatePosition(index, { startMonth: nextValue })
+                                }
+                              />
+                              <ExperienceSelect
+                                value={position.startYear ?? ""}
+                                options={posStartYearOptions}
+                                onChange={(nextValue) =>
+                                  updatePosition(index, { startYear: nextValue })
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <div className={styles.fieldGroup}>
+                            <span className={styles.fieldLabel}>End Date *</span>
+                            <div className={styles.dateRow}>
+                              <ExperienceSelect
+                                value={position.endMonth ?? ""}
+                                options={posEndMonthOptions}
+                                disabled={Boolean(position.currentlyWorking)}
+                                onChange={(nextValue) =>
+                                  updatePosition(index, { endMonth: nextValue })
+                                }
+                              />
+                              <ExperienceSelect
+                                value={position.endYear ?? ""}
+                                options={posEndYearOptions}
+                                disabled={Boolean(position.currentlyWorking)}
+                                onChange={(nextValue) =>
+                                  updatePosition(index, { endYear: nextValue })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <label className={styles.checkboxRow}>
+                          <input
+                            type="checkbox"
+                            className={styles.checkboxInput}
+                            checked={Boolean(position.currentlyWorking)}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              if (checked) {
+                                const { month, year } = getCurrentMonthYear();
+                                updatePosition(index, {
+                                  currentlyWorking: true,
+                                  endMonth: month,
+                                  endYear: year,
+                                });
+                                return;
+                              }
+                              updatePosition(index, { currentlyWorking: false });
+                            }}
                           />
-                          <ExperienceSelect
-                            value={position.startYear ?? ""}
-                            options={yearSelectOptions}
-                            onChange={(nextValue) =>
-                              updatePosition(index, { startYear: nextValue })
+                          <span className={styles.checkboxLabel}>Currently working here</span>
+                        </label>
+
+                        <div className={styles.fieldGroup}>
+                          <label htmlFor={`responsibilities-${position.id}`} className={styles.fieldLabel}>
+                            Key Responsibilities / Impact{" "}
+                            <span className={styles.optionalTag}>(Optional)</span>
+                          </label>
+                          <textarea
+                            id={`responsibilities-${position.id}`}
+                            className={styles.textareaField}
+                            rows={3}
+                            placeholder="Briefly describe what you did and the impact you had..."
+                            value={position.responsibilities ?? ""}
+                            onChange={(event) =>
+                              updatePosition(index, { responsibilities: event.target.value })
                             }
                           />
                         </div>
                       </div>
-
-                      <div className={styles.fieldGroup}>
-                        <span className={styles.fieldLabel}>End Date *</span>
-                        <div className={styles.dateRow}>
-                          <ExperienceSelect
-                            value={position.endMonth ?? ""}
-                            options={monthOptions}
-                            disabled={Boolean(position.currentlyWorking)}
-                            onChange={(nextValue) =>
-                              updatePosition(index, { endMonth: nextValue })
-                            }
-                          />
-                          <ExperienceSelect
-                            value={position.endYear ?? ""}
-                            options={yearSelectOptions}
-                            disabled={Boolean(position.currentlyWorking)}
-                            onChange={(nextValue) =>
-                              updatePosition(index, { endYear: nextValue })
-                            }
-                          />
-                        </div>
-                      </div>
                     </div>
-
-                    <label className={styles.checkboxRow}>
-                      <input
-                        type="checkbox"
-                        className={styles.checkboxInput}
-                        checked={Boolean(position.currentlyWorking)}
-                        onChange={(event) => {
-                          const checked = event.target.checked;
-                          if (checked) {
-                            const { month, year } = getCurrentMonthYear();
-                            updatePosition(index, {
-                              currentlyWorking: true,
-                              endMonth: month,
-                              endYear: year,
-                            });
-                            return;
-                          }
-                          updatePosition(index, { currentlyWorking: false });
-                        }}
-                      />
-                      <span className={styles.checkboxLabel}>Currently working here</span>
-                    </label>
-
-                  <div className={styles.fieldGroup}>
-                    <label htmlFor={`responsibilities-${position.id}`} className={styles.fieldLabel}>
-                      Key Responsibilities / Impact{" "}
-                      <span className={styles.optionalTag}>(Optional)</span>
-                    </label>
-                    <textarea
-                      id={`responsibilities-${position.id}`}
-                      className={styles.textareaField}
-                      rows={3}
-                      placeholder="Briefly describe what you did and the impact you had..."
-                      value={position.responsibilities ?? ""}
-                      onChange={(event) =>
-                        updatePosition(index, { responsibilities: event.target.value })
-                      }
-                    />
                   </div>
-                  </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <button
@@ -395,87 +565,95 @@ export default function ExperienceStep({
                     ) : null}
                   </div>
                   <div className={styles.entryCard}>
-                  <div className={styles.positionForm}>
-                  <div className={styles.fieldRow}>
-                    <div className={styles.fieldGroup}>
-                      <label htmlFor={`degree-${degree.id}`} className={styles.fieldLabel}>
-                        Degree / Qualification
-                      </label>
-                      <ExperienceSelect
-                        id={`degree-${degree.id}`}
-                        value={degree.degree ?? ""}
-                        options={degreeOptions}
-                        onChange={(nextValue) => updateDegree(index, { degree: nextValue })}
-                      />
-                    </div>
+                    <div className={styles.positionForm}>
+                      <div className={styles.fieldRow}>
+                        <div className={styles.fieldGroup}>
+                          <label htmlFor={`degree-${degree.id}`} className={styles.fieldLabel}>
+                            Degree / Qualification
+                          </label>
+                          <ExperienceSelect
+                            id={`degree-${degree.id}`}
+                            value={degree.degree ?? ""}
+                            options={degreeOptions}
+                            onChange={(nextValue) => updateDegree(index, { degree: nextValue })}
+                          />
+                        </div>
 
-                    <div className={styles.fieldGroup}>
-                      <label htmlFor={`field-${degree.id}`} className={styles.fieldLabel}>
-                        Field of Study
-                      </label>
-                      <ExperienceSelect
-                        id={`field-${degree.id}`}
-                        value={degree.fieldOfStudy ?? ""}
-                        options={fieldOfStudyOptions}
-                        onChange={(nextValue) => updateDegree(index, { fieldOfStudy: nextValue })}
-                      />
-                    </div>
-                  </div>
+                        <div className={styles.fieldGroup}>
+                          <label htmlFor={`field-${degree.id}`} className={styles.fieldLabel}>
+                            Field of Study
+                          </label>
+                          <ExperienceSelect
+                            id={`field-${degree.id}`}
+                            value={degree.fieldOfStudy ?? ""}
+                            options={fieldOfStudyOptions}
+                            onChange={(nextValue) => updateDegree(index, { fieldOfStudy: nextValue })}
+                          />
+                        </div>
+                      </div>
 
-                  <div className={styles.fieldRow}>
-                    <div className={styles.fieldGroup}>
-                      <label htmlFor={`institution-${degree.id}`} className={styles.fieldLabel}>
-                        Institution Name *
-                      </label>
-                      <input
-                        id={`institution-${degree.id}`}
-                        type="text"
-                        className={styles.textField}
-                        placeholder="e.g. IIT Bombay, Delhi University"
-                        value={degree.institution ?? ""}
-                        onChange={(event) =>
-                          updateDegree(index, { institution: event.target.value })
-                        }
-                      />
-                    </div>
+                      <div className={styles.fieldRow}>
+                        <div className={styles.fieldGroup}>
+                          <label htmlFor={`institution-${degree.id}`} className={styles.fieldLabel}>
+                            Institution Name *
+                          </label>
+                          <input
+                            id={`institution-${degree.id}`}
+                            type="text"
+                            className={styles.textField}
+                            placeholder="e.g. IIT Bombay, Delhi University"
+                            value={degree.institution ?? ""}
+                            onChange={(event) =>
+                              updateDegree(index, { institution: event.target.value })
+                            }
+                          />
+                        </div>
 
-                    <div className={styles.fieldGroup}>
-                      <label htmlFor={`grad-year-${degree.id}`} className={styles.fieldLabel}>
-                        Graduation Year
-                      </label>
-                      <input
-                        id={`grad-year-${degree.id}`}
-                        type="text"
-                        inputMode="numeric"
-                        className={styles.textField}
-                        placeholder="e.g. 2015"
-                        value={degree.graduationYear ?? ""}
-                        onChange={(event) =>
-                          updateDegree(index, {
-                            graduationYear: event.target.value.replace(/\D/g, "").slice(0, 4),
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
+                        <div className={styles.fieldGroup}>
+                          <label htmlFor={`grad-year-${degree.id}`} className={styles.fieldLabel}>
+                            Graduation Year
+                          </label>
+                          <input
+                            id={`grad-year-${degree.id}`}
+                            type="text"
+                            inputMode="numeric"
+                            className={`${styles.textField} ${isGraduationYearInvalid(degree.graduationYear ?? "")
+                                ? styles.textFieldError
+                                : ""
+                              }`}
+                            placeholder="e.g. 2015"
+                            value={degree.graduationYear ?? ""}
+                            onChange={(event) =>
+                              updateDegree(index, {
+                                graduationYear: event.target.value.replace(/\D/g, "").slice(0, 4),
+                              })
+                            }
+                          />
+                          {isGraduationYearInvalid(degree.graduationYear ?? "") && (
+                            <span className={styles.fieldErrorText}>
+                              Please enter a valid year
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                  <div className={styles.fieldGroup}>
-                    <label htmlFor={`honours-${degree.id}`} className={styles.fieldLabel}>
-                      Achievements / Honours{" "}
-                      <span className={styles.optionalTag}>(Optional)</span>
-                    </label>
-                    <input
-                      id={`honours-${degree.id}`}
-                      type="text"
-                      className={styles.textField}
-                      placeholder="e.g. Gold Medalist, Topper, Dean's List"
-                      value={degree.honours ?? ""}
-                      onChange={(event) =>
-                        updateDegree(index, { honours: event.target.value })
-                      }
-                    />
-                  </div>
-                  </div>
+                      <div className={styles.fieldGroup}>
+                        <label htmlFor={`honours-${degree.id}`} className={styles.fieldLabel}>
+                          Achievements / Honours{" "}
+                          <span className={styles.optionalTag}>(Optional)</span>
+                        </label>
+                        <input
+                          id={`honours-${degree.id}`}
+                          type="text"
+                          className={styles.textField}
+                          placeholder="e.g. Gold Medalist, Topper, Dean's List"
+                          value={degree.honours ?? ""}
+                          onChange={(event) =>
+                            updateDegree(index, { honours: event.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -582,7 +760,7 @@ export default function ExperienceStep({
           <button type="button" className={shared.textBtn} onClick={onContinue}>
             Skip
           </button>
-          <ContinueButton onClick={onContinue} />
+          <ContinueButton onClick={onContinue} disabled={!isStepComplete} />
         </div>
       </div>
     </section>

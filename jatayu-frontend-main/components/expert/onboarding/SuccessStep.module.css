@@ -35,20 +35,30 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 140%;
-  height: 140%;
+  width: 120%;
+  height: 120%;
   pointer-events: none;
-  z-index: 10;
+  z-index: -1;
+}
+
+.confettiLeft {
+  left: 5%;
+  transform: translate(-50%, -50%) rotate(-20deg);
+}
+
+.confettiRight {
+  left: 95%;
+  transform: translate(-50%, -50%) rotate(20deg);
 }
 
 .successTitle {
   margin-top: 20px;
   margin-bottom: 12px;
-  text-align: center;
+  text-align: center !important;
 }
 
 .successSubtitle {
   max-width: 470px;
   margin: 0 auto;
-  text-align: center;
+  text-align: center !important;
 }

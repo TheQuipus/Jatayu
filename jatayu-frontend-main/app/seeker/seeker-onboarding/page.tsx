@@ -246,6 +246,7 @@ function SeekerOnboardingPageContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [needsText, setNeedsText] = useState<string>("");
+  const [selectedNeedChips, setSelectedNeedChips] = useState<string[]>([]);
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [profilePhotoSrc, setProfilePhotoSrc] = useState("/assets/img/manportrait.png");
@@ -261,7 +262,7 @@ function SeekerOnboardingPageContent() {
   useEffect(() => {
     const auth = new URLSearchParams(window.location.search).get("auth");
     if (auth === "login") {
-      setStep("login");
+      queueMicrotask(() => setStep("login"));
     }
   }, []);
 
@@ -384,11 +385,8 @@ function SeekerOnboardingPageContent() {
     setStep("otp");
   };
 
-  const handleLoginComplete = ({ email }: { email: string }) => {
-    const nameFromEmail = email.split("@")[0]?.replace(/[._-]+/g, " ") || "Seeker";
-    setRegisteredName(nameFromEmail);
-    setRegisteredEmail(email);
-    setStep("category");
+  const handleLoginComplete = ({ email: _email }: { email: string }) => {
+    window.location.assign("/seeker/dashboard/");
   };
 
   const handleOtpComplete = () => {
@@ -402,16 +400,6 @@ function SeekerOnboardingPageContent() {
   const handleBackFromCategory = () => {
     if (editReturnStep) {
       handleBackToCategoryFromEdit();
-      return;
-    }
-
-    if (registeredPhone) {
-      setStep("otp");
-      return;
-    }
-
-    if (registeredEmail) {
-      setStep("login");
       return;
     }
 
@@ -569,6 +557,8 @@ function SeekerOnboardingPageContent() {
           userName={seekerDisplayName}
           needsText={needsText}
           onChangeNeedsText={setNeedsText}
+          selectedNeedChips={selectedNeedChips}
+          onSelectedNeedChipsChange={setSelectedNeedChips}
           onBack={handleBackToCategory}
           onContinue={handleNeedsContinue}
           progressCompletion={progressCompletion}

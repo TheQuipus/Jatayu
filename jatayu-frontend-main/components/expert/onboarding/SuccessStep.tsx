@@ -76,7 +76,14 @@ export default function SuccessStep({
           </h1>
 
           <div className={styles.expertCardWrapper}>
-            <div className={styles.confettiWrapper}>
+            <div className={`${styles.confettiWrapper} ${styles.confettiLeft}`}>
+              <Lottie
+                animationData={confettiAnimation}
+                loop={false}
+                autoplay={true}
+              />
+            </div>
+            <div className={`${styles.confettiWrapper} ${styles.confettiRight}`}>
               <Lottie
                 animationData={confettiAnimation}
                 loop={false}

@@ -284,11 +284,9 @@
   top: 0;
   z-index: 20;
   padding: 16px 0 0;
-  background: linear-gradient(
-    to bottom,
-    var(--gallery) 70%,
-    color-mix(in srgb, var(--gallery) 0%, transparent)
-  );
+  background: linear-gradient(to bottom,
+      var(--gallery) 70%,
+      color-mix(in srgb, var(--gallery) 0%, transparent));
 }
 
 .topBarInner {
@@ -297,6 +295,7 @@
   align-items: center;
   gap: 16px;
   min-height: 40px;
+  background: var(--gallery);
 }
 
 .breadcrumbsSlot {

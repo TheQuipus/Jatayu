@@ -33,3 +33,35 @@
   line-height: 1.45;
   color: var(--dove-gray);
 }
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.logoutBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--pomegranate);
+  border: 1px solid var(--pomegranate);
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logoutBtn:hover {
+  background: var(--pomegranate);
+  color: var(--white);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--pomegranate) 25%, transparent);
+}

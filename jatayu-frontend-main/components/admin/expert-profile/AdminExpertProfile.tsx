@@ -85,7 +85,7 @@ export default function AdminExpertProfile({ appId }: AdminExpertProfileProps) {
       </header>
 
       <div className={styles.profilePreview}>
-        <ExpertDetail expert={expert} adminPreview />
+        <ExpertDetail expert={expert} />
       </div>
     </div>
   );

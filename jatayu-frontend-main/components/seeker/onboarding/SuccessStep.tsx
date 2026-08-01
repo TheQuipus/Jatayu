@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Search, Sparkles } from "lucide-react";
+import { Search } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import ShinyText from "@/components/ui/ShinyText";
 import shared from "./onboarding.shared.module.css";
@@ -51,6 +51,14 @@ const MATCHING_MESSAGES = [
   "Scanning verified expert profiles...",
   "Ranking your best matches...",
 ] as const;
+
+const reelPool1 = featuredExperts.slice(0, 4);
+const reelPool2 = [...featuredExperts.slice(2, 6), ...featuredExperts.slice(0, 2)].slice(0, 4);
+const reelPool3 = [...featuredExperts.slice(4), ...featuredExperts.slice(0, 4)].slice(0, 4);
+
+const track1 = [...reelPool1, ...reelPool1];
+const track2 = [...reelPool2, ...reelPool2];
+const track3 = [...reelPool3, ...reelPool3];
 
 type SuccessStepProps = {
   userName: string;
@@ -102,37 +110,26 @@ export default function SuccessStep({
         </div>
       </div>
 
-      {isMatching ? (
-        <div className={`${shared.cardBody} ${styles.loadingWrapper}`}>
-          <div className={styles.radarContainer}>
-            <div className={styles.radarPulse} aria-hidden="true" />
-            <div className={styles.radarPulse2} aria-hidden="true" />
-            <Search className={styles.loadingIcon} size={32} aria-hidden="true" />
-          </div>
-          <h1 className={styles.loadingTitle}>
-            Finding your <span className={shared.accentWord}>matches</span>
-          </h1>
-          <p className={styles.loadingSubtitle} aria-live="polite">
-            {MATCHING_MESSAGES[matchingMessageIndex]}
-          </p>
-        </div>
-      ) : (
-        <div className={`${shared.cardBody} ${styles.resultsBody} ${styles.resultsReveal}`}>
-          <h1 className={`${shared.questionTitle} ${styles.resultsTitle}`}>
-            Your  <span className={shared.accentWord}>expert matches</span> are ready!
-          </h1>
+      <div className={`${shared.cardBody} ${styles.resultsBody} ${styles.resultsReveal}`}>
+        <h1 className={`${shared.questionTitle} ${styles.resultsTitle}`}>
+          {isMatching ? (
+            <>Finding your <span className={shared.accentWord}>expert matches</span>...</>
+          ) : (
+            <>Your <span className={shared.accentWord}>expert matches</span> are ready!</>
+          )}
+        </h1>
 
+        {!isMatching ? (
           <p className={`${shared.questionSubtitle} ${styles.resultsSubtitle}`}>
             We found {matches.length} verified experts that match your profile.
           </p>
+        ) : null}
 
-
-
-          <div className={styles.featuredHeaderRow}>
-            <h2 className={styles.featuredTitle}>
-              <Sparkles size={16} aria-hidden="true" />
-              Featured Matches
-            </h2>
+        <div className={styles.featuredHeaderRow}>
+          <h2 className={styles.featuredTitle}>
+            {isMatching ? "Scanning Expert Database..." : "Featured Matches"}
+          </h2>
+          {!isMatching && (
             <div className={styles.featuredHeaderMeta}>
               <button
                 type="button"
@@ -150,20 +147,74 @@ export default function SuccessStep({
                 />
               </button>
             </div>
-          </div>
-
-          <div className={styles.matchesGrid}>
-            {matches.slice(0, 3).map((expert) => (
-              <ExpertCard
-                key={expert.name}
-                expert={expert}
-                linkToDetail={true}
-                className={styles.matchCardShell}
-              />
-            ))}
-          </div>
+          )}
         </div>
-      )}
+
+        <div className={styles.matchesGrid}>
+          {isMatching ? (
+            <>
+              {/* Slot 1: First card goes DOWN */}
+              <div className={styles.slotWindow}>
+                <div className={`${styles.slotTrack} ${styles.slotTrackDown}`}>
+                  {track1.map((expert, idx) => (
+                    <div key={`reel1-${idx}`} className={styles.slotCardWrap}>
+                      <ExpertCard
+                        expert={expert}
+                        linkToDetail={false}
+                        className={styles.matchCardShell}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Slot 2: Second card goes UP */}
+              <div className={styles.slotWindow}>
+                <div className={`${styles.slotTrack} ${styles.slotTrackUp}`}>
+                  {track2.map((expert, idx) => (
+                    <div key={`reel2-${idx}`} className={styles.slotCardWrap}>
+                      <ExpertCard
+                        expert={expert}
+                        linkToDetail={false}
+                        className={styles.matchCardShell}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Slot 3: Third card goes DOWN */}
+              <div className={styles.slotWindow}>
+                <div className={`${styles.slotTrack} ${styles.slotTrackDownSlow}`}>
+                  {track3.map((expert, idx) => (
+                    <div key={`reel3-${idx}`} className={styles.slotCardWrap}>
+                      <ExpertCard
+                        expert={expert}
+                        linkToDetail={false}
+                        className={styles.matchCardShell}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            matches.slice(0, 3).map((expert, index) => (
+              <div
+                key={expert.name}
+                className={`${styles.slotLandedCard} ${styles[`slotLanded${index + 1}` as keyof typeof styles]}`}
+              >
+                <ExpertCard
+                  expert={expert}
+                  linkToDetail={true}
+                  seeker={true}
+                  className={styles.matchCardShell}
+                />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
 
       {!isMatching ? (
         <div className={`${shared.onboardingFooter} ${styles.resultsFooter}`}>

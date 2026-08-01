@@ -162,7 +162,7 @@ export default function WelcomeStep({ onStart }: WelcomeStepProps) {
             <ArrowRight size={14} />
           </button>
           
-          <Link href="/expert" className={styles.browseBtn} style={{ minHeight: "48px", fontSize: "13px" }}>
+          <Link href="/expert/" className={styles.browseBtn} style={{ minHeight: "48px", fontSize: "13px" }}>
             Browse Experts
           </Link>
         </div>

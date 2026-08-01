@@ -7,12 +7,10 @@ import {
   Ban,
   CheckCircle2,
   Clock,
-  Download,
   Eye,
   Hand,
   Layers,
   Search,
-  UserPlus,
   X,
   AlertTriangle,
 } from "lucide-react";
@@ -139,11 +137,9 @@ function filterApplications(
     result = result.filter((app) => app.status === filters.status);
   }
   if (filters.reviewer !== "all") {
-    if (filters.reviewer === "unassigned") {
-      result = result.filter((app) => !app.reviewer);
-    } else {
-      result = result.filter((app) => app.reviewer?.name === filters.reviewer);
-    }
+    result = result.filter(
+      (app) => (app.reviewer?.name || "Admin") === filters.reviewer,
+    );
   }
 
   const q = query.trim().toLowerCase();
@@ -192,7 +188,7 @@ function TableHeaderFilter({
 }
 
 export default function ExpertApplications() {
-  const { ready, applications, listItems, kpis, pendingCount } =
+  const { ready, applications, listItems, kpis } =
     useExpertApplications();
   const slaAlert = useMemo(() => getSlaAlert(applications), [applications]);
   const slaReviewHref = useMemo(() => {
@@ -220,7 +216,7 @@ export default function ExpertApplications() {
       categories.add(app.category);
       app.languages.forEach((lang) => languages.add(lang));
       submittedDates.add(app.submittedDate);
-      if (app.reviewer) reviewers.add(app.reviewer.name);
+      reviewers.add(app.reviewer?.name || "Admin");
     }
 
     return {
@@ -246,298 +242,251 @@ export default function ExpertApplications() {
   return (
     <section className={styles.dashboard}>
       <div className={`container ${styles.dashboardInner}`}>
-      <header className={styles.pageHeader}>
-        <div className={styles.pageHeaderText}>
-          <h1 className={styles.pageTitle}>
-            Expert <span className={styles.accentWord}>Applications</span>
-          </h1>
-          <p className={styles.pageSubtitle}>
-            Review and manage submitted expert applications — {pendingCount} pending
-            action
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <button type="button" className={styles.outlineBtn}>
-            <Download size={14} />
-            Export Queue
-          </button>
-          <button type="button" className={styles.outlineBtn}>
-            <UserPlus size={14} />
-            Assign Reviewer
-          </button>
-        </div>
-      </header>
-
-      <div className={styles.kpiRow} role="group" aria-label="Filter by status">
-        {kpis.map((kpi) => {
-          const Icon = KPI_ICONS[kpi.variant];
-          const isActive = columnFilters.status === kpi.id;
-
-          return (
-            <button
-              key={kpi.id}
-              type="button"
-              className={`${problemStyles.scardMini} ${styles.kpiCard} ${isActive ? problemStyles.active : ""} ${isActive ? styles.kpiCardActive : ""}`}
-              onClick={() => setColumnFilter("status", kpi.id)}
-              aria-pressed={isActive}
-            >
-              <div className={styles.kpiHeader}>
-                <span className={styles.kpiLabel}>{kpi.label}</span>
-                <span className={styles.kpiIconBox}>
-                  <Icon size={16} aria-hidden="true" />
-                </span>
-              </div>
-              <p className={styles.kpiValue}>{kpi.value}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className={styles.filtersCard}>
-        <div className={styles.searchWrap}>
-          <Search className={styles.searchIcon} size={16} />
-          <input
-            type="search"
-            className={styles.searchInput}
-            placeholder="Search by name, category, city, app ID..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search applications"
-          />
-        </div>
-      </div>
-
-      {showAlert && slaAlert.count > 0 && (
-        <div className={styles.slaAlert} role="alert">
-          <div className={styles.slaAlertContent}>
-            <AlertTriangle className={styles.slaAlertIcon} size={20} />
-            <p className={styles.slaAlertText}>
-              <strong>{slaAlert.count} applications</strong> have exceeded the 48-hour SLA —
-              immediate review required. Oldest: {slaAlert.oldestName} ({slaAlert.oldestCategory}) —{" "}
-              {slaAlert.oldestHours} hours ago — Risk: {slaAlert.risk}
+        <header className={styles.pageHeader}>
+          <div className={styles.pageHeaderText}>
+            <h1 className={styles.pageTitle}>
+              Expert <span className={styles.accentWord}>Applications</span>
+            </h1>
+            <p className={styles.pageSubtitle}>
+              Review and manage submitted expert applications
             </p>
           </div>
-          <div className={styles.slaAlertActions}>
-            <Link href={slaReviewHref} className={styles.slaAlertBtn}>
-              Review Overdue
-            </Link>
-            <button
-              type="button"
-              className={styles.dismissBtn}
-              onClick={() => setShowAlert(false)}
-              aria-label="Dismiss alert"
-            >
-              <X size={14} />
-            </button>
+        </header>
+
+        <div className={styles.kpiRow} role="group" aria-label="Filter by status">
+          {kpis
+            .filter((kpi) => ["pending", "in_review", "on_hold"].includes(kpi.id))
+            .map((kpi) => {
+              const Icon = KPI_ICONS[kpi.variant];
+              const isActive = columnFilters.status === kpi.id;
+
+              return (
+                <button
+                  key={kpi.id}
+                  type="button"
+                  className={`${problemStyles.scardMini} ${styles.kpiCard} ${isActive ? problemStyles.active : ""} ${isActive ? styles.kpiCardActive : ""}`}
+                  onClick={() => setColumnFilter("status", isActive ? "all" : kpi.id)}
+                  aria-pressed={isActive}
+                >
+                  <div className={styles.kpiHeader}>
+                    <span className={styles.kpiLabel}>{kpi.label}</span>
+                    <span className={styles.kpiIconBox}>
+                      <Icon size={24} aria-hidden="true" />
+                    </span>
+                  </div>
+                  <p className={styles.kpiValue}>
+                    {String(kpi.value).padStart(2, "0")}
+                  </p>
+                </button>
+              );
+            })}
+        </div>
+
+        <div className={styles.filtersCard}>
+          <div className={styles.searchWrap}>
+            <Search className={styles.searchIcon} size={16} />
+            <input
+              type="search"
+              className={styles.searchInput}
+              placeholder="Search by name, category, city, app ID..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search applications"
+            />
           </div>
         </div>
-      )}
 
-      <div className={styles.tablePanel}>
-        <div className={styles.tableScroll}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.colNum}>#</th>
-                <th className={styles.colApplicant}>
-                  <TableHeaderFilter
-                    label="Applicant"
-                    value={columnFilters.name}
-                    onChange={(value) => setColumnFilter("name", value)}
-                    options={filterOptions.names.map((name) => ({ value: name, label: name }))}
-                    ariaLabel="Filter by applicant name"
-                  />
-                </th>
-                <th>
-                  <TableHeaderFilter
-                    label="Category"
-                    value={columnFilters.category}
-                    onChange={(value) => setColumnFilter("category", value)}
-                    options={filterOptions.categories.map((category) => ({
-                      value: category,
-                      label: category,
-                    }))}
-                    ariaLabel="Filter by category"
-                  />
-                </th>
-                <th>
-                  <TableHeaderFilter
-                    label="Languages"
-                    value={columnFilters.language}
-                    onChange={(value) => setColumnFilter("language", value)}
-                    options={filterOptions.languages.map((language) => ({
-                      value: language,
-                      label: language,
-                    }))}
-                    ariaLabel="Filter by language"
-                  />
-                </th>
-                <th>
-                  <TableHeaderFilter
-                    label="Submitted"
-                    value={columnFilters.submitted}
-                    onChange={(value) => setColumnFilter("submitted", value)}
-                    options={filterOptions.submittedDates.map((date) => ({
-                      value: date,
-                      label: date,
-                    }))}
-                    ariaLabel="Filter by submitted date"
-                  />
-                </th>
-                <th>
-                  <TableHeaderFilter
-                    label="Completeness"
-                    value={columnFilters.completeness}
-                    onChange={(value) => setColumnFilter("completeness", value)}
-                    options={COMPLETENESS_FILTER_OPTIONS.map((option) => ({
-                      value: option.value,
-                      label: option.label,
-                    }))}
-                    ariaLabel="Filter by completeness"
-                  />
-                </th>
-                <th>
-                  <TableHeaderFilter
-                    label="SLA"
-                    value={columnFilters.sla}
-                    onChange={(value) => setColumnFilter("sla", value)}
-                    options={SLA_FILTER_OPTIONS.map((option) => ({
-                      value: option.value,
-                      label: option.label,
-                    }))}
-                    ariaLabel="Filter by SLA"
-                  />
-                </th>
-                <th>
-                  <TableHeaderFilter
-                    label="Status"
-                    value={columnFilters.status}
-                    onChange={(value) => setColumnFilter("status", value)}
-                    options={STATUS_FILTER_OPTIONS}
-                    ariaLabel="Filter by status"
-                  />
-                </th>
-                <th>
-                  <TableHeaderFilter
-                    label="Reviewer"
-                    value={columnFilters.reviewer}
-                    onChange={(value) => setColumnFilter("reviewer", value)}
-                    options={[
-                      { value: "unassigned", label: "Unassigned" },
-                      ...filterOptions.reviewers.map((reviewer) => ({
+        {showAlert && slaAlert.count > 0 && (
+          <div className={styles.slaAlert} role="alert">
+            <div className={styles.slaAlertContent}>
+              <AlertTriangle className={styles.slaAlertIcon} size={20} />
+              <p className={styles.slaAlertText}>
+                <strong>{slaAlert.count} applications</strong> have exceeded the 48-hour SLA —
+                immediate review required. Oldest: {slaAlert.oldestName} ({slaAlert.oldestCategory}) —{" "}
+                {slaAlert.oldestHours} hours ago — Risk: {slaAlert.risk}
+              </p>
+            </div>
+            <div className={styles.slaAlertActions}>
+              <Link href={slaReviewHref} className={styles.slaAlertBtn}>
+                Review Overdue
+              </Link>
+              <button
+                type="button"
+                className={styles.dismissBtn}
+                onClick={() => setShowAlert(false)}
+                aria-label="Dismiss alert"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className={styles.tablePanel}>
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.colNum}>#</th>
+                  <th className={styles.colApplicant}>
+                    <TableHeaderFilter
+                      label="Applicant"
+                      value={columnFilters.name}
+                      onChange={(value) => setColumnFilter("name", value)}
+                      options={filterOptions.names.map((name) => ({ value: name, label: name }))}
+                      ariaLabel="Filter by applicant name"
+                    />
+                  </th>
+                  <th>
+                    <TableHeaderFilter
+                      label="Category"
+                      value={columnFilters.category}
+                      onChange={(value) => setColumnFilter("category", value)}
+                      options={filterOptions.categories.map((category) => ({
+                        value: category,
+                        label: category,
+                      }))}
+                      ariaLabel="Filter by category"
+                    />
+                  </th>
+                  <th>
+                    <TableHeaderFilter
+                      label="Languages"
+                      value={columnFilters.language}
+                      onChange={(value) => setColumnFilter("language", value)}
+                      options={filterOptions.languages.map((language) => ({
+                        value: language,
+                        label: language,
+                      }))}
+                      ariaLabel="Filter by language"
+                    />
+                  </th>
+                  <th>
+                    <TableHeaderFilter
+                      label="Submitted"
+                      value={columnFilters.submitted}
+                      onChange={(value) => setColumnFilter("submitted", value)}
+                      options={filterOptions.submittedDates.map((date) => ({
+                        value: date,
+                        label: date,
+                      }))}
+                      ariaLabel="Filter by submitted date"
+                    />
+                  </th>
+                  <th>
+                    <TableHeaderFilter
+                      label="SLA"
+                      value={columnFilters.sla}
+                      onChange={(value) => setColumnFilter("sla", value)}
+                      options={SLA_FILTER_OPTIONS.map((option) => ({
+                        value: option.value,
+                        label: option.label,
+                      }))}
+                      ariaLabel="Filter by SLA"
+                    />
+                  </th>
+                  <th>
+                    <TableHeaderFilter
+                      label="Status"
+                      value={columnFilters.status}
+                      onChange={(value) => setColumnFilter("status", value)}
+                      options={STATUS_FILTER_OPTIONS}
+                      ariaLabel="Filter by status"
+                    />
+                  </th>
+                  <th>
+                    <TableHeaderFilter
+                      label="Reviewer"
+                      value={columnFilters.reviewer}
+                      onChange={(value) => setColumnFilter("reviewer", value)}
+                      options={filterOptions.reviewers.map((reviewer) => ({
                         value: reviewer,
                         label: reviewer,
-                      })),
-                    ]}
-                    ariaLabel="Filter by reviewer"
-                  />
-                </th>
-                <th className={styles.colActions}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={10}>
-                    <div className={styles.emptyState}>No applications match your filters.</div>
-                  </td>
+                      }))}
+                      ariaLabel="Filter by reviewer"
+                    />
+                  </th>
+                  <th className={styles.colActions}>Actions</th>
                 </tr>
-              ) : (
-                filtered.map((app, index) => (
-                  <tr key={app.id}>
-                    <td className={styles.rowNum}>{index + 1}</td>
-                    <td>
-                      <div className={styles.applicantCell}>
-                        <Image
-                          src={app.avatar}
-                          alt=""
-                          width={36}
-                          height={36}
-                          className={styles.applicantAvatar}
-                        />
-                        <div>
-                          <div className={styles.applicantName}>{app.name}</div>
-                          <div className={styles.applicantMeta}>
-                            {app.city} · {app.appId}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={styles.categoryPill}>
-                        {app.category}
-                      </span>
-                    </td>
-                    <td>
-                      {app.languages.length > 0 ? (
-                        <div className={styles.languagePillList}>
-                          {app.languages.map((lang) => (
-                            <span key={lang} className={styles.languagePill}>
-                              {lang}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className={styles.languageEmpty}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className={styles.submittedDate}>{app.submittedDate}</div>
-                      <div className={styles.submittedAgo}>{app.submittedAgo}</div>
-                    </td>
-                    <td>
-                      <div className={styles.completenessWrap}>
-                        <div className={styles.completenessBar}>
-                          <div
-                            className={styles.completenessFill}
-                            style={{
-                              width: `${app.completeness}%`,
-                              background: completenessColor(app.completeness),
-                            }}
-                          />
-                        </div>
-                        <span className={styles.completenessPct}>{app.completeness}%</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`${styles.slaBadge} ${slaClass(app.slaStatus)}`}>
-                        {app.slaLabel}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`${styles.statusBadge} ${STATUS_BADGE_CLASS[app.status]}`}>
-                        {STATUS_LABEL[app.status]}
-                      </span>
-                    </td>
-                    <td>
-                      {app.reviewer ? (
-                        <div className={styles.reviewerCell}>
-                          <Image
-                            src={app.reviewer.avatar}
-                            alt=""
-                            width={20}
-                            height={20}
-                            className={styles.reviewerAvatar}
-                          />
-                          <span className={styles.reviewerName}>{app.reviewer.name}</span>
-                        </div>
-                      ) : (
-                        <span className={styles.unassigned}>Unassigned</span>
-                      )}
-                    </td>
-                    <td>
-                      <Link href={getAdminReviewHref(app.appId)} className={styles.reviewLink}>
-                        <Eye size={14} aria-hidden="true" />
-                        Review
-                      </Link>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={9}>
+                      <div className={styles.emptyState}>No applications match your filters.</div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filtered.map((app, index) => (
+                    <tr key={app.id}>
+                      <td className={styles.rowNum}>{index + 1}</td>
+                      <td>
+                        <div className={styles.applicantCell}>
+                          <Image
+                            src={app.avatar}
+                            alt=""
+                            width={36}
+                            height={36}
+                            className={styles.applicantAvatar}
+                          />
+                          <div>
+                            <div className={styles.applicantName}>{app.name}</div>
+                            <div className={styles.applicantMeta}>
+                              {app.city} · {app.appId}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={styles.categoryPill}>
+                          {app.category}
+                        </span>
+                      </td>
+                      <td>
+                        {app.languages.length > 0 ? (
+                          <div className={styles.languagePillList}>
+                            {app.languages.map((lang) => (
+                              <span key={lang} className={styles.languagePill}>
+                                {lang}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className={styles.languageEmpty}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className={styles.submittedDate}>{app.submittedDate}</div>
+                        <div className={styles.submittedAgo}>{app.submittedAgo}</div>
+                      </td>
+                      <td>
+                        <span className={`${styles.slaBadge} ${slaClass(app.slaStatus)}`}>
+                          {app.slaLabel}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`${styles.statusBadge} ${STATUS_BADGE_CLASS[app.status]}`}>
+                          {STATUS_LABEL[app.status]}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={styles.reviewerName}>
+                          {app.reviewer?.name || "Admin"}
+                        </span>
+                      </td>
+                      <td>
+                        <Link href={getAdminReviewHref(app.appId)} className={styles.reviewLink}>
+                          <Eye size={14} aria-hidden="true" />
+                          Review
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       </div>
     </section>
   );

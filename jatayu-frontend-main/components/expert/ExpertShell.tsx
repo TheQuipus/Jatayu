@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useMemo, type CSSProperties, type ReactNode } from "react";
 import {
   CalendarDays,
-  ChevronRight,
   DollarSign,
   Inbox,
   LayoutDashboard,
+  LogOut,
   MessageSquare,
   Settings,
   Star,
@@ -39,13 +39,20 @@ const NAV_ICONS = {
   settings: Settings,
 } as const;
 
-function isNavItemActive(id: string, pathname: string, href: string): boolean {
-  const baseHref = href.split("#")[0];
+function isNavItemActive(id: string, pathname: string, href: string, currentHash: string): boolean {
+  const parts = href.split("#");
+  const baseHref = parts[0];
+  const itemHash = parts[1] ? `#${parts[1]}` : "";
 
-  if (id === "dashboard") return pathname === EXPERT_DASHBOARD_HREF;
-  if (id === "availability") return pathname.startsWith("/expert/availability");
-  if (id === "requests") return pathname.startsWith("/expert/requests");
+  if (id === "dashboard") return pathname === EXPERT_DASHBOARD_HREF && !currentHash;
+  if (id === "availability") return pathname.startsWith("/expert/availability/");
+  if (id === "requests") return pathname.startsWith("/expert/requests/");
   if (id === "profile") return pathname.startsWith(EXPERT_PROFILE_HREF);
+
+  if (itemHash) {
+    return pathname === baseHref && currentHash === itemHash;
+  }
+
   return pathname === baseHref;
 }
 
@@ -53,9 +60,9 @@ type ExpertShellProps = {
   children: ReactNode;
 };
 
-function NavLink({ item, pathname }: { item: ExpertNavItem; pathname: string }) {
+function NavLink({ item, pathname, currentHash }: { item: ExpertNavItem; pathname: string; currentHash: string }) {
   const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? LayoutDashboard;
-  const isActive = isNavItemActive(item.id, pathname, item.href);
+  const isActive = isNavItemActive(item.id, pathname, item.href, currentHash);
 
   return (
     <Link
@@ -72,7 +79,19 @@ function NavLink({ item, pathname }: { item: ExpertNavItem; pathname: string }) 
 export default function ExpertShell({ children }: ExpertShellProps) {
   const pathname = usePathname();
   const [breadcrumbs, setBreadcrumbs] = useState<ReactNode | null>(null);
+  const [currentHash, setCurrentHash] = useState("");
   const shellContext = useMemo(() => ({ setBreadcrumbs }), []);
+
+  useEffect(() => {
+    setCurrentHash(window.location.hash);
+    const handleHashChange = () => {
+      setCurrentHash(window.location.hash);
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, []);
 
   const [profile, setProfile] = useState({
     name: EXPERT_PROFILE.name,
@@ -108,20 +127,23 @@ export default function ExpertShell({ children }: ExpertShellProps) {
         <aside className={styles.sidebar} aria-label="Expert navigation">
           <Link href={EXPERT_DASHBOARD_HREF} className={styles.brand}>
             <span className={styles.brandMark} aria-hidden="true">
-              J
+              2
             </span>
-            Jatayu
+            <span>
+              Expertjourney <span className={styles.brandBadge}>2</span>
+            </span>
           </Link>
- 
+
+          <div className={styles.navLabel}>MAIN MENU</div>
           <nav className={styles.navSection} aria-label="Main">
             {MAIN_NAV.map((item) => (
-              <NavLink key={item.id} item={item} pathname={pathname} />
+              <NavLink key={item.id} item={item} pathname={pathname} currentHash={currentHash} />
             ))}
           </nav>
  
           <div className={styles.navLabel}>Account</div>
           <nav className={styles.navSection} aria-label="Account">
-            <NavLink item={SETTINGS_NAV} pathname={pathname} />
+            <NavLink item={SETTINGS_NAV} pathname={pathname} currentHash={currentHash} />
           </nav>
  
           <div className={styles.userCard}>
@@ -145,8 +167,14 @@ export default function ExpertShell({ children }: ExpertShellProps) {
               <span className={styles.userName}>{profile.name}</span>
               <span className={styles.userRole}>{profile.role}</span>
             </div>
-            <button type="button" className={styles.userMenuBtn} aria-label="Account menu">
-              <ChevronRight size={14} aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => window.location.assign("/login")}
+              className={styles.userMenuBtn}
+              aria-label="Logout"
+              title="Logout"
+            >
+              <LogOut size={14} aria-hidden="true" />
             </button>
           </div>
         </aside>

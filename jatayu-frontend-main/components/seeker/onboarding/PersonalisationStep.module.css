@@ -298,10 +298,11 @@
   outline: none;
   display: inline-flex;
   align-items: center;
-  gap: 0;
+  gap: 8px;
   padding: 8px 14px;
   cursor: pointer;
   transition: all 0.2s;
+  max-height: 36px;
 }
 
 .profileLanguagePillSelected {
@@ -310,58 +311,110 @@
   color: var(--white);
 }
 
-.profileLanguageAddOther {
-  background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 100px;
-  padding: 10px 20px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  outline: none;
-  white-space: nowrap;
+.profileLanguagePillRemovable {
+  padding-right: 6px;
+  max-height: 36px;
 }
 
-.addLanguageFormInline {
+.profileLanguagePillMain {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.profileLanguageRemoveBtn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.profileLanguageRemoveBtn:hover {
+  color: #e53b17;
+}
+
+.profileLanguagePillSelected .profileLanguageRemoveBtn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.profileLanguagePillSelected .profileLanguageRemoveBtn:hover {
+  color: #ffffff;
+}
+
+.profileLanguagePillInput {
+  cursor: text;
+  min-width: 210px;
+  padding-right: 6px;
+}
+
+.profileLanguageInputForm {
+  width: 100%;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-chip);
-  border-radius: 100px;
-  padding: 2px 2px 2px 14px;
-  height: 42px;
+  gap: 8px;
 }
 
-.addLanguageInputInline {
+.profileLanguageInlineInput {
+  flex: 1;
+  min-width: 120px;
   background: transparent;
   border: none;
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--white);
   outline: none;
-  width: 130px;
-}
-
-.addLanguageInputInline::placeholder {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.addLanguageSubmitInline {
-  background: #E53B17;
-  border: none;
-  color: var(--white);
-  border-radius: 100px;
-  padding: 0 16px;
-  height: 100%;
   font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: var(--white);
+  padding: 0;
+}
+
+.profileLanguageInlineInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.profileLanguageAddBtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--silver, #b0b0b0);
   cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.profileLanguageAddBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white, #ffffff);
+}
+
+.profileLanguageAddBtn:active {
+  transform: scale(0.92);
 }
 
 .additionalContextTextarea {

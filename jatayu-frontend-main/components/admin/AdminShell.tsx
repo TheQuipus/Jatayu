@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ChevronDown,
-  ChevronRight,
   LayoutDashboard,
+  LogOut,
   Settings,
   UserCheck,
 } from "lucide-react";
@@ -139,9 +139,14 @@ function SettingsNavGroup({ pathname }: { pathname: string }) {
 export default function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
   const { ready, pendingCount } = useExpertApplications();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navItems = ADMIN_NAV.map((item) =>
-    item.id === "expert" && ready && pendingCount > 0
+    item.id === "expert" && mounted && ready && pendingCount > 0
       ? { ...item, badge: pendingCount, badgeVariant: "red" as const }
       : item,
   );
@@ -175,8 +180,14 @@ export default function AdminShell({ children }: AdminShellProps) {
             <span className={styles.userName}>{ADMIN_PROFILE.shortName}</span>
             <span className={styles.userRole}>{ADMIN_PROFILE.role}</span>
           </div>
-          <button type="button" className={styles.userMenuBtn} aria-label="Account menu">
-            <ChevronRight size={14} aria-hidden="true" />
+          <button
+            type="button"
+            onClick={() => window.location.assign("/admin")}
+            className={styles.userMenuBtn}
+            aria-label="Logout"
+            title="Logout"
+          >
+            <LogOut size={14} aria-hidden="true" />
           </button>
         </div>
       </aside>

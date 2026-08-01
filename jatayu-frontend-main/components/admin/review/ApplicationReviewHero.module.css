@@ -1,0 +1,232 @@
+.heroContainer {
+  border: 1px solid var(--mercury);
+  overflow: hidden;
+
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.headerBar {
+  background: #090a0f;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 12px 24px;
+  text-transform: uppercase;
+  clip-path: polygon(0% 15%, 1% 0%, 98% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: 336px 1fr;
+  background: var(--white);
+  align-items: start;
+  padding: 32px 24px;
+  gap: 40px;
+}
+
+/* COLUMN 1: Expert Card */
+.leftCol {
+  grid-column: 1;
+  width: 336px;
+  height: 396px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+/* COLUMN 2: Profile Info & Bio */
+.centerCol {
+  grid-column: 2;
+}
+
+.displayName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: -1.2px;
+  color: var(--ink);
+  margin: 0 0 4px 0;
+}
+
+.lastNameMuted {
+  color: var(--dove-gray);
+}
+
+.roleSub {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
+  margin: 0 0 16px 0;
+}
+
+.starDivider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--mercury);
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--dove-gray);
+  text-transform: uppercase;
+}
+
+.metaIconBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #090a0f;
+  color: var(--white);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.metaVal {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  text-transform: none;
+}
+
+.bioText {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--dove-gray);
+  margin: 0 0 24px 0;
+}
+
+/* Contact Details & Rates Section under Bio */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.sectionHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sectionHeaderLine {
+  flex: 1;
+  height: 1px;
+  background: var(--mercury);
+}
+
+.contactRatesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.contactItemBox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contactLabel {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  letter-spacing: 0.06em;
+}
+
+.contactValue {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.linkedinLink {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--pomegranate);
+  text-decoration: underline;
+  transition: opacity 0.2s ease;
+}
+
+.linkedinLink:hover {
+  opacity: 0.85;
+}
+
+.ratesRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ratePill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  padding: 8px 16px;
+  border-radius: 6px;
+}
+
+.ratePillTitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--dove-gray);
+}
+
+.ratePillPrice {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (max-width: 1024px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .leftCol,
+  .centerCol {
+    grid-column: 1 / -1;
+  }
+
+  .leftCol {
+    margin: 0 auto;
+  }
+}

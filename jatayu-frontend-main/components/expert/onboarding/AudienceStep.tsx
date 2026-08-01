@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Check, Rocket, Building, Briefcase, Store, X } from "lucide-react";
+import { Check, Rocket, Building, Briefcase, Store, X, Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
@@ -66,6 +66,7 @@ export default function AudienceStep({
   const [customLanguages, setCustomLanguages] = useState<string[]>([]);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
   const [newLanguage, setNewLanguage] = useState("");
+  const [showInput, setShowInput] = useState(false);
 
   const canContinue = languages.length > 0 && selectedAudiences.length > 0;
 
@@ -102,8 +103,8 @@ export default function AudienceStep({
     }
   };
 
-  const handleAddCustomLanguage = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddCustomLanguage = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const trimmed = newLanguage.trim();
     if (!trimmed) return;
 
@@ -118,12 +119,22 @@ export default function AudienceStep({
         setLanguages([...languages, existing]);
       }
       setNewLanguage("");
+      setShowInput(false);
       return;
     }
 
     setCustomLanguages([...customLanguages, trimmed]);
     setLanguages([...languages, trimmed]);
     setNewLanguage("");
+    setShowInput(false);
+  };
+
+  const handleBlur = () => {
+    const trimmed = newLanguage.trim();
+    if (trimmed) {
+      handleAddCustomLanguage();
+    }
+    setShowInput(false);
   };
 
   const handleRemoveCustomLanguage = (lang: string) => {
@@ -200,53 +211,70 @@ export default function AudienceStep({
                 </button>
               );
             })}
-          </div>
-
-          {customLanguages.length > 0 ? (
-            <div className={styles.languagesRow}>
-              {customLanguages.map((lang) => {
-                const isSelected = languages.includes(lang);
-                return (
-                  <div
-                    key={lang}
-                    className={`${styles.languagePill} ${styles.languagePillRemovable} ${
-                      isSelected ? styles.languagePillSelected : ""
-                    }`}
+            {customLanguages.map((lang) => {
+              const isSelected = languages.includes(lang);
+              return (
+                <div
+                  key={lang}
+                  className={`${styles.languagePill} ${styles.languagePillRemovable} ${
+                    isSelected ? styles.languagePillSelected : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleToggleLanguage(lang)}
+                    className={styles.languagePillMain}
                   >
-                    <button
-                      type="button"
-                      onClick={() => handleToggleLanguage(lang)}
-                      className={styles.languagePillMain}
-                    >
-                      {lang}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.languageRemoveBtn}
-                      aria-label={`Remove ${lang}`}
-                      onClick={() => handleRemoveCustomLanguage(lang)}
-                    >
-                      <X size={12} aria-hidden="true" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-
-          <form
-            className={`${styles.languagePill} ${styles.languagePillInput}`}
-            onSubmit={handleAddCustomLanguage}
-          >
-            <input
-              type="text"
-              value={newLanguage}
-              onChange={(e) => setNewLanguage(e.target.value)}
-              placeholder="Add custom language..."
-              className={styles.languageInlineInput}
-              aria-label="Add custom language"
-            />
-          </form>
+                    {lang}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.languageRemoveBtn}
+                    aria-label={`Remove ${lang}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveCustomLanguage(lang);
+                    }}
+                  >
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                </div>
+              );
+            })}
+            {showInput ? (
+              <div className={`${styles.languagePill} ${styles.languagePillInput}`}>
+                <form onSubmit={handleAddCustomLanguage} className={styles.languageInputForm}>
+                  <input
+                    type="text"
+                    placeholder="Add custom language..."
+                    value={newLanguage}
+                    onChange={(e) => setNewLanguage(e.target.value)}
+                    className={styles.languageInlineInput}
+                    onBlur={handleBlur}
+                    autoFocus
+                    aria-label="Add custom language"
+                  />
+                  <button
+                    type="submit"
+                    className={styles.languageAddBtn}
+                    onMouseDown={(e) => e.preventDefault()}
+                    aria-label="Add custom language"
+                  >
+                    <Plus size={14} aria-hidden="true" />
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowInput(true)}
+                className={styles.languagePill}
+              >
+                <Plus size={14} />
+                <span>Add custom</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

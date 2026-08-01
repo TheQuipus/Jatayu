@@ -256,37 +256,88 @@
   background: var(--seashell);
 }
 
-.templateFilters {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+/* ── Single-row filter bar ───────────────────────────────────────── */
+.templateFilterBar {
+  display: flex;
+  align-items: center;
   gap: 0;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--mercury);
+  background: var(--seashell);
+}
+
+/* Recipient group: Expert | Seeker — pill chips, ink fill */
+.templateFilterGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.templateFilterDivider {
+  width: 1px;
+  height: 20px;
+  background: var(--mercury);
+  margin: 0 10px;
+  flex-shrink: 0;
 }
 
 .templateFilterBtn {
-  min-height: 40px;
-  padding: 0 8px;
-  border: 0;
-  border-right: 1px solid var(--mercury);
-  border-radius: 0;
-  background: var(--seashell);
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--mercury);
+  border-radius: 100px;
+  background: transparent;
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 500;
   color: var(--dove-gray);
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 
-.templateFilterBtn:last-child {
-  border-right: 0;
+.templateFilterBtn:hover {
+  border-color: var(--scorpion);
+  color: var(--ink);
 }
 
 .templateFilterBtnActive {
-  background: var(--white);
-  color: var(--ink);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--white);
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--ink);
 }
+
+/* Channel group: SMS | Email — monospace badge, pomegranate accent */
+.templateFilterGroupChannel {
+  gap: 4px;
+}
+
+.templateFilterBtnChannel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 100px;
+  color: var(--silver-chalice);
+  border-color: transparent;
+  background: transparent;
+}
+
+.templateFilterBtnChannel:hover {
+  border-color: color-mix(in srgb, var(--pomegranate) 40%, var(--mercury));
+  color: var(--pomegranate);
+  background: color-mix(in srgb, var(--pomegranate) 6%, var(--white));
+}
+
+.templateFilterBtnChannelActive {
+  background: color-mix(in srgb, var(--pomegranate) 10%, var(--white));
+  border-color: color-mix(in srgb, var(--pomegranate) 40%, var(--mercury));
+  color: var(--pomegranate);
+  font-weight: 700;
+}
+
 
 .templateItems {
   display: flex;
@@ -506,15 +557,6 @@
   }
 
   .templateFilters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .templateFilterBtn:nth-child(2) {
-    border-right: 0;
-  }
-
-  .templateFilterBtn:nth-child(1),
-  .templateFilterBtn:nth-child(2) {
-    border-bottom: 1px solid var(--mercury);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

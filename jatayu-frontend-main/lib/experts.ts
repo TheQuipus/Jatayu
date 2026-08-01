@@ -37,6 +37,10 @@ export type Expert = {
   sampleAnswers?: { question: string; answer: string }[];
   reviews?: Review[];
   bio?: string;
+  email?: string;
+  phone?: string;
+  formats?: string[];
+  formatPrices?: Record<string, string | number>;
 };
 
 const sampleAnswerByTopic: Record<ExpertiseTag, { question: string; answer: string }[]> = {
@@ -394,10 +398,11 @@ export function getAvailableLanguages(experts: Expert[]): string[] {
 }
 
 export const ratingFilters = [
-  { id: "4.5", label: "4.5+ stars", minRating: 4.5 },
-  { id: "4.7", label: "4.7+ stars", minRating: 4.7 },
-  { id: "4.8", label: "4.8+ stars", minRating: 4.8 },
-  { id: "4.9", label: "4.9+ stars", minRating: 4.9 },
+  { id: "1", label: "1+ stars", minRating: 1 },
+  { id: "2", label: "2+ stars", minRating: 2 },
+  { id: "3", label: "3+ stars", minRating: 3 },
+  { id: "4", label: "4+ stars", minRating: 4 },
+  { id: "5", label: "5 stars", minRating: 5 },
 ] as const;
 
 export type RatingFilterId = (typeof ratingFilters)[number]["id"];

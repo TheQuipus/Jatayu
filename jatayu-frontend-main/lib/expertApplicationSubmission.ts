@@ -68,6 +68,11 @@ export type ExpertApplicationSubmission = {
   portfolioLinks: PortfolioLink[];
   governmentId?: GovernmentIdData;
   kycVideoUrl?: string;
+  kycPhotos?: {
+    left?: string;
+    centre?: string;
+    right?: string;
+  };
   certificates: ExpertCertificate[];
   formats: string[];
   lengths: string[];

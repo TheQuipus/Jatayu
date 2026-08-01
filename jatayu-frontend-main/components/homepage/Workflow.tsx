@@ -70,12 +70,13 @@ export default function Workflow() {
                         width={169}
                         height={204}
                         priority={src === "/assets/img/team1.png" && i === 1}
+                        loading={src === "/assets/img/team1.png" || src === "/assets/img/team2.png" ? "eager" : undefined}
                       />
                     </figure>
                   ))}
                 </div>
               </div>
-
+ 
               <figure className={`${styles.cutCard} ${styles.cutCardLarge}`}>
                 <Image
                   src="/assets/img/manportrait.png"
@@ -101,7 +102,7 @@ export default function Workflow() {
                   </div>
                 </div>
               </figure>
-
+ 
               <div className={`${styles.carouselViewport} ${styles.cutCardSmall}`}>
                 <div className={`${styles.carouselTrack} ${styles.carouselRtl}`}>
                   {[...carouselTwo, ...carouselTwo].map((src, i) => (
@@ -112,6 +113,7 @@ export default function Workflow() {
                         width={169}
                         height={204}
                         priority={src === "/assets/img/team1.png" && i === 3}
+                        loading={src === "/assets/img/team1.png" || src === "/assets/img/team2.png" ? "eager" : undefined}
                       />
                     </figure>
                   ))}

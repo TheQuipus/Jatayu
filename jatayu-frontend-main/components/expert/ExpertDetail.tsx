@@ -26,10 +26,9 @@ import styles from "./ExpertDetail.module.css";
 type ExpertDetailProps = {
   expert: Expert;
   seeker?: boolean;
-  adminPreview?: boolean;
 };
 
-export default function ExpertDetail({ expert, seeker = false, adminPreview = false }: ExpertDetailProps) {
+export default function ExpertDetail({ expert, seeker = false }: ExpertDetailProps) {
   const [selectedOption, setSelectedOption] = useState<string>("text");
   const { bookmarkedExperts, toggleBookmark } = useBookmarks();
   const isBookmarked = bookmarkedExperts.has(expert.name);
@@ -90,10 +89,10 @@ export default function ExpertDetail({ expert, seeker = false, adminPreview = fa
 
   return (
     <section
-      className={`${styles.detail} ${seeker ? styles.detailSeeker : ""} ${adminPreview ? styles.detailAdminPreview : ""}`}
+      className={`${styles.detail} ${seeker ? styles.detailSeeker : ""}`}
     >
       <div className={`container ${styles.detailInner}`}>
-        {!seeker && !adminPreview ? breadcrumbNode : null}
+        {!seeker ? breadcrumbNode : null}
 
         <div className={styles.mainGrid}>
           {/* COLUMN 1: Portrait Card, and Topic Pills */}
@@ -276,18 +275,16 @@ export default function ExpertDetail({ expert, seeker = false, adminPreview = fa
               <div className={styles.bookingFooter} />
             </div>
 
-            {!adminPreview ? (
-              <ContactActionButton
-                label="BOOK NOW"
-                avatarSrc={expert.image}
-                avatarAlt={expert.name}
-                href={getExpertCheckoutHref(expert, selectedOption, { seeker })}
-                variant="dark"
-                wrapperClassName={styles.ctaButtonRow}
-                className={styles.bookNowButton}
-                fullWidth
-              />
-            ) : null}
+            <ContactActionButton
+              label="BOOK NOW"
+              avatarSrc={expert.image}
+              avatarAlt={expert.name}
+              href={getExpertCheckoutHref(expert, selectedOption, { seeker })}
+              variant="dark"
+              wrapperClassName={styles.ctaButtonRow}
+              className={styles.bookNowButton}
+              fullWidth
+            />
             </div>
           </div>
 

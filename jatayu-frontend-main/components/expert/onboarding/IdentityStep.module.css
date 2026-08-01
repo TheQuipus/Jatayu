@@ -205,15 +205,17 @@
 }
 
 .aiBioInlineBtn {
-  flex-shrink: 0;
-  padding: 0;
-  margin: 0;
-  border: none;
-  background: transparent;
   display: inline-flex;
   align-items: center;
-  min-height: 20px;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  outline: none;
   cursor: pointer;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
 .aiBioInlineBtn:hover:not(:disabled) {
@@ -323,14 +325,14 @@
 
 .aiBioShinyText {
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
 
 .aiBioLoadingText {
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: rgba(255, 255, 255, 0.55);
@@ -399,4 +401,83 @@
   .linksRow {
     grid-template-columns: 1fr;
   }
+}
+
+.aiImprovePanel {
+  width: 100%;
+  margin-top: 14px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.improvementChipsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestedPill {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 6px 12px;
+  gap: 8px;
+  width: fit-content;
+  background: var(--background-chip);
+  border: 1px solid var(--border-chip);
+  border-radius: 9999px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: var(--silver);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  max-height: 34px;
+  outline: none;
+}
+
+.suggestedPillSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.aiImproveHint {
+  margin: 12px 0 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--silver-chalice);
+}
+
+.aiApplyBtn {
+  margin-top: 14px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: #E53B17;
+  cursor: pointer;
+  outline: none;
+}
+
+.aiApplyBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aiApplyBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.aiApplyShinyText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }

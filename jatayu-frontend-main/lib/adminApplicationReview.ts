@@ -134,13 +134,12 @@ export type ApplicationReviewDetail = {
 };
 
 export const REVIEW_TABS = [
-  { id: "documents", label: "Documents" },
-  { id: "certifications", label: "Certifications" },
-  { id: "portfolio", label: "Portfolio" },
-  { id: "experience", label: "Experience" },
-  { id: "availability", label: "Availability" },
-  { id: "kyc", label: "KYC" },
-  { id: "category", label: "Category Fit" },
+  { id: "category", label: "Step 1: Category Fit" },
+  { id: "kyc", label: "Step 2: KYC & Identity" },
+  { id: "certifications", label: "Step 3: Certifications & Docs" },
+  { id: "experience", label: "Step 4: Experience" },
+  { id: "portfolio", label: "Step 5: Portfolio" },
+  { id: "availability", label: "Step 6: Availability" },
 ] as const;
 
 export type ReviewTabId = (typeof REVIEW_TABS)[number]["id"];

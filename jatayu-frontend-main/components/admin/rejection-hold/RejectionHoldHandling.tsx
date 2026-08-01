@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Ban,
@@ -27,6 +28,9 @@ type RejectionHoldHandlingProps = {
 };
 
 export default function RejectionHoldHandling({ appId }: RejectionHoldHandlingProps) {
+  const searchParams = useSearchParams();
+  const decisionParam = searchParams.get("decision");
+  const initialDecision = (decisionParam === "hold" || decisionParam === "reject") ? decisionParam : undefined;
   const { ready, application } = useExpertApplication(appId);
   const data = useMemo(
     () => (application ? mapToRejectionHold(application) : null),
@@ -45,11 +49,11 @@ export default function RejectionHoldHandling({ appId }: RejectionHoldHandlingPr
 
   useEffect(() => {
     if (!data) return;
-    setDecision(data.defaultDecision);
+    setDecision(initialDecision || data.defaultDecision);
     setSelectedReason(data.defaultReasonId);
     setDecisionSummary(data.decisionSummary);
     setGuidance(data.resubmissionGuidance);
-  }, [data]);
+  }, [data, initialDecision]);
 
   if (!ready) {
     return null;

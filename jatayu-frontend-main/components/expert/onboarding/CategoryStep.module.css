@@ -163,9 +163,17 @@
 }
 
 .categoryItemInput {
-  width: 240px;
+  width: 250px;
   max-height: 36px;
   cursor: text;
+  padding-right: 6px;
+}
+
+.categoryInputForm {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .categoryInlineInput {
@@ -184,6 +192,32 @@
 
 .categoryInlineInput::placeholder {
   color: rgba(255, 255, 255, 0.4);
+}
+
+.categoryAddBtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--silver, #b0b0b0);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.categoryAddBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white, #ffffff);
+}
+
+.categoryAddBtn:active {
+  transform: scale(0.92);
 }
 
 .categoryItemMain {
@@ -305,4 +339,25 @@
   gap: 10px 14px;
   margin-bottom: 20px;
   width: 100%;
+}
+
+.categoryItemDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.customLimitMessage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--silver-chalice);
+  margin-top: 10px;
+}
+
+.infoIcon {
+  flex-shrink: 0;
+  color: var(--silver-chalice);
 }

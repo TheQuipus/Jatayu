@@ -109,16 +109,17 @@
   margin-top: 4px;
 }
 
-.registerSubmitBtnInactive {
+.registerSubmitBtn.registerSubmitBtnInactive,
+.registerSubmitBtn.registerSubmitBtnInactive:hover,
+.registerSubmitBtn.registerSubmitBtnInactive:disabled,
+.registerSubmitBtn.registerSubmitBtnInactive:disabled:hover,
+.registerSubmitBtn.registerSubmitBtnInactive[aria-disabled="true"],
+.registerSubmitBtn.registerSubmitBtnInactive[aria-disabled="true"]:hover {
   background: var(--border-chip);
   color: rgba(255, 255, 255, 0.35);
-  cursor: pointer;
+  cursor: not-allowed;
   box-shadow: none;
-}
-
-.registerSubmitBtnInactive:hover:not(:disabled) {
-  background: var(--border-chip);
-  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
 }
 
 .registerDivider {
@@ -149,7 +150,7 @@
 
 .socialButtonsRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 
@@ -157,22 +158,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
   min-height: 48px;
+  height: 48px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-chip);
   border-radius: 12px;
-  font-family: var(--font-body);
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--white);
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
 
 .socialButton:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.socialButton:active {
+  transform: translateY(0);
 }
 
 @media (max-width: 600px) {

@@ -6,7 +6,6 @@ import {
   APPLICATIONS_UPDATED_EVENT,
   computeCompleteness,
   formatSubmittedDate,
-  getAskedRate,
   getCategoryColor,
   getExpertApplicationByAppId,
   getExpertApplications,
@@ -109,20 +108,40 @@ export function useExpertApplications() {
 
   const kpis = useMemo(
     () => [
-      { id: "all", label: "All", value: statusCounts.all, variant: "all" as const },
-      { id: "pending", label: "Pending", value: statusCounts.pending, variant: "pending" as const },
-      { id: "in_review", label: "In Review", value: statusCounts.in_review, variant: "review" as const },
-      { id: "on_hold", label: "On Hold", value: statusCounts.on_hold, variant: "hold" as const },
+      {
+        id: "all",
+        label: "All",
+        value: String(statusCounts.all).padStart(2, "0"),
+        variant: "all" as const,
+      },
+      {
+        id: "pending",
+        label: "Pending",
+        value: String(statusCounts.pending).padStart(2, "0"),
+        variant: "pending" as const,
+      },
+      {
+        id: "in_review",
+        label: "In Review",
+        value: String(statusCounts.in_review).padStart(2, "0"),
+        variant: "review" as const,
+      },
+      {
+        id: "on_hold",
+        label: "On Hold",
+        value: String(statusCounts.on_hold).padStart(2, "0"),
+        variant: "hold" as const,
+      },
       {
         id: "approved",
         label: "Approved MTD",
-        value: statusCounts.approved,
+        value: String(statusCounts.approved).padStart(2, "0"),
         variant: "approved" as const,
       },
       {
         id: "rejected",
         label: "Rejected MTD",
-        value: statusCounts.rejected,
+        value: String(statusCounts.rejected).padStart(2, "0"),
         variant: "rejected" as const,
       },
     ],
@@ -150,10 +169,10 @@ export function useExpertApplications() {
 }
 
 export function useExpertApplication(appId: string) {
-  const { ready, applications, getByAppId } = useExpertApplications();
+  const { ready, getByAppId } = useExpertApplications();
   const application = useMemo(
     () => getByAppId(appId),
-    [appId, applications, getByAppId],
+    [appId, getByAppId],
   );
 
   return { ready, application };

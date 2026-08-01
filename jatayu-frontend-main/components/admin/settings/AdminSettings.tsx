@@ -14,8 +14,10 @@ import {
   PAYMENT_PROVIDER_OPTIONS,
   TEMPLATE_CATEGORY_LABELS,
   TEMPLATE_CHANNEL_LABELS,
+  TEMPLATE_RECIPIENT_LABELS,
   type AdminSettings,
   type MessageTemplate,
+  type MessageTemplateRecipient,
   type SettingsSection,
 } from "@/lib/adminSettings";
 import styles from "./AdminSettings.module.css";
@@ -453,8 +455,9 @@ function TemplateEditor({
         <div>
           <h3 className={styles.templateEditorTitle}>{template.name}</h3>
           <p className={styles.templateEditorMeta}>
-            {TEMPLATE_CATEGORY_LABELS[template.category]} ·{" "}
-            {TEMPLATE_CHANNEL_LABELS[template.channel]}
+            {TEMPLATE_RECIPIENT_LABELS[template.recipient]} ·{" "}
+            {TEMPLATE_CHANNEL_LABELS[template.channel]} ·{" "}
+            {TEMPLATE_CATEGORY_LABELS[template.category]}
           </p>
         </div>
       </div>
@@ -539,12 +542,14 @@ function TemplatesPanel({
   onUpdateTemplate: (templateId: string, updates: Partial<MessageTemplate>) => void;
 }) {
   const [selectedId, setSelectedId] = useState(templates[0]?.id ?? "");
-  const [channelFilter, setChannelFilter] = useState<"all" | MessageTemplate["channel"]>("all");
+  const [recipientFilter, setRecipientFilter] = useState<MessageTemplateRecipient>("expert");
+  const [channelFilter, setChannelFilter] = useState<MessageTemplate["channel"]>("sms");
 
   const filteredTemplates = useMemo(() => {
-    if (channelFilter === "all") return templates;
-    return templates.filter((template) => template.channel === channelFilter);
-  }, [channelFilter, templates]);
+    return templates.filter(
+      (template) => template.recipient === recipientFilter && template.channel === channelFilter,
+    );
+  }, [recipientFilter, channelFilter, templates]);
 
   const selectedTemplate = templates.find((template) => template.id === selectedId) ?? filteredTemplates[0];
 
@@ -557,21 +562,44 @@ function TemplatesPanel({
   return (
     <div className={styles.templatesLayout}>
       <aside className={styles.templateList}>
-        <div className={styles.templateFilters} role="tablist" aria-label="Filter templates by channel">
-          {(["all", "sms", "email"] as const).map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              role="tab"
-              aria-selected={channelFilter === filter}
-              className={`${styles.templateFilterBtn} ${
-                channelFilter === filter ? styles.templateFilterBtnActive : ""
-              }`}
-              onClick={() => setChannelFilter(filter)}
-            >
-              {filter === "all" ? "All" : TEMPLATE_CHANNEL_LABELS[filter]}
-            </button>
-          ))}
+        <div className={styles.templateFilterBar}>
+          <div className={styles.templateFilterGroup} role="tablist" aria-label="Filter by recipient">
+            {(["expert", "seeker"] as const).map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                role="tab"
+                aria-selected={recipientFilter === filter}
+                className={`${styles.templateFilterBtn} ${
+                  recipientFilter === filter ? styles.templateFilterBtnActive : ""
+                }`}
+                onClick={() => setRecipientFilter(filter)}
+              >
+                {TEMPLATE_RECIPIENT_LABELS[filter]}
+              </button>
+            ))}
+          </div>
+          <div className={styles.templateFilterDivider} aria-hidden="true" />
+          <div
+            className={`${styles.templateFilterGroup} ${styles.templateFilterGroupChannel}`}
+            role="tablist"
+            aria-label="Filter by channel"
+          >
+            {(["sms", "email"] as const).map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                role="tab"
+                aria-selected={channelFilter === filter}
+                className={`${styles.templateFilterBtn} ${styles.templateFilterBtnChannel} ${
+                  channelFilter === filter ? styles.templateFilterBtnChannelActive : ""
+                }`}
+                onClick={() => setChannelFilter(filter)}
+              >
+                {TEMPLATE_CHANNEL_LABELS[filter]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className={styles.templateItems}>
@@ -586,7 +614,7 @@ function TemplatesPanel({
             >
               <span className={styles.templateItemName}>{template.name}</span>
               <span className={styles.templateItemMeta}>
-                {TEMPLATE_CHANNEL_LABELS[template.channel]}
+                {TEMPLATE_RECIPIENT_LABELS[template.recipient]} · {TEMPLATE_CHANNEL_LABELS[template.channel]}
               </span>
             </button>
           ))}

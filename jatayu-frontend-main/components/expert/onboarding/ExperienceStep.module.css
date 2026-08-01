@@ -227,6 +227,7 @@
   flex-direction: column;
   gap: 8px;
   width: 100%;
+  position: relative;
 }
 
 .fieldLabel {
@@ -290,11 +291,12 @@
   color-scheme: dark;
 }
 
+/* 
 .textField:focus,
 .textareaField:focus {
   border-color: rgba(255, 255, 255, 0.18);
   background-color: rgba(255, 255, 255, 0.05);
-}
+} */
 
 .textField::placeholder,
 .textareaField::placeholder {
@@ -349,6 +351,10 @@
 }
 
 .selectMenu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
   margin: 0;
   padding: 6px;
   list-style: none;
@@ -527,10 +533,10 @@
   color: var(--silver-chalice);
 }
 
-.textFieldWithIcon:focus {
+/* .textFieldWithIcon:focus {
   border-color: rgba(255, 255, 255, 0.18);
   background-color: rgba(255, 255, 255, 0.05);
-}
+} */
 
 .fieldLabelRow {
   display: flex;
@@ -620,5 +626,98 @@
 
   .linkRow {
     grid-template-columns: 1fr;
+  }
+}
+
+.textFieldError {
+  border-color: #FF3B30 !important;
+}
+
+.fieldErrorText {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: #FF3B30;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.questionTitleHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.linkedinSyncBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-chip);
+  background: #ffffff0a;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+  margin-top: 4px;
+}
+
+.linkedinSyncBtn:hover:not(:disabled) {
+  background: #ffffff14;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.linkedinIcon {
+  color: #0a66c2;
+  flex-shrink: 0;
+}
+
+.linkedinBtnText {
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.linkedinSyncBtnDone {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: color-mix(in srgb, #22c55e 12%, rgba(255, 255, 255, 0.04));
+}
+
+.syncSpinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .questionTitleHeaderRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 }

@@ -1,4 +1,4 @@
-export type ConsultationType = "text" | "video" | "live" | "audio";
+export type ConsultationType = "text" | "video" | "shoutout" | "group";
 
 export type ConsultationBadgeVariant = "green" | "purple" | "orange" | "accent";
 
@@ -20,15 +20,6 @@ export const consultationTypes: {
     badgeVariant: "purple",
   },
   {
-    id: "audio",
-    title: "Shoutout",
-    desc: "Quick shoutouts for fast advice when\nclients prefer privacy.",
-    multiplier: 2.4,
-    duration: "20 mins",
-    badge: "Quick Hit",
-    badgeVariant: "accent",
-  },
-  {
     id: "text",
     title: "Text Messaging",
     desc: "Send and receive messages with\nyour clients anytime.",
@@ -37,13 +28,20 @@ export const consultationTypes: {
     badgeVariant: "green",
   },
   {
-    id: "live",
-    title: "Group Q&A",
-    desc: "Host live sessions with up to\n5 people at a time.",
-    multiplier: 4,
-    duration: "30 mins",
-    badge: "Real-Time",
+    id: "shoutout",
+    title: "Video Shoutout",
+    desc: "Get a personalized video response\nto your question.",
+    multiplier: 0.8,
+    badge: "Personalized",
     badgeVariant: "orange",
+  },
+  {
+    id: "group",
+    title: "Group Session",
+    desc: "Join interactive group Q&A\nand live learning.",
+    multiplier: 1.2,
+    badge: "Collaborative",
+    badgeVariant: "accent",
   },
 ];
 

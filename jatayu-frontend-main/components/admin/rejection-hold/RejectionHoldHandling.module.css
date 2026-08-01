@@ -100,23 +100,22 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 16px;
+  padding: 10px 16px;
   border-radius: 10px;
-  border: 2px solid var(--ink);
+  border: 1px solid var(--mercury);
   background: var(--white);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--ink);
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .outlineBtn:hover {
   background: var(--seashell);
+  border-color: color-mix(in srgb, var(--ink) 14%, var(--white));
 }
 
 .card {

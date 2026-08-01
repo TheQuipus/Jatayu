@@ -164,7 +164,7 @@ export default function AdminLogin() {
                 />
               </div>
               {fieldError("email") && (
-                <span className={formStyles.fieldErrorBelow}>{fieldError("email")}</span>
+                <span className={register.fieldErrorBelow}>{fieldError("email")}</span>
               )}
             </div>
 
@@ -230,14 +230,13 @@ export default function AdminLogin() {
                 ))}
               </div>
               {otpError ? (
-                <span className={formStyles.fieldErrorBelow}>{otpError}</span>
-              ) : (
-                <p className={otpStyles.otpResendText}>
-                  <span className={otpStyles.otpResendMuted}>
-                    Use Google Authenticator, Authy, or any TOTP app.
-                  </span>
-                </p>
-              )}
+                <span className={register.fieldErrorBelow}>{otpError}</span>
+              ) : null}
+              <p className={otpStyles.otpResendText}>
+                <span className={otpStyles.otpResendMuted}>
+                  Use Google Authenticator.
+                </span>
+              </p>
             </div>
 
             <ContinueButton

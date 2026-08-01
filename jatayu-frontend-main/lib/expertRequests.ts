@@ -8,6 +8,7 @@ export type ClientRequest = {
   description: string;
   status: RequestStatus;
   urgent?: boolean;
+  repeatClient?: boolean;
   price: number;
   timeAgo: string;
   dateLabel: string;
@@ -41,58 +42,59 @@ export const CLIENT_REQUESTS: ClientRequest[] = [
     clientAvatar: "/assets/img/avatar2.png",
     title: "Product Strategy Workshop — Full Day",
     description:
-      "I'm an early-stage startup founder looking for a comprehensive product strategy session. We need help defining our roadmap, prioritising features, and aligning our team around a clear vision for the next 12 months.",
+      "I'm looking for a senior UX strategist to help my team redefine our product vision. We have a product review in 2 weeks and need a focused strategy workshop session...",
     status: "new",
     urgent: true,
-    price: 96000,
+    price: 1200,
     timeAgo: "32 min ago",
     dateLabel: "Dec 20, 2024",
-    durationLabel: "Full day — 8 hrs",
+    durationLabel: "Full day · 8 hrs",
     formatLabel: "Video call",
     createdAt: Date.now() - 32 * 60 * 1000,
   },
   {
     id: "req-2",
-    clientName: "Priya Sharma",
+    clientName: "Elena Vasquez",
     clientAvatar: "/assets/img/avatar3.png",
+    title: "UX Audit — SaaS Platform Redesign",
+    description:
+      "We've recently shipped a new version of our dashboard and users are reporting confusion with the navigation. Looking for a thorough UX audit with actionable recommendations...",
+    status: "new",
+    price: 580,
+    timeAgo: "1 hr ago",
+    dateLabel: "Flexible - Jan 2025",
+    durationLabel: "2 hrs session",
+    formatLabel: "Async + live",
+    createdAt: Date.now() - 60 * 60 * 1000,
+  },
+  {
+    id: "req-3",
+    clientName: "David Park",
+    clientAvatar: "/assets/img/avatar4.png",
+    title: "Design Systems Consultation — 4-week Engagement",
+    description:
+      "Following up on our previous session. Ready to move forward with the full design system buildout. Looking to engage for approximately 4 weeks, 2 sessions per week...",
+    status: "new",
+    repeatClient: true,
+    price: 3200,
+    timeAgo: "3 hrs ago",
+    dateLabel: "Starting Jan 6",
+    durationLabel: "4 wk · 8 sessions",
+    formatLabel: "Video call",
+    createdAt: Date.now() - 3 * 60 * 60 * 1000,
+  },
+  {
+    id: "req-4",
+    clientName: "Priya Sharma",
+    clientAvatar: "/assets/img/avatar1.png",
     title: "D2C Growth Strategy Session",
     description:
       "Running a D2C skincare brand and need expert guidance on scaling paid acquisition while improving retention. Looking for actionable frameworks we can implement immediately.",
     status: "pending",
-    price: 68000,
-    timeAgo: "2h ago",
+    price: 850,
+    timeAgo: "1d ago",
     dateLabel: "Flexible within next 2 weeks",
     durationLabel: "1 hr",
-    formatLabel: "Video call",
-    createdAt: Date.now() - 2 * 60 * 60 * 1000,
-  },
-  {
-    id: "req-3",
-    clientName: "James Whitfield",
-    clientAvatar: "/assets/img/avatar4.png",
-    title: "UX Audit for SaaS Dashboard",
-    description:
-      "We recently launched a B2B analytics dashboard and user feedback suggests navigation issues. Need a thorough UX audit with specific recommendations.",
-    status: "new",
-    price: 45000,
-    timeAgo: "5h ago",
-    dateLabel: "Dec 22, 2024",
-    durationLabel: "90 min",
-    formatLabel: "Video call",
-    createdAt: Date.now() - 5 * 60 * 60 * 1000,
-  },
-  {
-    id: "req-4",
-    clientName: "Ananya Kapoor",
-    clientAvatar: "/assets/img/avatar1.png",
-    title: "Seed Round Pitch Deck Review",
-    description:
-      "Preparing for investor meetings next month. Would like feedback on our pitch deck narrative, financial projections slide, and overall storytelling.",
-    status: "new",
-    price: 32000,
-    timeAgo: "1d ago",
-    dateLabel: "Dec 18, 2024",
-    durationLabel: "45 min",
     formatLabel: "Video call",
     createdAt: Date.now() - 24 * 60 * 60 * 1000,
   },
@@ -104,7 +106,7 @@ export const CLIENT_REQUESTS: ClientRequest[] = [
     description:
       "Growing from 15 to 40 people and need help implementing an OKR framework that works for a hybrid product-engineering org.",
     status: "pending",
-    price: 52000,
+    price: 1500,
     timeAgo: "1d ago",
     dateLabel: "Jan 5, 2025",
     durationLabel: "2 hrs",
@@ -130,5 +132,6 @@ export function getRequestCounts() {
 }
 
 export function formatRequestPrice(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN")}`;
+  return `$${amount.toLocaleString("en-US")}`;
 }
+

@@ -82,6 +82,7 @@ export default function ExpertCard({
               className={styles.expertImage}
               sizes="(max-width: 1024px) 50vw, 25vw"
               priority={priority}
+              loading={(expert.image === "/assets/img/team1.png" || expert.image === "/assets/img/team2.png") && !priority ? "eager" : undefined}
             />
           )}
         </div>
@@ -112,10 +113,12 @@ export default function ExpertCard({
             </span>
           </div>
 
-          <p className={styles.expertStats}>
-            {statsText ??
-              `From ₹${expert.price} / Rating ${expert.rating} / Reply ${formattedReplyTime}`}
-          </p>
+          {statsText !== "" && (
+            <p className={styles.expertStats}>
+              {statsText ??
+                `From ₹${expert.price} / Rating ${expert.rating} / Reply ${formattedReplyTime}`}
+            </p>
+          )}
 
           <div className={styles.divider} />
 

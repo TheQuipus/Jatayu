@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Star, Briefcase, Languages, MapPin, Lightbulb } from "lucide-react";
+import { Star, Briefcase, Languages, MapPin } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ExpertCard from "@/components/ui/ExpertCard";
 import { type Expert } from "@/lib/experts";
@@ -33,13 +33,7 @@ type ReviewStepProps = {
   onProgressStepClick: (step: ProgressStepKey) => void;
 };
 
-function getMatchGrade(score: number): string {
-  if (score >= 90) return "A+";
-  if (score >= 80) return "A";
-  if (score >= 70) return "B+";
-  if (score >= 60) return "B";
-  return "C";
-}
+
 
 export default function ReviewStep({
   userName,
@@ -74,10 +68,7 @@ export default function ReviewStep({
     review: agreedToTerms,
   };
 
-  const completedSignals = Object.values(displayCompletion).filter(Boolean).length;
-  const totalSignals = Object.values(displayCompletion).length;
-  const profileScore = Math.round((completedSignals / totalSignals) * 100);
-  const matchGrade = getMatchGrade(profileScore);
+
 
   const nameParts = userName.trim().split(/\s+/);
   const firstName = nameParts[0] ?? "";
@@ -139,29 +130,7 @@ export default function ReviewStep({
           Take a final look at your preferences before we find your expert matches.
         </p>
 
-        <div className={styles.reviewTopRow} style={{ marginBottom: "20px" }}>
-          <div className={styles.strengthReportCard}>
-            <div className={styles.strengthReportInfo}>
-              <span className={styles.strengthReportLabel}>Profile Strength</span>
-              <h4 className={styles.strengthReportValue}>Match Ready</h4>
-            </div>
-            <div className={styles.strengthGradeBadge}>
-              <span>{matchGrade}</span>
-            </div>
-          </div>
 
-          <div className={styles.finalTipCard}>
-            <div className={styles.finalTipIconWrap}>
-              <Lightbulb size={18} aria-hidden="true" />
-            </div>
-            <div className={styles.finalTipTextWrap}>
-              <h5 className={styles.finalTipTitle}>Pro Tip</h5>
-              <p className={styles.finalTipDesc}>
-                Add clear challenge details and outcome goals to improve the quality of your expert matches.
-              </p>
-            </div>
-          </div>
-        </div>
 
         <div className={styles.reviewBlockCard} style={{ marginBottom: "20px" }}>
           <div className={styles.reviewBlockHeader} style={{ marginBottom: "20px" }}>

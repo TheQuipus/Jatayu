@@ -50,9 +50,9 @@ export type QuickAction = {
   icon: "calendar" | "pencil" | "upload";
 };
 
-export const EXPERT_DASHBOARD_HREF = "/expert/dashboard";
-export const EXPERT_ONBOARDING_HREF = "/expert/expert-onboarding";
-export const EXPERT_PROFILE_HREF = "/expert/profile";
+export const EXPERT_DASHBOARD_HREF = "/expert/dashboard/";
+export const EXPERT_ONBOARDING_HREF = "/expert/expert-onboarding/";
+export const EXPERT_PROFILE_HREF = "/expert/profile/";
 
 import { DEFAULT_EXPERT_PROFILE } from "@/lib/expertProfile";
 
@@ -177,7 +177,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "availability",
     label: "Update Availability",
-    href: "/expert/availability",
+    href: "/expert/availability/",
     icon: "calendar",
   },
   {
@@ -200,9 +200,9 @@ export const MAIN_NAV: ExpertNavItem[] = [
   {
     id: "availability",
     label: "Availability & Calendar",
-    href: "/expert/availability",
+    href: "/expert/availability/",
   },
-  { id: "requests", label: "Requests", href: "/expert/requests", badge: 3 },
+  { id: "requests", label: "Requests", href: "/expert/requests/", badge: 3 },
   { id: "messages", label: "Messages", href: `${EXPERT_DASHBOARD_HREF}#messages`, badge: 5 },
   { id: "earnings", label: "Earnings", href: `${EXPERT_DASHBOARD_HREF}#earnings` },
   { id: "reviews", label: "Reviews", href: `${EXPERT_DASHBOARD_HREF}#reviews` },

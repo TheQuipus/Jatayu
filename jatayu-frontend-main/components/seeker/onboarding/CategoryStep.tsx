@@ -415,7 +415,7 @@ export function CategoryFields({
                   selectedCategory === OTHER_CATEGORY_ID ? styles.categoryItemSelected : ""
                 } ${styles.categoryItemInput}`}
               >
-                <form onSubmit={handleCustomSubmit} style={{ width: "100%", display: "flex" }}>
+                <form onSubmit={handleCustomSubmit} className={styles.categoryInputForm}>
                   <input
                     ref={otherInputRef}
                     type="text"
@@ -429,6 +429,14 @@ export function CategoryFields({
                     autoFocus
                     aria-label="Custom category"
                   />
+                  <button
+                    type="submit"
+                    className={styles.categoryAddBtn}
+                    onMouseDown={(e) => e.preventDefault()}
+                    aria-label="Add custom category"
+                  >
+                    <Plus size={14} aria-hidden="true" />
+                  </button>
                 </form>
               </div>
             ) : (

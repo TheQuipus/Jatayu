@@ -4,6 +4,8 @@ export type SmtpEncryption = "tls" | "ssl" | "none";
 
 export type MessageTemplateChannel = "sms" | "email";
 
+export type MessageTemplateRecipient = "expert" | "seeker";
+
 export type MessageTemplateCategory =
   | "application_approved"
   | "application_rejected"
@@ -60,6 +62,7 @@ export type MessageTemplate = {
   name: string;
   channel: MessageTemplateChannel;
   category: MessageTemplateCategory;
+  recipient: MessageTemplateRecipient;
   subject?: string;
   body: string;
   variables: string[];
@@ -96,7 +99,7 @@ export const SETTINGS_SECTIONS: {
     label: "Google Credentials",
     description: "OAuth client ID, secret, and sign-in configuration",
   },
-  { id: "templates", label: "Message Templates", description: "SMS and email notification templates" },
+  { id: "templates", label: "Templates", description: "SMS and email notification templates for experts and seekers" },
 ];
 
 export const ADMIN_SETTINGS_BASE = "/admin/settings";
@@ -145,6 +148,11 @@ export const TEMPLATE_CHANNEL_LABELS: Record<MessageTemplateChannel, string> = {
   email: "Email",
 };
 
+export const TEMPLATE_RECIPIENT_LABELS: Record<MessageTemplateRecipient, string> = {
+  expert: "Expert",
+  seeker: "Seeker",
+};
+
 const STORAGE_KEY = "jatayu_admin_settings";
 export const ADMIN_SETTINGS_UPDATED_EVENT = "admin-settings-updated";
 
@@ -188,26 +196,29 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   templates: [
     {
       id: "tpl-approval-sms",
-      name: "Expert Application Approved",
+      name: "Application Approved",
       channel: "sms",
       category: "application_approved",
+      recipient: "expert",
       body: "Hi {{expert_name}}, your Jatayu expert application ({{app_id}}) has been approved. Log in to complete your profile: {{profile_link}}",
       variables: ["{{expert_name}}", "{{app_id}}", "{{profile_link}}"],
     },
     {
       id: "tpl-approval-email",
-      name: "Expert Application Approved",
+      name: "Application Approved",
       channel: "email",
       category: "application_approved",
+      recipient: "expert",
       subject: "Welcome to Jatayu — Your Expert Application is Approved",
       body: "Dear {{expert_name}},\n\nCongratulations! Your expert application ({{app_id}}) has been approved. You can now complete your profile and start accepting consultations.\n\nGet started: {{profile_link}}\n\nBest regards,\nThe Jatayu Team",
       variables: ["{{expert_name}}", "{{app_id}}", "{{profile_link}}"],
     },
     {
       id: "tpl-rejection-sms",
-      name: "Expert Application Rejected",
+      name: "Application Rejected",
       channel: "sms",
       category: "application_rejected",
+      recipient: "expert",
       body: "Hi {{expert_name}}, your Jatayu expert application ({{app_id}}) was not approved. Reason: {{rejection_reason}}. You may reapply after {{reapply_date}}. View guidance: {{guidance_link}}",
       variables: [
         "{{expert_name}}",
@@ -219,9 +230,10 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     },
     {
       id: "tpl-rejection-email",
-      name: "Expert Application Rejected",
+      name: "Application Rejected",
       channel: "email",
       category: "application_rejected",
+      recipient: "expert",
       subject: "Update on your Jatayu Expert Application",
       body: "Dear {{expert_name}},\n\nWe regret to inform you that your expert application ({{app_id}}) was not approved at this time.\n\nReason: {{rejection_reason}}\n\nYou may reapply after {{reapply_date}}. View detailed guidance here: {{guidance_link}}\n\nBest regards,\nThe Jatayu Team",
       variables: [
@@ -237,22 +249,34 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
       name: "Application On Hold",
       channel: "sms",
       category: "application_on_hold",
+      recipient: "expert",
       body: "Hi {{expert_name}}, your Jatayu expert application ({{app_id}}) is on hold pending additional review. We will contact you within {{review_days}} business days.",
       variables: ["{{expert_name}}", "{{app_id}}", "{{review_days}}"],
     },
     {
-      id: "tpl-otp-sms",
+      id: "tpl-otp-expert-sms",
       name: "OTP Verification",
       channel: "sms",
       category: "otp_verification",
+      recipient: "expert",
       body: "Your Jatayu verification code is {{otp_code}}. Valid for {{expiry_minutes}} minutes. Do not share this code with anyone.",
       variables: ["{{otp_code}}", "{{expiry_minutes}}"],
     },
     {
-      id: "tpl-booking-email",
+      id: "tpl-otp-seeker-sms",
+      name: "OTP Verification",
+      channel: "sms",
+      category: "otp_verification",
+      recipient: "seeker",
+      body: "Your Jatayu verification code is {{otp_code}}. Valid for {{expiry_minutes}} minutes. Do not share this code with anyone.",
+      variables: ["{{otp_code}}", "{{expiry_minutes}}"],
+    },
+    {
+      id: "tpl-booking-confirmed-seeker-email",
       name: "Booking Confirmed",
       channel: "email",
       category: "booking_confirmed",
+      recipient: "seeker",
       subject: "Your Jatayu Session is Confirmed — {{session_date}}",
       body: "Dear {{seeker_name}},\n\nYour session with {{expert_name}} is confirmed for {{session_date}} at {{session_time}}.\n\nSession type: {{session_type}}\nBooking ID: {{booking_id}}\n\nJoin link: {{session_link}}\n\nBest regards,\nThe Jatayu Team",
       variables: [
@@ -266,12 +290,40 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
       ],
     },
     {
-      id: "tpl-reminder-sms",
+      id: "tpl-booking-confirmed-expert-email",
+      name: "Booking Confirmed",
+      channel: "email",
+      category: "booking_confirmed",
+      recipient: "expert",
+      subject: "New Session Booking — {{session_date}}",
+      body: "Hi {{expert_name}},\n\nYou have a new booking from {{seeker_name}} for {{session_date}} at {{session_time}}.\n\nSession type: {{session_type}}\nBooking ID: {{booking_id}}\n\nJoin link: {{session_link}}\n\nBest regards,\nThe Jatayu Team",
+      variables: [
+        "{{expert_name}}",
+        "{{seeker_name}}",
+        "{{session_date}}",
+        "{{session_time}}",
+        "{{session_type}}",
+        "{{booking_id}}",
+        "{{session_link}}",
+      ],
+    },
+    {
+      id: "tpl-reminder-seeker-sms",
       name: "Session Reminder",
       channel: "sms",
       category: "session_reminder",
+      recipient: "seeker",
       body: "Reminder: Your Jatayu session with {{expert_name}} starts in {{minutes_until}} minutes. Join here: {{session_link}}",
       variables: ["{{expert_name}}", "{{minutes_until}}", "{{session_link}}"],
+    },
+    {
+      id: "tpl-reminder-expert-sms",
+      name: "Session Reminder",
+      channel: "sms",
+      category: "session_reminder",
+      recipient: "expert",
+      body: "Reminder: Your Jatayu session with {{seeker_name}} starts in {{minutes_until}} minutes. Join here: {{session_link}}",
+      variables: ["{{seeker_name}}", "{{minutes_until}}", "{{session_link}}"],
     },
   ],
 };

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import MatchingProgress from "./MatchingProgress";
 import type { ProgressCompletion, ProgressStepKey } from "./MatchingProgress";
@@ -66,10 +66,15 @@ export default function PersonalisationStep({
   onProgressStepClick,
 }: PersonalisationStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const customLanguageInputRef = useRef<HTMLInputElement>(null);
   const [showAddLanguage, setShowAddLanguage] = useState(false);
   const [newLanguage, setNewLanguage] = useState("");
   const [photoError, setPhotoError] = useState("");
   const presetLanguageIds: Set<string> = new Set(profileLanguageOptions.map((lang) => lang.id));
+
+  const [customLanguages, setCustomLanguages] = useState<string[]>(() =>
+    selectedLanguages.filter((lang) => !presetLanguageIds.has(lang))
+  );
   const maxPhotoBytes = 5 * 1024 * 1024;
   const isUploadedPhoto =
     profilePhotoSrc.startsWith("blob:") || profilePhotoSrc.startsWith("data:");
@@ -112,26 +117,53 @@ export default function PersonalisationStep({
     onSelectedLanguagesChange([...selectedLanguages, id]);
   };
 
-  const handleAddCustomLanguage = () => {
-    const trimmed = newLanguage.trim();
-    if (!trimmed) return;
+  const handleAddCustomLanguage = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setNewLanguage("");
+      setShowAddLanguage(false);
+      return;
+    }
 
     const normalized = trimmed.toLowerCase();
     const matchedPreset = profileLanguageOptions.find(
       (lang) => lang.id === normalized || lang.label.toLowerCase() === normalized,
     );
-    const languageValue = matchedPreset?.id ?? trimmed;
 
-    const alreadySelected = selectedLanguages.some(
-      (lang) => lang.toLowerCase() === languageValue.toLowerCase(),
-    );
+    if (matchedPreset) {
+      if (!selectedLanguages.includes(matchedPreset.id)) {
+        onSelectedLanguagesChange([...selectedLanguages, matchedPreset.id]);
+      }
+    } else {
+      const existingCustom = customLanguages.find(
+        (l) => l.toLowerCase() === trimmed.toLowerCase()
+      );
+      const customVal = existingCustom ?? trimmed;
 
-    if (!alreadySelected) {
-      onSelectedLanguagesChange([...selectedLanguages, languageValue]);
+      if (!customLanguages.some((l) => l.toLowerCase() === customVal.toLowerCase())) {
+        setCustomLanguages((prev) => [...prev, customVal]);
+      }
+      if (!selectedLanguages.some((l) => l.toLowerCase() === customVal.toLowerCase())) {
+        onSelectedLanguagesChange([...selectedLanguages, customVal]);
+      }
     }
 
     setNewLanguage("");
     setShowAddLanguage(false);
+  };
+
+  const handleCustomLanguageSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleAddCustomLanguage(newLanguage);
+  };
+
+  const handleCustomLanguageBlur = () => {
+    handleAddCustomLanguage(newLanguage);
+  };
+
+  const handleRemoveCustomLanguage = (lang: string) => {
+    setCustomLanguages((prev) => prev.filter((l) => l !== lang));
+    onSelectedLanguagesChange(selectedLanguages.filter((l) => l !== lang));
   };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,7 +212,7 @@ export default function PersonalisationStep({
           A few quick details help us fine-tune your expert match for the best possible connection.
         </p>
 
-        <form className={styles.formContainer} onSubmit={(e) => e.preventDefault()}>
+        <div className={styles.formContainer}>
           <div className={styles.splitLayout}>
             <div className={styles.formInputsColumn}>
               <div className={styles.photoUploadContainer}>
@@ -243,52 +275,70 @@ export default function PersonalisationStep({
                       </button>
                     );
                   })}
-                  {selectedLanguages
-                    .filter((lang) => !presetLanguageIds.has(lang))
-                    .map((lang) => (
-                      <button
+                  {customLanguages.map((lang) => {
+                    const isSelected = selectedLanguages.includes(lang);
+                    return (
+                      <div
                         key={lang}
-                        type="button"
-                        onClick={() => handleToggleLanguage(lang)}
-                        className={`${styles.profileLanguagePill} ${styles.profileLanguagePillSelected}`}
-                        aria-pressed="true"
+                        className={`${styles.profileLanguagePill} ${styles.profileLanguagePillRemovable} ${
+                          isSelected ? styles.profileLanguagePillSelected : ""
+                        }`}
                       >
-                        <span>{lang}</span>
-                      </button>
-                    ))}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLanguage(lang)}
+                          className={styles.profileLanguagePillMain}
+                        >
+                          <span>{lang}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.profileLanguageRemoveBtn}
+                          aria-label={`Remove ${lang}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveCustomLanguage(lang);
+                          }}
+                        >
+                          <X size={12} aria-hidden="true" />
+                        </button>
+                      </div>
+                    );
+                  })}
 
-                  {!showAddLanguage ? (
+                  {showAddLanguage ? (
+                    <div className={`${styles.profileLanguagePill} ${styles.profileLanguagePillInput}`}>
+                      <form onSubmit={handleCustomLanguageSubmit} className={styles.profileLanguageInputForm}>
+                        <input
+                          ref={customLanguageInputRef}
+                          type="text"
+                          className={styles.profileLanguageInlineInput}
+                          placeholder="Enter custom language..."
+                          value={newLanguage}
+                          onChange={(e) => setNewLanguage(e.target.value)}
+                          onBlur={handleCustomLanguageBlur}
+                          autoFocus
+                          aria-label="Custom language"
+                        />
+                        <button
+                          type="submit"
+                          className={styles.profileLanguageAddBtn}
+                          onMouseDown={(e) => e.preventDefault()}
+                          aria-label="Add custom language"
+                        >
+                          <Plus size={14} aria-hidden="true" />
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      className={styles.profileLanguageAddOther}
                       onClick={() => setShowAddLanguage(true)}
+                      className={styles.profileLanguagePill}
                     >
-                      + Add Other
+                      <Plus size={14} aria-hidden="true" />
+                      <span>Add custom</span>
                     </button>
-                  ) : (
-                    <div className={styles.addLanguageFormInline}>
-                      <input
-                        type="text"
-                        value={newLanguage}
-                        onChange={(e) => setNewLanguage(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddCustomLanguage();
-                          }
-                        }}
-                        placeholder="Language name..."
-                        className={styles.addLanguageInputInline}
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddCustomLanguage}
-                        className={styles.addLanguageSubmitInline}
-                      >
-                        Add
-                      </button>
-                    </div>
                   )}
                 </div>
               </div>
@@ -338,7 +388,7 @@ export default function PersonalisationStep({
               </div>
             </div>
           </div>
-        </form>
+        </div>
       </div>
 
       <div className={shared.onboardingFooter}>

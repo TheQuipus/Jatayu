@@ -5,108 +5,7 @@
   min-width: 0;
 }
 
-.reviewTopRow {
-  display: grid;
-  grid-template-columns: 1.1fr 1.3fr;
-  gap: 20px;
-  width: 100%;
-  text-align: left;
-}
 
-.strengthReportCard {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 20px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.strengthReportInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
-  text-align: left;
-  min-width: 0;
-}
-
-.strengthReportLabel {
-  font-family: var(--font-body);
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
-  font-weight: 500;
-}
-
-.strengthReportValue {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--white);
-  margin: 0;
-}
-
-.strengthGradeBadge {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 2px solid #e53b17;
-  background: rgba(229, 59, 23, 0.08);
-  display: grid;
-  place-items: center;
-  box-shadow: 0 0 16px rgba(229, 59, 23, 0.15);
-  flex-shrink: 0;
-}
-
-.strengthGradeBadge span {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--white);
-}
-
-.finalTipCard {
-  background: rgba(229, 59, 23, 0.04);
-  border: 1px solid rgba(229, 59, 23, 0.12);
-  padding: 20px 24px;
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.finalTipIconWrap {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  margin-top: 1px;
-  color: var(--pomegranate);
-}
-
-.finalTipTextWrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
-  text-align: left;
-  min-width: 0;
-}
-
-.finalTipTitle {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  color: #e53b17;
-  margin: 0;
-}
-
-.finalTipDesc {
-  font-family: var(--font-body);
-  font-size: 12px;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-}
 
 .reviewBlockCard {
   width: 100%;
@@ -324,10 +223,7 @@
 }
 
 @media (max-width: 768px) {
-  .reviewTopRow {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
+
 
   .reviewSplitRow {
     grid-template-columns: 1fr;

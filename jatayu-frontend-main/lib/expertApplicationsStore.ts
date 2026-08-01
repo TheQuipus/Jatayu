@@ -152,6 +152,16 @@ export function updateExpertApplicationStatus(
   writeApplications(applications);
 }
 
+export function updateExpertApplicationReviewerNote(
+  appId: string,
+  reviewerNote: string,
+): void {
+  const applications = readApplications().map((application) =>
+    application.appId === appId ? { ...application, reviewerNote } : application,
+  );
+  writeApplications(applications);
+}
+
 export function computeCompleteness(application: ExpertApplicationSubmission): number {
   const checks = [
     Boolean(application.name),
@@ -205,9 +215,18 @@ export function getSlaStatus(submittedAt: string): {
   const hoursElapsed = Math.floor(totalMinutes / 60);
   const minutesPart = totalMinutes % 60;
 
-  const hh = String(hoursElapsed).padStart(2, "0");
-  const mm = String(minutesPart).padStart(2, "0");
-  const slaLabel = `${hh}:${mm} hrs`;
+  let slaLabel: string;
+  if (hoursElapsed >= 48) {
+    const days = Math.floor(hoursElapsed / 24);
+    const remainingHours = hoursElapsed % 24;
+    const dd = String(days).padStart(2, "0");
+    const hr = String(remainingHours).padStart(2, "0");
+    slaLabel = `${dd}D:${hr}HR`;
+  } else {
+    const hh = String(hoursElapsed).padStart(2, "0");
+    const mm = String(minutesPart).padStart(2, "0");
+    slaLabel = `${hh}:${mm} hrs`;
+  }
 
   const hoursRemaining = 48 - hoursElapsed;
 
@@ -285,15 +304,19 @@ export function seedDemoApplicationIfEmpty(): void {
   const existing = readApplications();
   const demos = getDemoExpertApplications();
 
-  if (existing.length === 0) {
+  const demoIds = new Set(demos.map((d) => d.appId));
+  const hasExtraOrDifferent =
+    existing.length !== demos.length ||
+    existing.some((app) => !demoIds.has(app.appId)) ||
+    existing.some((app) => {
+      const demo = demos.find((d) => d.appId === app.appId);
+      if (!demo) return true;
+      const existingCertUrls = app.certificates?.filter((c) => c.url).length || 0;
+      const demoCertUrls = demo.certificates?.filter((c) => c.url).length || 0;
+      return existingCertUrls !== demoCertUrls;
+    });
+
+  if (hasExtraOrDifferent) {
     writeApplications(demos);
-    return;
-  }
-
-  const existingIds = new Set(existing.map((application) => application.appId));
-  const missingDemos = demos.filter((demo) => !existingIds.has(demo.appId));
-
-  if (missingDemos.length > 0) {
-    writeApplications([...existing, ...missingDemos]);
   }
 }

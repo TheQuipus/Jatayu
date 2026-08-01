@@ -21,7 +21,7 @@ export type CalendarBooking = {
   startHour: number;
   startMinute: number;
   durationMinutes: number;
-  status: "confirmed" | "pending";
+  status: "confirmed" | "pending" | "cancelled";
 };
 
 export type BookingAttachment = {
@@ -49,6 +49,7 @@ export type BookingDetail = CalendarBooking & {
   subject: string;
   context: string;
   attachments: BookingAttachment[];
+  placedDaysAgo: number;
 };
 
 export type UpcomingBooking = CalendarBooking;
@@ -92,22 +93,21 @@ export const ACTIVITY_STATS = [
 ] as const;
 
 export const MAIN_NAV: SeekerNavItem[] = [
-  { id: "home", label: "Home", href: "/seeker/dashboard" },
-  { id: "discover", label: "Discover", href: "/seeker/discover" },
-  { id: "bookings", label: "Bookings", href: "/seeker/bookings", badge: 2 },
-  { id: "messages", label: "Messages", href: "/seeker/dashboard#messages", badge: 5 },
+  { id: "home", label: "Home", href: "/seeker/dashboard/" },
+  { id: "discover", label: "Discover", href: "/seeker/discover/" },
+  { id: "bookings", label: "Bookings", href: "/seeker/bookings/", badge: 2 },
 ];
 
 export const PROFILE_NAV: SeekerNavItem = {
   id: "profile",
   label: "Profile",
-  href: "/seeker/dashboard#profile",
+  href: "/seeker/dashboard/#profile",
 };
 
 export const QUICK_LINKS: SeekerNavItem[] = [
-  { id: "tickets", label: "My Tickets", href: "/seeker/dashboard#tickets" },
-  { id: "saved", label: "Saved Experts", href: "/seeker/bookmark" },
-  { id: "support", label: "Support", href: "/seeker/dashboard#support" },
+  { id: "tickets", label: "My Tickets", href: "/seeker/dashboard/#tickets" },
+  { id: "saved", label: "Saved Experts", href: "/seeker/bookmark/" },
+  { id: "support", label: "Support", href: "/seeker/dashboard/#support" },
 ];
 
 export const TRENDING_CATEGORIES = [
@@ -134,8 +134,8 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     id: "booking-1",
     expert: featuredExperts[0],
     specialty: "Startup Advisor",
-    dayOffset: 1,
-    startHour: 10,
+    dayOffset: 3,
+    startHour: 14,
     startMinute: 0,
     durationMinutes: 60,
     status: "confirmed",
@@ -154,20 +154,86 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     id: "booking-3",
     expert: featuredExperts[2],
     specialty: "Tax & Finance",
-    dayOffset: 1,
-    startHour: 14,
+    dayOffset: 0,
+    startHour: 20,
     startMinute: 0,
     durationMinutes: 45,
     status: "confirmed",
+  },
+  {
+    id: "booking-4",
+    expert: featuredExperts[1],
+    specialty: "Legal Tech",
+    dayOffset: 0,
+    startHour: 11,
+    startMinute: 30,
+    durationMinutes: 30,
+    status: "cancelled",
+  },
+  {
+    id: "booking-5",
+    expert: featuredExperts[3],
+    specialty: "Product Strategy",
+    dayOffset: 0,
+    startHour: 16,
+    startMinute: 0,
+    durationMinutes: 45,
+    status: "confirmed",
+  },
+  {
+    id: "booking-6",
+    expert: featuredExperts[5],
+    specialty: "Cybersecurity & Risk",
+    dayOffset: -2,
+    startHour: 14,
+    startMinute: 30,
+    durationMinutes: 60,
+    status: "confirmed",
+  },
+  {
+    id: "booking-7",
+    expert: featuredExperts[6],
+    specialty: "AI & Machine Learning",
+    dayOffset: -7,
+    startHour: 10,
+    startMinute: 0,
+    durationMinutes: 45,
+    status: "confirmed",
+  },
+  {
+    id: "booking-8",
+    expert: featuredExperts[0],
+    specialty: "Venture Capital & Pitch Deck",
+    dayOffset: -22,
+    startHour: 17,
+    startMinute: 0,
+    durationMinutes: 30,
+    status: "cancelled",
   },
 ];
 
 const CONSULTATION_DISPLAY: Record<ConsultationType, string> = {
   text: "Text Messaging",
   video: "1:1 Video Call",
-  live: "Group Q&A",
-  audio: "Shoutout",
+  shoutout: "Video Shoutout",
+  group: "Group Session",
 };
+
+export function formatBookingDateKey(dayOffset: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + dayOffset);
+  const dayStr = String(date.getDate()).padStart(2, "0");
+  const monthStr = date.toLocaleDateString("en-IN", { month: "short" }).toLowerCase();
+  const yearStr = date.getFullYear();
+  return `${dayStr} ${monthStr} ${yearStr}`;
+}
+
+export function getBookingDateObject(dayOffset: number): Date {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + dayOffset);
+  return date;
+}
 
 function formatPlacedOn(daysAgo: number): string {
   const date = new Date();
@@ -250,6 +316,7 @@ function buildBookingDetail(
     consultationType: options.consultationType,
     consultationLabel: CONSULTATION_DISPLAY[options.consultationType],
     placedOnLabel: formatPlacedOn(options.placedDaysAgo),
+    placedDaysAgo: options.placedDaysAgo,
     scheduledDateLabel: formatScheduledDate(booking.dayOffset),
     scheduledTimeLabel: formatScheduledTimeRange(
       booking.startHour,
@@ -283,7 +350,7 @@ function buildBookingDetail(
 export const BOOKING_DETAILS: BookingDetail[] = [
   buildBookingDetail(UPCOMING_BOOKINGS[0], {
     referenceId: "BK-98274",
-    consultationType: "live",
+    consultationType: "video",
     placedDaysAgo: 2,
     walletApplied: 1250,
     invoiceId: "JTY-20261022-98274",
@@ -317,6 +384,61 @@ export const BOOKING_DETAILS: BookingDetail[] = [
     attachments: [
       { name: "Income_Summary_Q3.xlsx", size: "840 KB", kind: "docx" },
     ],
+  }),
+  buildBookingDetail(UPCOMING_BOOKINGS[3], {
+    referenceId: "BK-98277",
+    consultationType: "text",
+    placedDaysAgo: 4,
+    walletApplied: 0,
+    invoiceId: "JTY-20261020-98277",
+    subject: "Trademark registration process",
+    context:
+      "I need guidance on registering a trademark for my new brand name. What are the documents required and how long does the process typically take?",
+    attachments: [],
+  }),
+  buildBookingDetail(UPCOMING_BOOKINGS[4], {
+    referenceId: "BK-98278",
+    consultationType: "video",
+    placedDaysAgo: 1,
+    walletApplied: 0,
+    invoiceId: "JTY-20261024-98278",
+    subject: "Product roadmap & architecture review",
+    context:
+      "Looking for feedback on scaling our backend microservices and prioritizing feature releases for Q3.",
+    attachments: [],
+  }),
+  buildBookingDetail(UPCOMING_BOOKINGS[5], {
+    referenceId: "BK-98279",
+    consultationType: "video",
+    placedDaysAgo: 4,
+    walletApplied: 500,
+    invoiceId: "JTY-20260727-98279",
+    subject: "SOC2 Compliance & Security Hardening",
+    context:
+      "Reviewing our AWS cloud security posture and preparation for SOC2 Type II audit.",
+    attachments: [],
+  }),
+  buildBookingDetail(UPCOMING_BOOKINGS[6], {
+    referenceId: "BK-98280",
+    consultationType: "text",
+    placedDaysAgo: 9,
+    walletApplied: 0,
+    invoiceId: "JTY-20260722-98280",
+    subject: "LLM Fine-tuning & RAG Architecture",
+    context:
+      "Discussion on vector embeddings, chunking strategies, and hybrid retrieval with PGVector.",
+    attachments: [],
+  }),
+  buildBookingDetail(UPCOMING_BOOKINGS[7], {
+    referenceId: "BK-98281",
+    consultationType: "video",
+    placedDaysAgo: 24,
+    walletApplied: 0,
+    invoiceId: "JTY-20260707-98281",
+    subject: "VC Deck Advisory",
+    context:
+      "Initial feedback on financial projections and cap table structure for pre-seed round.",
+    attachments: [],
   }),
 ];
 

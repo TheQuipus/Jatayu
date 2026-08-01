@@ -13,37 +13,271 @@
 .calendarToolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-start;
-  min-height: 56px;
-  padding: 0 14px;
+  min-height: 52px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--mercury);
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(10px);
+  background: var(--white);
 }
 
-.toolbarLeft,
-.toolbarRight {
+.teamsToolbarGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
 }
 
-.rangeLabel {
+.teamsTodayBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.teamsTodayBtn:hover {
+  background: var(--gallery);
+  border-color: var(--mercury);
+}
+
+.teamsTodayIcon {
+  color: var(--scorpion);
+}
+
+.teamsNavNavBtns {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.teamsNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.teamsNavBtn:hover {
+  background: var(--gallery);
+}
+
+.pickerContainer {
+  position: relative;
+}
+
+.teamsDateDropdownBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.teamsDateDropdownBtn:hover,
+.teamsDateDropdownBtnActive {
+  background: var(--gallery);
+}
+
+.teamsDateTitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.teamsChevron {
+  color: var(--scorpion);
+  transition: transform 0.2s ease;
+}
+
+.teamsChevronRotate {
+  transform: rotate(180deg);
+}
+
+.monthPickerPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  width: 270px;
+  padding: 14px;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  animation: popoverFadeIn 0.15s ease-out;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.popoverHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.popoverMonthLabel {
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: -0.02em;
   color: var(--ink);
 }
 
-.iconGhostBtn,
-.weekNavBtn,
-.todayBtn,
-.viewSelect {
-  height: 32px;
+.popoverNavGroup {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.popoverNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.popoverNavBtn:hover {
+  background: var(--gallery);
+}
+
+.popoverWeekHeader {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--scorpion);
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.popoverGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.popoverWeekRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  padding: 3px 0;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.popoverWeekRowSelected {
+  background: color-mix(in srgb, var(--tango) 18%, transparent);
+}
+
+.popoverWeekRowSelected .popoverDayBtn {
+  color: var(--ink);
+}
+
+.popoverWeekRowSelected .popoverDayOtherMonth {
+  opacity: 0.35;
+}
+
+.popoverDayBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  margin: 0 auto;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.popoverDayBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.popoverWeekRow:not(.popoverWeekRowSelected) .popoverDayBtn:hover {
+  background: var(--gallery);
+}
+
+.popoverDayOtherMonth {
+  opacity: 0.35;
+}
+
+.popoverDayToday {
+  font-weight: 700;
+  color: #FFFFFF !important;
+  background: var(--tango) !important;
+  border-radius: 50% !important;
+  border: none !important;
+  opacity: 1 !important;
+}
+
+.popoverDaySelected {
+  font-weight: 700;
+}
+
+.popoverDayNum {
+  line-height: 1;
+}
+
+.popoverBookingDot {
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--tango);
+}
+
+.weekTabBtn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--scorpion);
   font-family: var(--font-body);
@@ -53,33 +287,46 @@
   transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.iconGhostBtn,
-.weekNavBtn {
-  width: 32px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-}
-
-.todayBtn,
-.viewSelect {
-  padding: 0 12px;
-}
-
-.viewSelect {
-  min-width: 76px;
+.weekTabBtn:hover {
   border-color: var(--mercury);
   background: var(--white);
   color: var(--ink);
-  margin-left: 8px;
 }
 
-.iconGhostBtn:hover,
-.weekNavBtn:hover,
-.todayBtn:hover {
+.weekTabBtnActive {
   border-color: var(--mercury);
   background: var(--white);
   color: var(--ink);
+  font-weight: 500;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.monthSelect {
+  height: 32px;
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23737373' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+}
+
+.monthSelect:hover {
+  border-color: var(--scorpion);
+}
+
+.monthSelect:focus {
+  border-color: var(--scorpion);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mercury) 50%, transparent);
 }
 
 .weekBoard {
@@ -109,6 +356,14 @@
   font-weight: 500;
   color: var(--silver-chalice);
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dayHeaderToday {
+  color: var(--tango);
+  font-weight: 700;
 }
 
 .dayContent {
@@ -124,11 +379,10 @@
 .bookingEvent {
   display: block;
   border: 1px solid color-mix(in srgb, var(--mercury) 70%, transparent);
-  border-radius: 8px;
   background: var(--white);
   color: inherit;
   text-decoration: none;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 8px 22px color-mix(in srgb, var(--ink) 8%, transparent);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -139,26 +393,27 @@
 }
 
 .bookingEventConfirmed {
-  background: linear-gradient(
-    180deg,
-    var(--white) 0%,
-    color-mix(in srgb, var(--green) 7%, var(--white)) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--white) 0%,
+      color-mix(in srgb, var(--green) 7%, var(--white)) 100%);
 }
 
 .bookingEventPending {
-  background: linear-gradient(
-    180deg,
-    var(--white) 0%,
-    color-mix(in srgb, var(--tango) 8%, var(--white)) 100%
-  );
+  background: linear-gradient(180deg,
+      var(--white) 0%,
+      color-mix(in srgb, var(--tango) 8%, var(--white)) 100%);
+}
+
+.bookingEventCancelled {
+  background: linear-gradient(180deg,
+      var(--white) 0%,
+      color-mix(in srgb, var(--thunderbird) 14%, var(--white)) 100%);
 }
 
 .bookingMetaRow {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 4px;
   padding: 6px 7px 5px;
   font-family: var(--font-body);
   font-size: 10px;
@@ -166,14 +421,25 @@
   color: var(--dove-gray);
 }
 
-.channelDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--bunker);
+.metaRowLeft {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.consultationIcon {
+  display: block;
+  color: var(--dove-gray);
+  flex-shrink: 0;
 }
 
 .bookingType {
+  display: block;
+  margin: 4px 8px 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.1;
+  color: var(--dove-gray);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -209,23 +475,30 @@
 }
 
 .bookingSummary {
-  display: -webkit-box;
+  display: flex;
+  align-items: center;
   min-height: 24px;
   margin: 5px 8px 0;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  overflow: visible;
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.2;
   color: var(--dove-gray);
 }
 
+.pendingSummaryText {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: visible;
+}
+
 .statusBadge {
-  display: block;
-  margin: 2px 8px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -238,6 +511,69 @@
 .statusBadgePending {
   color: color-mix(in srgb, var(--tango) 86%, var(--ink));
 }
+
+.statusBadgeCancelled {
+  color: color-mix(in srgb, var(--thunderbird) 80%, var(--ink));
+}
+
+.tooltipContainer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.infoIcon {
+  color: color-mix(in srgb, var(--tango) 90%, var(--ink));
+  transition: transform 0.2s ease;
+}
+
+.infoIcon:hover {
+  transform: scale(1.1);
+}
+
+.tooltipText {
+  visibility: hidden;
+  width: 220px;
+  background-color: var(--bunker);
+  color: var(--white);
+  text-align: left;
+  border-radius: 8px;
+  padding: 8px 10px;
+  position: absolute;
+  z-index: 100;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.tooltipText::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--bunker) transparent transparent transparent;
+}
+
+.tooltipContainer:hover .tooltipText {
+  visibility: visible;
+  opacity: 1;
+}
+
+
 
 @media (max-width: 900px) {
   .calendarShell {
@@ -262,4 +598,473 @@
   .dayContent {
     min-height: 510px;
   }
+}
+
+.bookingEventCancelledCard {
+  display: block;
+  overflow: visible !important;
+  cursor: default;
+  background: linear-gradient(180deg,
+      var(--white) 0%,
+      color-mix(in srgb, var(--thunderbird) 14%, var(--white)) 100%);
+}
+
+.bookingEventCancelledCard:hover {
+  transform: none !important;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ink) 8%, transparent) !important;
+}
+
+.cancelledHeaderLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.cancelledDivider {
+  height: 1px;
+  background: #00000014;
+  margin: 10px 8px;
+}
+
+.feedbackForm {
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feedbackFormTitle {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.starsRow {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.starBtn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  transition: transform 0.1s ease;
+}
+
+.starBtn:hover {
+  transform: scale(1.15);
+}
+
+.ratingLabelText {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dove-gray);
+  margin-left: 6px;
+}
+
+.feedbackDetailsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: slideDown 0.2s ease;
+}
+
+.inputLabel {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dove-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.categoriesList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.categoryLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--scorpion);
+  cursor: pointer;
+}
+
+.categoryRadio {
+  margin: 0;
+  cursor: pointer;
+}
+
+.feedbackTextarea {
+  width: 100%;
+  min-height: 48px;
+  max-height: 80px;
+  padding: 6px 8px;
+  border: 1px solid var(--mercury);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--white);
+  resize: none;
+}
+
+
+.submitFeedbackBtn {
+  width: 100%;
+  height: 28px;
+  background: var(--ink);
+  color: var(--white);
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+
+.submitFeedbackBtnDisabled {
+  background: var(--gallery);
+  color: var(--silver-chalice);
+  border: 1px solid var(--mercury);
+  cursor: not-allowed;
+}
+
+.submitFeedbackBtnDisabled:hover {
+  background: var(--gallery);
+}
+
+
+.feedbackSuccess {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--green) 8%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--green) 15%, transparent);
+  border-radius: 6px;
+  margin: 0 8px 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+.successStar {
+  font-size: 14px;
+  color: var(--green);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.successText {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--green);
+  margin: 0;
+  line-height: 1.3;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bookingEventConfirmedCard {
+  display: block;
+  overflow: visible !important;
+  cursor: default;
+  background: linear-gradient(180deg,
+      var(--white) 0%,
+      color-mix(in srgb, var(--green) 7%, var(--white)) 100%);
+}
+
+.bookingEventConfirmedCard:hover {
+  transform: none !important;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ink) 8%, transparent) !important;
+}
+
+.confirmedHeaderLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.confirmedDivider {
+  height: 1px;
+  background: #00000014;
+  margin: 10px 8px;
+}
+
+.countdownBox {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.countdownText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.countdownForm {
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.countdownTitle {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bookingEventPendingCard {
+  display: block;
+  overflow: visible !important;
+  cursor: default;
+  background: linear-gradient(180deg,
+      var(--white) 0%,
+      color-mix(in srgb, var(--tango) 8%, var(--white)) 100%);
+}
+
+.bookingEventPendingCard:hover {
+  transform: none !important;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ink) 8%, transparent) !important;
+}
+
+.pendingHeaderLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.pendingDivider {
+  height: 1px;
+  background: #00000014;
+  margin: 10px 8px;
+}
+
+.pokeForm {
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pokeBtnDisabled {
+  width: 100%;
+  height: 32px;
+  background: var(--gallery);
+  color: var(--silver-chalice);
+  border: 1px solid var(--mercury);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: not-allowed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pokeBtn {
+  width: 100%;
+  height: 32px;
+  background: var(--ink);
+  color: var(--white);
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.pokeIconSvg {
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+  width: 16px !important;
+  height: 10px !important;
+}
+
+.simBtn {
+  background: transparent;
+  border: 1px dashed var(--tango);
+  color: var(--tango);
+  font-size: 9px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s ease;
+}
+
+.simBtn:hover {
+  background: color-mix(in srgb, var(--tango) 10%, transparent);
+}
+
+.simResetBtn {
+  background: transparent;
+  border: 1px dashed var(--silver-chalice);
+  color: var(--dove-gray);
+  font-size: 9px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s ease;
+}
+
+.simResetBtn:hover {
+  background: color-mix(in srgb, var(--silver-chalice) 10%, transparent);
+}
+
+.cooldownActions {
+  display: flex;
+  gap: 4px;
+}
+
+.cooldownActions button {
+  flex: 1;
+}
+
+.joinActionBox {
+  padding: 0 8px 8px;
+}
+
+.joinBtn {
+  width: 100%;
+}
+
+.categoriesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.categoryLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.categoryLabel:hover {
+  color: var(--ink);
+}
+
+.categoryRadio {
+  /* Hide standard browser radio button styling */
+  appearance: none;
+  -webkit-appearance: none;
+
+  /* Create our custom radio circle */
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--mercury);
+  border-radius: 50%;
+  outline: none;
+  background-color: var(--white);
+  cursor: pointer;
+
+  display: inline-grid;
+  place-content: center;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  margin: 0;
+}
+
+.categoryRadio:hover {
+  border-color: var(--dove-gray);
+}
+
+.categoryRadio:focus-visible {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 20%, transparent);
+}
+
+/* Custom inner dot when checked */
+.categoryRadio::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: scale(0);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background-color: var(--orange);
+}
+
+.categoryRadio:checked {
+  border-color: var(--orange);
+}
+
+.categoryRadio:checked::before {
+  transform: scale(1);
+}
+
+.cardReportRow {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  border-top: 1px dashed var(--mercury);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.reportLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dove-gray);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.reportLink:hover {
+  color: var(--thunderbird);
 }

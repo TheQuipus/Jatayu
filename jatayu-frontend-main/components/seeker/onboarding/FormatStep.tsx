@@ -7,6 +7,7 @@ import {
   Phone,
   FileText,
   Users,
+  Sparkles,
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import MatchingProgress from "./MatchingProgress";
@@ -30,8 +31,8 @@ type FormatStepProps = {
 
 const FORMAT_ICONS = {
   video: Video,
-  audio: Phone,
   written: FileText,
+  shoutout: Phone,
   group: Users,
 } as const;
 

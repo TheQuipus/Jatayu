@@ -155,7 +155,7 @@
   letter-spacing: -0.64px;
   color: #0B0D14;
   margin-top: 12px;
-  text-wrap: nowrap;
+  word-break: break-word;
 }
 
 

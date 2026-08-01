@@ -41,6 +41,8 @@ function SkillBadgeRing({ progress, size = 48 }: { progress: number; size?: numb
   const cx = size / 2;
   const cy = size / 2;
 
+  const filledOpacity = filled > 0 ? 0.5 + Math.min(filled, BADGE_SEGMENT_COUNT) * 0.1 : 1;
+
   return (
     <svg
       width={size}
@@ -52,6 +54,7 @@ function SkillBadgeRing({ progress, size = 48 }: { progress: number; size?: numb
       {Array.from({ length: BADGE_SEGMENT_COUNT }, (_, index) => {
         const startAngle = index * (segmentDeg + gapDeg);
         const endAngle = startAngle + segmentDeg;
+        const isFilled = index < filled;
 
         return (
           <path
@@ -59,8 +62,9 @@ function SkillBadgeRing({ progress, size = 48 }: { progress: number; size?: numb
             d={describeArc(cx, cy, radius, startAngle, endAngle)}
             fill="none"
             className={
-              index < filled ? styles.footerTagRingSegmentFilled : styles.footerTagRingSegment
+              isFilled ? styles.footerTagRingSegmentFilled : styles.footerTagRingSegment
             }
+            style={isFilled ? { opacity: filledOpacity } : undefined}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
           />
@@ -162,7 +166,7 @@ export default function SkillsStep({
         </h1>
 
         <p className={shared.questionSubtitle}>
-          Select 5 sub-skills related to {activeCategoryLabel}. This refines your expert profile.
+          Select up to 5 sub-skills related to {activeCategoryLabel}. This refines your expert profile.
         </p>
 
         {/* Directory Wrapper */}
@@ -214,9 +218,8 @@ export default function SkillsStep({
                           <button
                             type="button"
                             onClick={() => onToggleSkill(skill)}
-                            className={`${styles.skillPill} ${
-                              isSelected ? styles.skillPillSelected : ""
-                            }`}
+                            className={`${styles.skillPill} ${isSelected ? styles.skillPillSelected : ""
+                              }`}
                           >
                             {skill}
                           </button>
@@ -237,9 +240,8 @@ export default function SkillsStep({
                     return (
                       <div className={styles.skillPillWrapper} key={skill}>
                         <div
-                          className={`${styles.skillPill} ${styles.skillPillRemovable} ${
-                            isSelected ? styles.skillPillSelected : ""
-                          }`}
+                          className={`${styles.skillPill} ${styles.skillPillRemovable} ${isSelected ? styles.skillPillSelected : ""
+                            }`}
                         >
                           <button
                             type="button"
@@ -270,7 +272,7 @@ export default function SkillsStep({
               </h3>
               {showInput ? (
                 <div className={`${styles.skillPill} ${styles.skillPillInput}`}>
-                  <form onSubmit={handleSubmit} style={{ width: "100%", display: "flex" }}>
+                  <form onSubmit={handleSubmit} className={styles.skillInputForm}>
                     <input
                       type="text"
                       placeholder="Add custom skill..."
@@ -281,6 +283,14 @@ export default function SkillsStep({
                       autoFocus
                       aria-label="Add custom skill"
                     />
+                    <button
+                      type="submit"
+                      className={styles.skillAddBtn}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label="Add custom skill"
+                    >
+                      <Plus size={14} aria-hidden="true" />
+                    </button>
                   </form>
                 </div>
               ) : (
@@ -325,7 +335,12 @@ export default function SkillsStep({
             ) : (
               <>
                 <strong>Skill Specialist</strong>
-                <small>Select 5 skills to unlock badge</small>
+                <small>
+                  {selectedSkills.length === 0
+                    ? `Select ${BADGE_SEGMENT_COUNT} skills to unlock 5 credits`
+                    : `Select ${BADGE_SEGMENT_COUNT - Math.min(selectedSkills.length, BADGE_SEGMENT_COUNT)} more skill${BADGE_SEGMENT_COUNT - Math.min(selectedSkills.length, BADGE_SEGMENT_COUNT) === 1 ? "" : "s"
+                    } to unlock 5 credits`}
+                </small>
               </>
             )}
           </div>
@@ -340,7 +355,7 @@ export default function SkillsStep({
           </button>
           <ContinueButton
             onClick={onContinue}
-            disabled={selectedSkills.length !== MAX_SKILLS}
+            disabled={selectedSkills.length === 0}
           />
         </div>
       </div>

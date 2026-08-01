@@ -176,6 +176,7 @@ export default function ExpertAdvice() {
                       src={step.image}
                       alt=""
                       className={styles.hoverPreviewImg}
+                      loading={step.image === "/assets/img/team1.png" || step.image === "/assets/img/team2.png" ? "eager" : undefined}
                     />
                   ))}
                 </div>

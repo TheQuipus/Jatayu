@@ -162,7 +162,33 @@
   text-align: left;
 }
 
+.searchingMessageWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #E53B17;
+  font-weight: 500;
+}
 
+.spinnerDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #E53B17;
+  box-shadow: 0 0 10px rgba(229, 59, 23, 0.8);
+  animation: pulseDot 1s infinite alternate;
+}
+
+@keyframes pulseDot {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
 
 .featuredHeaderRow {
   display: flex;
@@ -210,12 +236,133 @@
   letter-spacing: 0.01em;
 }
 
+/* Slot Machine Grid & Columns */
 .matchesGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   width: 100%;
   margin-bottom: 40px;
+}
+
+.slotWindow {
+  position: relative;
+  width: 100%;
+  height: 480px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(229, 59, 23, 0.2);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6), 0 0 15px rgba(229, 59, 23, 0.05);
+}
+
+.slotWindow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: linear-gradient(to bottom, rgba(14, 15, 17, 0.95) 0%, transparent 100%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.slotWindow::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: linear-gradient(to top, rgba(14, 15, 17, 0.95) 0%, transparent 100%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.slotTrack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  will-change: transform;
+}
+
+/* First card slot: GOES DOWN */
+.slotTrackDown {
+  animation: slotSpinDown 1.6s linear infinite;
+  filter: blur(0.5px);
+}
+
+/* Second card slot: GOES UP */
+.slotTrackUp {
+  animation: slotSpinUp 1.4s linear infinite;
+  filter: blur(0.5px);
+}
+
+/* Third card slot: GOES DOWN */
+.slotTrackDownSlow {
+  animation: slotSpinDown 1.8s linear infinite;
+  filter: blur(0.5px);
+}
+
+.slotCardWrap {
+  width: 100%;
+  height: 460px;
+  flex-shrink: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes slotSpinDown {
+  0% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(0%);
+  }
+}
+
+@keyframes slotSpinUp {
+  0% {
+    transform: translateY(0%);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+/* Card dip down and settle back up animation */
+.slotLandedCard {
+  width: 100%;
+  will-change: transform;
+}
+
+.slotLanded1 {
+  animation: cardSettleDownUp 0.42s cubic-bezier(0.25, 1, 0.5, 1) 0ms forwards;
+}
+
+.slotLanded2 {
+  animation: cardSettleDownUp 0.42s cubic-bezier(0.25, 1, 0.5, 1) 90ms forwards;
+}
+
+.slotLanded3 {
+  animation: cardSettleDownUp 0.42s cubic-bezier(0.25, 1, 0.5, 1) 180ms forwards;
+}
+
+@keyframes cardSettleDownUp {
+  0% {
+    transform: translateY(0px);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(12px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0px);
+    opacity: 1;
+  }
 }
 
 .matchCardShell {
@@ -240,8 +387,6 @@
 }
 
 @media (max-width: 900px) {
-
-
   .featuredHeaderRow {
     align-items: flex-start;
     flex-direction: column;

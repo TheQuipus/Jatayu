@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import BookingCalendar from "@/components/seeker/dashboard/BookingCalendar";
+import BookingsPageContent from "@/components/seeker/bookings/BookingsPageContent";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export default function SeekerBookingsPage() {
   return (
     <section className={styles.page}>
       <div className="container">
-        <BookingCalendar />
+        <BookingsPageContent />
       </div>
     </section>
   );

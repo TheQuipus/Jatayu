@@ -1,0 +1,87 @@
+.stepHead {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 0px;
+  row-gap: 16px;
+  align-items: start;
+  width: 102%;
+  margin-bottom: 28px;
+  box-sizing: border-box;
+}
+
+.stepTitle {
+  grid-column: 1 / span 2;
+  grid-row: 1;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.stepRuleRow {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: 8px;
+  align-self: end;
+}
+
+.benefitsRule {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.3);
+  display: block;
+  position: relative;
+  top: -8px;
+}
+
+.benefitsRule::before {
+  content: "✦";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  z-index: 20;
+}
+
+.stepSubtitle {
+  grid-column: 2 / span 2;
+  grid-row: 2;
+  justify-self: start;
+  width: 100%;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--dove-gray);
+}
+
+@media (max-width: 1100px) {
+  .stepHead {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stepTitle,
+  .stepRuleRow,
+  .stepSubtitle {
+    grid-column: unset;
+    grid-row: unset;
+  }
+
+  .stepRuleRow {
+    width: 100%;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .stepSubtitle {
+    font-size: 16px;
+  }
+}

@@ -56,6 +56,51 @@ export function getYearOptions(count = 50): string[] {
   return Array.from({ length: count }, (_, index) => String(currentYear - index));
 }
 
+export function isPositionDateOrderValid(position: EmploymentPosition): boolean {
+  if (position.currentlyWorking) return true;
+  if (!position.startYear || !position.endYear) return true;
+
+  const startYear = Number.parseInt(position.startYear, 10);
+  const endYear = Number.parseInt(position.endYear, 10);
+
+  if (endYear < startYear) return false;
+  if (endYear > startYear) return true;
+
+  if (position.startMonth && position.endMonth) {
+    const startMonth = Number.parseInt(position.startMonth, 10);
+    const endMonth = Number.parseInt(position.endMonth, 10);
+    if (endMonth < startMonth) return false;
+  }
+
+  return true;
+}
+
+export function isPositionDateNotInFuture(position: EmploymentPosition): boolean {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  if (position.startYear) {
+    const sYear = Number.parseInt(position.startYear, 10);
+    if (sYear > currentYear) return false;
+    if (sYear === currentYear && position.startMonth) {
+      const sMonth = Number.parseInt(position.startMonth, 10);
+      if (sMonth > currentMonth) return false;
+    }
+  }
+
+  if (!position.currentlyWorking && position.endYear) {
+    const eYear = Number.parseInt(position.endYear, 10);
+    if (eYear > currentYear) return false;
+    if (eYear === currentYear && position.endMonth) {
+      const eMonth = Number.parseInt(position.endMonth, 10);
+      if (eMonth > currentMonth) return false;
+    }
+  }
+
+  return true;
+}
+
 export function isEmploymentPositionValid(position: EmploymentPosition): boolean {
   const hasStart = Boolean(position.startMonth && position.startYear);
   const hasEnd = Boolean(position.endMonth && position.endYear);
@@ -63,7 +108,9 @@ export function isEmploymentPositionValid(position: EmploymentPosition): boolean
   return (
     Boolean(position.jobTitle.trim() && position.company.trim()) &&
     hasStart &&
-    hasEnd
+    (position.currentlyWorking || hasEnd) &&
+    isPositionDateOrderValid(position) &&
+    isPositionDateNotInFuture(position)
   );
 }
 
@@ -263,7 +310,19 @@ export function getFilledEducationDegrees(degrees: EducationDegree[]): Education
   return degrees.filter(isEducationDegreeStarted);
 }
 
+export function isGraduationYearInvalid(graduationYear: string): boolean {
+  const val = graduationYear.trim();
+  if (!val) return false;
+  const year = Number.parseInt(val, 10);
+  const currentYear = new Date().getFullYear();
+  const minYear = 1950;
+  const maxYear = currentYear + 6;
+  return val.length < 4 || Number.isNaN(year) || year < minYear || year > maxYear;
+}
+
 export function isEducationDegreeValid(degree: EducationDegree): boolean {
   if (!isEducationDegreeStarted(degree)) return true;
-  return Boolean(degree.institution.trim());
+  if (!degree.institution.trim()) return false;
+  if (isGraduationYearInvalid(degree.graduationYear)) return false;
+  return true;
 }

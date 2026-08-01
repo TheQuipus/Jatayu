@@ -40,24 +40,25 @@ export default function ExperienceSelect({
   const selectedOption = options.find((option) => option.value === value);
   const displayLabel = selectedOption?.label ?? placeholder;
 
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openAbove = spaceBelow < MENU_MAX_HEIGHT && rect.top > MENU_MAX_HEIGHT;
+
+    setMenuStyle({
+      position: "fixed",
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+      ...(openAbove
+        ? { bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4 }),
+    });
+  };
+
   useLayoutEffect(() => {
     if (!isOpen || !triggerRef.current) return;
-
-    const updatePosition = () => {
-      const rect = triggerRef.current!.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const openAbove = spaceBelow < MENU_MAX_HEIGHT && rect.top > MENU_MAX_HEIGHT;
-
-      setMenuStyle({
-        position: "fixed",
-        left: rect.left,
-        width: rect.width,
-        zIndex: 9999,
-        ...(openAbove
-          ? { bottom: window.innerHeight - rect.top + 4 }
-          : { top: rect.bottom + 4 }),
-      });
-    };
 
     updatePosition();
     window.addEventListener("resize", updatePosition);
@@ -97,6 +98,14 @@ export default function ExperienceSelect({
     setIsOpen(false);
   };
 
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      updatePosition();
+    }
+    setIsOpen((open) => !open);
+  };
+
   return (
     <div ref={rootRef} className={styles.selectRoot}>
       <button
@@ -111,7 +120,7 @@ export default function ExperienceSelect({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? listboxId : undefined}
-        onClick={() => !disabled && setIsOpen((open) => !open)}
+        onClick={handleToggle}
       >
         <span className={styles.selectFieldValue}>{displayLabel}</span>
       </button>

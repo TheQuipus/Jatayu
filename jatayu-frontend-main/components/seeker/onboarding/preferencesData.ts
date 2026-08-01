@@ -5,19 +5,19 @@ export const CONSULTATION_FORMATS = [
     desc: "Face-to-face interaction for deep dives,\nstrategy, and mentorship.",
   },
   {
-    id: "audio",
-    title: "Shoutout",
-    desc: "Quick shoutouts for fast advice when\nclients prefer privacy.",
-  },
-  {
     id: "written",
     title: "Text Messaging",
     desc: "Send and receive messages with\nyour clients anytime.",
   },
   {
+    id: "shoutout",
+    title: "Shoutout",
+    desc: "Quick shoutouts for fast advice when\nclients prefer privacy.",
+  },
+  {
     id: "group",
-    title: "Group Q&A",
-    desc: "Host live sessions with up to\n5 people at a time.",
+    title: "Group Session",
+    desc: "Join interactive group Q&A\nand live learning.",
   },
 ] as const;
 

@@ -153,9 +153,9 @@ export default function CredentialsStep({
   const [certificateEntries, setCertificateEntries] = useState<CertificateEntry[]>(() =>
     certificatesToEntries(certificates),
   );
-
   const hasKycVideo = Boolean(kycVideoSrc);
-  const canContinue = hasKycVideo && Boolean(selectedIdType) && Boolean(idFront);
+  const hasGovernmentId = Boolean(selectedIdType) && Boolean(idFront);
+  const canContinue = hasKycVideo && hasGovernmentId;
 
   useEffect(() => {
     onStepCompleteChange?.(5, canContinue);
@@ -210,6 +210,7 @@ export default function CredentialsStep({
       syncGovernmentId(type, idFront, idBack);
     }
   };
+
 
   const handleRemoveIdSide = (side: IdSide) => {
     if (side === "front") {
@@ -344,7 +345,7 @@ export default function CredentialsStep({
             <header className={styles.sectionCardHeader}>
               <div className={styles.sectionCardTitleWrap}>
                 <h2 className={styles.sectionCardTitle}>
-                  Select Government ID you are using for verification <span className={styles.requiredMark}>*</span>
+                  Government ID <span className={styles.requiredMark}>*</span>
                 </h2>
               </div>
             </header>
@@ -381,14 +382,14 @@ export default function CredentialsStep({
                       </span>
                       <div
                         className={`${styles.idUploadZone} ${
-                          idFront?.url ? styles.idUploadZoneDone : ""
+                          idFront ? styles.idUploadZoneDone : ""
                         }`}
                       >
-                        {idFront?.url ? (
+                        {idFront ? (
                           renderDocPreview(
-                            idFront.url,
+                            idFront.url || "",
                             idFront.name,
-                            idFront.name || "Front side preview",
+                            "Front side preview",
                             () => handleRemoveIdSide("front"),
                           )
                         ) : (
@@ -397,29 +398,26 @@ export default function CredentialsStep({
                             className={styles.idUploadTrigger}
                             onClick={() => frontInputRef.current?.click()}
                           >
-                            <Upload size={20} strokeWidth={1.5} className={styles.uploadZoneIcon} />
-                            <span>Upload Front</span>
-                            <span className={styles.uploadZoneHint}>JPG, PNG, PDF · Max 5MB</span>
+                            <Upload size={18} />
+                            <span className={styles.idUploadTitle}>Upload Front</span>
+                            <span className={styles.idUploadHint}>PDF, PNG, JPG max 2 mb</span>
                           </button>
                         )}
                       </div>
                     </div>
 
                     <div className={styles.idUploadCol}>
-                      <span className={styles.idUploadLabel}>
-                        Back Side{" "}
-                        <span className={styles.optionalTag}>(If Applicable)</span>
-                      </span>
+                      <span className={styles.idUploadLabel}>Back Side</span>
                       <div
                         className={`${styles.idUploadZone} ${
-                          idBack?.url ? styles.idUploadZoneDone : ""
+                          idBack ? styles.idUploadZoneDone : ""
                         }`}
                       >
-                        {idBack?.url ? (
+                        {idBack ? (
                           renderDocPreview(
-                            idBack.url,
+                            idBack.url || "",
                             idBack.name,
-                            idBack.name || "Back side preview",
+                            "Back side preview",
                             () => handleRemoveIdSide("back"),
                           )
                         ) : (
@@ -428,9 +426,9 @@ export default function CredentialsStep({
                             className={styles.idUploadTrigger}
                             onClick={() => backInputRef.current?.click()}
                           >
-                            <Upload size={20} strokeWidth={1.5} className={styles.uploadZoneIcon} />
-                            <span>Upload Back</span>
-                            <span className={styles.uploadZoneHint}>JPG, PNG, PDF · Max 5MB</span>
+                            <Upload size={18} />
+                            <span className={styles.idUploadTitle}>Upload Back</span>
+                            <span className={styles.idUploadHint}>PDF, PNG, JPG max 2 mb</span>
                           </button>
                         )}
                       </div>
@@ -448,6 +446,7 @@ export default function CredentialsStep({
                       e.target.value = "";
                     }}
                   />
+
                   <input
                     ref={backInputRef}
                     type="file"
@@ -467,7 +466,6 @@ export default function CredentialsStep({
                 </motion.div>
               )}
             </AnimatePresence>
-
           </article>
 
           {/* 3. Professional Certificates */}

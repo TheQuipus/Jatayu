@@ -37,11 +37,16 @@
   
   --border-chip: rgba(255, 255, 255, 0.14);
   --background-chip: rgba(255, 255, 255, 0.08);
-  /* mapped next/font/google vars */
-  --font-display: var(--font-sora), "Sora", sans-serif;
-  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
-  --font-body: var(--font-inter), "Inter", sans-serif;
-  --font-num: var(--font-roboto), "Roboto", sans-serif;
+  /* typography font tokens */
+  --font-sora: "Sora", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-ibm-plex-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-inter: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-roboto: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --font-display: var(--font-sora);
+  --font-mono: var(--font-ibm-plex-mono);
+  --font-body: var(--font-inter);
+  --font-num: var(--font-roboto);
 
   --maxw: 1440px;
   --pad: 24px;

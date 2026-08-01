@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { Star, Briefcase, Languages, Lightbulb } from "lucide-react";
+import { Star, Briefcase, Languages } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
@@ -201,10 +201,9 @@ export default function ReviewStep({
     selectedSkills.length > 0 ? selectedSkills.join(", ") : "None selected";
 
   const nameParts = userName.trim().split(/\s+/);
-  const [firstName, setFirstName] = useState(nameParts[0] ?? "");
-  const [lastName, setLastName] = useState(nameParts.slice(1).join(" "));
-  const [role, setRole] = useState(() => professionalTitle ?? "");
-  const [isEditing, setIsEditing] = useState(false);
+  const firstName = nameParts[0] ?? "";
+  const lastName = nameParts.slice(1).join(" ");
+  const role = professionalTitle ?? "";
 
   const filledEmployment = useMemo(
     () => getFilledEmploymentPositions(employmentPositions),
@@ -233,12 +232,6 @@ export default function ReviewStep({
     () => filledEducation.map((degree, index) => getDegreeSummary(degree, index)),
     [filledEducation],
   );
-
-  useEffect(() => {
-    if (!isEditing) {
-      setRole(professionalTitle);
-    }
-  }, [professionalTitle, isEditing]);
 
   useEffect(() => {
     onStepCompleteChange?.(9, agreedToTerms);
@@ -302,44 +295,11 @@ export default function ReviewStep({
         Take a final look at your application before submitting it for verification.
       </p>
 
-      {/* Top Cards Row: Profile Strength & Final Tip */}
-      <div className={styles.reviewTopRow} style={{ marginBottom: "28px" }}>
-        {/* Profile Strength Card */}
-        <div className={styles.strengthReportCard}>
-          <div className={styles.strengthReportInfo}>
-            <span className={styles.strengthReportLabel}>Profile Strength</span>
-            <h4 className={styles.strengthReportValue}>Verification Ready</h4>
-          </div>
-          <div className={styles.strengthGradeBadge}>
-            <span>A+</span>
-          </div>
-        </div>
-
-        {/* Final Tip Card */}
-        <div className={styles.finalTipCard}>
-          <div className={styles.finalTipIconWrap}>
-            <Lightbulb size={20} aria-hidden="true" />
-          </div>
-          <div className={styles.finalTipTextWrap}>
-            <h5 className={styles.finalTipTitle}>Pro Tip</h5>
-            <p className={styles.finalTipDesc}>
-              Your profile looks great! Adding a short video introduction later can boost your bookings by up to 30%.
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Identity Block */}
       <div className={styles.reviewBlockCard} style={{ marginBottom: "20px" }}>
         <div className={styles.reviewBlockHeader} style={{ marginBottom: "20px" }}>
           <h4 className={styles.reviewBlockTitle}>Professional Identity</h4>
-          <button
-            type="button"
-            onClick={() => setIsEditing(!isEditing)}
-            className={styles.reviewEditBtn}
-          >
-            {isEditing ? "Save" : "Edit"}
-          </button>
         </div>
 
         <div className={styles.reviewIdentityColumns}>
@@ -354,132 +314,51 @@ export default function ReviewStep({
             </div>
           </div>
           <div className={`${detailStyles.centerCol} ${styles.reviewCenterCol}`}>
-            {isEditing ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%", textAlign: "left" }}>
-                <div style={{ display: "flex", gap: "16px" }}>
-                  <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                    <label style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", marginBottom: "6px", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>First Name</label>
-                    <input
-                      type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        padding: "10px 14px",
-                        color: "#fff",
-                        fontSize: "14px",
-                        outline: "none",
-                        fontFamily: "var(--font-body)",
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                    <label style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", marginBottom: "6px", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>Last Name</label>
-                    <input
-                      type="text"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        padding: "10px 14px",
-                        color: "#fff",
-                        fontSize: "14px",
-                        outline: "none",
-                        fontFamily: "var(--font-body)",
-                      }}
-                    />
-                  </div>
-                </div>
+            <h1 className={`display ${detailStyles.displayName}`} style={{ textAlign: "left" }}>
+              <span>{firstName}</span>
+              <span className="t-muted"> {lastName}</span>
+            </h1>
 
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <label style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", marginBottom: "6px", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>Professional Role</label>
-                  <input
-                    type="text"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      padding: "10px 14px",
-                      color: "#fff",
-                      fontSize: "14px",
-                      outline: "none",
-                      fontFamily: "var(--font-body)",
-                    }}
-                  />
-                </div>
+            <p className={detailStyles.roleSub} style={{ textAlign: "left" }}>{role}</p>
 
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <label style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", marginBottom: "6px", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>Bio</label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => onBioChange(e.target.value)}
-                    rows={4}
-                    style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      padding: "10px 14px",
-                      color: "#fff",
-                      fontSize: "14px",
-                      outline: "none",
-                      resize: "vertical",
-                      fontFamily: "var(--font-body)",
-                      lineHeight: "1.5",
-                    }}
-                  />
-                </div>
+            {tagLine.trim() ? (
+              <p className={detailStyles.roleSub} style={{ textAlign: "left", opacity: 0.75 }}>
+                {tagLine}
+              </p>
+            ) : null}
+
+            <div className={detailStyles.starDivider}>
+              <span className={detailStyles.dividerStar}>✦</span>
+              <span className={detailStyles.dividerLine} />
+            </div>
+
+            <div className={detailStyles.ratingsRow}>
+              <div className={detailStyles.ratingItem}>
+                <Star size={16} fill="#EAB308" stroke="#EAB308" />
+                <span className={detailStyles.ratingText}>
+                  <strong>0.0</strong> (0 reviews)
+                </span>
               </div>
-            ) : (
-              <>
-                <h1 className={`display ${detailStyles.displayName}`} style={{ textAlign: "left" }}>
-                  <span>{firstName}</span>
-                  <span className="t-muted"> {lastName}</span>
-                </h1>
+              <div className={detailStyles.ratingItem}>
+                <Briefcase size={16} className={detailStyles.statsIcon} />
+                <span className={detailStyles.ratingText}>
+                  <strong>0 Sessions Completed</strong>
+                </span>
+              </div>
+            </div>
 
-                <p className={detailStyles.roleSub} style={{ textAlign: "left" }}>{role}</p>
-
-                {tagLine.trim() ? (
-                  <p className={detailStyles.roleSub} style={{ textAlign: "left", opacity: 0.75 }}>
-                    {tagLine}
-                  </p>
-                ) : null}
-
-                <div className={detailStyles.starDivider}>
-                  <span className={detailStyles.dividerStar}>✦</span>
-                  <span className={detailStyles.dividerLine} />
+            <div className={detailStyles.metaRow}>
+              <div className={detailStyles.metaItem}>
+                <div className={detailStyles.metaIconBadge}>
+                  <Languages size={13} />
                 </div>
+                <span className={detailStyles.metaVal}>{languagesSummary}</span>
+              </div>
+            </div>
 
-                <div className={detailStyles.ratingsRow}>
-                  <div className={detailStyles.ratingItem}>
-                    <Star size={16} fill="#EAB308" stroke="#EAB308" />
-                    <span className={detailStyles.ratingText}>
-                      <strong>0.0</strong> (0 reviews)
-                    </span>
-                  </div>
-                  <div className={detailStyles.ratingItem}>
-                    <Briefcase size={16} className={detailStyles.statsIcon} />
-                    <span className={detailStyles.ratingText}>
-                      <strong>0 Sessions Completed</strong>
-                    </span>
-                  </div>
-                </div>
-
-                <div className={detailStyles.metaRow}>
-                  <div className={detailStyles.metaItem}>
-                    <div className={detailStyles.metaIconBadge}>
-                      <Languages size={13} />
-                    </div>
-                    <span className={detailStyles.metaVal}>{languagesSummary}</span>
-                  </div>
-                </div>
-
-                <p className={detailStyles.bioText} style={{ textAlign: "left" }}>
-                  {bio}
-                </p>
-              </>
-            )}
+            <p className={detailStyles.bioText} style={{ textAlign: "left" }}>
+              {bio}
+            </p>
           </div>
         </div>
       </div>
@@ -489,13 +368,6 @@ export default function ReviewStep({
         <div className={styles.reviewBlockCard}>
           <div className={styles.reviewBlockHeader}>
             <h4 className={styles.reviewBlockTitle}>Expertise & Experience</h4>
-            <button
-              type="button"
-              onClick={() => onJumpToStep("experience")}
-              className={styles.reviewEditBtn}
-            >
-              Edit
-            </button>
           </div>
 
           <div className={styles.reviewBlockContent}>
@@ -527,13 +399,6 @@ export default function ReviewStep({
         <div className={styles.reviewBlockCard}>
           <div className={styles.reviewBlockHeader}>
             <h4 className={styles.reviewBlockTitle}>Portfolio</h4>
-            <button
-              type="button"
-              onClick={() => onJumpToStep("experience")}
-              className={styles.reviewEditBtn}
-            >
-              Edit
-            </button>
           </div>
 
           <div className={styles.reviewBlockContent}>
@@ -561,13 +426,6 @@ export default function ReviewStep({
         <div className={styles.reviewBlockCard}>
           <div className={styles.reviewBlockHeader}>
             <h4 className={styles.reviewBlockTitle}>Consultation Details</h4>
-            <button
-              type="button"
-              onClick={() => onJumpToStep("preferences")}
-              className={styles.reviewEditBtn}
-            >
-              Edit
-            </button>
           </div>
 
           <div className={styles.reviewBlockContent}>
@@ -585,13 +443,6 @@ export default function ReviewStep({
         <div className={styles.reviewBlockCard}>
           <div className={styles.reviewBlockHeader}>
             <h4 className={styles.reviewBlockTitle}>Audience & Languages</h4>
-            <button
-              type="button"
-              onClick={() => onJumpToStep("audience")}
-              className={styles.reviewEditBtn}
-            >
-              Edit
-            </button>
           </div>
 
           <div className={styles.reviewBlockContent}>
@@ -611,13 +462,6 @@ export default function ReviewStep({
         <div className={styles.reviewBlockCard}>
           <div className={styles.reviewBlockHeader}>
             <h4 className={styles.reviewBlockTitle}>Credentials</h4>
-            <button
-              type="button"
-              onClick={() => onJumpToStep("credentials")}
-              className={styles.reviewEditBtn}
-            >
-              Edit
-            </button>
           </div>
 
           <div className={styles.reviewBlockContent}>
@@ -641,13 +485,6 @@ export default function ReviewStep({
         <div className={styles.reviewBlockCard}>
           <div className={styles.reviewBlockHeader}>
             <h4 className={styles.reviewBlockTitle}>Availability</h4>
-            <button
-              type="button"
-              onClick={() => onJumpToStep("availability")}
-              className={styles.reviewEditBtn}
-            >
-              Edit
-            </button>
           </div>
 
           <div className={styles.reviewBlockContent}>

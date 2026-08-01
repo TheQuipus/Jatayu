@@ -8,7 +8,8 @@ import styles from "./TopNavbar.module.css";
 function isOnboardingPath(pathname: string | null) {
   return (
     pathname?.startsWith("/expert/expert-onboarding") ||
-    pathname?.startsWith("/seeker/seeker-onboarding")
+    pathname?.startsWith("/seeker/seeker-onboarding") ||
+    pathname?.startsWith("/login")
   );
 }
 
@@ -131,13 +132,13 @@ function isExpertAppPath(pathname: string | null) {
             </div>
 
             <div className={styles.loginLinks}>
-              <Link href="/login?role=expert" onClick={() => setIsOpen(false)} className={styles.loginLink}>
+              <Link href="/login/?role=expert" onClick={() => setIsOpen(false)} className={styles.loginLink}>
                 Expert Login
               </Link>
-              <Link href="/login?role=user" onClick={() => setIsOpen(false)} className={styles.loginLink}>
+              <Link href="/login/?role=user" onClick={() => setIsOpen(false)} className={styles.loginLink}>
                 User Login
               </Link>
-              <Link href="/admin" onClick={() => setIsOpen(false)} className={styles.loginLink}>
+              <Link href="/admin/" onClick={() => setIsOpen(false)} className={styles.loginLink}>
                 Admin Console
               </Link>
             </div>
@@ -151,7 +152,7 @@ function isExpertAppPath(pathname: string | null) {
             </div>
 
             <div className={styles.navLinksLarge}>
-              <Link href="/expert" onClick={() => setIsOpen(false)} className={styles.largeLink}>
+              <Link href="/expert/" onClick={() => setIsOpen(false)} className={styles.largeLink}>
                 EXPERTS
               </Link>
               <a href="#about" onClick={() => setIsOpen(false)} className={styles.largeLink}>

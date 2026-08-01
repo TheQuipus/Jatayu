@@ -47,23 +47,11 @@
   align-items: flex-start;
   text-align: left;
   outline: none;
+  cursor: pointer;
   transition: all 0.2s ease;
   width: 100%;
   clip-path: url(#custom-clip);
   -webkit-clip-path: url(#custom-clip);
-}
-
-.formatCardSelect {
-  position: relative;
-  z-index: 11;
-  flex: 1;
-  min-width: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  outline: none;
 }
 
 .formatCardBody {
@@ -86,13 +74,12 @@
   z-index: 12;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
   flex-shrink: 0;
-  width: 92px;
   margin-top: 30px;
   margin-left: auto;
-  margin-right: 28px;
-  padding-left: 18px;
+  margin-right: 20px;
+  padding-left: 14px;
   border-left: 1px solid var(--border-chip);
 }
 
@@ -102,29 +89,26 @@
 }
 
 .formatPriceCurrency {
-  font-family: var(--font-body);
+  font-family: var(--font-display);
   font-size: 18px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.65);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
   flex-shrink: 0;
+  transition: color 0.2s ease;
 }
 
 .formatPriceInput,
 .formatPriceInputPlaceholder {
-  width: 5ch;
-  min-width: 5ch;
-  max-width: 9ch;
   background: transparent;
   border: none;
   outline: none;
   padding: 0;
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--white);
   caret-color: var(--white);
   cursor: text;
-  field-sizing: content;
 }
 
 .formatPriceInputPlaceholder {
@@ -133,7 +117,20 @@
 }
 
 .formatPriceInput::placeholder {
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.formatPriceUnit {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.formatPriceActive {
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .cardBorderSvg {

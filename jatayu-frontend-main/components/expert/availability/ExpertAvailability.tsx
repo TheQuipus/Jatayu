@@ -170,6 +170,7 @@ export default function ExpertAvailability({
               >
                 <div className={styles.slotTimes}>
                   <TimePicker
+                    label="Start time"
                     ariaLabel="Start time"
                     value={slot.from}
                     theme={timePickerTheme}
@@ -177,9 +178,8 @@ export default function ExpertAvailability({
                     validateTime={(time) => !wouldConflict(slot.id, time, slot.to, slot.days)}
                   />
 
-                  <span className={styles.slotToDivider}>to</span>
-
                   <TimePicker
+                    label="End time"
                     ariaLabel="End time"
                     value={slot.to}
                     theme={timePickerTheme}
