@@ -43,7 +43,7 @@ export default function RegisterLeftPanel({ variant = "register" }: RegisterLeft
 
         <p className={styles.registerDescription}>
           {isLogin
-            ? "Sign in to manage your profile, consultations, and earnings from one place."
+            ? "Sign in to access your professional dashboard, manage consultations, monitor earnings, and update your profile."
             : "Join a curated community of professionals. Build your profile, set your rates, and start offering consultations."}
         </p>
 

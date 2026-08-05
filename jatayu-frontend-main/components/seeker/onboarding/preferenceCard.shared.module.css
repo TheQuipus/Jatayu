@@ -1,0 +1,108 @@
+.optionsSection {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.optionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 32px;
+}
+
+.optionCard {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  outline: none;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.optionCardSelected {
+  background: #080A10;
+}
+
+.optionCardSelect {
+  position: relative;
+  z-index: 11;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+
+.optionCardInner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-right: 28px;
+  position: relative;
+  z-index: 12;
+}
+
+.optionIconCircle {
+  display: grid;
+  place-items: center;
+  color: var(--silver);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.optionCardSelected .optionIconCircle {
+  color: var(--pomegranate);
+}
+
+.optionIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.optionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.optionTitle {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.optionDesc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--silver);
+  margin: 0;
+  min-height: 2em;
+  white-space: pre-line;
+}
+
+.optionCardSelected .optionDesc {
+  color: var(--silver);
+}
+
+@media (max-width: 768px) {
+  .optionsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

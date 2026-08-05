@@ -2,6 +2,17 @@
   position: relative;
   width: 148px;
   flex-shrink: 0;
+  z-index: 1;
+}
+
+.timePickerLabel {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+  margin-bottom: 6px;
+  text-transform: capitalize;
 }
 
 .timePickerDisabled {
@@ -12,82 +23,92 @@
 .timePickerFieldOuter {
   position: relative;
   width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .timePickerField {
   position: relative;
   width: 100%;
-  min-height: 38px;
-  padding: 8px 32px 8px 34px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: pointer;
+  height: 42px;
+  padding: 0 34px 0 12px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-chip);
+  border-radius: 0;
   text-align: left;
-  transition: border-color 0.2s ease;
+  appearance: none;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--white);
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.timePickerField::placeholder {
+  color: rgba(255, 255, 255, 0.28);
 }
 
 .timePickerField:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
-.timePickerFieldOpen {
-  border-color: #E53B17;
+.timePicker:has(.timePickerFieldOpen) {
+  z-index: 20;
+}
+
+.timePickerFieldOpen,
+.timePickerField:focus {
+  border-color: rgba(255, 255, 255, 0.18);
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .timePickerField:disabled {
   cursor: not-allowed;
 }
 
-.timePickerIcon {
+.clockBtn {
   position: absolute;
-  left: 10px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.45);
-  pointer-events: none;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  outline: none;
+  transition: color 0.2s ease;
+}
+
+.clockBtn:hover:not(:disabled) {
+  color: var(--white);
+}
+
+.timePickerFieldPlaceholder .timePickerValue {
+  color: rgba(255, 255, 255, 0.28);
 }
 
 .timePickerValue {
   display: block;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
   color: var(--white);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.timePickerPlaceholder {
-  color: rgba(255, 255, 255, 0.35);
-}
-
-.timePickerClear {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.45);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  padding: 0;
-}
-
-.timePickerClear:hover {
-  color: var(--white);
-}
-
 .timePickerPopover {
-  position: absolute;
-  top: calc(100% + 6px);
+  position: fixed;
+  top: 0;
   left: 0;
-  z-index: 30;
-  width: 220px;
+  z-index: 9999;
   background: var(--cod-gray);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
@@ -127,7 +148,7 @@
   border: none;
   background: transparent;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.55);
   padding: 8px 4px;
@@ -141,7 +162,7 @@
 }
 
 .timePickerColumnItemActive {
-  background: #E53B17;
+  background: #e53b17;
   color: var(--white);
   font-weight: 600;
 }
@@ -151,7 +172,7 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 8px 12px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border-chip);
 }
 
 .timePickerAction {
@@ -162,7 +183,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #E53B17;
+  color: #e53b17;
   cursor: pointer;
   padding: 6px 10px;
 }
@@ -174,4 +195,14 @@
 
 .timePickerAction:hover:not(:disabled) {
   opacity: 0.85;
+}
+
+.timePickerError {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: #e53b17;
+  padding: 8px 12px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }

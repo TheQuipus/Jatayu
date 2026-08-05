@@ -25,7 +25,7 @@ export default function Footer() {
                 <span className={styles.linkHeading}>Navigation</span>
                 <a href="#top">Home</a>
                 <a href="#">About</a>
-                <a href="/expert">Expert</a>
+                <a href="/expert/">Expert</a>
                 <a href="#">Blog</a>
                 <a href="#">Terms of Service</a>
               </nav>

@@ -37,6 +37,10 @@ export type Expert = {
   sampleAnswers?: { question: string; answer: string }[];
   reviews?: Review[];
   bio?: string;
+  email?: string;
+  phone?: string;
+  formats?: string[];
+  formatPrices?: Record<string, string | number>;
 };
 
 const sampleAnswerByTopic: Record<ExpertiseTag, { question: string; answer: string }[]> = {
@@ -388,11 +392,96 @@ export function getAvailableTopics(experts: Expert[]): ExpertiseTag[] {
   return expertiseTags.filter((tag) => topicSet.has(tag));
 }
 
+export function getAvailableLanguages(experts: Expert[]): string[] {
+  const languageSet = new Set(experts.flatMap((expert) => expert.languages));
+  return [...languageSet].sort((a, b) => a.localeCompare(b));
+}
+
+export const ratingFilters = [
+  { id: "1", label: "1+ stars", minRating: 1 },
+  { id: "2", label: "2+ stars", minRating: 2 },
+  { id: "3", label: "3+ stars", minRating: 3 },
+  { id: "4", label: "4+ stars", minRating: 4 },
+  { id: "5", label: "5 stars", minRating: 5 },
+] as const;
+
+export type RatingFilterId = (typeof ratingFilters)[number]["id"];
+
+export const priceRangeFilters = [
+  { id: "micro", label: "Under ₹150", min: 0, max: 149 },
+  { id: "standard", label: "₹150–₹499", min: 150, max: 499 },
+  { id: "premium", label: "₹500+", min: 500, max: Infinity },
+] as const;
+
+export type PriceRangeFilterId = (typeof priceRangeFilters)[number]["id"];
+
+export const availabilityFilters = [
+  { id: "15", label: "Under 15 min", maxMinutes: 15 },
+  { id: "30", label: "Under 30 min", maxMinutes: 30 },
+  { id: "120", label: "Under 2 hours", maxMinutes: 120 },
+] as const;
+
+export type AvailabilityFilterId = (typeof availabilityFilters)[number]["id"];
+
+export function parseReplyTimeMinutes(replyTime: string): number {
+  const hourMatch = replyTime.match(/<\s*(\d+)\s*hours?/i);
+  if (hourMatch) {
+    return parseInt(hourMatch[1], 10) * 60;
+  }
+
+  const minMatch = replyTime.match(/(\d+)\s*min/i);
+  if (minMatch) {
+    return parseInt(minMatch[1], 10);
+  }
+
+  return Infinity;
+}
+
+export function matchesRatingFilter(expert: Expert, filterId: RatingFilterId): boolean {
+  const filter = ratingFilters.find((item) => item.id === filterId);
+  return filter ? expert.rating >= filter.minRating : true;
+}
+
+export function matchesPriceRangeFilter(expert: Expert, filterId: PriceRangeFilterId): boolean {
+  const filter = priceRangeFilters.find((item) => item.id === filterId);
+  return filter ? expert.price >= filter.min && expert.price <= filter.max : true;
+}
+
+export function matchesAvailabilityFilter(
+  expert: Expert,
+  filterId: AvailabilityFilterId
+): boolean {
+  const filter = availabilityFilters.find((item) => item.id === filterId);
+  return filter ? parseReplyTimeMinutes(expert.replyTime) <= filter.maxMinutes : true;
+}
+
 export function expertSlug(name: string): string {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+}
+
+export function getExpertDetailHref(
+  expertOrSlug: Expert | string,
+  options?: { seeker?: boolean }
+): string {
+  const slug =
+    typeof expertOrSlug === "string" ? expertOrSlug : expertSlug(expertOrSlug.name);
+  return options?.seeker ? `/seeker/expert/${slug}` : `/expert/${slug}`;
+}
+
+export function getExpertCheckoutHref(
+  expertOrSlug: Expert | string,
+  type?: string,
+  options?: { seeker?: boolean }
+): string {
+  const slug =
+    typeof expertOrSlug === "string" ? expertOrSlug : expertSlug(expertOrSlug.name);
+  const base = options?.seeker
+    ? `/seeker/expert/${slug}/checkout`
+    : `/expert/${slug}/checkout`;
+  return type ? `${base}?type=${type}` : base;
 }
 
 export function getExpertBySlug(slug: string): Expert | undefined {

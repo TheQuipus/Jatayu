@@ -1,0 +1,307 @@
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bookingBox {
+  overflow: hidden;
+}
+
+.bookingHeader {
+  background: var(--ink);
+  color: var(--white);
+  padding: 18px 24px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.bookingHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--white);
+  white-space: nowrap;
+}
+
+.bookingHeaderDots {
+  flex: 1;
+  border-bottom: 2px dotted color-mix(in srgb, var(--white) 35%, transparent);
+  height: 3px;
+  flex-shrink: 0;
+}
+
+.bookingRefBadge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--white);
+  letter-spacing: 0.04em;
+}
+
+.bookingBody {
+  background: var(--white);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-left: 1px solid var(--mercury);
+  border-right: 1px solid var(--mercury);
+}
+
+.bookingFooter {
+  height: 32px;
+  background: var(--ink);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+}
+
+.summarySection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionHeaderLine {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.sectionHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+  white-space: nowrap;
+}
+
+.sectionLine {
+  flex: 1;
+  height: 1px;
+  background: var(--mercury);
+}
+
+.summaryExpertBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.summaryExpertAvatar {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--mercury);
+  flex-shrink: 0;
+  background: var(--seashell);
+}
+
+.expertAvatarImg {
+  object-fit: cover;
+}
+
+.summaryExpertInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summaryExpertName {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.summaryExpertRole {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--dove-gray);
+}
+
+.summaryExpertMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--dove-gray);
+  margin-top: 2px;
+}
+
+.summaryExpertMeta .statItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.summaryExpertMeta .statItem svg {
+  color: var(--orange);
+  fill: var(--orange);
+}
+
+.summaryExpertMeta .statDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--silver-chalice);
+}
+
+.sessionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sessionInset {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0px;
+}
+
+.sessionInsetFull {
+  grid-column: 1 / -1;
+}
+
+.sessionLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+}
+
+.sessionValue {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.contextText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--scorpion);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.priceBreakdownBox {
+  padding: 18px 0px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--dove-gray);
+}
+
+.priceRow strong {
+  color: var(--bunker);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.creditsRow strong {
+  color: var(--green);
+}
+
+.invoiceTotalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mercury);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.invoiceTotalRow .totalLabel {
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.invoiceTotalRow strong {
+  font-family: var(--font-num);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--pomegranate);
+}
+
+.confirmPayWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.confirmPayBtn {
+  width: 100%;
+  min-height: 52px !important;
+  background-color: var(--pomegranate) !important;
+  color: var(--white) !important;
+  border: none !important;
+  border-radius: 40px !important;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--pomegranate) 22%, transparent) !important;
+}
+
+.summaryGuaranteedNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--scorpion);
+  text-align: center;
+}
+
+.summaryLockIcon {
+  flex-shrink: 0;
+  color: var(--scorpion);
+}
+
+@media (max-width: 1100px) {
+  .sessionGrid {
+    grid-template-columns: 1fr;
+  }
+}

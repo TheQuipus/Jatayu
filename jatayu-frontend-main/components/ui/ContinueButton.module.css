@@ -1,0 +1,57 @@
+.continueBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  border-radius: 30px;
+  min-height: 44px;
+  padding: 0 20px;
+  background: var(--pomegranate);
+  color: var(--white);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pomegranate) 25%, transparent);
+  transition: background 0.3s ease;
+}
+
+.continueBtn:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(0);
+}
+
+.continueBtn:disabled,
+.continueBtn[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.labelText {
+  display: block;
+  overflow: hidden;
+  height: 1em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.labelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.continueBtn:hover:not(:disabled):not([aria-disabled="true"]) .labelTrack {
+  transform: translateY(-50%);
+}
+
+.labelUp {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  white-space: nowrap;
+}

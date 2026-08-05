@@ -1,48 +1,118 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
-  Code,
-  Palette,
+  Briefcase,
+  Lightbulb,
   LineChart,
-  Megaphone,
+  Scale,
   Coins,
   Heart,
-  Scale,
-  Briefcase,
-  Database,
 } from "lucide-react";
 import styles from "./page.module.css";
 import WelcomeStep from "@/components/seeker/onboarding/WelcomeStep";
 import CategoryStep from "@/components/seeker/onboarding/CategoryStep";
-import TopicsStep from "@/components/seeker/onboarding/TopicsStep";
 import NeedsStep from "@/components/seeker/onboarding/NeedsStep";
-import OutcomeStep from "@/components/seeker/onboarding/OutcomeStep";
-import UrgencyStep from "@/components/seeker/onboarding/UrgencyStep";
 import RegisterStep from "@/components/seeker/onboarding/RegisterStep";
 import LoginStep from "@/components/seeker/onboarding/LoginStep";
 import OtpStep from "@/components/seeker/onboarding/OtpStep";
 import FormatStep from "@/components/seeker/onboarding/FormatStep";
-import LanguageStep from "@/components/seeker/onboarding/LanguageStep";
+import { getLanguageName } from "@/components/seeker/onboarding/LanguageStep";
 import BudgetStep from "@/components/seeker/onboarding/BudgetStep";
 import PersonalisationStep from "@/components/seeker/onboarding/PersonalisationStep";
 import ReviewStep from "@/components/seeker/onboarding/ReviewStep";
 import SuccessStep from "@/components/seeker/onboarding/SuccessStep";
+import type {
+  ProgressCompletion,
+  ProgressStepKey,
+} from "@/components/seeker/onboarding/MatchingProgress";
+import { getFormatTitle } from "@/components/seeker/onboarding/preferencesData";
+import {
+  buildSeekerProgressCompletion,
+  isSeekerOnboardingStep,
+  type SeekerOnboardingStepKey,
+} from "@/components/seeker/onboarding/seekerOnboardingSteps";
 
 const categories = [
-  { id: "software", label: "Software Engineering", icon: Code },
-  { id: "design", label: "Product Design", icon: Palette },
-  { id: "business", label: "Business Strategy", icon: LineChart },
-  { id: "marketing", label: "Marketing & Growth", icon: Megaphone },
-  { id: "finance", label: "Finance & VC", icon: Coins },
-  { id: "health", label: "Health & Wellness", icon: Heart },
-  { id: "legal", label: "Legal & Compliance", icon: Scale },
+  { id: "career-work", label: "Career & Work", icon: Briefcase },
+  { id: "legal-compliance", label: "Legal & Compliance", icon: Scale },
+  { id: "business-entrepreneurship", label: "Business & Entrepreneurship", icon: LineChart },
+  { id: "personal-growth", label: "Personal Growth", icon: Heart },
+  { id: "finance-investment", label: "Finance & Investment", icon: Coins },
+  { id: "software", label: "Software & Development", icon: Briefcase },
+  { id: "design", label: "Design & Creative", icon: Briefcase },
+  { id: "business", label: "Business & Consulting", icon: Briefcase },
+  { id: "marketing", label: "Marketing & Growth", icon: Briefcase },
+  { id: "finance", label: "Finance & Tax", icon: Briefcase },
+  { id: "health", label: "Health & Wellness", icon: Briefcase },
+  { id: "legal", label: "Legal & Founder Contracts", icon: Briefcase },
   { id: "product", label: "Product Management", icon: Briefcase },
-  { id: "data", label: "Data Science", icon: Database },
+  { id: "data", label: "Data & Analytics", icon: Briefcase },
+  { id: "other-not-sure", label: "Other", icon: Lightbulb },
 ];
 
 const topicsByCategory: Record<string, string[]> = {
+  "career-work": [
+    "Job Interview Prep",
+    "Resume Review",
+    "Salary Negotiation",
+    "Leadership Skills",
+    "Career Pivot",
+    "Work-Life Balance",
+    "Executive Coaching",
+    "Remote Work",
+    "Networking",
+    "Personal Branding",
+    "Promotion Strategy",
+    "Burnout Recovery",
+    "Skill Gap Analysis",
+    "Portfolio Building",
+    "LinkedIn Optimization",
+    "Public Speaking",
+    "Time Management",
+    "Team Building",
+    "Conflict Resolution",
+    "Freelancing",
+  ],
+  "business-entrepreneurship": [
+    "Startup strategy",
+    "Go-to-market planning",
+    "Fundraising",
+    "Operations management",
+    "Pricing strategy",
+    "Growth planning",
+  ],
+  "personal-growth": [
+    "Mindset coaching",
+    "Habit building",
+    "Confidence",
+    "Life direction",
+    "Stress management",
+    "Work-life balance",
+  ],
+  "legal-compliance": [
+    "Contract review",
+    "Founder agreements",
+    "Compliance requirements",
+    "IP basics",
+    "Risk management",
+    "Regulatory guidance",
+  ],
+  "finance-investment": [
+    "Budgeting",
+    "Financial planning",
+    "Investing basics",
+    "Cashflow management",
+    "Taxes",
+    "Fundraising readiness",
+  ],
+  "other": [
+    "Help me figure out what I need",
+    "General mentorship",
+    "Exploration session",
+    "Clarity conversation",
+    "Choosing the right category",
+  ],
   software: [
     "Frontend Development",
     "Backend Architecture",
@@ -136,15 +206,32 @@ const topicsByCategory: Record<string, string[]> = {
   ],
 };
 
+const featuredTopicsByCategory: Partial<Record<string, string[]>> = {
+  "career-work": [
+    "Job Interview Prep",
+    "Leadership Skills",
+    "Career Pivot",
+    "Networking",
+  ],
+};
+
+
+
+function getFeaturedTopics(categoryId: string, topics: string[]): string[] {
+  const curated = featuredTopicsByCategory[categoryId];
+  if (curated) {
+    return curated.filter((topic) => topics.includes(topic)).slice(0, 4);
+  }
+
+  return topics.slice(0, 4);
+}
+
 type OnboardingStep =
   | "welcome"
   | "category"
   | "topics"
   | "needs"
-  | "outcome"
-  | "urgency"
   | "format"
-  | "language"
   | "budget"
   | "personalisation"
   | "review"
@@ -154,22 +241,16 @@ type OnboardingStep =
   | "success";
 
 function SeekerOnboardingPageContent() {
-  const searchParams = useSearchParams();
   const [step, setStep] = useState<OnboardingStep>("register");
-  const [selectedCategory, setSelectedCategory] = useState<string>("business");
+  const [editReturnStep, setEditReturnStep] = useState<OnboardingStep | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [needsText, setNeedsText] = useState<string>("");
-  const [selectedOutcome, setSelectedOutcome] = useState<string>("clarity");
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
-  const [selectedUrgency, setSelectedUrgency] = useState<string>("thisweek");
-  const [selectedFormat, setSelectedFormat] = useState<string>("chat");
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("english");
-  const [selectedBudget, setSelectedBudget] = useState<string>("standard");
-  const [budgetValue, setBudgetValue] = useState<number>(50);
-  const [firstName, setFirstName] = useState("");
-  const [experienceLevel, setExperienceLevel] = useState("");
-  const [communicationStyle, setCommunicationStyle] = useState("collaborative");
-  const [ageRange, setAgeRange] = useState("");
+  const [selectedNeedChips, setSelectedNeedChips] = useState<string[]>([]);
+  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [profilePhotoSrc, setProfilePhotoSrc] = useState("/assets/img/manportrait.png");
+  const [selectedBudget, setSelectedBudget] = useState<string>("");
   const [location, setLocation] = useState("");
   const [additionalContext, setAdditionalContext] = useState("");
   const [customTopics, setCustomTopics] = useState<Record<string, string[]>>({});
@@ -179,18 +260,18 @@ function SeekerOnboardingPageContent() {
   const [registeredName, setRegisteredName] = useState("");
 
   useEffect(() => {
-    const auth = searchParams.get("auth");
+    const auth = new URLSearchParams(window.location.search).get("auth");
     if (auth === "login") {
-      setStep("login");
+      queueMicrotask(() => setStep("login"));
     }
-  }, [searchParams]);
+  }, []);
 
   const handleStartJourney = () => {
-    setStep("category");
+    setStep("register");
   };
 
   const handleCategoryContinue = () => {
-    setStep("topics");
+    setStep("needs");
   };
 
   const handleAddCustomCategory = (label: string) => {
@@ -222,8 +303,18 @@ function SeekerOnboardingPageContent() {
 
   const allCategories = [...categories, ...customCategories];
 
-  const handleBackToWelcome = () => {
-    setStep("register");
+  const handleRemoveCustomCategory = (id: string) => {
+    setCustomCategories((prev) => prev.filter((cat) => cat.id !== id));
+    if (selectedCategory === id) {
+      setSelectedCategory("");
+      setSelectedTopics([]);
+    }
+  };
+
+  const handleBackToCategoryFromEdit = () => {
+    if (!editReturnStep) return;
+    setStep(editReturnStep);
+    setEditReturnStep(null);
   };
 
   const handleBackToCategory = () => {
@@ -239,30 +330,14 @@ function SeekerOnboardingPageContent() {
   };
 
   const handleNeedsContinue = () => {
-    setStep("outcome");
+    setStep("format");
   };
 
   const handleBackToNeeds = () => {
     setStep("needs");
   };
 
-  const handleOutcomeContinue = () => {
-    setStep("urgency");
-  };
-
-  const handleBackToOutcome = () => {
-    setStep("outcome");
-  };
-
-  const handleUrgencyContinue = () => {
-    setStep("format");
-  };
-
   const handleFormatContinue = () => {
-    setStep("language");
-  };
-
-  const handleLanguageContinue = () => {
     setStep("budget");
   };
 
@@ -283,6 +358,7 @@ function SeekerOnboardingPageContent() {
   };
 
   const handleEditStep = (stepName: OnboardingStep) => {
+    setEditReturnStep("review");
     setStep(stepName);
   };
 
@@ -290,16 +366,8 @@ function SeekerOnboardingPageContent() {
     setStep("budget");
   };
 
-  const handleBackToLanguage = () => {
-    setStep("language");
-  };
-
   const handleBackToFormat = () => {
     setStep("format");
-  };
-
-  const handleBackToUrgency = () => {
-    setStep("urgency");
   };
 
   const handleRegisterComplete = ({
@@ -317,17 +385,24 @@ function SeekerOnboardingPageContent() {
     setStep("otp");
   };
 
-  const handleLoginComplete = ({ email }: { email: string }) => {
-    const nameFromEmail = email.split("@")[0]?.replace(/[._-]+/g, " ") || "Seeker";
-    setRegisteredName(nameFromEmail);
-    setStep("category");
+  const handleLoginComplete = ({ email: _email }: { email: string }) => {
+    window.location.assign("/seeker/dashboard/");
   };
 
   const handleOtpComplete = () => {
-    setStep("category");
+    setStep(selectedCategory ? "topics" : "category");
   };
 
   const handleBackToRegister = () => {
+    setStep("register");
+  };
+
+  const handleBackFromCategory = () => {
+    if (editReturnStep) {
+      handleBackToCategoryFromEdit();
+      return;
+    }
+
     setStep("register");
   };
 
@@ -345,6 +420,8 @@ function SeekerOnboardingPageContent() {
     } else {
       if (selectedTopics.length < 5) {
         setSelectedTopics([...selectedTopics, topic]);
+      } else {
+        setSelectedTopics([...selectedTopics.slice(0, -1), topic]);
       }
     }
   };
@@ -361,8 +438,12 @@ function SeekerOnboardingPageContent() {
       });
     }
 
-    if (!selectedTopics.includes(trimmed) && selectedTopics.length < 5) {
-      setSelectedTopics([...selectedTopics, trimmed]);
+    if (!selectedTopics.includes(trimmed)) {
+      if (selectedTopics.length < 5) {
+        setSelectedTopics([...selectedTopics, trimmed]);
+      } else {
+        setSelectedTopics([...selectedTopics.slice(0, -1), trimmed]);
+      }
     }
   };
 
@@ -370,48 +451,18 @@ function SeekerOnboardingPageContent() {
   const activeCategoryLabel = activeCategoryInfo ? activeCategoryInfo.label : "";
   const baseTopics = topicsByCategory[selectedCategory] || [];
   const activeCustomTopics = customTopics[selectedCategory] || [];
-  const currentTopicsList = [...baseTopics, ...activeCustomTopics].slice(0, 9);
+  const featuredTopics = getFeaturedTopics(selectedCategory, baseTopics);
 
-  const getOutcomeLabel = () => {
-    if (selectedOutcome === "clarity") return "Clarity & Direction";
-    if (selectedOutcome === "plan") return "Quick Actionable Plan";
-    if (selectedOutcome === "knowledge") return "Deep Knowledge";
-    if (selectedOutcome === "accountability") return "Accountability & Support";
-    if (selectedOutcome === "resolved") return "Problem Solved";
-    if (selectedOutcome === "transformation") return "Long-term Transformation";
-    return selectedOutcome;
-  };
 
-  const getUrgencyLabel = () => {
-    if (selectedUrgency === "rightnow") return "Right Now";
-    if (selectedUrgency === "thisweek") return "This Week";
-    if (selectedUrgency === "thismonth") return "This Month";
-    if (selectedUrgency === "exploring") return "Just Exploring";
-    return selectedUrgency;
-  };
 
   const getFormatLabel = () => {
-    if (selectedFormat === "chat") return "Live Chat";
-    if (selectedFormat === "video") return "Video Call";
-    if (selectedFormat === "phone") return "Phone Call";
-    if (selectedFormat === "async") return "Async Messages";
-    return selectedFormat;
+    if (selectedFormats.length === 0) return "Not selected";
+    return selectedFormats.map((id) => getFormatTitle(id)).join(", ");
   };
 
   const getLanguageLabel = () => {
-    if (selectedLanguage === "english") return "English";
-    if (selectedLanguage === "french") return "French";
-    if (selectedLanguage === "german") return "German";
-    if (selectedLanguage === "spanish") return "Spanish";
-    if (selectedLanguage === "portuguese") return "Portuguese";
-    if (selectedLanguage === "italian") return "Italian";
-    if (selectedLanguage === "mandarin") return "Mandarin";
-    if (selectedLanguage === "japanese") return "Japanese";
-    if (selectedLanguage === "korean") return "Korean";
-    if (selectedLanguage === "arabic") return "Arabic";
-    if (selectedLanguage === "russian") return "Russian";
-    if (selectedLanguage === "hindi") return "Hindi";
-    return selectedLanguage;
+    if (selectedLanguages.length === 0) return "Not selected";
+    return selectedLanguages.map((id) => getLanguageName(id)).join(", ");
   };
 
   const getBudgetLabel = () => {
@@ -420,6 +471,49 @@ function SeekerOnboardingPageContent() {
     if (selectedBudget === "premium") return "Premium";
     if (selectedBudget === "elite") return "Elite";
     return selectedBudget;
+  };
+
+  const getBudgetPriceText = () => {
+    if (selectedBudget === "budget") return "₹500–₹2,500";
+    if (selectedBudget === "standard") return "₹2,500–₹8,000";
+    if (selectedBudget === "premium") return "₹8,000–₹20,000";
+    if (selectedBudget === "elite") return "₹20,000+";
+    return "";
+  };
+
+
+
+  const progressDataCompletion = {
+    category: Boolean(selectedCategory),
+    needs: needsText.trim().length > 0,
+    format: selectedFormats.length > 0,
+    budget: Boolean(selectedBudget),
+    personalisation: selectedLanguages.length > 0,
+  };
+
+  const progressAnchorStep: SeekerOnboardingStepKey | "success" =
+    step === "success"
+      ? "success"
+      : isSeekerOnboardingStep(step)
+        ? step
+        : "category";
+
+  const progressCompletion: ProgressCompletion = buildSeekerProgressCompletion(
+    progressAnchorStep,
+    progressDataCompletion,
+  );
+
+
+
+  const seekerDisplayName = registeredName || "";
+
+  const handleProgressStepClick = (targetStep: ProgressStepKey) => {
+    if (step === "review") {
+      setEditReturnStep("review");
+    } else {
+      setEditReturnStep(null);
+    }
+    setStep(targetStep);
   };
 
   return (
@@ -440,7 +534,7 @@ function SeekerOnboardingPageContent() {
 
       {step === "category" && (
         <CategoryStep
-          userName={registeredName || "Guest Seeker"}
+          userName={seekerDisplayName}
           categories={allCategories}
           selectedCategory={selectedCategory}
           onSelectCategory={(id) => {
@@ -448,133 +542,94 @@ function SeekerOnboardingPageContent() {
             setSelectedTopics([]);
           }}
           onAddCustomCategory={handleAddCustomCategory}
-          onBack={handleBackToWelcome}
+          onRemoveCustomCategory={handleRemoveCustomCategory}
+          allowCustomCategory={true}
+          variant="full"
+          onBack={handleBackFromCategory}
           onContinue={handleCategoryContinue}
-        />
-      )}
-
-      {step === "topics" && (
-        <TopicsStep
-          userName={registeredName || "Guest Seeker"}
-          activeCategoryLabel={activeCategoryLabel}
-          currentTopicsList={currentTopicsList}
-          selectedTopics={selectedTopics}
-          onToggleTopic={handleToggleTopic}
-          onAddCustomTopic={handleAddCustomTopic}
-          onBack={handleBackToCategory}
-          onContinue={handleTopicsContinue}
+          progressCompletion={progressCompletion}
+          onProgressStepClick={handleProgressStepClick}
         />
       )}
 
       {step === "needs" && (
         <NeedsStep
-          userName={registeredName || "Guest Seeker"}
+          userName={seekerDisplayName}
           needsText={needsText}
           onChangeNeedsText={setNeedsText}
-          onBack={handleBackToTopics}
+          selectedNeedChips={selectedNeedChips}
+          onSelectedNeedChipsChange={setSelectedNeedChips}
+          onBack={handleBackToCategory}
           onContinue={handleNeedsContinue}
-        />
-      )}
-
-      {step === "outcome" && (
-        <OutcomeStep
-          userName={registeredName || "Guest Seeker"}
-          selectedOutcome={selectedOutcome}
-          onSelectOutcome={setSelectedOutcome}
-          selectedExtras={selectedExtras}
-          onToggleExtra={(extra) => {
-            if (selectedExtras.includes(extra)) {
-              setSelectedExtras(selectedExtras.filter((e) => e !== extra));
-            } else {
-              setSelectedExtras([...selectedExtras, extra]);
-            }
-          }}
-          onBack={handleBackToNeeds}
-          onContinue={handleOutcomeContinue}
-        />
-      )}
-
-      {step === "urgency" && (
-        <UrgencyStep
-          userName={registeredName || "Guest Seeker"}
-          selectedUrgency={selectedUrgency}
-          onSelectUrgency={setSelectedUrgency}
-          onBack={handleBackToOutcome}
-          onContinue={handleUrgencyContinue}
+          progressCompletion={progressCompletion}
+          onProgressStepClick={handleProgressStepClick}
         />
       )}
 
       {step === "format" && (
         <FormatStep
-          userName={registeredName || "Guest Seeker"}
-          selectedUrgency={selectedUrgency}
-          selectedFormat={selectedFormat}
-          onSelectFormat={setSelectedFormat}
-          onBack={handleBackToUrgency}
+          userName={seekerDisplayName}
+          selectedFormats={selectedFormats}
+          onSelectedFormatsChange={setSelectedFormats}
+          onBack={handleBackToNeeds}
           onContinue={handleFormatContinue}
-        />
-      )}
-
-      {step === "language" && (
-        <LanguageStep
-          userName={registeredName || "Guest Seeker"}
-          selectedLanguage={selectedLanguage}
-          onSelectLanguage={setSelectedLanguage}
-          onBack={handleBackToFormat}
-          onContinue={handleLanguageContinue}
+          progressCompletion={progressCompletion}
+          onProgressStepClick={handleProgressStepClick}
         />
       )}
 
       {step === "budget" && (
         <BudgetStep
-          userName={registeredName || "Guest Seeker"}
+          userName={seekerDisplayName}
           selectedBudget={selectedBudget}
           onSelectBudget={setSelectedBudget}
-          budgetValue={budgetValue}
-          onChangeBudgetValue={setBudgetValue}
-          onBack={handleBackToLanguage}
+          onBack={handleBackToFormat}
           onContinue={handleBudgetContinue}
+          progressCompletion={progressCompletion}
+          onProgressStepClick={handleProgressStepClick}
         />
       )}
 
       {step === "personalisation" && (
         <PersonalisationStep
-          userName={registeredName || "Guest Seeker"}
-          firstName={firstName}
-          onChangeFirstName={setFirstName}
-          experienceLevel={experienceLevel}
-          onChangeExperienceLevel={setExperienceLevel}
-          communicationStyle={communicationStyle}
-          onChangeCommunicationStyle={setCommunicationStyle}
-          ageRange={ageRange}
-          onChangeAgeRange={setAgeRange}
+          userName={seekerDisplayName}
+          categoryLabel={activeCategoryLabel}
+          needsText={needsText}
+          profilePhotoSrc={profilePhotoSrc}
+          onProfilePhotoChange={setProfilePhotoSrc}
+          selectedLanguages={selectedLanguages}
+          onSelectedLanguagesChange={setSelectedLanguages}
           location={location}
           onChangeLocation={setLocation}
           additionalContext={additionalContext}
           onChangeAdditionalContext={setAdditionalContext}
           onBack={handleBackToBudget}
           onContinue={handlePersonalisationContinue}
+          progressCompletion={progressCompletion}
+          onProgressStepClick={handleProgressStepClick}
         />
       )}
 
       {step === "review" && (
         <ReviewStep
-          userName={registeredName || "Guest Seeker"}
+          userName={seekerDisplayName}
           categoryLabel={activeCategoryLabel}
           selectedTopics={selectedTopics}
           needsText={needsText}
-          selectedOutcomeLabel={getOutcomeLabel()}
-          selectedUrgencyLabel={getUrgencyLabel()}
           selectedFormatLabel={getFormatLabel()}
           selectedLanguageLabel={getLanguageLabel()}
           selectedBudgetLabel={getBudgetLabel()}
-          budgetValue={budgetValue}
-          firstName={firstName}
-          experienceLevel={experienceLevel}
-          communicationStyleLabel={communicationStyle}
+          selectedBudgetPriceText={getBudgetPriceText()}
+          profilePhotoSrc={profilePhotoSrc}
+          location={location}
+          onChangeLocation={setLocation}
+          additionalContext={additionalContext}
+          onChangeAdditionalContext={setAdditionalContext}
           onEditStep={handleEditStep}
           onBack={handleBackToPersonalisation}
           onContinue={handleReviewContinue}
+          progressCompletion={progressCompletion}
+          onProgressStepClick={handleProgressStepClick}
         />
       )}
 
@@ -603,9 +658,8 @@ function SeekerOnboardingPageContent() {
 
       {step === "success" && (
         <SuccessStep
-          userName={registeredName || "Seeker"}
+          userName={seekerDisplayName}
           selectedCategory={selectedCategory}
-          categoryLabel={activeCategoryLabel}
         />
       )}
     </main>
@@ -613,9 +667,5 @@ function SeekerOnboardingPageContent() {
 }
 
 export default function SeekerOnboardingPage() {
-  return (
-    <Suspense fallback={null}>
-      <SeekerOnboardingPageContent />
-    </Suspense>
-  );
+  return <SeekerOnboardingPageContent />;
 }

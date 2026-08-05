@@ -3,11 +3,9 @@
   z-index: 10;
   width: 100%;
   max-width: 1024px;
-  min-height: 760px;
-  background: rgba(30, 30, 30, .95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0px 25px 50px -12px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
+  min-height: 768px;
+  max-height: 768px;
+  backdrop-filter: blur(65px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -31,36 +29,18 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: 24px 40px;
+  padding: 0px 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-  min-height: 559px;
-  max-height: 559px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .cardBody::-webkit-scrollbar {
-  width: 14px;
-}
-
-.cardBody::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 16px 0;
-}
-
-.cardBody::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.12);
-  border: 4px solid transparent;
-  background-clip: padding-box;
-  border-radius: 10px;
-}
-
-.cardBody::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.25);
+  display: none;
 }
 
 .accentWord {
@@ -96,18 +76,8 @@
 .headerIcon {
   width: 16px;
   height: 16px;
-  color: var(--white);
+  color: var(--silver);
   flex-shrink: 0;
-}
-
-.stepPill {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 100px;
-  padding: 6px 14px;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.65);
 }
 
 .progressContainer {
@@ -117,7 +87,7 @@
 
 .progressTextRow {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
@@ -126,6 +96,12 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgba(255, 255, 255, 0.55);
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .progressBarBg {
@@ -140,7 +116,7 @@
   height: 100%;
   padding: 0;
   border: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-chip);
   border-radius: 2px;
   transition: background 0.3s ease, opacity 0.2s ease;
 }
@@ -150,7 +126,11 @@
 }
 
 .progressBarSegmentFilled {
-  background: #E53B17;
+  background: var(--pomegranate);
+}
+
+.progressBarSegmentCurrent {
+  background: var(--gray);
 }
 
 .progressBarSegmentClickable {
@@ -172,11 +152,9 @@
   font-size: 36px;
   line-height: 48px;
   letter-spacing: -1.2px;
-  color: #9E9E9E;
-  max-width: 650px;
+  color: var(--silver-chalice);
   width: 100%;
-  margin: 16px auto 12px;
-  text-align: center;
+  text-align: left;
   display: block;
 }
 
@@ -185,11 +163,82 @@
   font-weight: 300;
   font-size: 18px;
   line-height: 28px;
-  color: #9E9E9E;
-  max-width: 600px;
+  color: var(--silver-chalice);
   width: 100%;
-  margin: 0 auto 36px;
-  text-align: center;
+  margin: 0 0 24px;
+  text-align: left;
+}
+
+.customInputFooter {
+  flex-shrink: 0;
+  margin-top: auto;
+  width: 100%;
+  max-width: 440px;
+}
+
+.customInputWrapper {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 440px;
+  margin: 28px 0;
+}
+
+.customInput {
+  width: 100%;
+  height: 48px;
+  background: var(--background-chip);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  padding: 0 48px 0 24px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  outline: none;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.customInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.customInput:focus:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.customInput:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.customInputBtn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-chip);
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.customInputBtn:focus-visible:not(:disabled) {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.customInputBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .onboardingFooter {
@@ -198,8 +247,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 40px 48px;
+  padding: 30px 40px 30px;
   gap: 20px;
+  max-height: 105px;
+  min-height: 105px;
+  border-top: 1px solid #ffffff1a;
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .footerLeft {
@@ -225,7 +278,7 @@
 
 .footerTip {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.4;
   color: rgba(255, 255, 255, 0.85);
 }
@@ -249,9 +302,10 @@
   cursor: pointer;
   font-family: var(--font-body);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 20px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--silver-chalice);
+  text-transform: uppercase;
   transition: color 0.2s ease;
   outline: none;
   padding: 6px;
@@ -259,37 +313,6 @@
 
 .textBtn:focus-visible {
   color: var(--white);
-}
-
-.continueBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  text-transform: uppercase;
-  border-radius: 30px;
-  min-height: 44px;
-  padding: 0 20px;
-  background: #E53B17;
-  color: var(--white);
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(229, 59, 23, 0.25);
-  transition: all 0.25s ease;
-}
-
-.continueBtn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.continueBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  box-shadow: none;
 }
 
 @media (max-width: 600px) {

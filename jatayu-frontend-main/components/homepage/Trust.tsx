@@ -38,7 +38,7 @@ export default function Trust() {
         <div className={`container ${styles.trustInner}`}>
           <div className={styles.trustLeft}>
             <span className="eyebrow eyebrow--light">
-              <i className="dot"></i>06&nbsp;&nbsp;Join Us Now
+              <i className="dot"></i>Join Us Now
             </span>
 
             <h2 className={`display ${styles.trustTitle}`}>

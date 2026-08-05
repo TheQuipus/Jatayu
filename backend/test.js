@@ -20,7 +20,7 @@ async function runTests() {
     const randomId = Math.floor(Math.random() * 10000);
     const email = `expert-${randomId}@example.com`;
     const password = 'Password@123';
-    const phone = '9898675444';
+    const phone = `9${Math.floor(100000000 + Math.random() * 900000000)}`;
     const fullName = 'Aryan Singh';
 
     // 2. Register
@@ -281,6 +281,24 @@ async function runTests() {
     console.log('Google login response:', googleData);
     if (googleRes.status !== 200) throw new Error('Google Auth route failed');
     console.log('✓ Google login/signup passed\n');
+
+    // 16. Verify Mock LinkedIn Login
+    console.log('Testing Mock LinkedIn Login/Signup...');
+    const linkedinRes = await fetch(`${BASE_URL}/api/auth/linkedin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        authCode: 'mock-linkedin-token',
+        email: `linkedin-expert-${randomId}@example.com`,
+        fullName: 'LinkedIn Expert Test',
+        profilePhotoSrc: '/assets/img/manportrait.png',
+        linkedinId: `linkedin-id-${randomId}`
+      })
+    });
+    const linkedinData = await linkedinRes.json();
+    console.log('LinkedIn login response:', linkedinData);
+    if (linkedinRes.status !== 200) throw new Error('LinkedIn Auth route failed');
+    console.log('✓ LinkedIn login/signup passed\n');
 
     console.log('=======================================');
     console.log('🎉 ALL BACKEND API TESTS COMPLETED SUCCESSFULLY! 🎉');

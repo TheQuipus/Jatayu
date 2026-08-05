@@ -1,0 +1,338 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--gallery);
+  color: var(--ink);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  align-self: flex-start;
+  width: 260px;
+  height: 100vh;
+  max-height: 100vh;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px 20px;
+  background: var(--white);
+  border-right: 1px solid var(--mercury);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 24px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.brandMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--pomegranate);
+  color: var(--white);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.navSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navLabel {
+  padding: 16px 12px 8px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--scorpion);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.navLinkToggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.navChevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--silver-chalice);
+  transition: transform 0.2s ease;
+}
+
+.navChevronOpen {
+  transform: rotate(180deg);
+}
+
+.navLinkParentActive .navChevron {
+  color: var(--dove-gray);
+}
+
+.navLink:hover {
+  background: var(--seashell);
+  color: var(--ink);
+}
+
+.navLinkActive {
+  background: var(--pomegranate);
+  color: var(--white);
+}
+
+.navLinkActive:hover {
+  background: var(--pomegranate);
+  color: var(--white);
+}
+
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navLinkParentActive {
+  background: var(--seashell);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.navLinkParentActive:hover {
+  background: var(--seashell);
+  color: var(--ink);
+}
+
+.navSubList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px 22px;
+  padding-left: 12px;
+  border-left: 1px solid var(--mercury);
+}
+
+.navSubLink {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--scorpion);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.navSubLink:hover {
+  background: var(--seashell);
+  color: var(--ink);
+}
+
+.navSubLinkActive {
+  background: color-mix(in srgb, var(--pomegranate) 10%, var(--white));
+  color: var(--pomegranate);
+  font-weight: 600;
+}
+
+.navSubLinkActive:hover {
+  background: color-mix(in srgb, var(--pomegranate) 14%, var(--white));
+  color: var(--pomegranate);
+}
+
+.navBadge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 8%, var(--white));
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.navLinkActive .navBadge {
+  background: color-mix(in srgb, var(--white) 22%, transparent);
+  color: var(--white);
+}
+
+.navBadgeRed {
+  background: var(--pomegranate);
+  color: var(--white);
+}
+
+.navLinkActive .navBadgeRed {
+  background: color-mix(in srgb, var(--white) 22%, transparent);
+  color: var(--white);
+}
+
+.userCard {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--mercury);
+  background: var(--seashell);
+}
+
+.userAvatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--mercury);
+}
+
+.userMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.userName {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--scorpion);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userMenuBtn {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--silver-chalice);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.userMenuBtn:hover {
+  background: color-mix(in srgb, var(--ink) 6%, var(--white));
+  color: var(--ink);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  --admin-sticky-top: 56px;
+}
+
+.gridWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 16px 0 0;
+  background: linear-gradient(to bottom,
+      var(--gallery) 70%,
+      color-mix(in srgb, var(--gallery) 0%, transparent));
+}
+
+.topBarInner {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  min-height: 40px;
+  background: var(--gallery);
+}
+
+.breadcrumbsSlot {
+  flex: 1;
+  min-width: 0;
+}
+
+.content {
+  flex: 1;
+  position: relative;
+  z-index: 3;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--mercury);
+    overflow-y: visible;
+  }
+
+  .userCard {
+    margin-top: 16px;
+  }
+
+  .topBar {
+    padding-top: 12px;
+  }
+
+  .main {
+    --admin-sticky-top: 52px;
+  }
+}

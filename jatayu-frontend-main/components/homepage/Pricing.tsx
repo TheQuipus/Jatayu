@@ -156,7 +156,7 @@ export default function Pricing() {
           <div className={styles.pricingHead}>
             <div>
               <span className="eyebrow eyebrow--light">
-                <i className="dot"></i>09&nbsp;&nbsp;lets connect
+                <i className="dot"></i>lets connect
               </span>
               <h2 className="display">
                 <span className="t-dark">ai informs you.</span>

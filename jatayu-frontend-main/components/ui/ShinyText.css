@@ -1,0 +1,24 @@
+.shiny-text {
+  display: inline-block;
+}
+
+.shiny-text-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shiny-text-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.shiny-text-label {
+  display: inline-block;
+}

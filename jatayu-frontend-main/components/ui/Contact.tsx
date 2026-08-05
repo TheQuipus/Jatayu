@@ -79,7 +79,7 @@ export default function Contact() {
         <div className={`container ${styles.contactInner}`}>
           <div className={styles.contactLeft}>
             <span className={`eyebrow eyebrow--ghost ${styles.contactEyebrow}`}>
-              <i className="dot dot--white"></i>12&nbsp;&nbsp;get in touch
+              <i className="dot dot--white"></i>get in touch
             </span>
           </div>
 

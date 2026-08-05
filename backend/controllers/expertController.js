@@ -1,4 +1,5 @@
 import { Expert, Credential, Availability, sequelize } from '../models/index.js';
+import { generateApplicationNumber } from '../utils/applicationNumber.js';
 
 /**
  * Get current expert's full profile
@@ -28,25 +29,41 @@ export const getProfile = async (req, res) => {
 /**
  * Update expert profile data for onboarding steps
  */
+function parseJsonField(value) {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
 export const updateProfile = async (req, res) => {
   const expertId = req.user.id;
+  const body = req.body;
   const {
     step, // 'category', 'skills', 'experience', 'identity', 'credentials', 'preferences', 'audience', 'availability'
     category,
-    skills,
     experienceLevel,
     professionalTitle,
     tagLine,
     bio,
-    credentials, // Array of credential objects: [{ type, title, institution, startYear, endYear, description }]
-    selectedFormats,
-    selectedLengths,
-    formatPrices,
-    targetAudience,
-    focusAreas,
     timezone,
-    availabilitySlots // Array of availability slots: [{ days: [], from: "", to: "" }]
-  } = req.body;
+  } = body;
+
+  const skills = parseJsonField(body.skills);
+  const credentials = parseJsonField(body.credentials);
+  const selectedFormats = parseJsonField(body.selectedFormats);
+  const selectedLengths = parseJsonField(body.selectedLengths);
+  const formatPrices = parseJsonField(body.formatPrices);
+  const targetAudience = parseJsonField(body.targetAudience);
+  const focusAreas = parseJsonField(body.focusAreas);
+  const availabilitySlots = parseJsonField(body.availabilitySlots);
+  const onboardingMetadata = parseJsonField(body.onboardingMetadata);
 
   const transaction = await sequelize.transaction();
 
@@ -64,7 +81,11 @@ export const updateProfile = async (req, res) => {
     if (professionalTitle !== undefined) expert.professionalTitle = professionalTitle;
     if (tagLine !== undefined) expert.tagLine = tagLine;
     if (bio !== undefined) expert.bio = bio;
-    if (targetAudience !== undefined) expert.targetAudience = targetAudience;
+    if (targetAudience !== undefined) {
+      expert.targetAudience = Array.isArray(targetAudience)
+        ? JSON.stringify(targetAudience)
+        : targetAudience;
+    }
     if (focusAreas !== undefined) expert.focusAreas = focusAreas;
     if (timezone !== undefined) expert.timezone = timezone;
 
@@ -72,6 +93,12 @@ export const updateProfile = async (req, res) => {
     if (selectedFormats !== undefined) expert.selectedFormats = selectedFormats;
     if (selectedLengths !== undefined) expert.selectedLengths = selectedLengths;
     if (formatPrices !== undefined) expert.formatPrices = formatPrices;
+    if (onboardingMetadata !== undefined) {
+      expert.onboardingMetadata = {
+        ...(expert.onboardingMetadata || {}),
+        ...onboardingMetadata,
+      };
+    }
 
     // Handle photo upload if present
     if (req.file) {
@@ -161,6 +188,10 @@ export const submitOnboarding = async (req, res) => {
     }
 
     // Set status to pending review and mark onboarding as complete
+    if (!expert.applicationNumber) {
+      expert.applicationNumber = await generateApplicationNumber();
+    }
+    expert.submittedAt = new Date();
     expert.status = 'pending_review';
     expert.onboardingStep = 'success';
     await expert.save();

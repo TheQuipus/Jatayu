@@ -1,120 +1,109 @@
 "use client";
 
-import { Award, ArrowRight } from "lucide-react";
-import OnboardingStepTitle from "./OnboardingStepTitle";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Lottie from "lottie-react";
+import confettiAnimation from "@/public/Lottie/Confetti.json";
+
+import ContinueButton from "@/components/ui/ContinueButton";
+import ExpertCard from "@/components/ui/ExpertCard";
+import { EXPERT_DASHBOARD_HREF } from "@/lib/expertDashboard";
+import { getLowestFormatPrice } from "./preferencesData";
+import type { Expert } from "@/lib/experts";
 import shared from "./onboarding.shared.module.css";
 import styles from "./SuccessStep.module.css";
 
 type SuccessStepProps = {
   userName: string;
+  professionalTitle: string;
+  tagLine: string;
+  bio: string;
+  categoryLabel: string;
+  languages: string[];
+  formatPrices: Record<string, string>;
   profilePhotoSrc: string;
 };
 
 export default function SuccessStep({
   userName,
+  professionalTitle,
+  tagLine,
+  bio,
+  categoryLabel,
+  languages,
+  formatPrices,
   profilePhotoSrc,
 }: SuccessStepProps) {
-  const isUploadedPhoto =
-    profilePhotoSrc.startsWith("blob:") ||
-    profilePhotoSrc.startsWith("data:");
+  const router = useRouter();
+
+  const expert = useMemo<Expert>(
+    () => ({
+      name: userName.trim() || "Your Name",
+      role: professionalTitle.trim() || "Professional Title",
+      desc: tagLine.trim() || "Your tag line appears here.",
+      image: profilePhotoSrc,
+      category: categoryLabel.trim() || "Category",
+      topics: [],
+      languages,
+      price: getLowestFormatPrice(formatPrices),
+      rating: 0,
+      replyTime: "0 min",
+      bio: bio.trim(),
+    }),
+    [
+      bio,
+      categoryLabel,
+      formatPrices,
+      languages,
+      professionalTitle,
+      profilePhotoSrc,
+      tagLine,
+      userName,
+    ],
+  );
 
   return (
     <section className={shared.card}>
-      <div className={shared.cardHeader}>
-      <div className={shared.topHeader}>
-        <OnboardingStepTitle userName={userName} />
-        <div className={styles.statusBadgeUnderReview}>
-          <span className={styles.statusDotUnderReview} />
-          <span>Under Review</span>
-        </div>
-      </div>
+      <div className={`${shared.cardHeader} ${styles.successHeader}`}>
+        <div className={`${shared.topHeader} ${styles.successTopHeader}`} />
       </div>
 
-      <div className={shared.cardBody}>
-      {/* Main Content Area */}
-      <div className={styles.successMainBody}>
-        {/* Animated circular success ring */}
-        <div className={styles.successRingWrapper}>
-          <div className={styles.successRingPhoto}>
-            {isUploadedPhoto ? (
-              <img
-                src={profilePhotoSrc}
-                alt={`${userName || "Expert"} profile photo`}
-                className={styles.successRingPhotoImage}
+      <div className={`${shared.cardBody} ${styles.successBody}`}>
+        <div className={styles.successMainBody}>
+          <h1 className={`${shared.questionTitle} ${styles.successTitle}`}>
+            Application <span className={shared.accentWord}>Submitted</span>
+          </h1>
+
+          <div className={styles.expertCardWrapper}>
+            <div className={`${styles.confettiWrapper} ${styles.confettiLeft}`}>
+              <Lottie
+                animationData={confettiAnimation}
+                loop={false}
+                autoplay={true}
               />
-            ) : (
-              <Image
-                src={profilePhotoSrc}
-                alt={`${userName || "Expert"} profile photo`}
-                width={62}
-                height={62}
-                className={styles.successRingPhotoImage}
+            </div>
+            <div className={`${styles.confettiWrapper} ${styles.confettiRight}`}>
+              <Lottie
+                animationData={confettiAnimation}
+                loop={false}
+                autoplay={true}
               />
-            )}
-          </div>
-          <svg className={styles.successRingSvg} viewBox="0 0 100 100" aria-hidden="true">
-            <circle
-              className={styles.successRingCircle}
-              cx="50"
-              cy="50"
-              r="44"
-              strokeDasharray="276"
-              strokeDashoffset="276"
+            </div>
+            <ExpertCard
+              expert={expert}
+              linkToDetail={false}
+              disableHover
+              showLanguages={languages.length > 0}
             />
-          </svg>
-        </div>
-
-        {/* Title */}
-        <h1 className={shared.questionTitle} style={{ marginTop: "24px", marginBottom: "16px" }}>
-          Application <span className={shared.accentWord}>Submitted</span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className={shared.questionSubtitle} style={{ maxWidth: "440px", margin: "0 auto 32px" }}>
-          Fantastic! Your expert profile is now under review. We typically process applications within 24–48 hours.
-        </p>
-
-        {/* Badge Unlocked Callout Card */}
-        <div className={styles.badgeUnlockedCard} style={{ marginBottom: "40px" }}>
-          <div className={styles.badgeAwardIconWrap}>
-            <Award size={18} />
           </div>
-          <div className={styles.badgeTextWrap}>
-            <h5 className={styles.badgeLabel}>Badge Unlocked</h5>
-            <p className={styles.badgeValue}>Verification Ready</p>
-          </div>
-        </div>
 
-        {/* Steps Timeline Tracker */}
-        <div className={styles.timelineWrapper}>
-          <div className={styles.timelineTrack} />
-          
-          <div className={styles.timelineNodes}>
-            {/* Step 1: Submitted */}
-            <div className={`${styles.timelineNode} ${styles.timelineNodeDone}`}>
-              <div className={styles.timelineCircle}>1</div>
-              <span className={styles.timelineLabelText}>Submitted</span>
-            </div>
-
-            {/* Step 2: Review (Active) */}
-            <div className={`${styles.timelineNode} ${styles.timelineNodeActive}`}>
-              <div className={styles.timelineCircle}>2</div>
-              <span className={styles.timelineLabelText}>Review</span>
-            </div>
-
-            {/* Step 3: Approved */}
-            <div className={styles.timelineNode}>
-              <div className={styles.timelineCircle}>3</div>
-              <span className={styles.timelineLabelText}>Approved</span>
-            </div>
-          </div>
+          <p className={`${shared.questionSubtitle} ${styles.successSubtitle}`}>
+            Fantastic! Your expert profile is now under review. We typically process applications within 24–48 hours.
+          </p>
         </div>
       </div>
 
-      </div>
-
-      {/* Footer */}
       <div className={shared.onboardingFooter}>
         <div className={shared.footerLeft}>
           <div className={shared.avatarMiniWrap}>
@@ -133,16 +122,12 @@ export default function SuccessStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button
-            type="button"
-            className={shared.continueBtn}
+          <ContinueButton
+            label="Go to Expert Dashboard"
             onClick={() => {
-              window.location.href = "/expert/dashboard";
+              router.push(EXPERT_DASHBOARD_HREF);
             }}
-          >
-            <span>Go to Expert Dashboard</span>
-            <ArrowRight size={14} style={{ marginLeft: "4px" }} />
-          </button>
+          />
         </div>
       </div>
     </section>

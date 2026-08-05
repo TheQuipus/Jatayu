@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Bookmark as BookmarkIcon } from "lucide-react";
-import { expertSlug, type Expert } from "@/lib/experts";
+import { getExpertDetailHref, type Expert } from "@/lib/experts";
 import buttonStyles from "./PrimaryButton.module.css";
 import styles from "./ExpertCard.module.css";
 
@@ -13,9 +14,12 @@ type ExpertCardProps = {
   onBookmarkToggle?: () => void;
   className?: string;
   linkToDetail?: boolean;
+  seeker?: boolean;
   disableHover?: boolean;
   showLanguages?: boolean;
+  showCategoryBadge?: boolean;
   priority?: boolean;
+  statsText?: string;
 };
 
 export default function ExpertCard({
@@ -24,11 +28,28 @@ export default function ExpertCard({
   onBookmarkToggle,
   className = "",
   linkToDetail = true,
+  seeker = false,
   disableHover = false,
   showLanguages = true,
+  showCategoryBadge = true,
   priority = false,
+  statsText,
 }: ExpertCardProps) {
-  const detailHref = `/expert/${expertSlug(expert.name)}`;
+  const [showAllLanguages, setShowAllLanguages] = useState(false);
+  const detailHref = getExpertDetailHref(expert, { seeker });
+  const formattedReplyTime = expert.replyTime
+    .replace(/\bhours?\b/gi, "hr")
+    .replace(/\bminutes?\b/gi, "min");
+  const visibleLanguages = expert.languages.slice(0, 5);
+  const hiddenLanguages = expert.languages.slice(visibleLanguages.length);
+  const hiddenLanguageCount = hiddenLanguages.length;
+
+  const toggleLanguages = (event: React.SyntheticEvent) => {
+    if (hiddenLanguageCount === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setShowAllLanguages((current) => !current);
+  };
 
   const cardBody = (
     <>
@@ -49,12 +70,14 @@ export default function ExpertCard({
       )}
 
       <article className={styles.expertCard}>
-        <div className={styles.categoryBadgeWrap}>
-          <span className={styles.categoryBadge}>
-            <span className={styles.badgeDot} />
-            {(expert.category || expert.topics[0] || "General").toUpperCase()}
-          </span>
-        </div>
+        {showCategoryBadge && (
+          <div className={styles.categoryBadgeWrap}>
+            <span className={styles.categoryBadge}>
+              <span className={styles.badgeDot} />
+              {(expert.category || expert.topics[0] || "General").toUpperCase()}
+            </span>
+          </div>
+        )}
 
         <div className={styles.expertImageWrap}>
           {expert.image.startsWith("blob:") || expert.image.startsWith("data:") ? (
@@ -71,6 +94,7 @@ export default function ExpertCard({
               className={styles.expertImage}
               sizes="(max-width: 1024px) 50vw, 25vw"
               priority={priority}
+              loading={(expert.image === "/assets/img/team1.png" || expert.image === "/assets/img/team2.png") && !priority ? "eager" : undefined}
             />
           )}
         </div>
@@ -79,11 +103,38 @@ export default function ExpertCard({
         {showLanguages && (
           <div className={styles.expertCardBody}>
             <div className={styles.languagesSection}>
-              <span className={styles.languagesLabel}>LANGUAGES</span>
               <ul className={styles.languagesList}>
-                {expert.languages.map((lang) => (
+                {visibleLanguages.map((lang) => (
                   <li key={lang}>{lang}</li>
                 ))}
+                {hiddenLanguageCount > 0 && (
+                  <li className={styles.moreLanguages}>
+                    <div
+                      className={`${styles.languagesDisclosure} ${
+                        showAllLanguages ? styles.languagesDisclosureExpanded : ""
+                      }`}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={showAllLanguages}
+                      aria-label={`Show all ${expert.languages.length} languages`}
+                      onClick={toggleLanguages}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          toggleLanguages(event);
+                        }
+                      }}
+                    >
+                      +{hiddenLanguageCount} more
+                      <div className={styles.languagesPopover} aria-hidden={!showAllLanguages}>
+                        <ul className={styles.languagesPopoverList}>
+                          {hiddenLanguages.map((lang) => (
+                            <li key={lang}>{lang}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </li>
+                )}
               </ul>
             </div>
           </div>
@@ -102,9 +153,12 @@ export default function ExpertCard({
             </span>
           </div>
 
-          <p className={styles.expertStats}>
-            From ₹{expert.price} / Rating {expert.rating} / Reply {expert.replyTime}
-          </p>
+          {statsText !== "" && (
+            <p className={styles.expertStats}>
+              {statsText ??
+                `From ₹${expert.price} / Rating ${expert.rating} / Reply ${formattedReplyTime}`}
+            </p>
+          )}
 
           <div className={styles.divider} />
 

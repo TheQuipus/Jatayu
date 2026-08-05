@@ -9,9 +9,10 @@ import styles from "@/components/homepage/Services.module.css";
 
 type RelatedExpertsProps = {
   expert: Expert;
+  seeker?: boolean;
 };
 
-export default function RelatedExperts({ expert }: RelatedExpertsProps) {
+export default function RelatedExperts({ expert, seeker = false }: RelatedExpertsProps) {
   const { bookmarkedExperts, toggleBookmark } = useBookmarks();
   const relatedExperts = getRelatedExperts(expert);
 
@@ -88,7 +89,10 @@ export default function RelatedExperts({ expert }: RelatedExpertsProps) {
   return (
     <>
       <HeroLines rotate180={true} />
-      <section className={`${styles.services} dark`} data-nav-surface="dark">
+      <section
+        className={`${styles.services} ${seeker ? styles.servicesSeeker : ""} dark`}
+        data-nav-surface="dark"
+      >
         <div className={`container ${styles.servicesInner}`}>
           <div className={`${styles.speaks} ${styles.speaksFirst}`}>
             <div className={styles.speaksTop}>
@@ -102,7 +106,7 @@ export default function RelatedExperts({ expert }: RelatedExpertsProps) {
               </h2>
               <div className={styles.speaksRight}>
                 <span className="eyebrow eyebrow--dark">
-                  <i className="dot"></i>{displayedExperts.length.toString().padStart(2, '0')}&nbsp;&nbsp;related Experts
+                  <i className="dot"></i>related Experts
                 </span>
               </div>
               <span className={styles.speaksRule} aria-hidden="true"></span>
@@ -137,6 +141,7 @@ export default function RelatedExperts({ expert }: RelatedExpertsProps) {
                     isBookmarked={bookmarkedExperts.has(candidate.name)}
                     onBookmarkToggle={() => toggleBookmark(candidate.name)}
                     className={styles.expertCardSlide}
+                    seeker={seeker}
                   />
                 ))}
               </div>

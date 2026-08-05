@@ -15,7 +15,7 @@ const features = [
     desc: "Build confidence before users spend time or money."
   },
   {
-    title: "WhatsApp-Native UX",
+    title: "Simple Onboarding UX",
     desc: "Easy onboarding and communication through a familiar channel."
   },
   {
@@ -69,7 +69,7 @@ export default function AboutUs() {
 
           <div className={styles.aboutUsDescRow}>
             <p className={styles.aboutUsDesc}>
-              Multilingual expert marketplace with affordable micro-consultations, verified professionals, WhatsApp-native onboarding, and integrated knowledge commerce.
+              Multilingual expert marketplace with affordable micro-consultations, verified professionals, simple onboarding, and integrated knowledge commerce.
             </p>
           </div>
 

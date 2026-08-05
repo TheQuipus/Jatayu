@@ -1,15 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import styles from "./PrimaryButton.module.css";
 
 type SharedPrimaryButtonProps = {
   label?: ReactNode;
-  variant?: "light" | "dark";
+  variant?: "light" | "dark" | "orange";
   fullWidth?: boolean;
   iconPosition?: "left" | "right";
   iconSrc?: string;
   className?: string;
+  staticLabel?: boolean;
 };
 
 type PrimaryButtonAsButton = SharedPrimaryButtonProps &
@@ -32,12 +34,16 @@ function ButtonIcon({ iconSrc = "/assets/buttonsvg.svg" }: { iconSrc?: string })
   );
 }
 
-function ButtonLabel({ label }: { label: ReactNode }) {
+function ButtonLabel({ label, staticLabel = false }: { label: ReactNode; staticLabel?: boolean }) {
+  if (staticLabel) {
+    return <span className={`${styles.buttonText} ${styles.buttonTextStatic} btn__text`}>{label}</span>;
+  }
+
   return (
     <span className={`${styles.buttonText} btn__text`}>
-      <span className={styles.labelTrack}>
-        <span className={styles.labelUp}>{label}</span>
-        <span className={styles.labelUp} aria-hidden="true">
+      <span className={`${styles.labelTrack} btn__label-track`}>
+        <span className={`${styles.labelUp} btn__label-up`}>{label}</span>
+        <span className={`${styles.labelUp} btn__label-up`} aria-hidden="true">
           {label}
         </span>
       </span>
@@ -49,8 +55,9 @@ function ButtonContent({
   label,
   iconPosition,
   iconSrc,
-}: Pick<SharedPrimaryButtonProps, "label" | "iconPosition" | "iconSrc">) {
-  const text = <ButtonLabel label={label ?? ""} />;
+  staticLabel,
+}: Pick<SharedPrimaryButtonProps, "label" | "iconPosition" | "iconSrc" | "staticLabel">) {
+  const text = <ButtonLabel label={label ?? ""} staticLabel={staticLabel} />;
 
   if (iconPosition === "left") {
     return (
@@ -77,12 +84,14 @@ function getSharedLayout(props: SharedPrimaryButtonProps) {
     iconPosition = "right",
     iconSrc = "/assets/buttonsvg.svg",
     className = "",
+    staticLabel = false,
   } = props;
 
   return {
     label,
     iconPosition,
     iconSrc,
+    staticLabel,
     buttonClassName: [
       "btn",
       `btn--${variant}`,
@@ -104,10 +113,15 @@ function omitSharedProps<T extends SharedPrimaryButtonProps>(props: T) {
     iconPosition: _iconPosition,
     iconSrc: _iconSrc,
     className: _className,
+    staticLabel: _staticLabel,
     ...rest
   } = props;
 
   return rest;
+}
+
+function isInternalHref(href: string) {
+  return href.startsWith("/") && !href.startsWith("//");
 }
 
 export default function PrimaryButton(props: PrimaryButtonProps) {
@@ -117,18 +131,29 @@ export default function PrimaryButton(props: PrimaryButtonProps) {
       label={layout.label}
       iconPosition={layout.iconPosition}
       iconSrc={layout.iconSrc}
+      staticLabel={layout.staticLabel}
     />
   );
 
   if ("href" in props && props.href) {
-    const { href: _href, ...anchorProps } = omitSharedProps(props) as Omit<
+    const { href, ...anchorProps } = omitSharedProps(props) as Omit<
       PrimaryButtonAsLink,
       keyof SharedPrimaryButtonProps
     >;
 
+    if (isInternalHref(href)) {
+      return (
+        <div className={layout.wrapperClassName}>
+          <Link href={href} className={layout.buttonClassName} {...anchorProps}>
+            {content}
+          </Link>
+        </div>
+      );
+    }
+
     return (
       <div className={layout.wrapperClassName}>
-        <a href={props.href} className={layout.buttonClassName} {...anchorProps}>
+        <a href={href} className={layout.buttonClassName} {...anchorProps}>
           {content}
         </a>
       </div>

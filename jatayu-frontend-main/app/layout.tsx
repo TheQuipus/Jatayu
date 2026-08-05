@@ -1,31 +1,6 @@
 import type { Metadata } from "next";
-import { Sora, IBM_Plex_Mono, Inter, Roboto } from "next/font/google";
 import TopNavbar from "@/components/ui/TopNavbar";
 import "./globals.css";
-
-const sora = Sora({
-  variable: "--font-sora",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const roboto = Roboto({
-  variable: "--font-roboto",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
 
 export const metadata: Metadata = {
   title: "Jatayu — Human Wisdom for Indian Decisions",
@@ -41,8 +16,16 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${sora.variable} ${ibmPlexMono.variable} ${inter.variable} ${roboto.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500&family=Sora:wght@500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <TopNavbar />
         {children}
@@ -50,4 +33,5 @@ export default function RootLayout({
     </html>
   );
 }
+
 

@@ -1,26 +1,11 @@
 /* Onboarding Step 8 Styles - Languages & Audience */
-.questionTitle {
-  text-align: left !important;
-  margin-left: 0 !important;
-  margin-right: auto !important;
-  max-width: 100% !important;
-  margin-top: 0px !important;
-  margin-bottom: 0px !important;
-  color: #9E9E9E !important;
-}
 
-.questionSubtitle {
-  text-align: left !important;
-  margin-left: 0 !important;
-  margin-right: auto !important;
-  max-width: 100% !important;
-}
 
 .sectionHeaderRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 13px;
   width: 100%;
 }
 
@@ -28,7 +13,7 @@
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 600;
-  color: var(--white);
+  color: var(--silver-chalice);
   margin: 0;
 }
 
@@ -48,105 +33,155 @@
 
 .languagesCluster {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.languagesRow {
+  display: flex;
   flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
   gap: 10px;
   width: 100%;
 }
 
 .languagePill {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 100px;
-  padding: 10px 20px;
+  box-sizing: border-box;
+  color: var(--silver);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.75);
-  cursor: pointer;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: #ffffff0d;
+  border: 1px solid #ffffff14;
+  border-radius: 9999px;
+  outline: none;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  outline: none;
-  transition: all 0.2s ease;
+  padding: 8px 14px;
+  height: 36px;
+  max-height: 36px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.languageCheckbox {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
+.languagePillSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.languagePillRemovable {
+  padding-right: 6px;
+}
+
+.languagePillMain {
+  padding: 0;
+  margin: 0;
+  border: none;
   background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.languageRemoveBtn {
   display: grid;
   place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.languageRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white, #ffffff);
+}
+
+.languageRemoveBtn:active {
+  transform: scale(0.9);
+}
+
+.languagePillSelected .languageRemoveBtn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.languagePillSelected .languageRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white, #ffffff);
+}
+
+.languagePillInput {
+  width: 250px;
+  max-height: 36px;
+  cursor: text;
+  padding-right: 6px;
+}
+
+.languageInputForm {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.languageInlineInput {
+  flex: 1;
+  min-width: 120px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
   color: var(--white);
+  padding: 0;
+}
+
+.languageInlineInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.languageAddBtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--silver, #b0b0b0);
+  cursor: pointer;
+  outline: none;
   flex-shrink: 0;
   transition: all 0.2s ease;
 }
 
-.languageCheckboxSelected {
-  background: #E53B17;
-  border-color: #E53B17;
-  box-shadow: 0 2px 6px rgba(229, 59, 23, 0.3);
+.languageAddBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white, #ffffff);
 }
 
-.languagePillSelected {
-  background: #080A10;
-  border-color: #E53B17;
-  color: var(--white);
-  box-shadow: 0 0 16px rgba(229, 59, 23, 0.25);
-}
-
-.addLanguageBtn {
-  background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 100px;
-  padding: 10px 20px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  outline: none;
-}
-
-.addLanguageForm {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0;
-  padding: 2px 2px 2px 14px;
-  height: 42px;
-}
-
-.addLanguageInput {
-  background: transparent;
-  border: none;
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--white);
-  outline: none;
-  width: 130px;
-}
-
-.addLanguageInput::placeholder {
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.addLanguageSubmit {
-  background: #E53B17;
-  border: none;
-  color: var(--white);
-  border-radius: 100px;
-  padding: 0 16px;
-  height: 100%;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+.languageAddBtn:active {
+  transform: scale(0.92);
 }
 
 .counterBadge {
@@ -168,9 +203,10 @@
 
 .sectionInstruction {
   font-family: var(--font-body);
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-  margin: -12px 0 20px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+  margin: 24px 0 13px;
 }
 
 .audiencesGrid {
@@ -185,8 +221,7 @@
   background: rgba(255, 255, 255, 0.03);
   border: none;
   padding: 24px;
-  display: flex;
-  align-items: flex-start;
+  display: block;
   text-align: left;
   cursor: pointer;
   outline: none;
@@ -209,23 +244,31 @@
   z-index: 10;
 }
 
-.audienceIconWrap {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  display: grid;
-  place-items: center;
-  color: rgba(255, 255, 255, 0.65);
-  flex-shrink: 0;
-  margin-right: 16px;
+.audienceCardInner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-right: 28px;
   position: relative;
   z-index: 12;
+  width: 100%;
+}
+
+.audienceIconWrap {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 22px;
+  margin-top: 1px;
+  color: var(--silver);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 12;
+  transition: color 0.2s ease;
 }
 
 .audienceCardSelected .audienceIconWrap {
-  color: #E53B17;
-  background: rgba(229, 59, 23, 0.1);
+  color: var(--pomegranate);
 }
 
 .audienceCardIcon {
@@ -237,7 +280,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-right: 20px;
+  min-width: 0;
   position: relative;
   z-index: 12;
 }
@@ -252,9 +295,8 @@
 
 .audienceDesc {
   font-family: var(--font-body);
-  font-size: 12px;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 13px;
+  color: var(--silver-chalice);
   margin: 0;
 }
 

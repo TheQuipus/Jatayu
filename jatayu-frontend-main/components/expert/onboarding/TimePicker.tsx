@@ -1,265 +1,256 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { Clock, X } from "lucide-react";
-import styles from "./TimePicker.module.css";
+import { useId, useMemo } from "react";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DesktopTimePicker } from "@mui/x-date-pickers/DesktopTimePicker";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import darkStyles from "./TimePicker.module.css";
+import lightStyles from "./TimePicker.light.module.css";
 
-type Period = "AM" | "PM";
-
-type DraftTime = {
-  hour: number;
-  minute: number;
-  period: Period;
-};
+// Extend dayjs to support parsing standard 'hh:mm A' formats
+dayjs.extend(customParseFormat);
 
 type TimePickerProps = {
+  label?: string;
   ariaLabel: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   minTime?: string;
+  theme?: "dark" | "light";
+  validateTime?: (value: string) => boolean;
 };
-
-const EMPTY_DISPLAY = "0:00";
-
-const HOURS = Array.from({ length: 12 }, (_, index) => index + 1);
-const MINUTES = Array.from({ length: 60 }, (_, index) => index);
-const PERIODS: Period[] = ["AM", "PM"];
-
-const DEFAULT_DRAFT: DraftTime = {
-  hour: 9,
-  minute: 0,
-  period: "AM",
-};
-
-function parseTimeValue(value: string): DraftTime | null {
-  const match = value.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
-  if (!match) return null;
-
-  const hour = parseInt(match[1], 10);
-  const minute = parseInt(match[2], 10);
-  const period = match[3].toUpperCase() as Period;
-
-  if (hour < 1 || hour > 12 || minute > 59) return null;
-
-  return { hour, minute, period };
-}
-
-function formatTimeValue(draft: DraftTime) {
-  const hour = String(draft.hour).padStart(2, "0");
-  const minute = String(draft.minute).padStart(2, "0");
-  return `${hour}:${minute} ${draft.period}`;
-}
-
-function draftToMinutes(draft: DraftTime) {
-  let hours = draft.hour;
-
-  if (draft.period === "PM" && hours < 12) hours += 12;
-  if (draft.period === "AM" && hours === 12) hours = 0;
-
-  return hours * 60 + draft.minute;
-}
-
-function getMinutesFromValue(value: string) {
-  const parsed = parseTimeValue(value);
-  return parsed ? draftToMinutes(parsed) : 0;
-}
-
-function padUnit(value: number) {
-  return String(value).padStart(2, "0");
-}
 
 export default function TimePicker({
+  label,
   ariaLabel,
   value,
   onChange,
   disabled = false,
   minTime,
+  theme = "dark",
+  validateTime,
 }: TimePickerProps) {
+  const styles = theme === "light" ? lightStyles : darkStyles;
   const popoverId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const columnRefs = useRef<Partial<Record<keyof DraftTime, HTMLButtonElement | null>>>({});
-  const [isOpen, setIsOpen] = useState(false);
-  const [draft, setDraft] = useState<DraftTime>(parseTimeValue(value) ?? DEFAULT_DRAFT);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setDraft(parseTimeValue(value) ?? DEFAULT_DRAFT);
-    }
-  }, [value, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const activeKeys: (keyof DraftTime)[] = ["hour", "minute", "period"];
-    activeKeys.forEach((key) => {
-      columnRefs.current[key]?.scrollIntoView({ block: "center" });
+  // Create a customized Material UI theme configured for dark / light modes
+  const muiTheme = useMemo(() => {
+    const isDark = theme === "dark";
+    return createTheme({
+      palette: {
+        mode: isDark ? "dark" : "light",
+        primary: {
+          main: "#e53b17", // Brand brand-accent/pomegranate color
+        },
+        background: {
+          default: isDark ? "#121212" : "#ffffff",
+          paper: isDark ? "#1a1a1a" : "#ffffff",
+        },
+        text: {
+          primary: isDark ? "rgba(255, 255, 255, 0.95)" : "var(--ink)",
+          secondary: isDark ? "rgba(255, 255, 255, 0.55)" : "var(--scorpion)",
+        },
+      },
+      typography: {
+        fontFamily: "var(--font-body)",
+        button: {
+          fontFamily: "var(--font-display)",
+          fontWeight: 700,
+          textTransform: "uppercase",
+        },
+      },
+      components: {
+        MuiPaper: {
+          styleOverrides: {
+            root: {
+              backgroundImage: "none",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid var(--mercury)",
+              borderRadius: "12px",
+              boxShadow: isDark
+                ? "0 16px 40px rgba(0, 0, 0, 0.45)"
+                : "0 16px 40px color-mix(in srgb, var(--ink) 12%, transparent)",
+            },
+          },
+        },
+      },
     });
-  }, [isOpen, draft.hour, draft.minute, draft.period]);
+  }, [theme]);
 
-  useEffect(() => {
-    if (!isOpen) return;
+  // Parse value string to dayjs instance
+  const parsedValue = useMemo(() => {
+    if (!value) return null;
+    const parsed = dayjs(value, "hh:mm A");
+    return parsed.isValid() ? parsed : null;
+  }, [value]);
 
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
+  // Parse minTime string to dayjs instance
+  const parsedMinTime = useMemo(() => {
+    if (!minTime) return null;
+    const parsed = dayjs(minTime, "hh:mm A");
+    return parsed.isValid() ? parsed : null;
+  }, [minTime]);
+
+  // Perform validation matching existing criteria
+  const hasError = useMemo(() => {
+    if (!parsedValue) return false;
+
+    // 1. Minimum time boundary check
+    if (parsedMinTime && (parsedValue.isBefore(parsedMinTime) || parsedValue.isSame(parsedMinTime))) {
+      return true;
+    }
+
+    // 2. Custom conflict validation
+    if (validateTime) {
+      const formatted = parsedValue.format("hh:mm A");
+      if (!validateTime(formatted)) {
+        return true;
       }
-    };
+    }
 
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false);
+    return false;
+  }, [parsedValue, parsedMinTime, validateTime]);
+
+  const handleTimeChange = (newValue: dayjs.Dayjs | null, context?: any) => {
+    if (newValue === null) {
+      onChange("");
+    } else if (newValue.isValid()) {
+      let resolvedValue = newValue;
+      if (!value && context?.source !== "view") {
+        resolvedValue = newValue.minute(0).second(0);
       }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isOpen]);
-
-  const minMinutes = minTime ? getMinutesFromValue(minTime) : null;
-  const draftMinutes = draftToMinutes(draft);
-  const isDraftValid = minMinutes === null || draftMinutes > minMinutes;
-
-  const openPicker = () => {
-    if (disabled) return;
-    setDraft(parseTimeValue(value) ?? DEFAULT_DRAFT);
-    setIsOpen(true);
+      onChange(resolvedValue.format("hh:mm A"));
+    }
   };
 
-  const handleConfirm = () => {
-    if (!isDraftValid) return;
-    onChange(formatTimeValue(draft));
-    setIsOpen(false);
-  };
-
-  const handleClear = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    onChange("");
-    setIsOpen(false);
-  };
-
-  const updateDraft = (patch: Partial<DraftTime>) => {
-    setDraft((current) => ({ ...current, ...patch }));
-  };
+  const isDark = theme === "dark";
 
   return (
-    <div
-      ref={rootRef}
-      className={`${styles.timePicker} ${disabled ? styles.timePickerDisabled : ""}`}
-    >
-      <div className={styles.timePickerFieldOuter}>
-        <button
-          type="button"
-          className={`${styles.timePickerField} ${isOpen ? styles.timePickerFieldOpen : ""}`}
-          onClick={openPicker}
-          disabled={disabled}
-          aria-label={ariaLabel}
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          aria-controls={isOpen ? popoverId : undefined}
-        >
-          <Clock size={14} className={styles.timePickerIcon} aria-hidden="true" />
-          <span
-            className={`${styles.timePickerValue} ${!value ? styles.timePickerPlaceholder : ""}`}
-          >
-            {value || EMPTY_DISPLAY}
-          </span>
-        </button>
-        {value && !disabled && (
-          <button
-            type="button"
-            className={styles.timePickerClear}
-            onClick={handleClear}
-            aria-label={`Clear ${ariaLabel.toLowerCase()}`}
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
-
-      {isOpen && (
-        <div id={popoverId} className={styles.timePickerPopover} role="dialog" aria-label={ariaLabel}>
-          <div className={styles.timePickerColumns}>
-            <div className={styles.timePickerColumn} aria-label="Hours">
-              {HOURS.map((hour) => {
-                const isActive = draft.hour === hour;
-                return (
-                  <button
-                    key={hour}
-                    type="button"
-                    ref={isActive ? (node) => { columnRefs.current.hour = node; } : undefined}
-                    className={`${styles.timePickerColumnItem} ${
-                      isActive ? styles.timePickerColumnItemActive : ""
-                    }`}
-                    onClick={() => updateDraft({ hour })}
-                  >
-                    {hour}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className={styles.timePickerColumn} aria-label="Minutes">
-              {MINUTES.map((minute) => {
-                const isActive = draft.minute === minute;
-                return (
-                  <button
-                    key={minute}
-                    type="button"
-                    ref={isActive ? (node) => { columnRefs.current.minute = node; } : undefined}
-                    className={`${styles.timePickerColumnItem} ${
-                      isActive ? styles.timePickerColumnItemActive : ""
-                    }`}
-                    onClick={() => updateDraft({ minute })}
-                  >
-                    {padUnit(minute)}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className={styles.timePickerColumn} aria-label="AM or PM">
-              {PERIODS.map((period) => {
-                const isActive = draft.period === period;
-                return (
-                  <button
-                    key={period}
-                    type="button"
-                    ref={isActive ? (node) => { columnRefs.current.period = node; } : undefined}
-                    className={`${styles.timePickerColumnItem} ${
-                      isActive ? styles.timePickerColumnItemActive : ""
-                    }`}
-                    onClick={() => updateDraft({ period })}
-                  >
-                    {period}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className={styles.timePickerFooter}>
-            <button type="button" className={styles.timePickerAction} onClick={() => setIsOpen(false)}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className={styles.timePickerAction}
-              onClick={handleConfirm}
-              disabled={!isDraftValid}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+    <div className={`${styles.timePicker} ${disabled ? styles.timePickerDisabled : ""}`}>
+      {label && <label className={styles.timePickerLabel}>{label}</label>}
+      <ThemeProvider theme={muiTheme}>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <DesktopTimePicker
+            value={parsedValue}
+            onChange={handleTimeChange}
+            disabled={disabled}
+            minTime={parsedMinTime || undefined}
+            referenceDate={dayjs().startOf("day")}
+            localeText={{
+              fieldHoursPlaceholder: () => "00",
+              fieldMinutesPlaceholder: () => "00",
+              fieldMeridiemPlaceholder: () => "AM",
+            }}
+            slotProps={{
+              desktopPaper: {
+                sx: {
+                  "& .MuiMultiSectionDigitalClockSection-root": {
+                    scrollbarWidth: "none",
+                    msOverflowStyle: "none",
+                    "&::-webkit-scrollbar": {
+                      display: "none",
+                    },
+                  },
+                  "& .MuiMenuItem-root, & .MuiMultiSectionDigitalClock-option, & .MuiListItemButton-root": {
+                    "&:hover:not(.Mui-selected)": {
+                      backgroundColor: "transparent !important",
+                    },
+                  },
+                },
+              },
+              textField: {
+                id: popoverId,
+                size: "small",
+                error: hasError,
+                helperText: hasError
+                  ? parsedMinTime && (parsedValue?.isBefore(parsedMinTime) || parsedValue?.isSame(parsedMinTime))
+                    ? "Must be after start time"
+                    : "Time conflict with another slot"
+                  : undefined,
+                slotProps: {
+                  htmlInput: {
+                    "aria-label": ariaLabel,
+                  },
+                },
+                sx: {
+                  width: "148px",
+                  "& .MuiPickersOutlinedInput-root": {
+                    height: "42px",
+                    fontFamily: "var(--font-body)",
+                    fontSize: "15px",
+                    color: isDark ? "var(--white)" : "var(--ink)",
+                    backgroundColor: isDark ? "rgba(255, 255, 255, 0.03)" : "var(--white)",
+                    borderRadius: "0px",
+                    transition: "border-color 0.2s ease, background-color 0.2s ease",
+                    "& .MuiPickersOutlinedInput-notchedOutline": {
+                      borderColor: isDark ? "var(--border-chip)" : "var(--mercury)",
+                      borderRadius: "0px",
+                    },
+                    "&:hover": {
+                      "& .MuiPickersOutlinedInput-notchedOutline": {
+                        borderColor: `${isDark ? "var(--border-chip)" : "var(--mercury)"} !important`,
+                      },
+                    },
+                    "&.Mui-focused": {
+                      backgroundColor: (isDark ? "rgba(255, 255, 255, 0.03)" : "var(--white)") + " !important",
+                      boxShadow: !isDark
+                        ? "0 0 0 3px color-mix(in srgb, var(--pomegranate) 10%, transparent)"
+                        : "none",
+                      "& .MuiPickersOutlinedInput-notchedOutline": {
+                        borderColor: `${isDark ? "rgba(255, 255, 255, 0.18)" : "var(--pomegranate)"} !important`,
+                        borderWidth: "1px",
+                      },
+                    },
+                    "&.Mui-focused:hover .MuiPickersOutlinedInput-notchedOutline": {
+                      borderColor: `${isDark ? "rgba(255, 255, 255, 0.18)" : "var(--pomegranate)"} !important`,
+                    },
+                    "&.Mui-error .MuiPickersOutlinedInput-notchedOutline": {
+                      borderColor: "#e53b17 !important",
+                    },
+                  },
+                  "& .MuiPickersOutlinedInput-input": {
+                    padding: "0 12px",
+                    fontFamily: "var(--font-body)",
+                    height: "42px",
+                    boxSizing: "border-box",
+                  },
+                  "& .MuiIconButton-root": {
+                    color: isDark ? "rgba(255, 255, 255, 0.55)" : "var(--silver-chalice)",
+                    padding: "4px",
+                    marginRight: "4px",
+                    "&:hover": {
+                      color: isDark ? "var(--white)" : "var(--ink)",
+                      backgroundColor: "transparent",
+                    },
+                  },
+                  "& .MuiFormHelperText-root": {
+                    fontFamily: "var(--font-body)",
+                    fontSize: "11px",
+                    fontWeight: 500,
+                    color: "#e53b17 !important",
+                    margin: "4px 0 0 0",
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    width: "max-content",
+                    zIndex: 5,
+                  },
+                },
+              },
+            }}
+          />
+        </LocalizationProvider>
+      </ThemeProvider>
     </div>
   );
 }
 
-export { getMinutesFromValue as getTimePickerMinutes };
+export function getTimePickerMinutes(value: string): number {
+  if (!value) return 0;
+  const parsed = dayjs(value, "hh:mm A");
+  if (!parsed.isValid()) return 0;
+  return parsed.hour() * 60 + parsed.minute();
+}

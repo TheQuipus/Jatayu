@@ -20,7 +20,7 @@ export default function Benefits() {
         <div className="container">
           <div className={styles.benefitsHead}>
             <span className="eyebrow eyebrow--light">
-              <i className="dot"></i>07&nbsp;&nbsp;benefits
+              <i className="dot"></i>benefits
             </span>
             <h2 className={`display ${styles.benefitsTitle}`}>
               <span className="t-dark">

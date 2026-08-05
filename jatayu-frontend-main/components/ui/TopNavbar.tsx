@@ -5,12 +5,26 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./TopNavbar.module.css";
 
+function isOnboardingPath(pathname: string | null) {
+  return (
+    pathname?.startsWith("/expert/expert-onboarding") ||
+    pathname?.startsWith("/seeker/seeker-onboarding") ||
+    pathname?.startsWith("/login")
+  );
+}
+
 export default function TopNavbar() {
   const pathname = usePathname();
-  const [onDark, setOnDark] = useState(pathname === "/");
+  const onboarding = isOnboardingPath(pathname);
+  const [onDark, setOnDark] = useState(pathname === "/" || onboarding);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    if (isOnboardingPath(pathname)) {
+      setOnDark(true);
+      return;
+    }
+
     if (pathname !== "/") {
       setOnDark(false);
       return;
@@ -44,7 +58,30 @@ export default function TopNavbar() {
     };
   }, [pathname]);
 
-  if (pathname?.startsWith("/serene-scene")) return null;
+function isSeekerAppPath(pathname: string | null) {
+  return (
+    pathname?.startsWith("/seeker/dashboard") ||
+    pathname?.startsWith("/seeker/discover") ||
+    pathname?.startsWith("/seeker/bookings") ||
+    pathname?.startsWith("/seeker/bookmark") ||
+    pathname?.startsWith("/seeker/expert")
+  );
+}
+
+function isExpertAppPath(pathname: string | null) {
+  if (!pathname) return false;
+  if (pathname.startsWith("/expert/expert-onboarding")) return false;
+  return pathname.startsWith("/expert/");
+}
+
+  if (
+    pathname?.startsWith("/serene-scene") ||
+    pathname?.startsWith("/admin") ||
+    isSeekerAppPath(pathname) ||
+    isExpertAppPath(pathname)
+  ) {
+    return null;
+  }
 
   return (
     <>
@@ -92,11 +129,14 @@ export default function TopNavbar() {
             </div>
 
             <div className={styles.loginLinks}>
-              <Link href="/login?role=expert" onClick={() => setIsOpen(false)} className={styles.loginLink}>
+              <Link href="/login/?role=expert" onClick={() => setIsOpen(false)} className={styles.loginLink}>
                 Expert Login
               </Link>
-              <Link href="/login?role=user" onClick={() => setIsOpen(false)} className={styles.loginLink}>
+              <Link href="/login/?role=user" onClick={() => setIsOpen(false)} className={styles.loginLink}>
                 User Login
+              </Link>
+              <Link href="/admin/" onClick={() => setIsOpen(false)} className={styles.loginLink}>
+                Admin Console
               </Link>
             </div>
 
@@ -109,7 +149,7 @@ export default function TopNavbar() {
             </div>
 
             <div className={styles.navLinksLarge}>
-              <Link href="/expert" onClick={() => setIsOpen(false)} className={styles.largeLink}>
+              <Link href="/expert/" onClick={() => setIsOpen(false)} className={styles.largeLink}>
                 EXPERTS
               </Link>
               <a href="#about" onClick={() => setIsOpen(false)} className={styles.largeLink}>

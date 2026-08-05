@@ -39,6 +39,7 @@
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease;
+  text-decoration: none;
 }
 
 .primaryButton:hover .labelTrack {
@@ -48,6 +49,16 @@
 .labelUp {
   display: block;
   height: 1em;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.buttonTextStatic:global(.btn__text) {
+  display: inline-flex !important;
+  align-items: center;
+  overflow: visible;
+  height: auto;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;

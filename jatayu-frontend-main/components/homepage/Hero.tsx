@@ -57,7 +57,7 @@ export default function Hero() {
               label="Find an expert"
               avatarSrc="/assets/seekerbutton.svg"
               avatarAlt=""
-              href="/expert"
+              href="/expert/#from-home"
               variant="dark"
               fullWidth
             />

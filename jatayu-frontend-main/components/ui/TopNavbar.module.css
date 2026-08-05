@@ -4,7 +4,6 @@
   left: 0;
   width: 100%;
   z-index: 20;
-  background: rgba(0, 0, 0, 0.281);
   backdrop-filter: blur(10px);
 }
 
@@ -17,7 +16,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transform: translateY(20px);
 }
 
 .logo {

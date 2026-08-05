@@ -1,0 +1,674 @@
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.creditsBanner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 100px;
+  border: none;
+  background: var(--mercury);
+}
+
+.creditsIconWrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--bunker);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.creditsCopy {
+  flex: 1;
+  min-width: 0;
+}
+
+.creditsTitle {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bunker);
+  line-height: 1.35;
+}
+
+.creditsHint {
+  margin: 2px 0 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dove-gray);
+}
+
+.creditsToggle {
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.creditsToggleInput {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.creditsToggleTrack {
+  display: block;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--silver);
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.creditsToggleThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--white);
+  transition: transform 0.2s ease;
+}
+
+.creditsToggleInput:checked + .creditsToggleTrack {
+  background: var(--bunker);
+}
+
+.creditsToggleInput:checked + .creditsToggleTrack .creditsToggleThumb {
+  transform: translateX(20px);
+}
+
+.creditsToggleInput:focus-visible + .creditsToggleTrack {
+  outline: none;
+}
+
+.paymentPanelLabel {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+}
+
+.paymentOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Completely Borderless Flat Cards */
+.paymentOptionWrap {
+  border: none;
+  border-radius: 14px;
+  background: var(--mercury);
+  overflow: hidden;
+  transition: background 0.2s ease;
+}
+
+.paymentOptionWrapActive {
+  background: var(--white);
+}
+
+.paymentOptionSurface {
+  border: none;
+  background: transparent;
+}
+
+.paymentOption {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.paymentIconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.paymentIconUpi {
+  background: color-mix(in srgb, var(--shark) 12%, var(--mercury));
+  color: var(--bunker);
+}
+
+.paymentIconCard {
+  background: var(--seashell);
+  color: var(--scorpion);
+}
+
+.paymentIconBank {
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green);
+}
+
+.paymentOptionCopy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.paymentOptionTitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bunker);
+  line-height: 1.3;
+}
+
+.paymentOptionHint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dove-gray);
+}
+
+.paymentRadio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--silver);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border: none;
+  transition: background 0.2s ease;
+}
+
+.paymentOptionWrapActive .paymentRadio {
+  background: var(--bunker);
+}
+
+.paymentRadioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--white);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.paymentOptionWrapActive .paymentRadioDot {
+  opacity: 1;
+}
+
+/* Expanded Sub-Panels */
+.paymentDetailsSubpanel {
+  padding: 4px 20px 20px;
+  border: none;
+  background: transparent;
+}
+
+/* UPI Mode Tabs */
+.upiModeTabs {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0 16px;
+}
+
+.upiTabBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  background: var(--mercury);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upiTabBtnActive {
+  background: var(--bunker);
+  color: var(--white);
+  font-weight: 600;
+}
+
+/* Form controls */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.fieldLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bunker);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fieldInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.fieldInput {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--bunker);
+  background: var(--mercury);
+  border: none;
+  border-radius: 8px;
+  outline: none;
+  transition: background 0.2s ease;
+}
+
+.fieldInput:focus {
+  background: var(--seashell);
+  outline: none;
+  border: none;
+}
+
+.fieldInputSuccess {
+  background: color-mix(in srgb, var(--green) 10%, var(--mercury));
+}
+
+.fieldInputIconRight {
+  position: absolute;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.verifiedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+.cardNetworkBadge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--mercury);
+  color: var(--bunker);
+  letter-spacing: 0.05em;
+}
+
+.cardNetworkVisa {
+  background: #1a1f71;
+  color: #ffffff;
+}
+
+.cardNetworkMastercard {
+  background: #eb001b;
+  color: #ffffff;
+}
+
+.cardNetworkRupay {
+  background: #008139;
+  color: #ffffff;
+}
+
+.cardNetworkAmex {
+  background: #006fcf;
+  color: #ffffff;
+}
+
+.handlePillsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.handlePill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  background: var(--mercury);
+  color: var(--bunker);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.handlePill:hover {
+  background: var(--bunker);
+  color: var(--white);
+}
+
+/* UPI Apps Grid */
+.upiAppGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.upiAppCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--mercury);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.upiAppCard:hover {
+  background: var(--silver);
+}
+
+.upiAppCardActive {
+  background: var(--bunker);
+  color: var(--white);
+}
+
+.upiAppCardActive .upiAppName {
+  color: var(--white);
+}
+
+.upiAppIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.upiAppName {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bunker);
+  text-align: center;
+}
+
+.upiAppBadge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--bunker);
+  color: var(--white);
+  padding: 1px 6px;
+  border-radius: 100px;
+}
+
+.upiAppNotice {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  background: var(--mercury);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--bunker);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+}
+
+.upiNoticeIcon {
+  color: var(--bunker);
+}
+
+/* QR Code Section */
+.qrCodeWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 12px;
+  background: var(--mercury);
+  border-radius: 12px;
+  border: none;
+}
+
+.qrFrame {
+  width: 140px;
+  height: 140px;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: none;
+  margin-bottom: 12px;
+}
+
+.qrSvg {
+  width: 100%;
+  height: 100%;
+}
+
+.qrCopy {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--bunker);
+  margin: 0 0 4px;
+}
+
+.qrTimer {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dove-gray);
+}
+
+/* Card Form Grid */
+.cardFormGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.cardRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.checkboxInput {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--bunker);
+  cursor: pointer;
+}
+
+.checkboxLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--dove-gray);
+  user-select: none;
+}
+
+/* Net Banking Grid */
+.popularBanksGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.bankTile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: none;
+  background: var(--mercury);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.bankTile:hover {
+  background: var(--silver);
+}
+
+.bankTileActive {
+  background: var(--bunker);
+  color: var(--white);
+  border: none;
+}
+
+.bankTileActive .bankName {
+  color: var(--white);
+}
+
+.bankTileActive .bankCode {
+  color: var(--silver-chalice);
+}
+
+.bankIconWrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bankTileCopy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bankName {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bunker);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bankCode {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--silver-chalice);
+}
+
+.selectGroup {
+  margin-top: 14px;
+}
+
+.bankSelect {
+  width: 100%;
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--bunker);
+  background: var(--mercury);
+  border: none;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.bankSelect:focus {
+  background: var(--seashell);
+}
+
+/* Security Trust Banner */
+.securityBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 14px 20px;
+  border-radius: 100px;
+  background: var(--mercury);
+  border: none;
+  margin-top: 6px;
+}
+
+.securityItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--dove-gray);
+}
+
+.securityIcon {
+  color: var(--bunker);
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .upiModeTabs {
+    flex-direction: column;
+  }
+  .cardRow {
+    grid-template-columns: 1fr;
+  }
+  .securityBanner {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}

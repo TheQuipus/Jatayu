@@ -23,8 +23,8 @@ const faqItems = [
   },
   {
     num: "004",
-    title: "Is the onboarding native to WhatsApp?",
-    answer: "Yes, you don't need to download any complex apps. You can complete your onboarding, match with experts, and receive direct consultation transcripts right within WhatsApp."
+    title: "Do I need to download an app?",
+    answer: "No. You can complete onboarding, match with experts, and receive consultation transcripts without installing a separate app."
   },
   {
     num: "005",
@@ -47,7 +47,7 @@ export default function Faq() {
         <div className={`container ${styles.faqInner}`}>
           <div className={styles.faqLeft}>
             <span className="eyebrow eyebrow--light">
-              <i className="dot"></i>11&nbsp;&nbsp;faq
+              <i className="dot"></i>faq
             </span>
             <h2 className="display">
               <span className="t-dark">Before You</span>

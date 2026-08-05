@@ -5,7 +5,7 @@
   gap: 40px;
   width: 100%;
   text-align: left;
-  margin-bottom: 48px;
+  margin-bottom: 24px;
 }
 
 .inputsColumn {
@@ -13,166 +13,26 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
-}
-
-.questionTitle {
-  text-align: left !important;
-  margin-left: 0 !important;
-  margin-right: auto !important;
-  max-width: 100% !important;
-  margin-bottom: 5px !important;
-  margin-top: 0px !important;
-}
-
-.questionSubtitle {
-  text-align: left !important;
-  margin-left: 0 !important;
-  margin-right: auto !important;
-  max-width: 100% !important;
-  margin-bottom: 32px !important;
+  min-width: 0;
 }
 
 .previewColumn {
+  position: sticky;
+  top: 60px;
+  align-self: start;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
+  margin-left: 45px;
   margin-top: -54px;
 }
 
-.livePreviewLabel {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.35);
-}
-
-.previewCard {
-  width: 100%;
-  max-width: 336px;
-  background: rgba(255, 255, 255, 0.02);
-  clip-path: polygon(
-    10% 3.179%,
-    12.647% 0%,
-    91.177% 0%,
-    96.765% 4.48%,
-    96.765% 53.757%,
-    100% 57.659%,
-    100% 95.376%,
-    95.294% 100%,
-    0% 100%,
-    0% 19.364%,
-    10% 8.736%,
-    10% 3.179%
-  );
-  -webkit-clip-path: polygon(
-    10% 3.179%,
-    12.647% 0%,
-    91.177% 0%,
-    96.765% 4.48%,
-    96.765% 53.757%,
-    100% 57.659%,
-    100% 95.376%,
-    95.294% 100%,
-    0% 100%,
-    0% 19.364%,
-    10% 8.736%,
-    10% 3.179%
-  );
-}
-
-.previewCardInner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 28px 24px 24px;
-  gap: 8px;
-}
-
-.previewAvatarWrap {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 4px;
+.expertCardWrapper {
+  width: 336px;
+  height: 396px;
+  max-width: 100%;
   flex-shrink: 0;
-}
-
-.previewAvatar {
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-  border-radius: 50%;
-}
-
-.previewName {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--white);
-}
-
-.previewTitle {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: #E53B17;
-}
-
-.previewTagline {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.65);
-  max-width: 260px;
-}
-
-.previewDivider {
-  width: 100%;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.08);
-  margin: 8px 0 4px;
-}
-
-.previewIntro {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 12px;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.55);
-  max-width: 280px;
-}
-
-.previewPlaceholder {
-  color: rgba(255, 255, 255, 0.32);
-}
-
-.previewTags {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.previewTag {
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.55);
 }
 
 .photoUploadContainer {
@@ -242,7 +102,7 @@
 
 .photoUploadTitle {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--white);
   margin: 0;
@@ -280,17 +140,14 @@
 }
 
 .fieldLabel {
-  font-family: 'Inter', var(--font-body);
+  font-family: var(--font-body);
   font-style: normal;
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 20px;
-  display: flex;
-  align-items: center;
-  color: #CCCCCC;
-  flex: none;
-  order: 0;
-  flex-grow: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
 }
 
 .charCounter {
@@ -309,25 +166,76 @@
   padding-bottom: 32px;
 }
 
+.textareaWithBioFooter {
+  min-height: 148px;
+  padding-bottom: 44px;
+}
+
 .textareaCounterInline {
   position: absolute;
   right: 14px;
   bottom: 12px;
   font-family: var(--font-mono);
   font-size: 11px;
+  line-height: 1;
   color: rgba(255, 255, 255, 0.35);
   pointer-events: none;
+}
+
+.textareaFooterInline {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 20px;
+}
+
+.textareaFooterCounter {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.aiBioInlineBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.aiBioInlineBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.aiBioInlineBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .textField {
   width: 100%;
   height: 48px;
   background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 0 16px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--white);
   outline: none;
   transition: border-color 0.2s ease, background-color 0.2s ease;
@@ -337,6 +245,10 @@
 .textField:focus {
   border-color: rgba(255, 255, 255, 0.15);
   background-color: rgba(255, 255, 255, 0.03);
+}
+
+.textField::placeholder {
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .textField:-webkit-autofill,
@@ -353,11 +265,11 @@
 .textareaField {
   width: 100%;
   background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 14px 16px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--white);
   outline: none;
   resize: none;
@@ -388,28 +300,89 @@
 .aiBioBtn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   align-self: flex-start;
   margin-top: 4px;
-  padding: 8px 14px;
-  background: rgba(229, 59, 23, 0.08);
-  border: 1px solid rgba(229, 59, 23, 0.28);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  color: #E53B17;
+  padding: 4px 0;
+  background: none;
+  border: none;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+  outline: none;
+  transition: opacity 0.2s ease;
 }
 
 .aiBioBtn:hover:not(:disabled) {
-  background: rgba(229, 59, 23, 0.14);
-  border-color: rgba(229, 59, 23, 0.4);
+  opacity: 0.9;
+}
+
+.aiBioBtn:focus-visible {
+  opacity: 1;
 }
 
 .aiBioBtn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.aiBioShinyText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.aiBioLoadingText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.linksRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+}
+
+.inputWithIconWrap {
+  position: relative;
+  width: 100%;
+}
+
+.inputInnerIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--silver);
+  pointer-events: none;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.textFieldWithIcon {
+  width: 100%;
+  height: 48px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-chip);
+  border-radius: 0;
+  padding: 0 16px 0 42px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--white);
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  color-scheme: dark;
+}
+
+.textFieldWithIcon::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.textFieldWithIcon:focus {
+  border-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
 @media (max-width: 768px) {
@@ -419,6 +392,92 @@
   }
 
   .previewColumn {
+    position: sticky;
+    top: 24px;
     align-items: stretch;
+    margin-left: 0;
   }
+
+  .linksRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.aiImprovePanel {
+  width: 100%;
+  margin-top: 14px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.improvementChipsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestedPill {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 6px 12px;
+  gap: 8px;
+  width: fit-content;
+  background: var(--background-chip);
+  border: 1px solid var(--border-chip);
+  border-radius: 9999px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: var(--silver);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  max-height: 34px;
+  outline: none;
+}
+
+.suggestedPillSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.aiImproveHint {
+  margin: 12px 0 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--silver-chalice);
+}
+
+.aiApplyBtn {
+  margin-top: 14px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: #E53B17;
+  cursor: pointer;
+  outline: none;
+}
+
+.aiApplyBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aiApplyBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.aiApplyShinyText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }

@@ -1,0 +1,14 @@
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stepContent > *:not(:first-child) {
+  width: 100%;
+}
+
+.slotStep {
+  display: flex;
+  flex-direction: column;
+}

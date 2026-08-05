@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bookmark,
+  BadgeCheck,
   Star,
   Briefcase,
   Languages,
@@ -15,22 +15,45 @@ import {
   Phone,
   RefreshCw,
 } from "lucide-react";
-import ExpertCard from "@/components/ui/ExpertCard";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { useSeekerBreadcrumbs } from "@/components/seeker/SeekerShellContext";
+import cardStyles from "@/components/ui/ExpertCard.module.css";
 import ContactActionButton from "@/components/ui/ContactActionButton";
-import { getRelatedExperts, type Expert } from "@/lib/experts";
+import { getExpertCheckoutHref, getRelatedExperts, type Expert } from "@/lib/experts";
 import { useBookmarks } from "@/lib/useBookmarks";
 import styles from "./ExpertDetail.module.css";
 
 type ExpertDetailProps = {
   expert: Expert;
+  seeker?: boolean;
 };
 
-export default function ExpertDetail({ expert }: ExpertDetailProps) {
+export default function ExpertDetail({ expert, seeker = false }: ExpertDetailProps) {
   const [selectedOption, setSelectedOption] = useState<string>("text");
   const { bookmarkedExperts, toggleBookmark } = useBookmarks();
   const isBookmarked = bookmarkedExperts.has(expert.name);
   const relatedExperts = getRelatedExperts(expert);
   const primaryTopic = expert.topics[0] || "General";
+
+  const breadcrumbItems = useMemo(
+    () => [
+      { label: "Discover", href: seeker ? "/seeker/discover" : "/expert" },
+      { label: primaryTopic },
+      { label: expert.name },
+    ],
+    [expert.name, primaryTopic, seeker]
+  );
+
+  const breadcrumbNode = useMemo(
+    () => (
+      <div className={styles.breadcrumbWrap}>
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
+    ),
+    [breadcrumbItems]
+  );
+
+  useSeekerBreadcrumbs(seeker ? breadcrumbNode : null);
 
   // Split name for the two-line display (e.g. SNEHA / LAXMESHWAR)
   const nameParts = expert.name.split(" ");
@@ -65,19 +88,11 @@ export default function ExpertDetail({ expert }: ExpertDetailProps) {
   ];
 
   return (
-    <section className={styles.detail}>
+    <section
+      className={`${styles.detail} ${seeker ? styles.detailSeeker : ""}`}
+    >
       <div className={`container ${styles.detailInner}`}>
-        <nav className={styles.breadcrumbs} aria-label="Breadcrumbs">
-          <Link href="/expert" className={styles.breadcrumbLink}>
-            Discover
-          </Link>
-          <span className={styles.breadcrumbSeparator}>/</span>
-          <span className={styles.breadcrumbLink}>
-            {primaryTopic}
-          </span>
-          <span className={styles.breadcrumbSeparator}>/</span>
-          <span className={styles.breadcrumbCurrent}>{expert.name}</span>
-        </nav>
+        {!seeker ? breadcrumbNode : null}
 
         <div className={styles.mainGrid}>
           {/* COLUMN 1: Portrait Card, and Topic Pills */}
@@ -85,7 +100,7 @@ export default function ExpertDetail({ expert }: ExpertDetailProps) {
             <article className={styles.portraitCard}>
               <button
                 type="button"
-                className={styles.bookmarkBtn}
+                className={cardStyles.bookmarkBtn}
                 aria-label={
                   isBookmarked
                     ? `Remove ${expert.name} from bookmarks`
@@ -94,17 +109,14 @@ export default function ExpertDetail({ expert }: ExpertDetailProps) {
                 aria-pressed={isBookmarked}
                 onClick={() => toggleBookmark(expert.name)}
               >
-                <Bookmark
-                  size={22}
-                  strokeWidth={1.75}
-                  fill={isBookmarked ? "var(--orange)" : "none"}
-                  color={isBookmarked ? "var(--orange)" : "var(--bunker)"}
-                />
+                <Bookmark size={22} strokeWidth={1.75} />
               </button>
 
-              <div className={styles.cardBadge}>
-                <span className={styles.cardBadgeDot} />
-                {primaryTopic.toUpperCase()}
+              <div className={cardStyles.categoryBadgeWrap}>
+                <span className={cardStyles.categoryBadge}>
+                  <span className={cardStyles.badgeDot} />
+                  {(expert.category || primaryTopic).toUpperCase()}
+                </span>
               </div>
 
               <div className={styles.portraitImageWrap}>
@@ -119,11 +131,22 @@ export default function ExpertDetail({ expert }: ExpertDetailProps) {
               </div>
 
               <div className={styles.cardOverlay}>
-                <p className={styles.cardName}>
-                  {expert.name.toUpperCase()}{" "}
-                  <span className={styles.cardNameBullet}>■</span>
-                </p>
-                <p className={styles.cardDescription}>{expert.desc}</p>
+                <div className={cardStyles.expertMeta}>
+                  <div className={cardStyles.expertNameRow}>
+                    <span className={cardStyles.expertName}>
+                      {expert.name.toUpperCase()}
+                      <BadgeCheck
+                        size={18}
+                        className={cardStyles.verificationBadge}
+                        aria-hidden="true"
+                      />
+                    </span>
+                  </div>
+
+                  <div className={cardStyles.bottomInteractiveArea}>
+                    <p className={cardStyles.expertDesc}>{expert.desc}</p>
+                  </div>
+                </div>
               </div>
             </article>
           </div>
@@ -194,19 +217,27 @@ export default function ExpertDetail({ expert }: ExpertDetailProps) {
                 </div>
               </div>
 
-              <div className={styles.bookingOptions}>
+              <div className={styles.bookingOptions} role="radiogroup" aria-label="Session type">
                 {bookingOptions.map((opt) => {
                   const isSelected = selectedOption === opt.id;
                   const IconComponent = opt.icon;
 
                   return (
-                    <button
+                    <div
                       key={opt.id}
-                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      tabIndex={isSelected ? 0 : -1}
                       className={`${styles.optionGroup} ${
                         isSelected ? styles.optionGroupActive : ""
                       }`}
                       onClick={() => setSelectedOption(opt.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedOption(opt.id);
+                        }
+                      }}
                     >
                       <div className={styles.optionHeaderRow}>
                         <div className={styles.optionHeaderLeft}>
@@ -236,7 +267,7 @@ export default function ExpertDetail({ expert }: ExpertDetailProps) {
                           </span>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -248,7 +279,7 @@ export default function ExpertDetail({ expert }: ExpertDetailProps) {
               label="BOOK NOW"
               avatarSrc={expert.image}
               avatarAlt={expert.name}
-              type="button"
+              href={getExpertCheckoutHref(expert, selectedOption, { seeker })}
               variant="dark"
               wrapperClassName={styles.ctaButtonRow}
               className={styles.bookNowButton}

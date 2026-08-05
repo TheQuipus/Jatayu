@@ -6,7 +6,7 @@ import { featuredExperts, getAvailableTopics, type ExpertiseTag } from "@/lib/ex
 import { useBookmarks } from "@/lib/useBookmarks";
 import styles from "./Bookmark.module.css";
 
-export default function Bookmark() {
+export default function Bookmark({ seeker = false }: { seeker?: boolean }) {
   const topicRowShellRef = useRef<HTMLDivElement>(null);
   const [isTopicRowStuck, setIsTopicRowStuck] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<ExpertiseTag | null>(null);
@@ -112,6 +112,7 @@ export default function Bookmark() {
                     expert={expert}
                     isBookmarked={true}
                     onBookmarkToggle={() => toggleBookmark(expert.name)}
+                    seeker={seeker}
                   />
                 ))
               )}

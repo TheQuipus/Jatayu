@@ -7,7 +7,7 @@
 .contactInner {
   display: grid;
   grid-template-columns: repeat(4, var(--grid-col));
-  row-gap: 100px;
+  row-gap: 40px;
   align-items: start;
 }
 

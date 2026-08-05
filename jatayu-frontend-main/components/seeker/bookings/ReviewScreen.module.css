@@ -1,0 +1,227 @@
+/* Soundwave Icon */
+.soundwaveIcon {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.soundwaveIcon span {
+  width: 2px;
+  background: var(--white);
+  border-radius: 1px;
+}
+
+.soundwaveIcon span:nth-child(1) {
+  height: 4px;
+}
+
+.soundwaveIcon span:nth-child(2) {
+  height: 8px;
+}
+
+.soundwaveIcon span:nth-child(3) {
+  height: 6px;
+}
+
+.soundwaveIcon span:nth-child(4) {
+  height: 10px;
+}
+
+/* ==========================================================================
+   Review / Rating Feedback Screen Styles
+   ========================================================================== */
+.reviewSection {
+  padding: 60px 0 100px;
+  background: var(--gallery);
+  min-height: calc(100vh - 120px);
+}
+
+.reviewContainer {
+  display: flex;
+  justify-content: center;
+}
+
+.reviewCard {
+  width: 100%;
+  max-width: 600px;
+  border: 1px solid var(--mercury);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.reviewHeader {
+  background: var(--ink);
+  color: var(--white);
+  padding: 20px 24px;
+  min-height: 63px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.reviewHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.64px;
+  line-height: 19.2px;
+  white-space: nowrap;
+}
+
+.reviewHeaderDots {
+  flex: 1;
+  border-bottom: 2px dotted color-mix(in srgb, var(--white) 35%, transparent);
+  height: 3px;
+  flex-shrink: 0;
+}
+
+.reviewFooter {
+  height: 39px;
+  background: var(--ink);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+}
+
+.reviewBody {
+  background: var(--white);
+  padding: 32px 24px;
+}
+
+.reviewIntro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 28px;
+  gap: 12px;
+}
+
+.reviewAvatar {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--mercury);
+}
+
+.reviewAvatarImg {
+  object-fit: cover;
+}
+
+.reviewIntro h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--bunker);
+  letter-spacing: -0.02em;
+  margin: 4px 0 0;
+  text-transform: uppercase;
+}
+
+.reviewIntro p {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--dove-gray);
+  max-width: 450px;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.reviewForm {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ratingFormGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.formLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+}
+
+.starRatingSelector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.starBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.15s ease;
+}
+
+.starBtn:hover {
+  transform: scale(1.15);
+}
+
+.ratingStarIcon {
+  transition: fill 0.25s ease, stroke 0.25s ease;
+}
+
+.commentFormGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.commentTextarea {
+  width: 100%;
+  border: 1px solid var(--mercury);
+  background: var(--gallery);
+  padding: 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  transition: all 0.2s ease;
+  outline: none;
+  resize: none;
+}
+
+
+.formActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.cancelReviewBtn {
+  flex: 1;
+  height: 48px;
+  background: var(--white);
+  color: var(--bunker);
+  border: 1px solid var(--mercury);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.submitReviewBtn {
+  flex: 2;
+}

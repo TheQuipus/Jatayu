@@ -13,11 +13,37 @@ if (typeof window !== "undefined") {
 }
 
 // EDITABLE DATA CONFIGURATION AT THE TOP
+const PROBLEM_TITLE_MUTED_CLASS = "problemTitleMuted";
+
+function formatDefaultTitle(lines: string[]): string {
+  const formattedLines = lines.map((line) => line.trim().toUpperCase());
+
+  if (formattedLines.length <= 1) {
+    return formattedLines[0] ?? "";
+  }
+
+  const head = formattedLines[0];
+  const tail = formattedLines.slice(1).join("<br />");
+  return `${head}<br /><span class="${PROBLEM_TITLE_MUTED_CLASS}">${tail}</span>`;
+}
+
+function formatQuoteTitleLines(lines: string[]): string {
+  const formattedLines = lines.map((line) => line.trim().toUpperCase());
+
+  if (formattedLines.length <= 2) {
+    return formattedLines.join("<br />");
+  }
+
+  const head = formattedLines.slice(0, 2).join("<br />");
+  const tail = formattedLines.slice(2).join("<br />");
+  return `${head}<br /><span class="${PROBLEM_TITLE_MUTED_CLASS}">${tail}</span>`;
+}
+
 const CONFIG = {
   defaultText: {
-    eyebrow: "01 Empathy",
+    eyebrow: "Empathy",
     kicker: "(Bespoke consultation for each life stage)",
-    title: "IMPORTANT DECISIONS<br /><span class=\"t-muted\">should not<br />feel lonely.</span>",
+    title: formatDefaultTitle(["IMPORTANT DECISIONS", "should not", "feel lonely."]),
     desc: "Discover how our creative vision transforms ideas into powerful, conversion-driven brand experiences that truly stand out.",
   },
   cards: [
@@ -78,8 +104,7 @@ function formatQuote(quote: string): string {
     lines = [quote];
   }
 
-  const formattedLines = lines.map(line => line.trim().toUpperCase());
-  return `“${formattedLines.join("<br />")}”`;
+  return `“${formatQuoteTitleLines(lines)}”`;
 }
 
 export default function Problem() {
@@ -94,7 +119,7 @@ export default function Problem() {
   const eyebrowRef = useRef<HTMLSpanElement>(null);
 
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const previewsRef = useRef<(HTMLImageElement | null)[]>([]);
+  const previewsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     // Force a scroll trigger refresh when mounting to resolve dynamic layout changes
@@ -108,7 +133,7 @@ export default function Problem() {
 
     // Filter null values from arrays
     const cards = cardsRef.current.filter((c): c is HTMLDivElement => c !== null);
-    const previews = previewsRef.current.filter((p): p is HTMLImageElement => p !== null);
+    const previews = previewsRef.current.filter((p): p is HTMLDivElement => p !== null);
     const cardsContainer = cardsContainerRef.current;
     const previewWrap = previewWrapRef.current;
 
@@ -318,7 +343,7 @@ export default function Problem() {
               const cardData = CONFIG.cards[activeIndex];
               const formattedTitle = formatQuote(cardData.quote);
               const cleanLabel = cardData.label.toUpperCase().replace("FOR ", "");
-              const formattedEyebrow = `02  ${cleanLabel}`;
+              const formattedEyebrow = `${cleanLabel}`;
 
               updateText(
                 formattedEyebrow,
@@ -435,13 +460,17 @@ export default function Problem() {
             {/* Previews (only shown on desktop/animations) */}
             <div ref={previewWrapRef} className={styles.previewWrap}>
               {CONFIG.cards.map((card, idx) => (
-                <img
+                <div
                   key={idx}
                   ref={(el) => { previewsRef.current[idx] = el; }}
                   className={`${styles.preview} ${idx === 0 ? styles.active : ""}`}
-                  src={card.image}
-                  alt={card.label}
-                />
+                >
+                  <img
+                    className={styles.previewImage}
+                    src={card.image}
+                    alt={card.label}
+                  />
+                </div>
               ))}
             </div>
 

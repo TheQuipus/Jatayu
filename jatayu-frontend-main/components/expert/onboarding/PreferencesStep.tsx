@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -9,9 +9,11 @@ import {
   FileText,
   Users,
   Check,
+  Sparkles,
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./PreferencesStep.module.css";
 import {
@@ -27,6 +29,8 @@ type PreferencesStepProps = {
   onSelectedLengthsChange: (lengths: string[]) => void;
   formatPrices: Record<string, string>;
   onFormatPricesChange: (prices: Record<string, string>) => void;
+  acceptCustomRequests: boolean;
+  onAcceptCustomRequestsChange: (value: boolean) => void;
   stepCompletion: boolean[];
   onStepCompleteChange?: (step: number, complete: boolean) => void;
   onBack: () => void;
@@ -36,8 +40,8 @@ type PreferencesStepProps = {
 
 const FORMAT_ICONS = {
   video: Video,
-  audio: Phone,
   written: FileText,
+  shoutout: Phone,
   group: Users,
 } as const;
 
@@ -49,6 +53,8 @@ export default function PreferencesStep({
   onSelectedLengthsChange,
   formatPrices,
   onFormatPricesChange,
+  acceptCustomRequests,
+  onAcceptCustomRequestsChange,
   stepCompletion,
   onStepCompleteChange,
   onBack,
@@ -57,19 +63,15 @@ export default function PreferencesStep({
 }: PreferencesStepProps) {
   const formatPriceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const [acceptCustomRequests, setAcceptCustomRequests] = useState<boolean>(false);
-
-  const isTextOnly =
-    selectedFormats.length === 1 && selectedFormats[0] === "written";
+  const hasPricesForAllSelected = selectedFormats.every((id) => {
+    const price = formatPrices[id];
+    return price && parseInt(price, 10) > 0;
+  });
 
   const canContinue =
-    selectedFormats.length > 0 && (isTextOnly || selectedLengths.length > 0);
-
-  useEffect(() => {
-    if (isTextOnly) {
-      onSelectedLengthsChange([]);
-    }
-  }, [isTextOnly, onSelectedLengthsChange]);
+    selectedFormats.length > 0 &&
+    hasPricesForAllSelected &&
+    selectedLengths.length > 0;
 
   useEffect(() => {
     onStepCompleteChange?.(6, canContinue);
@@ -131,9 +133,6 @@ export default function PreferencesStep({
       <div className={shared.cardHeader}>
       <div className={shared.topHeader}>
         <OnboardingStepTitle userName={userName} />
-        <div className={shared.stepPill}>
-          <span>Step 6 of 9 - Consultation Preferences</span>
-        </div>
       </div>
 
       {/* Progress Tracker */}
@@ -147,16 +146,12 @@ export default function PreferencesStep({
         Define your <span className={shared.accentWord}>consultation style</span>
       </h1>
 
-      <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`} style={{ marginBottom: "36px" }}>
+      <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
         Choose how you want to interact with clients to ensure the best matches.
       </p>
 
       {/* Available Formats Section */}
       <div className={styles.preferencesSection}>
-        <div className={styles.sectionHeaderRow}>
-          <h2 className={styles.preferencesSectionLabel}>Preferred Consultation Formats</h2>
-        </div>
-
         {/* 2x2 Formats Grid */}
         <div className={styles.formatsGrid}>
           {formats.map((fmt) => {
@@ -166,7 +161,17 @@ export default function PreferencesStep({
             return (
               <div
                 key={fmt.id}
+                onClick={() => handleToggleFormat(fmt.id)}
                 className={`${styles.formatCard} ${isSelected ? styles.formatCardSelected : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleToggleFormat(fmt.id);
+                  }
+                }}
               >
                 {/* SVG border overlay */}
                 <svg className={styles.cardBorderSvg} viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
@@ -188,29 +193,29 @@ export default function PreferencesStep({
                 </div>
 
                 <div className={styles.formatCardBody}>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleFormat(fmt.id)}
-                    className={styles.formatCardSelect}
-                    aria-pressed={isSelected}
-                  >
-                    <div className={styles.formatCardInner}>
-                      <div className={styles.formatIconCircle}>
-                        <IconComponent className={styles.formatIcon} />
-                      </div>
-                      <div className={styles.formatInfo}>
-                        <h3 className={styles.formatTitle}>{fmt.title}</h3>
-                        <p className={styles.formatDesc}>{fmt.desc}</p>
-                      </div>
+                  <div className={styles.formatCardInner}>
+                    <div className={styles.formatIconCircle}>
+                      <IconComponent className={styles.formatIcon} />
                     </div>
-                  </button>
+                    <div className={styles.formatInfo}>
+                      <h3 className={styles.formatTitle}>{fmt.title}</h3>
+                      <p className={styles.formatDesc}>{fmt.desc}</p>
+                    </div>
+                  </div>
 
                   <div
                     className={`${styles.formatPriceRow} ${!isSelected ? styles.formatPriceRowHidden : ""}`}
+                    onClick={(event) => event.stopPropagation()}
                     onPointerDown={(event) => event.stopPropagation()}
                     aria-hidden={!isSelected}
                   >
-                    <span className={styles.formatPriceCurrency}>₹</span>
+                    <span
+                      className={`${styles.formatPriceCurrency} ${
+                        Boolean(formatPrices[fmt.id]) ? styles.formatPriceActive : ""
+                      }`}
+                    >
+                      ₹
+                    </span>
                     {isSelected ? (
                       <input
                         ref={(element) => {
@@ -219,14 +224,22 @@ export default function PreferencesStep({
                         type="text"
                         inputMode="numeric"
                         className={styles.formatPriceInput}
+                        style={{ width: `${Math.max(1, (formatPrices[fmt.id] ?? "").length || 1)}ch` }}
                         value={formatPrices[fmt.id] ?? ""}
                         onChange={(event) => handleFormatPriceChange(fmt.id, event.target.value)}
                         placeholder="0"
-                        aria-label={`${fmt.title} rate in rupees`}
+                        aria-label={`${fmt.title} rate in rupees per minute`}
                       />
                     ) : (
                       <span className={styles.formatPriceInputPlaceholder}>0</span>
                     )}
+                    <span
+                      className={`${styles.formatPriceUnit} ${
+                        Boolean(formatPrices[fmt.id]) ? styles.formatPriceActive : ""
+                      }`}
+                    >
+                      /min
+                    </span>
                   </div>
                 </div>
               </div>
@@ -237,17 +250,12 @@ export default function PreferencesStep({
 
       {/* Session Lengths Section */}
       <div
-        className={`${styles.preferencesSection} ${isTextOnly ? styles.lengthsSectionDisabled : ""}`}
+        className={styles.preferencesSection}
         style={{ marginBottom: "28px" }}
       >
-        <h2 className={styles.preferencesSectionLabel} style={{ marginBottom: "16px" }}>
+        <h2 className={styles.preferencesSectionLabel}>
           Preferred Session Lengths
         </h2>
-        {isTextOnly && (
-          <p className={styles.lengthsDisabledHint}>
-            Session length is not required for text messaging.
-          </p>
-        )}
         <div className={styles.lengthsRow}>
           {lengths.map((len) => {
             const isSelected = selectedLengths.includes(len.id);
@@ -258,8 +266,6 @@ export default function PreferencesStep({
                 type="button"
                 onClick={() => handleToggleLength(len.id)}
                 className={`${styles.lengthPill} ${isSelected ? styles.lengthPillSelected : ""}`}
-                disabled={isTextOnly}
-                aria-disabled={isTextOnly}
               >
                 {len.label}
               </button>
@@ -276,7 +282,7 @@ export default function PreferencesStep({
         </div>
         <button
           type="button"
-          onClick={() => setAcceptCustomRequests(!acceptCustomRequests)}
+          onClick={() => onAcceptCustomRequestsChange(!acceptCustomRequests)}
           className={`${styles.switchTrack} ${acceptCustomRequests ? styles.switchTrackActive : ""}`}
           aria-pressed={acceptCustomRequests}
           aria-label="Accept Custom Requests Toggle"
@@ -309,18 +315,7 @@ export default function PreferencesStep({
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
           </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
-          <button
-            type="button"
-            className={shared.continueBtn}
-            onClick={onContinue}
-            disabled={!canContinue}
-          >
-            <span>Continue</span>
-            <ArrowRight size={14} />
-          </button>
+          <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>
     </section>

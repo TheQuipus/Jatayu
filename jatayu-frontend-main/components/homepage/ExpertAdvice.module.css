@@ -174,7 +174,7 @@
 .stepItem {
   position: relative;
   min-height: 45px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border-chip);
   background: #14171D;
   padding: 0;
   overflow: hidden;

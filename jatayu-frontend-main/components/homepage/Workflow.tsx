@@ -27,7 +27,7 @@ export default function Workflow() {
         <div className="container">
           <div className={styles.workflowTop}>
             <span className="eyebrow eyebrow--dark">
-              <i className="dot"></i>10&nbsp;&nbsp;become a verified expert
+              <i className="dot"></i>become a verified expert
             </span>
             <h2 className="display">
               <span className="t-white">Your knowledge</span>
@@ -69,12 +69,14 @@ export default function Workflow() {
                         alt="Expert portrait"
                         width={169}
                         height={204}
+                        priority={src === "/assets/img/team1.png" && i === 1}
+                        loading={src === "/assets/img/team1.png" || src === "/assets/img/team2.png" ? "eager" : undefined}
                       />
                     </figure>
                   ))}
                 </div>
               </div>
-
+ 
               <figure className={`${styles.cutCard} ${styles.cutCardLarge}`}>
                 <Image
                   src="/assets/img/manportrait.png"
@@ -100,7 +102,7 @@ export default function Workflow() {
                   </div>
                 </div>
               </figure>
-
+ 
               <div className={`${styles.carouselViewport} ${styles.cutCardSmall}`}>
                 <div className={`${styles.carouselTrack} ${styles.carouselRtl}`}>
                   {[...carouselTwo, ...carouselTwo].map((src, i) => (
@@ -110,6 +112,8 @@ export default function Workflow() {
                         alt="Expert portrait"
                         width={169}
                         height={204}
+                        priority={src === "/assets/img/team1.png" && i === 3}
+                        loading={src === "/assets/img/team1.png" || src === "/assets/img/team2.png" ? "eager" : undefined}
                       />
                     </figure>
                   ))}
