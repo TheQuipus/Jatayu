@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import ContinueButton from "@/components/ui/ContinueButton";
+import ExpertSocialAuth from "@/components/expert/onboarding/ExpertSocialAuth";
 import RegisterLeftPanel from "@/components/expert/onboarding/RegisterLeftPanel";
-import { login as apiLogin, googleLogin as apiGoogleLogin, setToken, setExpertId } from "@/lib/api";
 import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
+import { login, OtpRequiredError, type AuthResponse } from "@/lib/api";
+import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
+import { savePendingOtpSession } from "@/lib/expertAuth";
 
 type LoginStepProps = {
-  onContinue: (data: { email: string; fullName: string; onboardingStep: string }) => void;
+  onContinue: (response: AuthResponse) => void;
+  onRequiresOtp?: (data: { expertId: string; email: string; phone: string; fullName?: string }) => void;
   onSwitchToRegister?: () => void;
   registerHref?: string;
 };
@@ -29,9 +34,7 @@ function getFieldError(
 
   switch (field) {
     case "email":
-      if (!email.trim()) return "Required";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Invalid email";
-      return null;
+      return getEmailValidationError(email);
     case "password":
       if (!password) return "Required";
       if (password.length < 8) return "Min 8 characters";
@@ -50,16 +53,17 @@ function isFormComplete(email: string, password: string): boolean {
 
 export default function LoginStep({
   onContinue,
+  onRequiresOtp,
   onSwitchToRegister,
-  registerHref = "/expert/expert-onboarding",
+  registerHref = "/expert/expert-onboarding/",
 }: LoginStepProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState(emptyTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const values = { email, password };
   const canSubmit = isFormComplete(email, password);
@@ -82,48 +86,41 @@ export default function LoginStep({
       .filter(Boolean)
       .join(" ");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitLogin = async () => {
     setSubmitAttempted(true);
-    if (!canSubmit) return;
+    setSubmitError(null);
+    if (!canSubmit || isSubmitting) return;
 
-    setIsLoading(true);
-    setApiError("");
+    setIsSubmitting(true);
     try {
-      const res = await apiLogin({ email: email.trim(), password });
-      setToken(res.token);
-      setExpertId(res.user.id);
-      onContinue({
-        email: res.user.email,
-        fullName: res.user.fullName,
-        onboardingStep: res.user.onboardingStep,
+      const response = await login({
+        email: normalizeEmail(email),
+        password,
       });
-    } catch (err: unknown) {
-      setApiError(
-        err instanceof Error ? err.message : "Login failed. Check your credentials."
-      );
+      onContinue(response);
+    } catch (error) {
+      if (error instanceof OtpRequiredError) {
+        savePendingOtpSession({
+          expertId: error.expertId,
+          email: error.email,
+          phone: error.phone,
+        });
+        onRequiresOtp?.({
+          expertId: error.expertId,
+          email: error.email,
+          phone: error.phone,
+        });
+        return;
+      }
+      setSubmitError(error instanceof Error ? error.message : "Login failed.");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    setApiError("");
-    try {
-      const res = await apiGoogleLogin({ idToken: "mock-google-token" });
-      setToken(res.token);
-      setExpertId(res.user.id);
-      onContinue({
-        email: res.user.email,
-        fullName: res.user.fullName,
-        onboardingStep: res.user.onboardingStep,
-      });
-    } catch (err: unknown) {
-      setApiError(err instanceof Error ? err.message : "Google login failed.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submitLogin();
   };
 
   return (
@@ -138,21 +135,23 @@ export default function LoginStep({
             <label className={register.registerFieldLabel} htmlFor="loginEmail">
               Email Address
             </label>
-            <div className={inputWrapClass("email")}>
-              <Mail className={register.inputInnerIcon} size={16} />
-              <input
-                id="loginEmail"
-                type="email"
-                className={register.textFieldWithIcon}
-                placeholder="Aryan23@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onBlur={() => markTouched("email")}
-                autoComplete="email"
-                aria-invalid={Boolean(fieldError("email"))}
-              />
+            <div className={register.inputFieldWrap}>
+              <div className={inputWrapClass("email")}>
+                <Mail className={register.inputInnerIcon} size={16} />
+                <input
+                  id="loginEmail"
+                  type="email"
+                  className={register.textFieldWithIcon}
+                  placeholder="Aryan23@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => markTouched("email")}
+                  autoComplete="email"
+                  aria-invalid={Boolean(fieldError("email"))}
+                />
+              </div>
               {fieldError("email") && (
-                <span className={register.fieldErrorInline}>{fieldError("email")}</span>
+                <span className={register.fieldErrorBelow}>{fieldError("email")}</span>
               )}
             </div>
           </div>
@@ -174,9 +173,6 @@ export default function LoginStep({
                 autoComplete="current-password"
                 aria-invalid={Boolean(fieldError("password"))}
               />
-              {fieldError("password") && (
-                <span className={register.fieldErrorInline}>{fieldError("password")}</span>
-              )}
               <button
                 type="button"
                 className={styles.passwordToggle}
@@ -192,57 +188,25 @@ export default function LoginStep({
             </div>
           </div>
 
-          {apiError && (
-            <p className={styles.fieldErrorBelow} style={{ marginBottom: "8px", textAlign: "center" }}>
-              {apiError}
+          {submitError ? (
+            <p className={register.fieldErrorBelow} role="alert">
+              {submitError}
             </p>
-          )}
+          ) : null}
 
-          <button
+          <ContinueButton
             type="submit"
-            disabled={isLoading}
-            className={`${styles.registerSubmitBtn} ${canSubmit && !isLoading ? "" : styles.registerSubmitBtnInactive}`}
-          >
-            <span>{isLoading ? "Logging in..." : "Login"}</span>
-            {!isLoading && <ArrowRight size={16} />}
-          </button>
+            label={isSubmitting ? "Logging in..." : "Login"}
+            aria-disabled={!canSubmit || isSubmitting}
+            className={`${styles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : styles.registerSubmitBtnInactive}`}
+            arrowSize={16}
+          />
 
-          <div className={styles.registerDivider}>
-            <span className={styles.registerDividerLine} />
-            <span className={styles.registerDividerText}>Or continue with</span>
-            <span className={styles.registerDividerLine} />
-          </div>
-
-          <div className={styles.socialButtonsRow}>
-            <button
-              type="button"
-              className={styles.socialButton}
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-                <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.616z" />
-                <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" />
-                <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
-                <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.97 7.29C4.678 5.163 6.662 3.58 9 3.58z" />
-              </svg>
-              <span>Google</span>
-            </button>
-            <button
-              type="button"
-              className={styles.socialButton}
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
-                />
-              </svg>
-              <span>Apple</span>
-            </button>
-          </div>
+          <ExpertSocialAuth
+            onSuccess={onContinue}
+            onError={setSubmitError}
+            disabled={isSubmitting}
+          />
 
           <p className={register.authToggle}>
             Don&apos;t have an account?{" "}

@@ -2,32 +2,21 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import LoginStep from "@/components/expert/onboarding/LoginStep";
+import ExpertLoginStep from "@/components/expert/onboarding/LoginStep";
+import SeekerLoginStep from "@/components/seeker/onboarding/LoginStep";
+import {
+  getPostAuthDestination,
+  isNavigationHref,
+  persistAuthSession,
+  savePendingOtpSession,
+  clearExpertAuthOnly,
+} from "@/lib/expertAuth";
+import type { AuthResponse } from "@/lib/api";
 import styles from "@/app/expert/expert-onboarding/page.module.css";
 
-function LoginPageContent() {
-  const searchParams = useSearchParams();
-  const role = searchParams.get("role") === "expert" ? "expert" : "user";
+type LoginRole = "expert" | "user";
 
-  const handleContinue = ({ email, fullName, onboardingStep }: { email: string; fullName: string; onboardingStep: string }) => {
-    const nameFromEmail = fullName || email.split("@")[0]?.replace(/[._-]+/g, " ") || "Expert";
-
-    if (role === "expert") {
-      // Auto-resume at the server-stored step, default to category
-      const resumableSteps = [
-        "category", "skills", "experience", "identity",
-        "credentials", "preferences", "audience", "availability", "review",
-      ];
-      const resumeStep = resumableSteps.includes(onboardingStep) ? onboardingStep : "category";
-      window.location.assign(
-        `/expert/expert-onboarding?resume=${resumeStep}&name=${encodeURIComponent(nameFromEmail)}`,
-      );
-      return;
-    }
-
-    window.location.assign("/");
-  };
-
+function LoginShell({ children }: { children?: React.ReactNode }) {
   return (
     <main className={styles.pageContainer}>
       <div className={styles.bgWrapper}>
@@ -39,19 +28,71 @@ function LoginPageContent() {
         />
         <div className={styles.bgOverlay} />
       </div>
-
-      <LoginStep
-        onContinue={handleContinue}
-        registerHref={role === "expert" ? "/expert/expert-onboarding" : "/seeker/seeker-onboarding"}
-      />
+      {children}
     </main>
   );
 }
 
+function LoginPageContent({ role }: { role: LoginRole }) {
+  const handleExpertContinue = (response: AuthResponse) => {
+    const user = persistAuthSession(response);
+    const destination = getPostAuthDestination(user);
+
+    if (isNavigationHref(destination)) {
+      window.location.assign(destination);
+      return;
+    }
+
+    window.location.assign(`/expert/expert-onboarding/?resume=${destination}`);
+  };
+
+  const handleSeekerContinue = ({ email: _email }: { email: string }) => {
+    window.location.assign("/seeker/dashboard/");
+  };
+
+  const handleExpertRequiresOtp = ({
+    expertId,
+    email,
+    phone,
+  }: {
+    expertId: string;
+    email: string;
+    phone: string;
+  }) => {
+    clearExpertAuthOnly();
+    savePendingOtpSession({ expertId, email, phone });
+    window.location.assign("/expert/expert-onboarding/?resume=otp");
+  };
+
+  return (
+    <LoginShell>
+      {role === "expert" ? (
+        <ExpertLoginStep
+          onContinue={handleExpertContinue}
+          onRequiresOtp={handleExpertRequiresOtp}
+          registerHref="/expert/expert-onboarding/"
+        />
+      ) : (
+        <SeekerLoginStep
+          onContinue={handleSeekerContinue}
+          registerHref="/seeker/seeker-onboarding/"
+        />
+      )}
+    </LoginShell>
+  );
+}
+
+function LoginPageComponent() {
+  const searchParams = useSearchParams();
+  const role = searchParams.get("role") === "expert" ? "expert" : "user";
+
+  return <LoginPageContent role={role} />;
+}
+
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
-      <LoginPageContent />
+    <Suspense fallback={<LoginShell />}>
+      <LoginPageComponent />
     </Suspense>
   );
 }

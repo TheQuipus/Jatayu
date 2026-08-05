@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Code,
@@ -29,10 +29,43 @@ import ReviewStep from "@/components/expert/onboarding/ReviewStep";
 import SuccessStep from "@/components/expert/onboarding/SuccessStep";
 import { EXPERT_ONBOARDING_STEPS } from "@/components/expert/onboarding/OnboardingProgressBar";
 import {
-  updateProfile,
+  createEmptyEducationDegree,
+  createEmptyEmploymentPosition,
+  deriveExperienceLevel,
+  type EducationDegree,
+  type EmploymentPosition,
+  type ExperienceLevel,
+} from "@/lib/expertEmployment";
+import {
+  getProfile,
   submitOnboarding,
-  getExpertId,
+  updateProfile,
+  type AuthResponse,
 } from "@/lib/api";
+import {
+  buildCredentialsPayload,
+  clearExpertAuthOnly,
+  clearPendingOtpSession,
+  getPostAuthDestination,
+  isAuthenticated,
+  isNavigationHref,
+  persistAuthSession,
+  readPendingOtpSession,
+  savePendingOtpSession,
+  type ExpertOnboardingStep,
+} from "@/lib/expertAuth";
+import {
+  deriveLocationFromTimezone,
+  persistMediaUrl,
+  persistPortfolioSamples,
+} from "@/lib/expertApplicationMedia";
+import type {
+  ExpertCertificate,
+  GovernmentIdData,
+  PortfolioLink,
+  PortfolioSampleFile,
+} from "@/lib/expertApplicationSubmission";
+import type { TimeSlot } from "@/lib/expertAvailability";
 
 const categories = [
   { id: "software", label: "Software Engineering", icon: Code },
@@ -140,39 +173,19 @@ const skillsByCategory: Record<string, string[]> = {
   ],
 };
 
-type OnboardingStep =
-  | "register"
-  | "login"
-  | "otp"
-  | "category"
-  | "skills"
-  | "experience"
-  | "identity"
-  | "credentials"
-  | "preferences"
-  | "audience"
-  | "availability"
-  | "review"
-  | "success";
-
-type ExperienceLevel = "emerging" | "established" | "leader";
-type SelectedExperienceLevel = ExperienceLevel | "";
-
-/** Silently calls PUT /api/expert/profile; logs error but doesn't block step transition */
-async function persistStep(payload: Parameters<typeof updateProfile>[0]) {
-  try {
-    await updateProfile(payload);
-  } catch (err) {
-    console.error("[Jatayu] Failed to persist step:", err);
-  }
-}
+type OnboardingStep = ExpertOnboardingStep;
 
 function ExpertOnboardingPageContent() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<OnboardingStep>("register");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [experienceLevel, setExperienceLevel] = useState<SelectedExperienceLevel>("");
+  const [employmentPositions, setEmploymentPositions] = useState<EmploymentPosition[]>([
+    createEmptyEmploymentPosition(),
+  ]);
+  const [educationDegrees, setEducationDegrees] = useState<EducationDegree[]>([
+    createEmptyEducationDegree(),
+  ]);
   const [professionalTitle, setProfessionalTitle] = useState("");
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
   const [selectedLengths, setSelectedLengths] = useState<string[]>([]);
@@ -187,8 +200,44 @@ function ExpertOnboardingPageContent() {
   const [registeredPhone, setRegisteredPhone] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registeredName, setRegisteredName] = useState("");
-  const [registeredExpertId, setRegisteredExpertId] = useState("");
+  const [expertId, setExpertId] = useState("");
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [internalStepComplete, setInternalStepComplete] = useState<Record<number, boolean>>({});
+  const [linkedin, setLinkedin] = useState("");
+  const [portfolio, setPortfolio] = useState("");
+  const [portfolioSamples, setPortfolioSamples] = useState<PortfolioSampleFile[]>([]);
+  const [certificates, setCertificates] = useState<ExpertCertificate[]>([]);
+  const [governmentId, setGovernmentId] = useState<GovernmentIdData | null>(null);
+  const [kycVideoUrl, setKycVideoUrl] = useState("");
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
+  const [timezone, setTimezone] = useState("");
+  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[]>([]);
+  const [acceptCustomRequests, setAcceptCustomRequests] = useState(false);
+  const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
+  const otpFlowLockRef = useRef(false);
+
+  function buildPortfolioLinks(linkedinUrl: string, portfolioUrl: string): PortfolioLink[] {
+    const links: PortfolioLink[] = [];
+
+    if (linkedinUrl.trim()) {
+      links.push({
+        id: "portfolio-linkedin",
+        url: linkedinUrl.trim(),
+        platform: "LinkedIn",
+      });
+    }
+
+    if (portfolioUrl.trim()) {
+      links.push({
+        id: "portfolio-site",
+        url: portfolioUrl.trim(),
+        platform: "Portfolio",
+      });
+    }
+
+    return links;
+  }
 
   const handleStepCompleteChange = useCallback((step: number, complete: boolean) => {
     setInternalStepComplete((prev) => {
@@ -200,8 +249,8 @@ function ExpertOnboardingPageContent() {
   const stepCompletion = useMemo(
     () => [
       Boolean(selectedCategory),
-      selectedSkills.length === 5,
-      Boolean(experienceLevel),
+      selectedSkills.length > 0,
+      Boolean(internalStepComplete[3]),
       Boolean(internalStepComplete[4]),
       Boolean(internalStepComplete[5]),
       Boolean(internalStepComplete[6]),
@@ -209,7 +258,7 @@ function ExpertOnboardingPageContent() {
       Boolean(internalStepComplete[8]),
       Boolean(internalStepComplete[9]),
     ],
-    [selectedCategory, selectedSkills, experienceLevel, internalStepComplete],
+    [selectedCategory, selectedSkills, internalStepComplete],
   );
 
   useEffect(() => {
@@ -221,66 +270,196 @@ function ExpertOnboardingPageContent() {
       setRegisteredName(decodeURIComponent(nameParam));
     }
 
-    // Restore expertId from localStorage if available (e.g. after Google login)
-    const storedId = getExpertId();
-    if (storedId) setRegisteredExpertId(storedId);
-
     if (resume === "category") {
       setStep("category");
       setRegisteredName((prev) => prev || "Expert");
+    } else if (resume === "otp") {
+      const pending = readPendingOtpSession();
+      if (pending) {
+        otpFlowLockRef.current = true;
+        setExpertId(pending.expertId);
+        setRegisteredEmail(pending.email);
+        setRegisteredPhone(pending.phone);
+        if (pending.fullName) setRegisteredName(pending.fullName);
+      }
+      setStep("otp");
     } else if (auth === "login") {
       setStep("login");
+    } else {
+      const pending = readPendingOtpSession();
+      if (pending) {
+        otpFlowLockRef.current = true;
+        setExpertId(pending.expertId);
+        setRegisteredEmail(pending.email);
+        setRegisteredPhone(pending.phone);
+        if (pending.fullName) setRegisteredName(pending.fullName);
+        setStep("otp");
+      }
     }
   }, [searchParams]);
 
-  // -------------------------------------------------------------------------
-  // Auth step handlers
-  // -------------------------------------------------------------------------
+  useEffect(() => {
+    if (readPendingOtpSession()) return;
+    if (otpFlowLockRef.current) return;
+    if (!isAuthenticated()) return;
+
+    let active = true;
+
+    getProfile()
+      .then((profile) => {
+        if (!active) return;
+        if (otpFlowLockRef.current) return;
+        if (readPendingOtpSession()) return;
+
+        const user = profile as {
+          id?: string;
+          fullName?: string;
+          email?: string;
+          phone?: string;
+          onboardingStep?: string;
+          status?: string;
+          category?: string;
+          skills?: string[];
+          experienceLevel?: string;
+          professionalTitle?: string;
+          tagLine?: string;
+          bio?: string;
+          profilePhotoSrc?: string;
+          selectedFormats?: string[];
+          selectedLengths?: string[];
+          formatPrices?: Record<string, string>;
+          targetAudience?: string[] | string;
+          focusAreas?: string[];
+          timezone?: string;
+          onboardingMetadata?: Record<string, unknown>;
+        };
+
+        if (user.fullName) setRegisteredName(user.fullName);
+        if (user.email) setRegisteredEmail(user.email);
+        if (user.phone) setRegisteredPhone(user.phone);
+        if (user.id) setExpertId(user.id);
+        if (user.category) setSelectedCategory(user.category);
+        if (user.skills?.length) setSelectedSkills(user.skills);
+        if (user.professionalTitle) setProfessionalTitle(user.professionalTitle);
+        if (user.tagLine) setTagLine(user.tagLine);
+        if (user.bio) setBio(user.bio);
+        if (user.profilePhotoSrc) setProfilePhotoSrc(user.profilePhotoSrc);
+        if (user.selectedFormats?.length) setSelectedFormats(user.selectedFormats);
+        if (user.selectedLengths?.length) setSelectedLengths(user.selectedLengths);
+        if (user.formatPrices) setFormatPrices(user.formatPrices);
+        if (user.timezone) setTimezone(user.timezone);
+
+        const metadata = user.onboardingMetadata ?? {};
+        if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
+        if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
+        if (Array.isArray(metadata.languages)) setLanguages(metadata.languages as string[]);
+        if (Array.isArray(metadata.audiences)) setSelectedAudiences(metadata.audiences as string[]);
+        if (typeof metadata.acceptCustomRequests === "boolean") {
+          setAcceptCustomRequests(metadata.acceptCustomRequests);
+        }
+
+        const destination = getPostAuthDestination({
+          id: user.id || "",
+          email: user.email || "",
+          fullName: user.fullName || "",
+          phone: user.phone,
+          onboardingStep: user.onboardingStep || "category",
+          status: user.status || "draft",
+        });
+
+        if (isNavigationHref(destination)) {
+          window.location.assign(destination);
+          return;
+        }
+
+        setStep(destination);
+      })
+      .catch(() => {
+        // Ignore resume errors and keep the default register flow.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleAuthSuccess = (response: AuthResponse) => {
+    const user = persistAuthSession(response);
+    setExpertId(user.id);
+    setRegisteredName(user.fullName);
+    setRegisteredEmail(user.email);
+    if (user.phone) setRegisteredPhone(user.phone);
+
+    const destination = getPostAuthDestination(user);
+    if (isNavigationHref(destination)) {
+      window.location.assign(destination);
+      return;
+    }
+
+    setStep(destination);
+  };
 
   const handleRegisterComplete = ({
+    expertId: nextExpertId,
     phone,
     fullName,
     email,
-    expertId,
   }: {
+    expertId: string;
     phone: string;
     fullName: string;
     email: string;
-    expertId: string;
   }) => {
+    otpFlowLockRef.current = true;
+    savePendingOtpSession({
+      expertId: nextExpertId,
+      phone,
+      email,
+      fullName,
+    });
+    setExpertId(nextExpertId);
     setRegisteredPhone(phone);
     setRegisteredEmail(email);
     setRegisteredName(fullName);
-    setRegisteredExpertId(expertId);
     setStep("otp");
+    clearExpertAuthOnly();
   };
 
-  const handleLoginComplete = ({
+  const handleLoginRequiresOtp = ({
+    expertId: nextExpertId,
     email,
+    phone,
     fullName,
-    onboardingStep,
   }: {
+    expertId: string;
     email: string;
-    fullName: string;
-    onboardingStep: string;
+    phone: string;
+    fullName?: string;
   }) => {
+    otpFlowLockRef.current = true;
+    savePendingOtpSession({
+      expertId: nextExpertId,
+      email,
+      phone,
+      fullName,
+    });
+    setExpertId(nextExpertId);
     setRegisteredEmail(email);
-    setRegisteredName(fullName || email.split("@")[0]?.replace(/[._-]+/g, " ") || "Expert");
-
-    // Auto-resume from the step stored on the server
-    const resumableSteps: OnboardingStep[] = [
-      "category", "skills", "experience", "identity",
-      "credentials", "preferences", "audience", "availability", "review",
-    ];
-    const resumeTarget = resumableSteps.includes(onboardingStep as OnboardingStep)
-      ? (onboardingStep as OnboardingStep)
-      : "category";
-
-    setStep(resumeTarget);
+    setRegisteredPhone(phone);
+    if (fullName) setRegisteredName(fullName);
+    setStep("otp");
+    clearExpertAuthOnly();
   };
 
-  const handleOtpComplete = () => {
-    setStep("category");
+  const handleLoginComplete = (response: AuthResponse) => {
+    clearPendingOtpSession();
+    handleAuthSuccess(response);
+  };
+
+  const handleOtpComplete = (response: AuthResponse) => {
+    otpFlowLockRef.current = false;
+    clearPendingOtpSession();
+    handleAuthSuccess(response);
   };
 
   const handleBackToRegister = () => {
@@ -291,14 +470,24 @@ function ExpertOnboardingPageContent() {
     setStep("register");
   };
 
-  // -------------------------------------------------------------------------
-  // Onboarding step handlers — each persists data to backend before advancing
-  // -------------------------------------------------------------------------
+  const saveProfileStep = async (
+    payload: Parameters<typeof updateProfile>[0],
+    photoFile?: File | null,
+  ) => {
+    setProfileError(null);
+    await updateProfile(payload, photoFile);
+  };
 
-  const handleCategoryContinue = () => {
-    const activeCat = allCategories.find((c) => c.id === selectedCategory);
-    persistStep({ step: "category", category: activeCat?.label ?? selectedCategory });
-    setStep("skills");
+  const handleCategoryContinue = async () => {
+    try {
+      await saveProfileStep({
+        step: "skills",
+        category: activeCategoryLabel || selectedCategory,
+      });
+      setStep("skills");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save category.");
+    }
   };
 
   const handleAddCustomCategory = (label: string) => {
@@ -328,124 +517,201 @@ function ExpertOnboardingPageContent() {
     setSelectedSkills([]);
   };
 
-  const allCategories = [...categories, ...customCategories];
-
-  const handleBackToWelcome = () => {
-    setStep("otp");
+  const handleRemoveCustomCategory = (id: string) => {
+    setCustomCategories((prev) => prev.filter((cat) => cat.id !== id));
+    if (selectedCategory === id) {
+      setSelectedCategory("");
+      setSelectedSkills([]);
+    }
+    setCustomSkills((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
+
+  const allCategories = [...categories, ...customCategories];
 
   const handleBackToCategory = () => {
     setStep("category");
   };
 
-  const handleSkillsContinue = () => {
-    persistStep({ step: "skills", skills: selectedSkills });
-    setStep("experience");
+  const handleSkillsContinue = async () => {
+    try {
+      await saveProfileStep({
+        step: "experience",
+        skills: selectedSkills,
+      });
+      setStep("experience");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save skills.");
+    }
   };
 
   const handleBackToSkills = () => {
     setStep("skills");
   };
 
-  const handleExperienceContinue = () => {
-    persistStep({ step: "experience", experienceLevel });
-    setStep("identity");
+  const handleExperienceContinue = async () => {
+    try {
+      const resolvedExperienceLevel = deriveExperienceLevel(employmentPositions);
+      await saveProfileStep({
+        step: "identity",
+        experienceLevel: resolvedExperienceLevel,
+        credentials: buildCredentialsPayload(employmentPositions, educationDegrees),
+        onboardingMetadata: {
+          linkedin,
+          portfolio,
+          portfolioSamples,
+        },
+      });
+      setStep("identity");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save experience.");
+    }
   };
 
   const handleBackToExperience = () => {
     setStep("experience");
   };
 
-  const handleIdentityContinue = () => {
-    persistStep({
-      step: "identity",
-      professionalTitle,
-      tagLine,
-      bio,
-      profilePhotoSrc,
-    });
-    setStep("credentials");
+  const handleIdentityContinue = async () => {
+    try {
+      await saveProfileStep({
+        step: "credentials",
+        professionalTitle,
+        tagLine,
+        bio,
+        profilePhotoSrc,
+      });
+      setStep("credentials");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save identity.");
+    }
   };
 
   const handleBackToIdentity = () => {
     setStep("identity");
   };
 
-  const handleCredentialsContinue = (data: {
-    credentials: Array<{
-      type: string;
-      title: string;
-      institution: string;
-      startYear: number;
-      endYear?: number | null;
-      description?: string | null;
-    }>;
-  }) => {
-    persistStep({ step: "credentials", credentials: data.credentials });
-    setStep("preferences");
+  const handleCredentialsContinue = async () => {
+    try {
+      await saveProfileStep({
+        step: "preferences",
+        onboardingMetadata: {
+          governmentId,
+          kycVideoUrl,
+          certificates,
+        },
+      });
+      setStep("preferences");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save credentials.");
+    }
   };
 
   const handleBackToCredentials = () => {
     setStep("credentials");
   };
 
-  const handlePreferencesContinue = () => {
-    persistStep({
-      step: "preferences",
-      selectedFormats,
-      selectedLengths,
-      formatPrices,
-    });
-    setStep("audience");
+  const handlePreferencesContinue = async () => {
+    try {
+      await saveProfileStep({
+        step: "audience",
+        selectedFormats,
+        selectedLengths,
+        formatPrices,
+        onboardingMetadata: {
+          acceptCustomRequests,
+        },
+      });
+      setStep("audience");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save preferences.");
+    }
   };
 
   const handleBackToPreferences = () => {
     setStep("preferences");
   };
 
-  const handleAudienceContinue = (data: {
-    targetAudience: string[];
-    focusAreas: string[];
-  }) => {
-    persistStep({
-      step: "audience",
-      targetAudience: data.targetAudience,
-      focusAreas: data.focusAreas,
-    });
-    setStep("availability");
+  const handleAudienceContinue = async () => {
+    try {
+      await saveProfileStep({
+        step: "availability",
+        targetAudience: selectedAudiences,
+        focusAreas: languages,
+        onboardingMetadata: {
+          languages,
+          audiences: selectedAudiences,
+        },
+      });
+      setStep("availability");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save audience.");
+    }
   };
 
   const handleBackToAudience = () => {
     setStep("audience");
   };
 
-  const handleAvailabilityContinue = (data: {
-    slots: Array<{ id: string; days: string[]; from: string; to: string }>;
-    timezone: string;
-  }) => {
-    const availabilitySlots = data.slots
-      .filter((s) => s.days.length > 0 && s.from && s.to)
-      .map((s) => ({ days: s.days, from: s.from, to: s.to }));
-
-    persistStep({
-      step: "availability",
-      timezone: data.timezone,
-      availabilitySlots,
-    });
-    setStep("review");
+  const handleAvailabilityContinue = async () => {
+    try {
+      await saveProfileStep({
+        step: "review",
+        timezone,
+        availabilitySlots: availabilitySlots.map((slot) => ({
+          days: slot.days,
+          from: slot.from,
+          to: slot.to,
+        })),
+      });
+      setStep("review");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not save availability.");
+    }
   };
 
   const handleBackToAvailability = () => {
     setStep("availability");
   };
 
-  const handleReviewContinue = async () => {
+  const handleReviewContinue = async ({
+    name,
+    professionalTitle: submittedProfessionalTitle,
+    termsAccepted,
+  }: {
+    name: string;
+    professionalTitle: string;
+    termsAccepted: boolean;
+  }) => {
+    if (!termsAccepted || isSubmittingApplication) return;
+
+    setIsSubmittingApplication(true);
+
     try {
+      const resolvedProfessionalTitle =
+        submittedProfessionalTitle || professionalTitle || activeCategoryLabel || "Expert";
+
+      await saveProfileStep({
+        step: "review",
+        professionalTitle: resolvedProfessionalTitle,
+        onboardingMetadata: {
+          displayName: name || registeredName || undefined,
+          termsAccepted,
+        },
+      });
+
       await submitOnboarding();
-    } catch (err) {
-      console.error("[Jatayu] Submit onboarding failed:", err);
+
+      setStep("success");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Could not submit application.");
+    } finally {
+      setIsSubmittingApplication(false);
     }
-    setStep("success");
   };
 
   const handleJumpToStepNumber = (stepNumber: number) => {
@@ -497,12 +763,28 @@ function ExpertOnboardingPageContent() {
     }
   };
 
+  const handleRemoveCustomSkill = (skill: string) => {
+    const categoryCustomList = customSkills[selectedCategory] || [];
+    setCustomSkills({
+      ...customSkills,
+      [selectedCategory]: categoryCustomList.filter(
+        (s) => s.toLowerCase() !== skill.toLowerCase(),
+      ),
+    });
+    setSelectedSkills(
+      selectedSkills.filter((s) => s.toLowerCase() !== skill.toLowerCase()),
+    );
+  };
+
   // Retrieve current category options
   const activeCategoryInfo = allCategories.find((c) => c.id === selectedCategory);
   const activeCategoryLabel = activeCategoryInfo ? activeCategoryInfo.label : "";
   const baseSkills = skillsByCategory[selectedCategory] || [];
   const activeCustomSkills = customSkills[selectedCategory] || [];
-  const currentSkillsList = [...baseSkills, ...activeCustomSkills];
+  const pendingOtp = readPendingOtpSession();
+  const otpExpertId = expertId || pendingOtp?.expertId || "";
+  const otpEmail = registeredEmail || pendingOtp?.email || "";
+  const otpPhone = registeredPhone || pendingOtp?.phone || "";
 
   return (
     <main className={styles.pageContainer}>
@@ -518,31 +800,49 @@ function ExpertOnboardingPageContent() {
       </div>
 
       {step === "register" && (
-        <RegisterStep onContinue={handleRegisterComplete} />
+        <RegisterStep
+          onContinue={handleRegisterComplete}
+          onOAuthSuccess={handleAuthSuccess}
+        />
       )}
 
       {step === "login" && (
         <LoginStep
           onContinue={handleLoginComplete}
+          onRequiresOtp={handleLoginRequiresOtp}
           onSwitchToRegister={handleSwitchToRegister}
         />
       )}
 
-      {step === "otp" && (
+      {step === "otp" && otpExpertId ? (
         <OtpStep
-          phone={registeredPhone}
-          email={registeredEmail}
-          expertId={registeredExpertId}
+          expertId={otpExpertId}
+          phone={otpPhone}
+          email={otpEmail}
           onBack={handleBackToRegister}
           onContinue={handleOtpComplete}
         />
-      )}
+      ) : null}
+
+      {step === "otp" && !otpExpertId ? (
+        <section className={styles.otpFallback}>
+          <p>Verification session expired. Please register again to receive a new code.</p>
+          <button type="button" onClick={handleBackToRegister}>
+            Back to Register
+          </button>
+        </section>
+      ) : null}
+
+      {profileError ? (
+        <p role="alert" style={{ color: "#ffb4b4", textAlign: "center", marginTop: "1rem" }}>
+          {profileError}
+        </p>
+      ) : null}
 
       {step === "category" && (
         <CategoryStep
           userName={registeredName}
           categories={allCategories}
-          presetCategoryIds={categories.map((c) => c.id)}
           selectedCategory={selectedCategory}
           stepCompletion={stepCompletion}
           onSelectCategory={(id) => {
@@ -550,7 +850,8 @@ function ExpertOnboardingPageContent() {
             setSelectedSkills([]);
           }}
           onAddCustomCategory={handleAddCustomCategory}
-          onBack={handleBackToWelcome}
+          onRemoveCustomCategory={handleRemoveCustomCategory}
+          onBack={handleBackToRegister}
           onContinue={handleCategoryContinue}
           onJumpToStep={handleJumpToStepNumber}
         />
@@ -560,11 +861,13 @@ function ExpertOnboardingPageContent() {
         <SkillsStep
           userName={registeredName}
           activeCategoryLabel={activeCategoryLabel}
-          currentSkillsList={currentSkillsList}
+          currentSkillsList={baseSkills}
+          customSkillsList={activeCustomSkills}
           selectedSkills={selectedSkills}
           stepCompletion={stepCompletion}
           onToggleSkill={handleToggleSkill}
           onAddCustomSkill={handleAddCustomSkill}
+          onRemoveCustomSkill={handleRemoveCustomSkill}
           onBack={handleBackToCategory}
           onContinue={handleSkillsContinue}
           onJumpToStep={handleJumpToStepNumber}
@@ -574,9 +877,18 @@ function ExpertOnboardingPageContent() {
       {step === "experience" && (
         <ExperienceStep
           userName={registeredName}
-          experienceLevel={experienceLevel}
+          employmentPositions={employmentPositions}
+          educationDegrees={educationDegrees}
+          linkedin={linkedin}
+          portfolio={portfolio}
+          portfolioSamples={portfolioSamples}
           stepCompletion={stepCompletion}
-          onSelectLevel={setExperienceLevel}
+          onStepCompleteChange={handleStepCompleteChange}
+          onEmploymentPositionsChange={setEmploymentPositions}
+          onEducationDegreesChange={setEducationDegrees}
+          onLinkedinChange={setLinkedin}
+          onPortfolioChange={setPortfolio}
+          onPortfolioSamplesChange={setPortfolioSamples}
           onBack={handleBackToSkills}
           onContinue={handleExperienceContinue}
           onJumpToStep={handleJumpToStepNumber}
@@ -607,6 +919,12 @@ function ExpertOnboardingPageContent() {
       {step === "credentials" && (
         <CredentialsStep
           userName={registeredName}
+          kycVideoSrc={kycVideoUrl}
+          onKycVideoChange={setKycVideoUrl}
+          governmentId={governmentId}
+          onGovernmentIdChange={setGovernmentId}
+          certificates={certificates}
+          onCertificatesChange={setCertificates}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToIdentity}
@@ -624,6 +942,8 @@ function ExpertOnboardingPageContent() {
           onSelectedLengthsChange={setSelectedLengths}
           formatPrices={formatPrices}
           onFormatPricesChange={setFormatPrices}
+          acceptCustomRequests={acceptCustomRequests}
+          onAcceptCustomRequestsChange={setAcceptCustomRequests}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToCredentials}
@@ -639,6 +959,10 @@ function ExpertOnboardingPageContent() {
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToPreferences}
           onContinue={handleAudienceContinue}
+          onContinueWithAudience={({ languages: nextLanguages, audiences }) => {
+            setLanguages(nextLanguages);
+            setSelectedAudiences(audiences);
+          }}
           onJumpToStep={handleJumpToStepNumber}
         />
       )}
@@ -650,6 +974,10 @@ function ExpertOnboardingPageContent() {
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToAudience}
           onContinue={handleAvailabilityContinue}
+          onScheduleChange={({ timezone: nextTimezone, slots }) => {
+            setTimezone(nextTimezone);
+            setAvailabilitySlots(slots);
+          }}
           onJumpToStep={handleJumpToStepNumber}
         />
       )}
@@ -658,7 +986,8 @@ function ExpertOnboardingPageContent() {
         <ReviewStep
           userName={registeredName}
           selectedSkills={selectedSkills}
-          experienceLevel={experienceLevel}
+          employmentPositions={employmentPositions}
+          educationDegrees={educationDegrees}
           professionalTitle={professionalTitle}
           tagLine={tagLine}
           bio={bio}
@@ -666,22 +995,44 @@ function ExpertOnboardingPageContent() {
           categoryLabel={
             allCategories.find((c) => c.id === selectedCategory)?.label ?? "Not selected"
           }
+          linkedin={linkedin}
+          portfolio={portfolio}
+          portfolioSamples={portfolioSamples}
+          governmentId={governmentId}
+          kycVideoUrl={kycVideoUrl}
+          certificates={certificates}
+          languages={languages}
+          selectedAudiences={selectedAudiences}
+          timezone={timezone}
+          availabilitySlots={availabilitySlots}
           selectedFormats={selectedFormats}
           selectedLengths={selectedLengths}
           formatPrices={formatPrices}
+          profilePhotoSrc={profilePhotoSrc}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToAvailability}
           onSubmit={handleReviewContinue}
           onJumpToStep={(targetStep) => {
-            setStep(targetStep);
+            setStep(targetStep as OnboardingStep);
           }}
           onProgressStepClick={handleJumpToStepNumber}
         />
       )}
 
       {step === "success" && (
-        <SuccessStep userName={registeredName} profilePhotoSrc={profilePhotoSrc} />
+        <SuccessStep
+          userName={registeredName}
+          professionalTitle={professionalTitle}
+          tagLine={tagLine}
+          bio={bio}
+          categoryLabel={
+            allCategories.find((c) => c.id === selectedCategory)?.label ?? "Not selected"
+          }
+          languages={languages}
+          formatPrices={formatPrices}
+          profilePhotoSrc={profilePhotoSrc}
+        />
       )}
     </main>
   );

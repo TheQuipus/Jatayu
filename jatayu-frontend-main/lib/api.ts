@@ -41,6 +41,21 @@ export function removeExpertId(): void {
   localStorage.removeItem("jatayu_expert_id");
 }
 
+export function getAdminToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("jatayu_admin_token");
+}
+
+export function setAdminToken(token: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("jatayu_admin_token", token);
+}
+
+export function removeAdminToken(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("jatayu_admin_token");
+}
+
 // ---------------------------------------------------------------------------
 // Internal fetch helper
 // ---------------------------------------------------------------------------
@@ -80,6 +95,13 @@ async function apiFetch<T>(
   }
 
   return data as T;
+}
+
+async function adminApiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  return apiFetch<T>(path, options, getAdminToken());
 }
 
 // ---------------------------------------------------------------------------
@@ -164,11 +186,57 @@ export interface LoginPayload {
   password: string;
 }
 
+export class OtpRequiredError extends Error {
+  expertId: string;
+  email: string;
+  phone: string;
+
+  constructor(payload: {
+    message: string;
+    expertId: string;
+    email: string;
+    phone: string;
+  }) {
+    super(payload.message);
+    this.name = "OtpRequiredError";
+    this.expertId = payload.expertId;
+    this.email = payload.email;
+    this.phone = payload.phone || "";
+  }
+}
+
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/api/auth/login", {
+  const response = await fetch(`${BASE_URL}/api/auth/login`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (response.status === 403 && (data as { requiresOtp?: boolean }).requiresOtp) {
+    const otpData = data as {
+      message: string;
+      expertId: string;
+      email: string;
+      phone?: string;
+    };
+    throw new OtpRequiredError({
+      message: otpData.message,
+      expertId: otpData.expertId,
+      email: otpData.email,
+      phone: otpData.phone || "",
+    });
+  }
+
+  if (!response.ok) {
+    const message =
+      (data as { message?: string }).message ||
+      `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  return data as AuthResponse;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +284,7 @@ export interface UpdateProfilePayload {
   timezone?: string;
   availabilitySlots?: Array<{ days: string[]; from: string; to: string }>;
   profilePhotoSrc?: string;
+  onboardingMetadata?: Record<string, unknown>;
 }
 
 export interface UpdateProfileResponse {
@@ -277,6 +346,156 @@ export async function submitOnboarding(): Promise<SubmitOnboardingResponse> {
 
 export async function getProfile(): Promise<Record<string, unknown>> {
   return apiFetch<Record<string, unknown>>("/api/expert/me", {
+    method: "GET",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// LinkedIn Login API
+// ---------------------------------------------------------------------------
+
+export interface LinkedinLoginPayload {
+  authCode: string;
+  email?: string;
+  fullName?: string;
+  linkedinId?: string;
+  redirectUri?: string;
+}
+
+export async function linkedinLogin(payload: LinkedinLoginPayload): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/api/auth/linkedin", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Admin Auth API
+// ---------------------------------------------------------------------------
+
+export interface AdminLoginPayload {
+  email: string;
+  password: string;
+  otp: string;
+}
+
+export interface AdminAuthUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
+export interface AdminAuthResponse {
+  token: string;
+  user: AdminAuthUser;
+}
+
+export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthResponse> {
+  return apiFetch<AdminAuthResponse>("/api/admin/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getAdminMe(): Promise<AdminAuthUser> {
+  return adminApiFetch<AdminAuthUser>("/api/admin/auth/me", {
+    method: "GET",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Admin Settings & Public Config API
+// ---------------------------------------------------------------------------
+
+export interface SettingItem {
+  key: string;
+  value: string;
+  description?: string;
+}
+
+export interface PublicConfig {
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  googleLoginEnabled: boolean;
+  linkedinLoginEnabled: boolean;
+  googleClientId?: string;
+  linkedinClientId?: string;
+}
+
+export async function getPublicConfig(): Promise<PublicConfig> {
+  return apiFetch<PublicConfig>("/api/auth/config", {
+    method: "GET",
+  });
+}
+
+export async function getSettings(): Promise<SettingItem[]> {
+  return adminApiFetch<SettingItem[]>("/api/admin/settings", {
+    method: "GET",
+  });
+}
+
+export async function updateSettings(settings: Record<string, string>): Promise<{ message: string }> {
+  return adminApiFetch<{ message: string }>("/api/admin/settings", {
+    method: "PUT",
+    body: JSON.stringify({ settings }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Admin Applications API
+// ---------------------------------------------------------------------------
+
+export interface BackendExpertApplicationRecord extends Record<string, unknown> {
+  id: string;
+  applicationNumber?: string | null;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  status?: string | null;
+  frontendStatus?: string;
+  submittedAt?: string | null;
+  updatedAt?: string | null;
+  reviewerNote?: string | null;
+}
+
+export async function getAdminApplications(
+  status?: string,
+): Promise<BackendExpertApplicationRecord[]> {
+  const query = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
+  return adminApiFetch<BackendExpertApplicationRecord[]>(`/api/admin/applications${query}`, {
+    method: "GET",
+  });
+}
+
+export async function getAdminApplication(
+  appId: string,
+): Promise<BackendExpertApplicationRecord> {
+  return adminApiFetch<BackendExpertApplicationRecord>(`/api/admin/applications/${encodeURIComponent(appId)}`, {
+    method: "GET",
+  });
+}
+
+export interface UpdateApplicationStatusPayload {
+  status: "pending" | "in_review" | "on_hold" | "approved" | "rejected";
+  reviewerNote?: string;
+}
+
+export async function updateAdminApplicationStatus(
+  appId: string,
+  payload: UpdateApplicationStatusPayload,
+): Promise<{ message: string; expert: BackendExpertApplicationRecord }> {
+  return adminApiFetch<{ message: string; expert: BackendExpertApplicationRecord }>(
+    `/api/admin/applications/${encodeURIComponent(appId)}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function getAdminApplicationStats(): Promise<Record<string, number>> {
+  return adminApiFetch<Record<string, number>>("/api/admin/applications/stats", {
     method: "GET",
   });
 }

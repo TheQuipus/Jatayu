@@ -1,3 +1,7 @@
+import { setDefaultResultOrder } from 'dns';
+// Force IPv4 DNS resolution first — prevents ENETUNREACH on networks without IPv6
+setDefaultResultOrder('ipv4first');
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -8,6 +12,10 @@ import { Server } from 'socket.io';
 import { sequelize } from './models/index.js';
 import authRoutes from './routes/authRoutes.js';
 import expertRoutes from './routes/expertRoutes.js';
+import seekerAuthRoutes from './routes/seekerAuthRoutes.js';
+import seekerRoutes from './routes/seekerRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 
 dotenv.config();
 
@@ -48,10 +56,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/expert', expertRoutes);
+app.use('/api/seeker-auth', seekerAuthRoutes);
+app.use('/api/seeker', seekerRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'Jatayu Expert Onboarding API is healthy.' });
+  res.status(200).json({ status: 'OK', message: 'Jatayu API is healthy.' });
 });
 
 app.get('/health/ws', (req, res) => {
@@ -69,6 +80,8 @@ const startServer = async () => {
     const syncOptions = process.env.DB_SYNC_ALTER === 'true' ? { alter: true } : {};
     await sequelize.sync(syncOptions);
     console.log('Database tables synchronized successfully.');
+
+    await seedDefaultAdmin();
 
     const httpServer = http.createServer(app);
     const io = new Server(httpServer, {

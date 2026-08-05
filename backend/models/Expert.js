@@ -32,6 +32,11 @@ const Expert = sequelize.define('Expert', {
     allowNull: true,
     unique: true
   },
+  linkedinId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true
+  },
   isEmailVerified: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
@@ -98,6 +103,23 @@ const Expert = sequelize.define('Expert', {
   },
   formatPrices: {
     type: DataTypes.JSON,
+    allowNull: true
+  },
+  onboardingMetadata: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
+  applicationNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true
+  },
+  submittedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  reviewerNote: {
+    type: DataTypes.TEXT,
     allowNull: true
   }
 }, {

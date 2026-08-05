@@ -3,16 +3,16 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowLeft } from "lucide-react";
 import RegisterLeftPanel from "@/components/expert/onboarding/RegisterLeftPanel";
-import { verifyOtp as apiVerifyOtp, resendOtp as apiResendOtp, setToken } from "@/lib/api";
 import register from "./register.shared.module.css";
 import styles from "./OtpStep.module.css";
+import { resendOtp, verifyOtp, type AuthResponse } from "@/lib/api";
 
 type OtpStepProps = {
+  expertId: string;
   phone: string;
   email: string;
-  expertId: string;
   onBack: () => void;
-  onContinue: () => void;
+  onContinue: (response: AuthResponse) => void;
 };
 
 const OTP_LENGTH = 6;
@@ -37,14 +37,14 @@ function maskEmail(email: string): string {
   return `${local.slice(0, 2)}***@${domain}`;
 }
 
-export default function OtpStep({ phone, email, expertId, onBack, onContinue }: OtpStepProps) {
+export default function OtpStep({ expertId, phone, email, onBack, onContinue }: OtpStepProps) {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [resendSeconds, setResendSeconds] = useState(RESEND_SECONDS);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [otpError, setOtpError] = useState("");
-  const [resendMessage, setResendMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const verifyingRef = useRef(false);
 
   useEffect(() => {
     if (resendSeconds <= 0) return;
@@ -56,25 +56,25 @@ export default function OtpStep({ phone, email, expertId, onBack, onContinue }: 
 
   const verifyCode = useCallback(
     async (code: string) => {
-      if (isVerifying) return;
-      setOtpError("");
+      if (verifyingRef.current) return;
+
+      verifyingRef.current = true;
       setIsVerifying(true);
+      setError(null);
+
       try {
-        const res = await apiVerifyOtp({ expertId, code });
-        setToken(res.token);
-        onContinue();
-      } catch (err: unknown) {
-        setOtpError(
-          err instanceof Error ? err.message : "Invalid or expired code. Please try again."
-        );
-        // Clear the digits so user can re-enter
+        const response = await verifyOtp({ expertId, code });
+        onContinue(response);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Invalid verification code.");
         setDigits(Array(OTP_LENGTH).fill(""));
-        setTimeout(() => inputRefs.current[0]?.focus(), 50);
+        inputRefs.current[0]?.focus();
       } finally {
+        verifyingRef.current = false;
         setIsVerifying(false);
       }
     },
-    [expertId, isVerifying, onContinue]
+    [expertId, onContinue],
   );
 
   const updateDigit = useCallback(
@@ -85,7 +85,9 @@ export default function OtpStep({ phone, email, expertId, onBack, onContinue }: 
         next[index] = char;
         if (char && next.every((d) => d !== "")) {
           const code = next.join("");
-          queueMicrotask(() => verifyCode(code));
+          queueMicrotask(() => {
+            void verifyCode(code);
+          });
         }
         return next;
       });
@@ -93,7 +95,7 @@ export default function OtpStep({ phone, email, expertId, onBack, onContinue }: 
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [verifyCode]
+    [verifyCode],
   );
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -112,8 +114,7 @@ export default function OtpStep({ phone, email, expertId, onBack, onContinue }: 
     });
     setDigits(next);
     if (next.every((d) => d !== "")) {
-      const code = next.join("");
-      queueMicrotask(() => verifyCode(code));
+      void verifyCode(next.join(""));
     }
     const focusIndex = Math.min(pasted.length, OTP_LENGTH - 1);
     inputRefs.current[focusIndex]?.focus();
@@ -122,20 +123,16 @@ export default function OtpStep({ phone, email, expertId, onBack, onContinue }: 
   const handleResend = async () => {
     if (resendSeconds > 0 || isResending) return;
 
-    setOtpError("");
-    setResendMessage("");
     setIsResending(true);
+    setError(null);
 
     try {
-      await apiResendOtp({ expertId });
+      await resendOtp({ expertId });
       setResendSeconds(RESEND_SECONDS);
       setDigits(Array(OTP_LENGTH).fill(""));
-      setResendMessage("A new verification code has been sent to your email and phone.");
       inputRefs.current[0]?.focus();
-    } catch (err: unknown) {
-      setOtpError(
-        err instanceof Error ? err.message : "Could not resend verification code. Please try again."
-      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend verification code.");
     } finally {
       setIsResending(false);
     }
@@ -154,7 +151,7 @@ export default function OtpStep({ phone, email, expertId, onBack, onContinue }: 
         <p className={styles.otpSentText}>
           A 6 digit verification code has been sent to
           <br />
-          {maskPhone(phone)} &amp; {maskEmail(email)}
+          {maskPhone(phone)} & {maskEmail(email)}
         </p>
 
         <div className={styles.otpFieldGroup}>
@@ -169,33 +166,28 @@ export default function OtpStep({ phone, email, expertId, onBack, onContinue }: 
                 type="text"
                 inputMode="numeric"
                 maxLength={1}
-                className={`${styles.otpInput} ${otpError ? styles.otpInputError ?? "" : ""}`}
+                className={styles.otpInput}
                 value={digit}
                 placeholder="__"
                 aria-label={`Digit ${index + 1}`}
+                disabled={isVerifying}
                 onChange={(e) => updateDigit(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 autoFocus={index === 0}
-                disabled={isVerifying}
               />
             ))}
           </div>
-          {isVerifying && (
-            <p className={styles.otpResendText}>
-              <span className={styles.otpResendMuted}>Verifying...</span>
-            </p>
-          )}
-          {otpError && (
-            <p className={styles.otpResendText}>
-              <span style={{ color: "#FF3B30", fontSize: "13px" }}>{otpError}</span>
-            </p>
-          )}
-          {resendMessage && !otpError && (
-            <p className={styles.otpResendText}>
-              <span style={{ color: "#34A853", fontSize: "13px" }}>{resendMessage}</span>
-            </p>
-          )}
         </div>
+
+        {error ? (
+          <p className={register.fieldErrorBelow} role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {isVerifying ? (
+          <p className={styles.otpResendText}>Verifying code...</p>
+        ) : null}
 
         <p className={styles.otpResendText}>
           {resendSeconds > 0 ? (
@@ -207,7 +199,7 @@ export default function OtpStep({ phone, email, expertId, onBack, onContinue }: 
             <button
               type="button"
               className={styles.otpResendLink}
-              onClick={handleResend}
+              onClick={() => void handleResend()}
               disabled={isResending}
             >
               {isResending ? "Resending..." : "Resend the code"}
