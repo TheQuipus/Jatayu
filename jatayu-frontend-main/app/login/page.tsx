@@ -1,17 +1,9 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import ExpertLoginStep from "@/components/expert/onboarding/LoginStep";
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import SeekerLoginStep from "@/components/seeker/onboarding/LoginStep";
-import {
-  getPostAuthDestination,
-  isNavigationHref,
-  persistAuthSession,
-  savePendingOtpSession,
-  clearExpertAuthOnly,
-} from "@/lib/expertAuth";
-import type { AuthResponse } from "@/lib/api";
+import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import styles from "@/app/expert/expert-onboarding/page.module.css";
 
 type LoginRole = "expert" | "user";
@@ -34,50 +26,28 @@ function LoginShell({ children }: { children?: React.ReactNode }) {
 }
 
 function LoginPageContent({ role }: { role: LoginRole }) {
-  const handleExpertContinue = (response: AuthResponse) => {
-    const user = persistAuthSession(response);
-    const destination = getPostAuthDestination(user);
+  const router = useRouter();
 
-    if (isNavigationHref(destination)) {
-      window.location.assign(destination);
-      return;
+  useEffect(() => {
+    if (role === "expert") {
+      router.replace(EXPERT_LOGIN_HREF);
     }
-
-    window.location.assign(`/expert/expert-onboarding/?resume=${destination}`);
-  };
+  }, [role, router]);
 
   const handleSeekerContinue = ({ email: _email }: { email: string }) => {
     window.location.assign("/seeker/dashboard/");
   };
 
-  const handleExpertRequiresOtp = ({
-    expertId,
-    email,
-    phone,
-  }: {
-    expertId: string;
-    email: string;
-    phone: string;
-  }) => {
-    clearExpertAuthOnly();
-    savePendingOtpSession({ expertId, email, phone });
-    window.location.assign("/expert/expert-onboarding/?resume=otp");
-  };
+  if (role === "expert") {
+    return <LoginShell />;
+  }
 
   return (
     <LoginShell>
-      {role === "expert" ? (
-        <ExpertLoginStep
-          onContinue={handleExpertContinue}
-          onRequiresOtp={handleExpertRequiresOtp}
-          registerHref="/expert/expert-onboarding/"
-        />
-      ) : (
-        <SeekerLoginStep
-          onContinue={handleSeekerContinue}
-          registerHref="/seeker/seeker-onboarding/"
-        />
-      )}
+      <SeekerLoginStep
+        onContinue={handleSeekerContinue}
+        registerHref="/seeker/seeker-onboarding/"
+      />
     </LoginShell>
   );
 }

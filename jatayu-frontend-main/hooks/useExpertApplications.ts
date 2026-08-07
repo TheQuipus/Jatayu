@@ -35,6 +35,7 @@ export type ExpertApplicationListItem = {
   slaLimit: string;
   status: ApplicationStatus;
   reviewer: { name: string; avatar: string } | null;
+  onboardingStep?: string;
 };
 
 function toListItem(application: ExpertApplicationSubmission): ExpertApplicationListItem {
@@ -58,6 +59,7 @@ function toListItem(application: ExpertApplicationSubmission): ExpertApplication
     slaLimit: sla.slaLimit,
     status: application.status,
     reviewer: null,
+    onboardingStep: application.onboardingStep,
   };
 }
 

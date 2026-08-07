@@ -3,14 +3,20 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { Expert } from '../models/index.js';
 import dotenv from 'dotenv';
-import { sendOtpEmail } from '../utils/emailService.js';
-import { sendOtpSms, isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
+import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
+import { deliverOtpChannels, handleOtpDeliveryError } from '../utils/otpDelivery.js';
 import { getSetting, getSettingBool } from '../utils/settingsHelper.js';
+import { promoteExpertToApplicationQueue } from '../utils/expertApplicationQueue.js';
+import {
+  storeOtpOnModel,
+  readOtpFromModel,
+  clearPendingOtpMetadata,
+  isStoredOtpValid,
+} from '../utils/otpPersistence.js';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
-const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
 // Keep track of active OTPs in memory for demo/verification steps (in-production we'd store in DB or Redis with TTL)
 const tempOtps = new Map();
@@ -28,49 +34,33 @@ async function createOtpCode() {
   return generateOtpCode();
 }
 
-function storeOtp(expertId, code) {
-  tempOtps.set(expertId, {
-    code,
-    expiresAt: Date.now() + OTP_EXPIRY_MS,
-  });
+async function storeOtp(expert, code) {
+  const entry = await storeOtpOnModel(expert, code);
+  tempOtps.set(expert.id, entry);
 }
 
 async function deliverOtp(expert, otp) {
-  const results = await Promise.allSettled([
-    sendOtpEmail({
-      recipientEmail: expert.email,
-      recipientName: expert.fullName,
-      otpCode: otp,
-    }),
-    sendOtpSms({
-      recipientPhone: expert.phone,
-      otpCode: otp,
-    }),
-  ]);
-
-  const successes = results.filter((r) => r.status === 'fulfilled');
-  const failures = results.filter((r) => r.status === 'rejected').map((r) => r.reason);
-
-  // Log any partial failures as warnings
-  failures.forEach((err) => console.warn('[OTP Delivery Warning]', err.message));
-
-  // Only throw if ALL channels failed
-  if (successes.length === 0) {
-    throw failures[0] || new Error('All OTP delivery channels failed.');
-  }
+  await deliverOtpChannels({
+    email: expert.email,
+    phone: expert.phone,
+    fullName: expert.fullName,
+    otpCode: otp,
+    logPrefix: 'OTP',
+  });
 }
 
 async function issueOtp(expert) {
-  let otp = await createOtpCode();
-  storeOtp(expert.id, otp);
+  const otp = await createOtpCode();
+  await storeOtp(expert, otp);
+  await deliverOtp(expert, otp);
 
-  try {
-    await deliverOtp(expert, otp);
-  } catch (deliveryError) {
-    console.warn('[OTP Delivery Warning]', deliveryError.message);
-    otp = TEMP_SMS_OTP;
-    storeOtp(expert.id, otp);
-    console.log(`[OTP Fallback] Using temporary OTP: ${TEMP_SMS_OTP}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`\n======================================================`);
+    console.log(`[OTP Dev] Expert: ${expert.fullName}`);
+    console.log(`Email: ${expert.email}`);
+    console.log(`Phone: ${expert.phone || '(none)'}`);
+    console.log(`Verification Code: ${otp}`);
+    console.log(`======================================================\n`);
   }
 
   return otp;
@@ -90,12 +80,44 @@ export const register = async (req, res) => {
     // Check if email or phone already registered
     const existingEmail = await Expert.findOne({ where: { email } });
     if (existingEmail) {
-      return res.status(400).json({ message: 'An expert with this email already exists' });
+      const hasPassword = Boolean(existingEmail.password);
+      const passwordMatches = hasPassword && (await bcrypt.compare(password, existingEmail.password));
+
+      if (!passwordMatches) {
+        return res.status(409).json({
+          message: 'An account with this email already exists. Please log in to continue.',
+          code: 'EMAIL_EXISTS',
+        });
+      }
+
+      // Same email + same password re-submitted (e.g. user exited mid-onboarding
+      // and came back to the signup form instead of login). Resume their
+      // existing account instead of blocking them — resend the OTP and let
+      // them continue exactly where they left off, without losing progress.
+      const otp = await issueOtp(existingEmail);
+
+      console.log(`\n======================================================`);
+      console.log(`[OTP Resent] Existing expert re-submitted registration: ${existingEmail.fullName}`);
+      console.log(`Email: ${existingEmail.email}`);
+      if (otp === TEMP_SMS_OTP) {
+        console.log(`Temporary OTP (until SMS configured): ${TEMP_SMS_OTP}`);
+      }
+      console.log(`======================================================\n`);
+
+      return res.status(200).json({
+        message: 'Welcome back! Verification code sent to your email and phone.',
+        expertId: existingEmail.id,
+        email: existingEmail.email,
+        phone: existingEmail.phone,
+      });
     }
 
     const existingPhone = await Expert.findOne({ where: { phone } });
     if (existingPhone) {
-      return res.status(400).json({ message: 'An expert with this phone number already exists' });
+      return res.status(409).json({
+        message: 'An account with this phone number already exists. Please log in to continue.',
+        code: 'PHONE_EXISTS',
+      });
     }
 
     // Hash password
@@ -130,6 +152,8 @@ export const register = async (req, res) => {
       phone: expert.phone,
     });
   } catch (error) {
+    const deliveryResponse = handleOtpDeliveryError(error, res, 'Registration');
+    if (deliveryResponse) return deliveryResponse;
     console.error('Registration Error:', error);
     return res.status(500).json({ message: 'Server error during registration', error: error.message });
   }
@@ -151,14 +175,15 @@ export const verifyOtp = async (req, res) => {
       return res.status(404).json({ message: 'Expert not found' });
     }
 
-    const storedOtp = tempOtps.get(expertId);
-    
+    let storedOtp = tempOtps.get(expertId);
+    if (!isStoredOtpValid(storedOtp, code)) {
+      storedOtp = readOtpFromModel(expert);
+    }
+
     // Accept stored OTP, or temporary 123456 when SMS provider is not yet configured
     const smsConfigured = await isSmsProviderConfigured();
     const isTempOtpValid = !smsConfigured && code === TEMP_SMS_OTP;
-    const isCodeValid =
-      isTempOtpValid ||
-      (storedOtp && storedOtp.code === code && storedOtp.expiresAt > Date.now());
+    const isCodeValid = isTempOtpValid || isStoredOtpValid(storedOtp, code);
 
     if (!isCodeValid) {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
@@ -167,8 +192,17 @@ export const verifyOtp = async (req, res) => {
     // Update expert verification flags
     expert.isPhoneVerified = true;
     expert.isEmailVerified = true;
-    expert.onboardingStep = 'category'; // Move to first onboarding step
+    // Only advance to the first onboarding step for a brand-new signup. If the
+    // expert had already progressed further (re-verifying after re-submitting
+    // the signup form), keep their existing progress instead of resetting it.
+    if (expert.onboardingStep === 'otp') {
+      expert.onboardingStep = 'category';
+    }
+    expert.onboardingMetadata = clearPendingOtpMetadata(expert.onboardingMetadata);
     await expert.save();
+
+    // Signup is complete — make the expert visible in the admin approval queue
+    await promoteExpertToApplicationQueue(expert);
 
     // Clean up OTP memory
     tempOtps.delete(expertId);
@@ -214,10 +248,6 @@ export const resendOtp = async (req, res) => {
       return res.status(404).json({ message: 'Expert not found' });
     }
 
-    if (expert.onboardingStep !== 'otp') {
-      return res.status(400).json({ message: 'OTP resend is not available for this account' });
-    }
-
     const otp = await issueOtp(expert);
 
     console.log(`[OTP Resent] Expert: ${expert.email} | OTP: ${otp === TEMP_SMS_OTP ? TEMP_SMS_OTP : '(sent via provider)'}`);
@@ -228,6 +258,8 @@ export const resendOtp = async (req, res) => {
       phone: expert.phone,
     });
   } catch (error) {
+    const deliveryResponse = handleOtpDeliveryError(error, res, 'Resend OTP');
+    if (deliveryResponse) return deliveryResponse;
     console.error('Resend OTP Error:', error);
     return res.status(500).json({ message: 'Server error during OTP resend', error: error.message });
   }
@@ -262,6 +294,14 @@ export const login = async (req, res) => {
     }
 
     if (expert.onboardingStep === 'otp') {
+      try {
+        await issueOtp(expert);
+      } catch (deliveryError) {
+        const deliveryResponse = handleOtpDeliveryError(deliveryError, res, 'Login');
+        if (deliveryResponse) return deliveryResponse;
+        throw deliveryError;
+      }
+
       return res.status(403).json({
         message: 'Please verify your account with the OTP sent to your email and phone.',
         requiresOtp: true,
@@ -355,6 +395,7 @@ export const googleLogin = async (req, res) => {
         onboardingStep: 'category', // Skip OTP verification step
         status: 'draft'
       });
+      await promoteExpertToApplicationQueue(expert);
     } else {
       // Update Google ID if not present
       if (!expert.googleId) {
@@ -484,6 +525,7 @@ export const linkedinLogin = async (req, res) => {
         onboardingStep: 'category',
         status: 'draft'
       });
+      await promoteExpertToApplicationQueue(expert);
     } else {
       if (!expert.linkedinId) {
         expert.linkedinId = linkedinId;

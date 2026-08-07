@@ -5,12 +5,14 @@ import { ArrowLeft } from "lucide-react";
 import RegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
 import register from "./register.shared.module.css";
 import styles from "./OtpStep.module.css";
+import { resendSeekerOtp, verifySeekerOtp, type AuthResponse } from "@/lib/api";
 
 type OtpStepProps = {
+  seekerId: string;
   phone: string;
   email: string;
   onBack: () => void;
-  onContinue: () => void;
+  onContinue: (response: AuthResponse) => void;
 };
 
 const OTP_LENGTH = 6;
@@ -35,10 +37,14 @@ function maskEmail(email: string): string {
   return `${local.slice(0, 2)}***@${domain}`;
 }
 
-export default function OtpStep({ phone, email, onBack, onContinue }: OtpStepProps) {
+export default function OtpStep({ seekerId, phone, email, onBack, onContinue }: OtpStepProps) {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [resendSeconds, setResendSeconds] = useState(RESEND_SECONDS);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const verifyingRef = useRef(false);
 
   useEffect(() => {
     if (resendSeconds <= 0) return;
@@ -48,6 +54,29 @@ export default function OtpStep({ phone, email, onBack, onContinue }: OtpStepPro
     return () => clearInterval(timer);
   }, [resendSeconds]);
 
+  const verifyCode = useCallback(
+    async (code: string) => {
+      if (verifyingRef.current) return;
+
+      verifyingRef.current = true;
+      setIsVerifying(true);
+      setError(null);
+
+      try {
+        const response = await verifySeekerOtp({ seekerId, code });
+        onContinue(response);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Invalid verification code.");
+        setDigits(Array(OTP_LENGTH).fill(""));
+        inputRefs.current[0]?.focus();
+      } finally {
+        verifyingRef.current = false;
+        setIsVerifying(false);
+      }
+    },
+    [seekerId, onContinue],
+  );
+
   const updateDigit = useCallback(
     (index: number, value: string) => {
       const char = value.replace(/\D/g, "").slice(-1);
@@ -55,7 +84,10 @@ export default function OtpStep({ phone, email, onBack, onContinue }: OtpStepPro
         const next = [...prev];
         next[index] = char;
         if (char && next.every((d) => d !== "")) {
-          queueMicrotask(onContinue);
+          const code = next.join("");
+          queueMicrotask(() => {
+            void verifyCode(code);
+          });
         }
         return next;
       });
@@ -63,7 +95,7 @@ export default function OtpStep({ phone, email, onBack, onContinue }: OtpStepPro
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [onContinue],
+    [verifyCode],
   );
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -82,17 +114,28 @@ export default function OtpStep({ phone, email, onBack, onContinue }: OtpStepPro
     });
     setDigits(next);
     if (next.every((d) => d !== "")) {
-      queueMicrotask(onContinue);
+      void verifyCode(next.join(""));
     }
     const focusIndex = Math.min(pasted.length, OTP_LENGTH - 1);
     inputRefs.current[focusIndex]?.focus();
   };
 
-  const handleResend = () => {
-    if (resendSeconds > 0) return;
-    setResendSeconds(RESEND_SECONDS);
-    setDigits(Array(OTP_LENGTH).fill(""));
-    inputRefs.current[0]?.focus();
+  const handleResend = async () => {
+    if (resendSeconds > 0 || isResending) return;
+
+    setIsResending(true);
+    setError(null);
+
+    try {
+      await resendSeekerOtp({ seekerId });
+      setResendSeconds(RESEND_SECONDS);
+      setDigits(Array(OTP_LENGTH).fill(""));
+      inputRefs.current[0]?.focus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend verification code.");
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -127,6 +170,7 @@ export default function OtpStep({ phone, email, onBack, onContinue }: OtpStepPro
                 value={digit}
                 placeholder="__"
                 aria-label={`Digit ${index + 1}`}
+                disabled={isVerifying}
                 onChange={(e) => updateDigit(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 autoFocus={index === 0}
@@ -135,6 +179,16 @@ export default function OtpStep({ phone, email, onBack, onContinue }: OtpStepPro
           </div>
         </div>
 
+        {error ? (
+          <p className={register.fieldErrorBelow} role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {isVerifying ? (
+          <p className={styles.otpResendText}>Verifying code...</p>
+        ) : null}
+
         <p className={styles.otpResendText}>
           {resendSeconds > 0 ? (
             <>
@@ -142,8 +196,13 @@ export default function OtpStep({ phone, email, onBack, onContinue }: OtpStepPro
               <span className={styles.otpResendHighlight}>{resendSeconds} Seconds</span>
             </>
           ) : (
-            <button type="button" className={styles.otpResendLink} onClick={handleResend}>
-              Resend the code
+            <button
+              type="button"
+              className={styles.otpResendLink}
+              onClick={() => void handleResend()}
+              disabled={isResending}
+            >
+              {isResending ? "Resending..." : "Resend the code"}
             </button>
           )}
         </p>

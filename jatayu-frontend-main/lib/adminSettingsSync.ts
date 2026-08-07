@@ -3,6 +3,7 @@ import {
   DEFAULT_ADMIN_SETTINGS,
   type AdminSettings,
   type LinkedinCredentialsSettings,
+  type SmsProvider,
 } from "@/lib/adminSettings";
 
 function settingsArrayToMap(items: SettingItem[]): Record<string, string> {
@@ -21,8 +22,79 @@ function readString(map: Record<string, string>, key: string, fallback = ""): st
   return map[key] ?? fallback;
 }
 
+function readSmsProvider(map: Record<string, string>): SmsProvider {
+  const provider = readString(map, "SMS_PROVIDER", DEFAULT_ADMIN_SETTINGS.sms.provider);
+  if (provider === "twilio" || provider === "fast2sms" || provider === "msg91" || provider === "textlocal") {
+    return provider;
+  }
+  return DEFAULT_ADMIN_SETTINGS.sms.provider;
+}
+
+function readSmsCredentials(map: Record<string, string>, provider: SmsProvider) {
+  if (provider === "fast2sms" || provider === "textlocal") {
+    return {
+      apiKey: readString(map, "SMS_API_KEY") || readString(map, "TWILIO_ACCOUNT_SID"),
+      apiSecret: readString(map, "SMS_API_SECRET") || readString(map, "TWILIO_AUTH_TOKEN"),
+      senderId:
+        readString(map, "SMS_SENDER_ID") ||
+        readString(map, "TWILIO_PHONE_NUMBER", DEFAULT_ADMIN_SETTINGS.sms.senderId),
+    };
+  }
+
+  return {
+    apiKey: readString(map, "TWILIO_ACCOUNT_SID") || readString(map, "SMS_API_KEY"),
+    apiSecret: readString(map, "TWILIO_AUTH_TOKEN") || readString(map, "SMS_API_SECRET"),
+    senderId:
+      readString(map, "TWILIO_PHONE_NUMBER") ||
+      readString(map, "SMS_SENDER_ID", DEFAULT_ADMIN_SETTINGS.sms.senderId),
+  };
+}
+
+function mapSmsSettingsToBackend(sms: AdminSettings["sms"]): Record<string, string> {
+  const base = {
+    SMS_PROVIDER: sms.provider,
+    SMS_DEFAULT_COUNTRY_CODE: sms.defaultCountryCode,
+  };
+
+  if (sms.provider === "fast2sms") {
+    return {
+      ...base,
+      SMS_API_KEY: sms.apiKey,
+      SMS_API_SECRET: "",
+      SMS_SENDER_ID: "",
+      TWILIO_ACCOUNT_SID: "",
+      TWILIO_AUTH_TOKEN: "",
+      TWILIO_PHONE_NUMBER: "",
+    };
+  }
+
+  if (sms.provider === "textlocal") {
+    return {
+      ...base,
+      SMS_API_KEY: sms.apiKey,
+      SMS_API_SECRET: "",
+      SMS_SENDER_ID: sms.senderId,
+      TWILIO_ACCOUNT_SID: "",
+      TWILIO_AUTH_TOKEN: "",
+      TWILIO_PHONE_NUMBER: "",
+    };
+  }
+
+  return {
+    ...base,
+    TWILIO_ACCOUNT_SID: sms.apiKey,
+    TWILIO_AUTH_TOKEN: sms.apiSecret,
+    TWILIO_PHONE_NUMBER: sms.senderId,
+    SMS_API_KEY: sms.apiKey,
+    SMS_API_SECRET: sms.apiSecret,
+    SMS_SENDER_ID: sms.senderId,
+  };
+}
+
 export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSettings {
   const smtpEncryption = readString(map, "SMTP_SECURE", "false") === "true" ? "ssl" : "tls";
+  const smsProvider = readSmsProvider(map);
+  const smsCredentials = readSmsCredentials(map, smsProvider);
 
   const linkedin: LinkedinCredentialsSettings = {
     clientId: readString(map, "LINKEDIN_CLIENT_ID"),
@@ -37,10 +109,10 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
 
   return {
     sms: {
-      provider: "twilio",
-      apiKey: readString(map, "TWILIO_ACCOUNT_SID"),
-      apiSecret: readString(map, "TWILIO_AUTH_TOKEN"),
-      senderId: readString(map, "TWILIO_PHONE_NUMBER", DEFAULT_ADMIN_SETTINGS.sms.senderId),
+      provider: smsProvider,
+      apiKey: smsCredentials.apiKey,
+      apiSecret: smsCredentials.apiSecret,
+      senderId: smsCredentials.senderId,
       defaultCountryCode: readString(
         map,
         "SMS_DEFAULT_COUNTRY_CODE",
@@ -81,10 +153,7 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
 export function mapAdminSettingsToBackend(settings: AdminSettings): Record<string, string> {
   return {
     SMS_ENABLED: "true",
-    TWILIO_ACCOUNT_SID: settings.sms.apiKey,
-    TWILIO_AUTH_TOKEN: settings.sms.apiSecret,
-    TWILIO_PHONE_NUMBER: settings.sms.senderId,
-    SMS_DEFAULT_COUNTRY_CODE: settings.sms.defaultCountryCode,
+    ...mapSmsSettingsToBackend(settings.sms),
     EMAIL_ENABLED: "true",
     EMAIL_FROM_NAME: settings.email.fromName,
     FROM_EMAIL: settings.email.fromEmail,

@@ -11,6 +11,7 @@ import styles from "./RegisterStep.module.css";
 import { login, OtpRequiredError, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 import { savePendingOtpSession } from "@/lib/expertAuth";
+import { EXPERT_SIGNUP_HREF } from "@/lib/joinAsExpertNav";
 
 type LoginStepProps = {
   onContinue: (response: AuthResponse) => void;
@@ -55,7 +56,7 @@ export default function LoginStep({
   onContinue,
   onRequiresOtp,
   onSwitchToRegister,
-  registerHref = "/expert/expert-onboarding/",
+  registerHref = EXPERT_SIGNUP_HREF,
 }: LoginStepProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -197,7 +198,7 @@ export default function LoginStep({
           <ContinueButton
             type="submit"
             label={isSubmitting ? "Logging in..." : "Login"}
-            aria-disabled={!canSubmit || isSubmitting}
+            disabled={!canSubmit || isSubmitting}
             className={`${styles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : styles.registerSubmitBtnInactive}`}
             arrowSize={16}
           />

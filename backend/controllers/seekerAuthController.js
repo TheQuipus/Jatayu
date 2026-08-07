@@ -3,14 +3,19 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { Seeker } from '../models/index.js';
 import dotenv from 'dotenv';
-import { sendOtpEmail } from '../utils/emailService.js';
-import { sendOtpSms, isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
+import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
+import { deliverOtpChannels, handleOtpDeliveryError } from '../utils/otpDelivery.js';
 import { getSetting, getSettingBool } from '../utils/settingsHelper.js';
+import {
+  storeOtpOnModel,
+  readOtpFromModel,
+  clearPendingOtpMetadata,
+  isStoredOtpValid,
+} from '../utils/otpPersistence.js';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
-const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
 const seekerTempOtps = new Map();
 
@@ -27,47 +32,33 @@ async function createOtpCode() {
   return generateOtpCode();
 }
 
-function storeOtp(seekerId, code) {
-  seekerTempOtps.set(seekerId, {
-    code,
-    expiresAt: Date.now() + OTP_EXPIRY_MS,
-  });
+async function storeOtp(seeker, code) {
+  const entry = await storeOtpOnModel(seeker, code);
+  seekerTempOtps.set(seeker.id, entry);
 }
 
 async function deliverOtp(seeker, otp) {
-  const results = await Promise.allSettled([
-    sendOtpEmail({
-      recipientEmail: seeker.email,
-      recipientName: seeker.fullName,
-      otpCode: otp,
-    }),
-    sendOtpSms({
-      recipientPhone: seeker.phone,
-      otpCode: otp,
-    }),
-  ]);
-
-  const successes = results.filter((r) => r.status === 'fulfilled');
-  const failures = results.filter((r) => r.status === 'rejected').map((r) => r.reason);
-
-  failures.forEach((err) => console.warn('[Seeker OTP Delivery Warning]', err.message));
-
-  if (successes.length === 0) {
-    throw failures[0] || new Error('All OTP delivery channels failed.');
-  }
+  await deliverOtpChannels({
+    email: seeker.email,
+    phone: seeker.phone,
+    fullName: seeker.fullName,
+    otpCode: otp,
+    logPrefix: 'Seeker OTP',
+  });
 }
 
 async function issueOtp(seeker) {
-  let otp = await createOtpCode();
-  storeOtp(seeker.id, otp);
+  const otp = await createOtpCode();
+  await storeOtp(seeker, otp);
+  await deliverOtp(seeker, otp);
 
-  try {
-    await deliverOtp(seeker, otp);
-  } catch (deliveryError) {
-    console.warn('[Seeker OTP Delivery Warning]', deliveryError.message);
-    otp = TEMP_SMS_OTP;
-    storeOtp(seeker.id, otp);
-    console.log(`[Seeker OTP Fallback] Using temporary OTP: ${TEMP_SMS_OTP}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`\n======================================================`);
+    console.log(`[OTP Dev] Seeker: ${seeker.fullName}`);
+    console.log(`Email: ${seeker.email}`);
+    console.log(`Phone: ${seeker.phone || '(none)'}`);
+    console.log(`Verification Code: ${otp}`);
+    console.log(`======================================================\n`);
   }
 
   return otp;
@@ -108,12 +99,40 @@ export const register = async (req, res) => {
   try {
     const existingEmail = await Seeker.findOne({ where: { email } });
     if (existingEmail) {
-      return res.status(400).json({ message: 'A seeker with this email already exists' });
+      const hasPassword = Boolean(existingEmail.password);
+      const passwordMatches = hasPassword && (await bcrypt.compare(password, existingEmail.password));
+
+      if (!passwordMatches) {
+        return res.status(409).json({
+          message: 'An account with this email already exists. Please log in to continue.',
+          code: 'EMAIL_EXISTS',
+        });
+      }
+
+      const otp = await issueOtp(existingEmail);
+
+      console.log(`\n======================================================`);
+      console.log(`[Seeker OTP Resent] Existing seeker re-submitted registration: ${existingEmail.fullName}`);
+      console.log(`Email: ${existingEmail.email}`);
+      if (otp === TEMP_SMS_OTP) {
+        console.log(`Temporary OTP (until SMS configured): ${TEMP_SMS_OTP}`);
+      }
+      console.log(`======================================================\n`);
+
+      return res.status(200).json({
+        message: 'Welcome back! Verification code sent to your email and phone.',
+        seekerId: existingEmail.id,
+        email: existingEmail.email,
+        phone: existingEmail.phone,
+      });
     }
 
     const existingPhone = await Seeker.findOne({ where: { phone } });
     if (existingPhone) {
-      return res.status(400).json({ message: 'A seeker with this phone number already exists' });
+      return res.status(409).json({
+        message: 'An account with this phone number already exists. Please log in to continue.',
+        code: 'PHONE_EXISTS',
+      });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -146,6 +165,8 @@ export const register = async (req, res) => {
       phone: seeker.phone,
     });
   } catch (error) {
+    const deliveryResponse = handleOtpDeliveryError(error, res, 'Seeker registration');
+    if (deliveryResponse) return deliveryResponse;
     console.error('Seeker Registration Error:', error);
     return res.status(500).json({ message: 'Server error during registration', error: error.message });
   }
@@ -164,12 +185,14 @@ export const verifyOtp = async (req, res) => {
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
-    const storedOtp = seekerTempOtps.get(seekerId);
+    let storedOtp = seekerTempOtps.get(seekerId);
+    if (!isStoredOtpValid(storedOtp, code)) {
+      storedOtp = readOtpFromModel(seeker);
+    }
+
     const smsConfigured = await isSmsProviderConfigured();
     const isTempOtpValid = !smsConfigured && code === TEMP_SMS_OTP;
-    const isCodeValid =
-      isTempOtpValid ||
-      (storedOtp && storedOtp.code === code && storedOtp.expiresAt > Date.now());
+    const isCodeValid = isTempOtpValid || isStoredOtpValid(storedOtp, code);
 
     if (!isCodeValid) {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
@@ -177,7 +200,10 @@ export const verifyOtp = async (req, res) => {
 
     seeker.isPhoneVerified = true;
     seeker.isEmailVerified = true;
-    seeker.onboardingStep = 'category';
+    if (seeker.onboardingStep === 'otp') {
+      seeker.onboardingStep = 'category';
+    }
+    seeker.onboardingMetadata = clearPendingOtpMetadata(seeker.onboardingMetadata);
     await seeker.save();
 
     seekerTempOtps.delete(seekerId);
@@ -206,10 +232,6 @@ export const resendOtp = async (req, res) => {
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
-    if (seeker.onboardingStep !== 'otp') {
-      return res.status(400).json({ message: 'OTP resend is not available for this account' });
-    }
-
     const otp = await issueOtp(seeker);
 
     console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: ${otp === TEMP_SMS_OTP ? TEMP_SMS_OTP : '(sent via provider)'}`);
@@ -220,6 +242,8 @@ export const resendOtp = async (req, res) => {
       phone: seeker.phone,
     });
   } catch (error) {
+    const deliveryResponse = handleOtpDeliveryError(error, res, 'Seeker resend OTP');
+    if (deliveryResponse) return deliveryResponse;
     console.error('Seeker Resend OTP Error:', error);
     return res.status(500).json({ message: 'Server error during OTP resend', error: error.message });
   }
@@ -247,6 +271,24 @@ export const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, seeker.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (seeker.onboardingStep === 'otp') {
+      try {
+        await issueOtp(seeker);
+      } catch (deliveryError) {
+        const deliveryResponse = handleOtpDeliveryError(deliveryError, res, 'Seeker login');
+        if (deliveryResponse) return deliveryResponse;
+        throw deliveryError;
+      }
+
+      return res.status(403).json({
+        message: 'Please verify your account with the OTP sent to your email and phone.',
+        requiresOtp: true,
+        seekerId: seeker.id,
+        email: seeker.email,
+        phone: seeker.phone,
+      });
     }
 
     return res.status(200).json({

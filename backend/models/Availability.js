@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
+import expertDb from '../config/db/expert.js';
 
-const Availability = sequelize.define('Availability', {
+const Availability = expertDb.define('Availability', {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

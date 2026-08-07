@@ -1,5 +1,10 @@
-import { Op } from 'sequelize';
-import { Expert, Credential, Availability } from '../models/index.js';
+import {
+  findExpertsForAdmin,
+  findExpertForAdmin,
+  findExpertByIdForAdmin,
+  saveExpertForAdmin,
+  Op,
+} from '../services/expertDataService.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 
 const FRONTEND_TO_BACKEND_STATUS = {
@@ -19,6 +24,45 @@ const BACKEND_TO_FRONTEND_STATUS = {
   rejected: 'rejected',
 };
 
+const SIGNUP_COMPLETE_DRAFT_WHERE = {
+  status: 'draft',
+  isEmailVerified: true,
+  isPhoneVerified: true,
+};
+
+function isSignupComplete(expert) {
+  return expert.status !== 'draft' || (expert.isEmailVerified && expert.isPhoneVerified);
+}
+
+function buildListWhere(statusFilter) {
+  if (!statusFilter || statusFilter === 'all') {
+    return {
+      [Op.or]: [{ status: { [Op.ne]: 'draft' } }, SIGNUP_COMPLETE_DRAFT_WHERE],
+    };
+  }
+
+  const backendStatus = FRONTEND_TO_BACKEND_STATUS[statusFilter] || statusFilter;
+
+  if (statusFilter === 'pending') {
+    return {
+      [Op.or]: [{ status: 'pending_review' }, SIGNUP_COMPLETE_DRAFT_WHERE],
+    };
+  }
+
+  return { status: backendStatus };
+}
+
+function buildDetailWhere(id) {
+  return {
+    [Op.and]: [
+      { [Op.or]: [{ id }, { applicationNumber: id }] },
+      {
+        [Op.or]: [{ status: { [Op.ne]: 'draft' } }, SIGNUP_COMPLETE_DRAFT_WHERE],
+      },
+    ],
+  };
+}
+
 function serializeExpert(expert) {
   const json = expert.toJSON();
   return {
@@ -30,18 +74,18 @@ function serializeExpert(expert) {
 async function ensureReviewMetadata(expert) {
   let changed = false;
 
-  if (!expert.applicationNumber && expert.status !== 'draft') {
+  if (!expert.applicationNumber && isSignupComplete(expert)) {
     expert.applicationNumber = await generateApplicationNumber();
     changed = true;
   }
 
-  if (!expert.submittedAt && expert.status !== 'draft') {
-    expert.submittedAt = expert.updatedAt || new Date();
+  if (!expert.submittedAt && isSignupComplete(expert)) {
+    expert.submittedAt = expert.createdAt || expert.updatedAt || new Date();
     changed = true;
   }
 
   if (changed) {
-    await expert.save();
+    await saveExpertForAdmin(expert);
   }
 }
 
@@ -51,25 +95,9 @@ async function ensureReviewMetadata(expert) {
 export const listApplications = async (req, res) => {
   try {
     const { status } = req.query;
-    const where = {
-      status: {
-        [Op.ne]: 'draft',
-      },
-    };
+    const where = buildListWhere(status);
 
-    if (status && status !== 'all') {
-      const backendStatus = FRONTEND_TO_BACKEND_STATUS[status] || status;
-      where.status = backendStatus;
-    }
-
-    const experts = await Expert.findAll({
-      where,
-      include: [
-        { model: Credential, as: 'credentials' },
-        { model: Availability, as: 'availabilities' },
-      ],
-      order: [['submittedAt', 'DESC'], ['updatedAt', 'DESC']],
-    });
+    const experts = await findExpertsForAdmin(where);
 
     for (const expert of experts) {
       await ensureReviewMetadata(expert);
@@ -89,16 +117,7 @@ export const getApplication = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const expert = await Expert.findOne({
-      where: {
-        [Op.or]: [{ id }, { applicationNumber: id }],
-        status: { [Op.ne]: 'draft' },
-      },
-      include: [
-        { model: Credential, as: 'credentials' },
-        { model: Availability, as: 'availabilities' },
-      ],
-    });
+    const expert = await findExpertForAdmin(buildDetailWhere(id));
 
     if (!expert) {
       return res.status(404).json({ message: 'Application not found' });
@@ -132,12 +151,7 @@ export const updateApplicationStatus = async (req, res) => {
   }
 
   try {
-    const expert = await Expert.findOne({
-      where: {
-        [Op.or]: [{ id }, { applicationNumber: id }],
-        status: { [Op.ne]: 'draft' },
-      },
-    });
+    const expert = await findExpertForAdmin(buildDetailWhere(id));
 
     if (!expert) {
       return res.status(404).json({ message: 'Application not found' });
@@ -152,14 +166,9 @@ export const updateApplicationStatus = async (req, res) => {
       expert.onboardingStep = 'success';
     }
 
-    await expert.save();
+    await saveExpertForAdmin(expert);
 
-    const updated = await Expert.findByPk(expert.id, {
-      include: [
-        { model: Credential, as: 'credentials' },
-        { model: Availability, as: 'availabilities' },
-      ],
-    });
+    const updated = await findExpertByIdForAdmin(expert.id);
 
     return res.status(200).json({
       message: 'Application status updated successfully',
@@ -176,12 +185,10 @@ export const updateApplicationStatus = async (req, res) => {
  */
 export const getApplicationStats = async (req, res) => {
   try {
-    const experts = await Expert.findAll({
-      where: {
-        status: { [Op.ne]: 'draft' },
-      },
-      attributes: ['status'],
-    });
+    const experts = await findExpertsForAdmin(
+      { [Op.or]: [{ status: { [Op.ne]: 'draft' } }, SIGNUP_COMPLETE_DRAFT_WHERE] },
+      { attributes: ['status'] },
+    );
 
     const counts = {
       all: experts.length,

@@ -32,6 +32,14 @@ import {
   isSeekerOnboardingStep,
   type SeekerOnboardingStepKey,
 } from "@/components/seeker/onboarding/seekerOnboardingSteps";
+import type { AuthResponse } from "@/lib/api";
+import {
+  clearPendingSeekerOtpSession,
+  clearSeekerAuthOnly,
+  persistSeekerAuthSession,
+  readPendingSeekerOtpSession,
+  savePendingSeekerOtpSession,
+} from "@/lib/seekerAuth";
 
 const categories = [
   { id: "career-work", label: "Career & Work", icon: Briefcase },
@@ -258,11 +266,21 @@ function SeekerOnboardingPageContent() {
   const [registeredPhone, setRegisteredPhone] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registeredName, setRegisteredName] = useState("");
+  const [seekerId, setSeekerId] = useState("");
 
   useEffect(() => {
     const auth = new URLSearchParams(window.location.search).get("auth");
     if (auth === "login") {
       queueMicrotask(() => setStep("login"));
+    }
+
+    const pendingOtp = readPendingSeekerOtpSession();
+    if (pendingOtp) {
+      setSeekerId(pendingOtp.seekerId);
+      setRegisteredEmail(pendingOtp.email);
+      setRegisteredPhone(pendingOtp.phone);
+      if (pendingOtp.fullName) setRegisteredName(pendingOtp.fullName);
+      setStep("otp");
     }
   }, []);
 
@@ -371,26 +389,86 @@ function SeekerOnboardingPageContent() {
   };
 
   const handleRegisterComplete = ({
+    seekerId: nextSeekerId,
     phone,
     fullName,
     email,
   }: {
+    seekerId: string;
     phone: string;
     fullName: string;
     email: string;
   }) => {
+    savePendingSeekerOtpSession({
+      seekerId: nextSeekerId,
+      phone,
+      email,
+      fullName,
+    });
+    setSeekerId(nextSeekerId);
     setRegisteredPhone(phone);
     setRegisteredEmail(email);
     setRegisteredName(fullName);
     setStep("otp");
+    clearSeekerAuthOnly();
   };
 
-  const handleLoginComplete = ({ email: _email }: { email: string }) => {
+  const handleLoginRequiresOtp = ({
+    seekerId: nextSeekerId,
+    email,
+    phone,
+    fullName,
+  }: {
+    seekerId: string;
+    email: string;
+    phone: string;
+    fullName?: string;
+  }) => {
+    savePendingSeekerOtpSession({
+      seekerId: nextSeekerId,
+      email,
+      phone,
+      fullName,
+    });
+    setSeekerId(nextSeekerId);
+    setRegisteredEmail(email);
+    setRegisteredPhone(phone);
+    if (fullName) setRegisteredName(fullName);
+    setStep("otp");
+    clearSeekerAuthOnly();
+  };
+
+  const handleAuthSuccess = (response: AuthResponse) => {
+    persistSeekerAuthSession(response);
+    if (response.user.fullName) {
+      setRegisteredName(response.user.fullName);
+    }
+
+    const resumeSteps: OnboardingStep[] = [
+      "category",
+      "needs",
+      "format",
+      "budget",
+      "personalisation",
+      "review",
+    ];
+    const resumeStep = response.user.onboardingStep as OnboardingStep;
+    if (resumeSteps.includes(resumeStep)) {
+      setStep(resumeStep);
+      return;
+    }
+
     window.location.assign("/seeker/dashboard/");
   };
 
-  const handleOtpComplete = () => {
-    setStep(selectedCategory ? "topics" : "category");
+  const handleLoginComplete = (response: AuthResponse) => {
+    clearPendingSeekerOtpSession();
+    handleAuthSuccess(response);
+  };
+
+  const handleOtpComplete = (response: AuthResponse) => {
+    clearPendingSeekerOtpSession();
+    handleAuthSuccess(response);
   };
 
   const handleBackToRegister = () => {
@@ -643,18 +721,29 @@ function SeekerOnboardingPageContent() {
       {step === "login" && (
         <LoginStep
           onContinue={handleLoginComplete}
+          onRequiresOtp={handleLoginRequiresOtp}
           onSwitchToRegister={handleSwitchToRegister}
         />
       )}
 
-      {step === "otp" && (
+      {step === "otp" && seekerId ? (
         <OtpStep
+          seekerId={seekerId}
           phone={registeredPhone}
           email={registeredEmail}
           onBack={handleBackToRegister}
           onContinue={handleOtpComplete}
         />
-      )}
+      ) : null}
+
+      {step === "otp" && !seekerId ? (
+        <section className={styles.pageContainer}>
+          <p>Verification session expired. Please register again to receive a new code.</p>
+          <button type="button" onClick={handleBackToRegister}>
+            Back to Register
+          </button>
+        </section>
+      ) : null}
 
       {step === "success" && (
         <SuccessStep

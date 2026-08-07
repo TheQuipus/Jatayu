@@ -13,6 +13,8 @@ export type ExpertOnboardingStep =
   | "register"
   | "login"
   | "otp"
+  | "signup-complete"
+  | "account-status"
   | "category"
   | "skills"
   | "experience"

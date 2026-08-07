@@ -1,7 +1,10 @@
 import { Setting } from '../models/index.js';
 
 const KEY_ALIASES = {
-  // Twilio
+  // SMS (provider-agnostic keys with Twilio fallbacks)
+  SMS_API_KEY: ['TWILIO_ACCOUNT_SID'],
+  SMS_API_SECRET: ['TWILIO_AUTH_TOKEN'],
+  SMS_SENDER_ID: ['TWILIO_PHONE_NUMBER'],
   TWILIO_ACCOUNT_SID: ['SMS_API_KEY'],
   TWILIO_AUTH_TOKEN: ['SMS_API_SECRET'],
   TWILIO_PHONE_NUMBER: ['SMS_SENDER_ID'],

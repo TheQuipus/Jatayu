@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
+import seekerDb from '../config/db/seeker.js';
 
-const Seeker = sequelize.define('Seeker', {
+const Seeker = seekerDb.define('Seeker', {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

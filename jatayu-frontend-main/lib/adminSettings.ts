@@ -1,4 +1,4 @@
-export type SmsProvider = "twilio" | "msg91" | "textlocal";
+export type SmsProvider = "twilio" | "fast2sms" | "msg91" | "textlocal";
 
 export type SmtpEncryption = "tls" | "ssl" | "none";
 
@@ -131,6 +131,7 @@ export function parseSettingsSection(value: string | undefined): SettingsSection
 }
 
 export const SMS_PROVIDER_OPTIONS: { value: SmsProvider; label: string }[] = [
+  { value: "fast2sms", label: "Fast2SMS (recommended for India dev)" },
   { value: "twilio", label: "Twilio" },
   { value: "msg91", label: "MSG91" },
   { value: "textlocal", label: "Textlocal" },
@@ -172,7 +173,7 @@ export const ADMIN_SETTINGS_UPDATED_EVENT = "admin-settings-updated";
 
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   sms: {
-    provider: "msg91",
+    provider: "fast2sms",
     apiKey: "",
     apiSecret: "",
     senderId: "JATAYU",

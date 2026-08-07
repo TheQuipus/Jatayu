@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import sequelize from '../config/db.js';
+import expertDb from '../config/db/expert.js';
 
 dotenv.config();
 
@@ -11,7 +11,7 @@ const COLUMN_DEFINITIONS = [
 ];
 
 async function columnExists(tableName, columnName) {
-  const [rows] = await sequelize.query(
+  const [rows] = await expertDb.query(
     `SELECT COUNT(*) AS count
      FROM INFORMATION_SCHEMA.COLUMNS
      WHERE TABLE_SCHEMA = DATABASE()
@@ -24,7 +24,7 @@ async function columnExists(tableName, columnName) {
 }
 
 async function migrate() {
-  await sequelize.authenticate();
+  await expertDb.authenticate();
   console.log('Connected to database.');
 
   for (const [columnName, definition] of COLUMN_DEFINITIONS) {
@@ -34,16 +34,16 @@ async function migrate() {
       continue;
     }
 
-    await sequelize.query(`ALTER TABLE \`Experts\` ADD COLUMN \`${columnName}\` ${definition}`);
+    await expertDb.query(`ALTER TABLE \`Experts\` ADD COLUMN \`${columnName}\` ${definition}`);
     console.log(`Added column Experts.${columnName}.`);
   }
 
   console.log('Migration complete.');
-  await sequelize.close();
+  await expertDb.close();
 }
 
 migrate().catch(async (error) => {
   console.error('Migration failed:', error);
-  await sequelize.close();
+  await expertDb.close();
   process.exit(1);
 });

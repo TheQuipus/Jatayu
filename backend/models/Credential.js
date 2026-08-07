@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
+import expertDb from '../config/db/expert.js';
 
-const Credential = sequelize.define('Credential', {
+const Credential = expertDb.define('Credential', {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

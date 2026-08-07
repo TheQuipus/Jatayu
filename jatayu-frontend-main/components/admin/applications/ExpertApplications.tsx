@@ -83,6 +83,16 @@ const STATUS_LABEL: Record<ApplicationStatus, string> = {
   rejected: "Rejected",
 };
 
+const ONBOARDING_STEP_LABEL: Record<string, string> = {
+  otp: "Verifying",
+  category: "Category",
+  credentials: "Credentials",
+  experience: "Experience",
+  preferences: "Preferences",
+  review: "Review",
+  success: "Submitted",
+};
+
 const STATUS_FILTER_OPTIONS = (
   Object.entries(STATUS_LABEL) as [ApplicationStatus, string][]
 ).map(([value, label]) => ({ value, label }));
@@ -433,6 +443,9 @@ export default function ExpertApplications() {
                             <div className={styles.applicantName}>{app.name}</div>
                             <div className={styles.applicantMeta}>
                               {app.city} · {app.appId}
+                              {app.onboardingStep && app.onboardingStep !== "success" && (
+                                <> · {ONBOARDING_STEP_LABEL[app.onboardingStep] || app.onboardingStep}</>
+                              )}
                             </div>
                           </div>
                         </div>

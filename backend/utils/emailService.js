@@ -1,22 +1,21 @@
+import dns from 'dns';
 import nodemailer from 'nodemailer';
-import { resolve4 } from 'dns/promises';
 import { getSetting, getSettingBool } from './settingsHelper.js';
 
-const OTP_EXPIRY_MINUTES = 10;
-
-/**
- * Resolve a hostname to its IPv4 address.
- * Falls back to the original hostname if resolution fails.
- */
-async function resolveHostIPv4(hostname) {
-  try {
-    const addresses = await resolve4(hostname);
-    if (addresses && addresses.length > 0) return addresses[0];
-  } catch (_) {
-    // Silently fallback
-  }
-  return hostname;
+function ipv4Lookup(hostname, options, callback) {
+  dns.lookup(hostname, { family: 4, all: false }, callback);
 }
+
+function resolveSmtpIpv4(hostname) {
+  return new Promise((resolve, reject) => {
+    dns.lookup(hostname, { family: 4, all: false }, (err, address) => {
+      if (err) reject(err);
+      else resolve(address);
+    });
+  });
+}
+
+const OTP_EXPIRY_MINUTES = 10;
 
 function hasPlaceholderCredential(value) {
   if (!value) return true;
@@ -71,38 +70,80 @@ async function sendViaBrevo({ recipientEmail, recipientName, otpCode, fromEmail,
   console.log(`[Email] OTP sent via Brevo to ${recipientEmail}`);
 }
 
+function buildSmtpTransport({ smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure, tlsServername }) {
+  const port = Number(smtpPort);
+  const secure = smtpSecure === 'true' || port === 465;
+
+  return nodemailer.createTransport({
+    host: smtpHost,
+    port,
+    secure,
+    auth: { user: smtpUser, pass: smtpPass },
+    connectionTimeout: 20000,
+    socketTimeout: 20000,
+    greetingTimeout: 10000,
+    lookup: ipv4Lookup,
+    tls: { servername: tlsServername || smtpHost },
+    ...(port === 587 && !secure ? { requireTLS: true } : {}),
+  });
+}
+
 /**
  * Send OTP via SMTP (nodemailer).
+ * Tries configured port first, then falls back to 465/SSL when 587 is blocked.
  */
-async function sendViaSmtp({ recipientEmail, recipientName, otpCode, fromEmail, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure }) {
-  const resolvedHost = await resolveHostIPv4(smtpHost);
-  console.log(`[Email] Connecting to SMTP: ${smtpHost} → ${resolvedHost}:${smtpPort}`);
+async function sendViaSmtp({ recipientEmail, recipientName, otpCode, fromEmail, fromName, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure }) {
+  const smtpAddress = await resolveSmtpIpv4(smtpHost);
+  const attempts = [
+    { port: smtpPort, secure: smtpSecure },
+    { port: '465', secure: 'true' },
+    { port: '587', secure: 'false' },
+  ];
 
-  const client = nodemailer.createTransport({
-    host: resolvedHost,
-    port: Number(smtpPort),
-    secure: smtpSecure === 'true',
-    auth: { user: smtpUser, pass: smtpPass },
-    connectionTimeout: 8000,
-    socketTimeout: 8000,
-    greetingTimeout: 5000,
-  });
+  const seen = new Set();
+  let lastError;
 
-  await client.sendMail({
-    from: fromEmail,
-    to: recipientEmail,
-    subject: 'Your Jatayu verification code',
-    html: buildOtpHtml(recipientName, otpCode),
-    text: `Your Jatayu verification code is ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
-  });
+  for (const attempt of attempts) {
+    const key = `${attempt.port}-${attempt.secure}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
 
-  console.log(`[Email] OTP sent via SMTP to ${recipientEmail}`);
+    console.log(`[Email] Connecting to SMTP: ${smtpHost} (${smtpAddress}):${attempt.port} (secure=${attempt.secure})`);
+
+    try {
+      const client = buildSmtpTransport({
+        smtpHost: smtpAddress,
+        tlsServername: smtpHost,
+        smtpPort: attempt.port,
+        smtpUser,
+        smtpPass,
+        smtpSecure: attempt.secure,
+      });
+
+      await client.sendMail({
+        from: fromName ? `"${fromName}" <${fromEmail}>` : fromEmail,
+        to: recipientEmail,
+        subject: 'Your Jatayu verification code',
+        html: buildOtpHtml(recipientName, otpCode),
+        text: `Your Jatayu verification code is ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+      });
+
+      console.log(`[Email] OTP sent via SMTP to ${recipientEmail}`);
+      return;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[Email] SMTP attempt failed (${smtpHost}:${attempt.port}):`, err.message);
+    }
+  }
+
+  throw lastError || new Error('All SMTP delivery attempts failed.');
 }
 
 export async function sendOtpEmail({ recipientEmail, recipientName, otpCode }) {
   const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
   const emailProvider = await getSetting('EMAIL_PROVIDER', 'smtp');
   const fromEmail = await getSetting('FROM_EMAIL', 'noreply@jatayu.com');
+  const fromName = await getSetting('EMAIL_FROM_NAME', 'Jatayu');
   const brevoApiKey = await getSetting('BREVO_API_KEY');
 
   // --- Brevo API path ---
@@ -138,5 +179,16 @@ export async function sendOtpEmail({ recipientEmail, recipientName, otpCode }) {
     throw new Error('Email is not configured. Set SMTP credentials or configure Brevo API key in admin settings.');
   }
 
-  return sendViaSmtp({ recipientEmail, recipientName, otpCode, fromEmail, smtpHost, smtpPort, smtpUser, smtpPass, smtpSecure });
+  return sendViaSmtp({
+    recipientEmail,
+    recipientName,
+    otpCode,
+    fromEmail,
+    fromName,
+    smtpHost,
+    smtpPort,
+    smtpUser,
+    smtpPass,
+    smtpSecure,
+  });
 }

@@ -9,7 +9,7 @@ import path from 'path';
 import http from 'http';
 import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
-import { sequelize } from './models/index.js';
+import { connectAllDatabases, syncAllDatabases } from './config/db/index.js';
 import authRoutes from './routes/authRoutes.js';
 import expertRoutes from './routes/expertRoutes.js';
 import seekerAuthRoutes from './routes/seekerAuthRoutes.js';
@@ -72,14 +72,11 @@ app.get('/health/ws', (req, res) => {
 // Database Sync and Server Startup
 const startServer = async () => {
   try {
-    // Verify database connection
-    await sequelize.authenticate();
-    console.log('MySQL Database connection established successfully.');
+    await connectAllDatabases();
 
     // Sync schema without ALTER on every dev restart to avoid MySQL deadlocks.
     const syncOptions = process.env.DB_SYNC_ALTER === 'true' ? { alter: true } : {};
-    await sequelize.sync(syncOptions);
-    console.log('Database tables synchronized successfully.');
+    await syncAllDatabases(syncOptions);
 
     await seedDefaultAdmin();
 

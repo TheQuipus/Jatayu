@@ -33,6 +33,7 @@ export type BackendExpertApplication = {
   onboardingMetadata?: Record<string, unknown> | null;
   status?: string | null;
   frontendStatus?: ApplicationStatus;
+  onboardingStep?: string | null;
   submittedAt?: string | null;
   updatedAt?: string | null;
   reviewerNote?: string | null;
@@ -193,6 +194,7 @@ export function mapBackendExpertToApplication(
         ? metadata.termsAcceptedAt
         : expert.submittedAt || expert.updatedAt || new Date().toISOString(),
     reviewerNote: expert.reviewerNote || undefined,
+    onboardingStep: expert.onboardingStep || undefined,
   };
 }
 

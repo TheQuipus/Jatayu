@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
+import adminDb from '../config/db/admin.js';
 
-const Setting = sequelize.define('Setting', {
+const Setting = adminDb.define('Setting', {
   key: {
     type: DataTypes.STRING,
     primaryKey: true

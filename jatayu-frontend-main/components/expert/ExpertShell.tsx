@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
 import { ExpertShellContext } from "@/components/expert/ExpertShellContext";
+import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import {
   EXPERT_PROFILE,
   EXPERT_DASHBOARD_HREF,
@@ -237,7 +238,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
               type="button"
               onClick={() => {
                 clearAuthSession();
-                window.location.assign("/login?role=expert");
+                window.location.assign(EXPERT_LOGIN_HREF);
               }}
               className={styles.userMenuBtn}
               aria-label="Logout"

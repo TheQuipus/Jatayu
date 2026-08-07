@@ -41,6 +41,21 @@ export function removeExpertId(): void {
   localStorage.removeItem("jatayu_expert_id");
 }
 
+export function getSeekerId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("jatayu_seeker_id");
+}
+
+export function setSeekerId(id: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("jatayu_seeker_id", id);
+}
+
+export function removeSeekerId(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("jatayu_seeker_id");
+}
+
 export function getAdminToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("jatayu_admin_token");
@@ -145,6 +160,7 @@ export interface AuthUser {
   phone?: string;
   onboardingStep: string;
   status: string;
+  role?: string;
 }
 
 export interface AuthResponse {
@@ -496,6 +512,106 @@ export async function updateAdminApplicationStatus(
 
 export async function getAdminApplicationStats(): Promise<Record<string, number>> {
   return adminApiFetch<Record<string, number>>("/api/admin/applications/stats", {
+    method: "GET",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Seeker Auth API
+// ---------------------------------------------------------------------------
+
+export interface SeekerRegisterResponse {
+  message: string;
+  seekerId: string;
+  email: string;
+  phone: string;
+}
+
+export async function registerSeeker(payload: RegisterPayload): Promise<SeekerRegisterResponse> {
+  return apiFetch<SeekerRegisterResponse>("/api/seeker-auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface VerifySeekerOtpPayload {
+  seekerId: string;
+  code: string;
+}
+
+export async function verifySeekerOtp(payload: VerifySeekerOtpPayload): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/api/seeker-auth/verify-otp", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface ResendSeekerOtpPayload {
+  seekerId: string;
+}
+
+export async function resendSeekerOtp(payload: ResendSeekerOtpPayload): Promise<ResendOtpResponse> {
+  return apiFetch<ResendOtpResponse>("/api/seeker-auth/resend-otp", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export class SeekerOtpRequiredError extends Error {
+  seekerId: string;
+  email: string;
+  phone: string;
+
+  constructor(payload: {
+    message: string;
+    seekerId: string;
+    email: string;
+    phone: string;
+  }) {
+    super(payload.message);
+    this.name = "SeekerOtpRequiredError";
+    this.seekerId = payload.seekerId;
+    this.email = payload.email;
+    this.phone = payload.phone || "";
+  }
+}
+
+export async function seekerLogin(payload: LoginPayload): Promise<AuthResponse> {
+  const response = await fetch(`${BASE_URL}/api/seeker-auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (response.status === 403 && (data as { requiresOtp?: boolean }).requiresOtp) {
+    const otpData = data as {
+      message: string;
+      seekerId: string;
+      email: string;
+      phone?: string;
+    };
+    throw new SeekerOtpRequiredError({
+      message: otpData.message,
+      seekerId: otpData.seekerId,
+      email: otpData.email,
+      phone: otpData.phone || "",
+    });
+  }
+
+  if (!response.ok) {
+    const message =
+      (data as { message?: string }).message ||
+      `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  return data as AuthResponse;
+}
+
+export async function getSeekerPublicConfig(): Promise<PublicConfig> {
+  return apiFetch<PublicConfig>("/api/seeker-auth/config", {
     method: "GET",
   });
 }

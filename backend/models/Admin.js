@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
+import adminDb from '../config/db/admin.js';
 
-const Admin = sequelize.define('Admin', {
+const Admin = adminDb.define('Admin', {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

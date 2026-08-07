@@ -17,6 +17,8 @@ import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
 import { register as registerExpert, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
+import { isDuplicateRegistrationMessage } from "@/lib/expertOnboardingStatus";
+import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import {
   buildPasswordContext,
   getPasswordHint,
@@ -103,7 +105,7 @@ export default function RegisterStep({
   onContinue,
   onOAuthSuccess,
   onSwitchToLogin,
-  loginHref = "/login?role=expert",
+  loginHref = EXPERT_LOGIN_HREF,
 }: RegisterStepProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -164,7 +166,14 @@ export default function RegisterStep({
         email: normalizeEmail(email),
       });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Registration failed.");
+      const message = error instanceof Error ? error.message : "Registration failed.";
+      if (isDuplicateRegistrationMessage(message)) {
+        setSubmitError(
+          `${message} Please log in to continue your onboarding or check your application status.`,
+        );
+      } else {
+        setSubmitError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -355,9 +364,23 @@ export default function RegisterStep({
           </div>
 
           {submitError ? (
-            <p className={register.fieldErrorBelow} role="alert">
-              {submitError}
-            </p>
+            <div role="alert">
+              <p className={register.fieldErrorBelow}>{submitError}</p>
+              {isDuplicateRegistrationMessage(submitError) ? (
+                <p className={register.authToggle}>
+                  Already registered?{" "}
+                  {onSwitchToLogin ? (
+                    <button type="button" className={register.authToggleBtn} onClick={onSwitchToLogin}>
+                      Log in to your account
+                    </button>
+                  ) : (
+                    <Link href={loginHref} className={register.authToggleBtn}>
+                      Log in to your account
+                    </Link>
+                  )}
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           <ContinueButton

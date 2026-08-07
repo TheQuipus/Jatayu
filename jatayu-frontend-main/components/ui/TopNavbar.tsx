@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./TopNavbar.module.css";
+import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 
 function isOnboardingPath(pathname: string | null) {
   return (
@@ -129,7 +130,7 @@ function isExpertAppPath(pathname: string | null) {
             </div>
 
             <div className={styles.loginLinks}>
-              <Link href="/login/?role=expert" onClick={() => setIsOpen(false)} className={styles.loginLink}>
+              <Link href={EXPERT_LOGIN_HREF} onClick={() => setIsOpen(false)} className={styles.loginLink}>
                 Expert Login
               </Link>
               <Link href="/login/?role=user" onClick={() => setIsOpen(false)} className={styles.loginLink}>

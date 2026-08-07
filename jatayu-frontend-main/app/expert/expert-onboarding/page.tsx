@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Code,
   Palette,
@@ -26,6 +26,8 @@ import PreferencesStep from "@/components/expert/onboarding/PreferencesStep";
 import AudienceStep from "@/components/expert/onboarding/AudienceStep";
 import AvailabilityStep from "@/components/expert/onboarding/AvailabilityStep";
 import ReviewStep from "@/components/expert/onboarding/ReviewStep";
+import SignupCompleteStep from "@/components/expert/onboarding/SignupCompleteStep";
+import AccountStatusStep from "@/components/expert/onboarding/AccountStatusStep";
 import SuccessStep from "@/components/expert/onboarding/SuccessStep";
 import { EXPERT_ONBOARDING_STEPS } from "@/components/expert/onboarding/OnboardingProgressBar";
 import {
@@ -41,9 +43,11 @@ import {
   submitOnboarding,
   updateProfile,
   type AuthResponse,
+  type AuthUser,
 } from "@/lib/api";
 import {
   buildCredentialsPayload,
+  clearAuthSession,
   clearExpertAuthOnly,
   clearPendingOtpSession,
   getPostAuthDestination,
@@ -51,9 +55,12 @@ import {
   isNavigationHref,
   persistAuthSession,
   readPendingOtpSession,
+  resolveOnboardingStep,
   savePendingOtpSession,
   type ExpertOnboardingStep,
 } from "@/lib/expertAuth";
+import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expertOnboardingStatus";
+import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import {
   deriveLocationFromTimezone,
   persistMediaUrl,
@@ -176,6 +183,7 @@ const skillsByCategory: Record<string, string[]> = {
 type OnboardingStep = ExpertOnboardingStep;
 
 function ExpertOnboardingPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<OnboardingStep>("register");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -215,7 +223,11 @@ function ExpertOnboardingPageContent() {
   const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[]>([]);
   const [acceptCustomRequests, setAcceptCustomRequests] = useState(false);
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<ExpertAccountStatus | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const otpFlowLockRef = useRef(false);
+  const signupFlowRef = useRef(false);
+  const loginIntentRef = useRef(false);
 
   function buildPortfolioLinks(linkedinUrl: string, portfolioUrl: string): PortfolioLink[] {
     const links: PortfolioLink[] = [];
@@ -262,6 +274,7 @@ function ExpertOnboardingPageContent() {
   );
 
   useEffect(() => {
+    const flow = searchParams.get("flow");
     const resume = searchParams.get("resume");
     const auth = searchParams.get("auth");
     const nameParam = searchParams.get("name");
@@ -270,35 +283,45 @@ function ExpertOnboardingPageContent() {
       setRegisteredName(decodeURIComponent(nameParam));
     }
 
-    if (resume === "category") {
-      setStep("category");
-      setRegisteredName((prev) => prev || "Expert");
-    } else if (resume === "otp") {
-      const pending = readPendingOtpSession();
-      if (pending) {
-        otpFlowLockRef.current = true;
-        setExpertId(pending.expertId);
-        setRegisteredEmail(pending.email);
-        setRegisteredPhone(pending.phone);
-        if (pending.fullName) setRegisteredName(pending.fullName);
-      }
-      setStep("otp");
-    } else if (auth === "login") {
+    if (flow === "signup") {
+      signupFlowRef.current = true;
+      clearAuthSession();
+      setStep("register");
+      return;
+    }
+
+    if (auth === "login") {
+      loginIntentRef.current = true;
+      signupFlowRef.current = false;
+      clearAuthSession();
       setStep("login");
-    } else {
+      return;
+    }
+
+    if (resume === "otp") {
       const pending = readPendingOtpSession();
       if (pending) {
         otpFlowLockRef.current = true;
+        signupFlowRef.current = true;
         setExpertId(pending.expertId);
         setRegisteredEmail(pending.email);
         setRegisteredPhone(pending.phone);
         if (pending.fullName) setRegisteredName(pending.fullName);
         setStep("otp");
       }
+      return;
+    }
+
+    if (resume === "category" && isAuthenticated()) {
+      setStep("category");
+      setRegisteredName((prev) => prev || "Expert");
+      return;
     }
   }, [searchParams]);
 
   useEffect(() => {
+    if (loginIntentRef.current) return;
+    if (signupFlowRef.current) return;
     if (readPendingOtpSession()) return;
     if (otpFlowLockRef.current) return;
     if (!isAuthenticated()) return;
@@ -311,13 +334,7 @@ function ExpertOnboardingPageContent() {
         if (otpFlowLockRef.current) return;
         if (readPendingOtpSession()) return;
 
-        const user = profile as {
-          id?: string;
-          fullName?: string;
-          email?: string;
-          phone?: string;
-          onboardingStep?: string;
-          status?: string;
+        const user = profile as AuthUser & {
           category?: string;
           skills?: string[];
           experienceLevel?: string;
@@ -358,24 +375,17 @@ function ExpertOnboardingPageContent() {
           setAcceptCustomRequests(metadata.acceptCustomRequests);
         }
 
-        const destination = getPostAuthDestination({
-          id: user.id || "",
-          email: user.email || "",
-          fullName: user.fullName || "",
-          phone: user.phone,
-          onboardingStep: user.onboardingStep || "category",
-          status: user.status || "draft",
-        });
-
-        if (isNavigationHref(destination)) {
-          window.location.assign(destination);
-          return;
-        }
-
-        setStep(destination);
+        setAuthUser(user);
+        setAccountStatus(buildExpertAccountStatus(user));
+        setStep("account-status");
       })
       .catch(() => {
-        // Ignore resume errors and keep the default register flow.
+        // A stored token that fails to resolve means the session expired or is
+        // invalid — send the user back to login (not register), since they
+        // previously had an account. Re-entering the same credentials on the
+        // register form would otherwise hit the duplicate-account block.
+        clearAuthSession();
+        setStep("login");
       });
 
     return () => {
@@ -383,20 +393,43 @@ function ExpertOnboardingPageContent() {
     };
   }, []);
 
-  const handleAuthSuccess = (response: AuthResponse) => {
+  const handleAuthSuccess = (response: AuthResponse, options?: { freshSignup?: boolean }) => {
     const user = persistAuthSession(response);
     setExpertId(user.id);
     setRegisteredName(user.fullName);
     setRegisteredEmail(user.email);
     if (user.phone) setRegisteredPhone(user.phone);
+    setAuthUser(user);
+    setAccountStatus(buildExpertAccountStatus(user));
 
-    const destination = getPostAuthDestination(user);
+    if (options?.freshSignup) {
+      signupFlowRef.current = false;
+      setStep("signup-complete");
+      return;
+    }
+
+    setStep("account-status");
+  };
+
+  const handleContinueFromSignupComplete = () => {
+    setStep("category");
+  };
+
+  const handleContinueFromAccountStatus = () => {
+    if (!authUser || !accountStatus) return;
+
+    const destination = getPostAuthDestination(authUser);
     if (isNavigationHref(destination)) {
       window.location.assign(destination);
       return;
     }
 
-    setStep(destination);
+    if (accountStatus.phase === "submitted" || accountStatus.phase === "rejected") {
+      setStep("success");
+      return;
+    }
+
+    setStep(resolveOnboardingStep(authUser));
   };
 
   const handleRegisterComplete = ({
@@ -410,6 +443,7 @@ function ExpertOnboardingPageContent() {
     fullName: string;
     email: string;
   }) => {
+    signupFlowRef.current = true;
     otpFlowLockRef.current = true;
     savePendingOtpSession({
       expertId: nextExpertId,
@@ -453,21 +487,65 @@ function ExpertOnboardingPageContent() {
 
   const handleLoginComplete = (response: AuthResponse) => {
     clearPendingOtpSession();
+    otpFlowLockRef.current = false;
+    signupFlowRef.current = false;
+    loginIntentRef.current = false;
     handleAuthSuccess(response);
   };
 
   const handleOtpComplete = (response: AuthResponse) => {
     otpFlowLockRef.current = false;
     clearPendingOtpSession();
-    handleAuthSuccess(response);
+
+    const user = persistAuthSession(response);
+    setExpertId(user.id);
+    setRegisteredName(user.fullName);
+    setRegisteredEmail(user.email);
+    if (user.phone) setRegisteredPhone(user.phone);
+    setAuthUser(user);
+    setAccountStatus(buildExpertAccountStatus(user));
+
+    const isFreshSignup = user.onboardingStep === "category";
+    if (isFreshSignup) {
+      signupFlowRef.current = false;
+      setStep("signup-complete");
+      return;
+    }
+
+    const destination = getPostAuthDestination(user);
+    if (isNavigationHref(destination)) {
+      window.location.assign(destination);
+      return;
+    }
+
+    const status = buildExpertAccountStatus(user);
+    if (status.phase === "submitted" || status.phase === "rejected") {
+      setStep("success");
+      return;
+    }
+
+    setStep(resolveOnboardingStep(user));
   };
 
   const handleBackToRegister = () => {
+    signupFlowRef.current = true;
     setStep("register");
   };
 
+  const handleSwitchToLogin = () => {
+    loginIntentRef.current = true;
+    signupFlowRef.current = false;
+    clearAuthSession();
+    setStep("login");
+    router.replace(EXPERT_LOGIN_HREF);
+  };
+
   const handleSwitchToRegister = () => {
+    loginIntentRef.current = false;
+    signupFlowRef.current = true;
+    clearAuthSession();
     setStep("register");
+    router.replace("/expert/expert-onboarding/?flow=signup");
   };
 
   const saveProfileStep = async (
@@ -802,7 +880,8 @@ function ExpertOnboardingPageContent() {
       {step === "register" && (
         <RegisterStep
           onContinue={handleRegisterComplete}
-          onOAuthSuccess={handleAuthSuccess}
+          onOAuthSuccess={(response) => handleAuthSuccess(response)}
+          onSwitchToLogin={handleSwitchToLogin}
         />
       )}
 
@@ -831,6 +910,21 @@ function ExpertOnboardingPageContent() {
             Back to Register
           </button>
         </section>
+      ) : null}
+
+      {step === "signup-complete" && (
+        <SignupCompleteStep
+          userName={registeredName}
+          onContinue={handleContinueFromSignupComplete}
+        />
+      )}
+
+      {step === "account-status" && accountStatus ? (
+        <AccountStatusStep
+          userName={registeredName}
+          accountStatus={accountStatus}
+          onContinue={handleContinueFromAccountStatus}
+        />
       ) : null}
 
       {profileError ? (
