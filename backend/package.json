@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "migrate:seeker-credits": "node scripts/migrateSeekerCredits.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.2",

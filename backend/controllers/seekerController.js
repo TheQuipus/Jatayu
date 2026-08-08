@@ -1,4 +1,36 @@
-import { Seeker } from '../models/index.js';
+import { Seeker, SeekerCreditTransaction, seekerDb } from '../models/index.js';
+
+const ONBOARDING_STEPS = new Set([
+  'category',
+  'needs',
+  'format',
+  'budget',
+  'personalisation',
+  'review',
+]);
+
+const ARRAY_FIELDS = ['topics', 'selectedNeedChips', 'selectedFormats', 'selectedLanguages'];
+const STRING_FIELDS = [
+  'category',
+  'needsText',
+  'selectedBudget',
+  'location',
+  'additionalContext',
+  'profilePhotoSrc',
+];
+
+const NEXT_STEP_TO_COMPLETED_STEP = {
+  needs: 'category',
+  format: 'needs',
+  budget: 'format',
+  personalisation: 'budget',
+  review: 'personalisation',
+};
+
+function getStepCreditAmount() {
+  const configuredAmount = Number.parseInt(process.env.SEEKER_ONBOARDING_STEP_CREDITS || '', 10);
+  return Number.isSafeInteger(configuredAmount) && configuredAmount >= 0 ? configuredAmount : 5;
+}
 
 function parseJsonField(value) {
   if (value === undefined || value === null) return undefined;
@@ -13,6 +45,152 @@ function parseJsonField(value) {
   return value;
 }
 
+function normalizeString(value) {
+  return typeof value === 'string' ? value.trim() : value;
+}
+
+function normalizeStringArray(value) {
+  const parsed = parseJsonField(value);
+  if (!Array.isArray(parsed)) return parsed;
+  return [...new Set(parsed.map(normalizeString).filter(Boolean))];
+}
+
+function parseOnboardingPayload(body = {}) {
+  const source = {
+    ...body,
+    category: body.category ?? body.selectedCategory,
+    topics: body.topics ?? body.selectedTopics,
+  };
+  const payload = {};
+
+  for (const field of STRING_FIELDS) {
+    if (source[field] !== undefined) payload[field] = normalizeString(source[field]);
+  }
+
+  for (const field of ARRAY_FIELDS) {
+    if (source[field] !== undefined) payload[field] = normalizeStringArray(source[field]);
+  }
+
+  if (source.onboardingMetadata !== undefined) {
+    payload.onboardingMetadata = parseJsonField(source.onboardingMetadata);
+  }
+
+  if (source.step !== undefined) payload.step = normalizeString(source.step);
+  return payload;
+}
+
+function validatePayloadTypes(payload) {
+  const errors = [];
+
+  for (const field of STRING_FIELDS) {
+    if (payload[field] !== undefined && typeof payload[field] !== 'string') {
+      errors.push(`${field} must be a string`);
+    }
+  }
+
+  for (const field of ARRAY_FIELDS) {
+    if (payload[field] !== undefined && !Array.isArray(payload[field])) {
+      errors.push(`${field} must be an array of strings`);
+    } else if (payload[field]?.some((value) => typeof value !== 'string')) {
+      errors.push(`${field} must contain only strings`);
+    }
+  }
+
+  if (
+    payload.onboardingMetadata !== undefined
+    && (payload.onboardingMetadata === null
+      || Array.isArray(payload.onboardingMetadata)
+      || typeof payload.onboardingMetadata !== 'object')
+  ) {
+    errors.push('onboardingMetadata must be an object');
+  }
+
+  if (payload.step !== undefined && !ONBOARDING_STEPS.has(payload.step)) {
+    errors.push('step is invalid');
+  }
+
+  if (payload.needsText?.length > 1000) errors.push('needsText must not exceed 1000 characters');
+  if (payload.additionalContext?.length > 5000) {
+    errors.push('additionalContext must not exceed 5000 characters');
+  }
+  if (payload.topics?.length > 5) errors.push('topics must not contain more than 5 items');
+
+  return errors;
+}
+
+function applyOnboardingPayload(seeker, payload, profilePhotoPath) {
+  for (const field of [...STRING_FIELDS, ...ARRAY_FIELDS]) {
+    if (payload[field] !== undefined) seeker[field] = payload[field];
+  }
+
+  if (payload.onboardingMetadata !== undefined) {
+    seeker.onboardingMetadata = {
+      ...(seeker.onboardingMetadata || {}),
+      ...payload.onboardingMetadata,
+    };
+  }
+
+  if (profilePhotoPath) seeker.profilePhotoSrc = profilePhotoPath;
+  if (payload.step) seeker.onboardingStep = payload.step;
+}
+
+function hasCompletedStep(seeker, step) {
+  switch (step) {
+    case 'category':
+      return Boolean(seeker.category?.trim());
+    case 'needs':
+      return Boolean(seeker.needsText?.trim()) || seeker.selectedNeedChips?.length > 0;
+    case 'format':
+      return seeker.selectedFormats?.length > 0;
+    case 'budget':
+      return Boolean(seeker.selectedBudget?.trim());
+    case 'personalisation':
+      return seeker.selectedLanguages?.length > 0;
+    case 'review':
+      return true;
+    default:
+      return false;
+  }
+}
+
+async function rewardOnboardingStep(seeker, step, transaction) {
+  if (!step || !hasCompletedStep(seeker, step)) return null;
+
+  const amount = getStepCreditAmount();
+  const balanceAfter = Number(seeker.credits || 0) + amount;
+  const [creditTransaction, created] = await SeekerCreditTransaction.findOrCreate({
+    where: {
+      seekerId: seeker.id,
+      source: 'onboarding',
+      reference: step,
+    },
+    defaults: {
+      amount,
+      balanceAfter,
+      type: 'credit',
+      description: `Completed ${step} onboarding step`,
+      metadata: { step },
+    },
+    transaction,
+  });
+
+  if (!created) return null;
+
+  seeker.credits = balanceAfter;
+  return {
+    id: creditTransaction.id,
+    step,
+    amount,
+    balanceAfter,
+  };
+}
+
+function serializeSeeker(seeker) {
+  const data = seeker.toJSON();
+  delete data.password;
+  return data;
+}
+
 export const getProfile = async (req, res) => {
   const seekerId = req.user.id;
 
@@ -23,7 +201,7 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
-    return res.status(200).json(seeker);
+    return res.status(200).json(serializeSeeker(seeker));
   } catch (error) {
     console.error('Get Seeker Profile Error:', error);
     return res.status(500).json({ message: 'Server error retrieving profile', error: error.message });
@@ -32,62 +210,43 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   const seekerId = req.user.id;
-  const body = req.body;
-  const {
-    step,
-    category,
-    needsText,
-    selectedBudget,
-    location,
-    additionalContext,
-  } = body;
+  const payload = parseOnboardingPayload(req.body);
+  const validationErrors = validatePayloadTypes(payload);
 
-  const topics = parseJsonField(body.topics);
-  const selectedNeedChips = parseJsonField(body.selectedNeedChips);
-  const selectedFormats = parseJsonField(body.selectedFormats);
-  const selectedLanguages = parseJsonField(body.selectedLanguages);
-  const onboardingMetadata = parseJsonField(body.onboardingMetadata);
+  if (validationErrors.length > 0) {
+    return res.status(422).json({ message: 'Invalid onboarding data', errors: validationErrors });
+  }
 
+  let transaction;
   try {
-    const seeker = await Seeker.findByPk(seekerId);
+    transaction = await seekerDb.transaction();
+    const seeker = await Seeker.findByPk(seekerId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
     if (!seeker) {
+      await transaction.rollback();
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
-    if (category !== undefined) seeker.category = category;
-    if (topics !== undefined) seeker.topics = topics;
-    if (needsText !== undefined) seeker.needsText = needsText;
-    if (selectedNeedChips !== undefined) seeker.selectedNeedChips = selectedNeedChips;
-    if (selectedFormats !== undefined) seeker.selectedFormats = selectedFormats;
-    if (selectedBudget !== undefined) seeker.selectedBudget = selectedBudget;
-    if (selectedLanguages !== undefined) seeker.selectedLanguages = selectedLanguages;
-    if (location !== undefined) seeker.location = location;
-    if (additionalContext !== undefined) seeker.additionalContext = additionalContext;
+    applyOnboardingPayload(
+      seeker,
+      payload,
+      req.file ? `/uploads/${req.file.filename}` : undefined,
+    );
 
-    if (onboardingMetadata !== undefined) {
-      seeker.onboardingMetadata = {
-        ...(seeker.onboardingMetadata || {}),
-        ...onboardingMetadata,
-      };
-    }
-
-    if (req.file) {
-      seeker.profilePhotoSrc = `/uploads/${req.file.filename}`;
-    } else if (body.profilePhotoSrc !== undefined) {
-      seeker.profilePhotoSrc = body.profilePhotoSrc;
-    }
-
-    if (step) {
-      seeker.onboardingStep = step;
-    }
-
-    await seeker.save();
+    const completedStep = NEXT_STEP_TO_COMPLETED_STEP[payload.step];
+    const creditAward = await rewardOnboardingStep(seeker, completedStep, transaction);
+    await seeker.save({ transaction });
+    await transaction.commit();
 
     return res.status(200).json({
       message: 'Profile updated successfully',
-      seeker,
+      seeker: serializeSeeker(seeker),
+      creditAward,
     });
   } catch (error) {
+    if (transaction && !transaction.finished) await transaction.rollback();
     console.error('Update Seeker Profile Error:', error);
     return res.status(500).json({ message: 'Server error updating profile', error: error.message });
   }
@@ -95,24 +254,47 @@ export const updateProfile = async (req, res) => {
 
 export const submitOnboarding = async (req, res) => {
   const seekerId = req.user.id;
+  const payload = parseOnboardingPayload(req.body);
+  const validationErrors = validatePayloadTypes(payload);
 
+  if (validationErrors.length > 0) {
+    return res.status(422).json({ message: 'Invalid onboarding data', errors: validationErrors });
+  }
+
+  let transaction;
   try {
-    const seeker = await Seeker.findByPk(seekerId);
+    transaction = await seekerDb.transaction();
+    const seeker = await Seeker.findByPk(seekerId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
     if (!seeker) {
+      await transaction.rollback();
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
+    applyOnboardingPayload(
+      seeker,
+      payload,
+      req.file ? `/uploads/${req.file.filename}` : undefined,
+    );
+
+    const creditAward = await rewardOnboardingStep(seeker, 'review', transaction);
+
     seeker.status = 'active';
-    seeker.onboardingStep = 'success';
+    seeker.onboardingStep = null;
     seeker.termsAcceptedAt = seeker.termsAcceptedAt || new Date();
     seeker.onboardingCompletedAt = new Date();
-    await seeker.save();
+    await seeker.save({ transaction });
+    await transaction.commit();
 
     return res.status(200).json({
       message: 'Seeker onboarding completed successfully',
-      seeker,
+      seeker: serializeSeeker(seeker),
+      creditAward,
     });
   } catch (error) {
+    if (transaction && !transaction.finished) await transaction.rollback();
     console.error('Seeker Submit Onboarding Error:', error);
     return res.status(500).json({ message: 'Server error during submission', error: error.message });
   }

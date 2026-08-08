@@ -1,6 +1,17 @@
 import { DataTypes } from 'sequelize';
 import seekerDb from '../config/db/seeker.js';
 
+function readJsonField(instance, fieldName) {
+  const value = instance.getDataValue(fieldName);
+  if (typeof value !== 'string') return value;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 const Seeker = seekerDb.define('Seeker', {
   id: {
     type: DataTypes.UUID,
@@ -54,6 +65,11 @@ const Seeker = seekerDb.define('Seeker', {
     type: DataTypes.STRING,
     defaultValue: 'draft',
   },
+  credits: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0,
+  },
   category: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -61,6 +77,9 @@ const Seeker = seekerDb.define('Seeker', {
   topics: {
     type: DataTypes.JSON,
     allowNull: true,
+    get() {
+      return readJsonField(this, 'topics');
+    },
   },
   needsText: {
     type: DataTypes.TEXT,
@@ -69,10 +88,16 @@ const Seeker = seekerDb.define('Seeker', {
   selectedNeedChips: {
     type: DataTypes.JSON,
     allowNull: true,
+    get() {
+      return readJsonField(this, 'selectedNeedChips');
+    },
   },
   selectedFormats: {
     type: DataTypes.JSON,
     allowNull: true,
+    get() {
+      return readJsonField(this, 'selectedFormats');
+    },
   },
   selectedBudget: {
     type: DataTypes.STRING,
@@ -81,6 +106,9 @@ const Seeker = seekerDb.define('Seeker', {
   selectedLanguages: {
     type: DataTypes.JSON,
     allowNull: true,
+    get() {
+      return readJsonField(this, 'selectedLanguages');
+    },
   },
   location: {
     type: DataTypes.STRING,
@@ -97,6 +125,9 @@ const Seeker = seekerDb.define('Seeker', {
   onboardingMetadata: {
     type: DataTypes.JSON,
     allowNull: true,
+    get() {
+      return readJsonField(this, 'onboardingMetadata');
+    },
   },
   termsAcceptedAt: {
     type: DataTypes.DATE,

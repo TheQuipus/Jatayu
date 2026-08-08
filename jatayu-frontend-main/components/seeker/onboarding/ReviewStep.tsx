@@ -15,7 +15,6 @@ import detailStyles from "../../expert/ExpertDetail.module.css";
 type ReviewStepProps = {
   userName: string;
   categoryLabel: string;
-  selectedTopics: string[];
   needsText: string;
   selectedFormatLabel: string;
   selectedLanguageLabel: string;
@@ -26,9 +25,11 @@ type ReviewStepProps = {
   onChangeLocation: (val: string) => void;
   additionalContext: string;
   onChangeAdditionalContext: (val: string) => void;
-  onEditStep: (step: any) => void;
+  onEditStep: (step: "category" | "format") => void;
   onBack: () => void;
   onContinue: () => void;
+  isSubmitting?: boolean;
+  submissionError?: string | null;
   progressCompletion: ProgressCompletion;
   onProgressStepClick: (step: ProgressStepKey) => void;
 };
@@ -38,7 +39,6 @@ type ReviewStepProps = {
 export default function ReviewStep({
   userName,
   categoryLabel,
-  selectedTopics,
   needsText,
   selectedFormatLabel,
   selectedLanguageLabel,
@@ -52,6 +52,8 @@ export default function ReviewStep({
   onEditStep,
   onBack,
   onContinue,
+  isSubmitting = false,
+  submissionError = null,
   progressCompletion,
   onProgressStepClick,
 }: ReviewStepProps) {
@@ -59,9 +61,6 @@ export default function ReviewStep({
   const [isEditing, setIsEditing] = useState(false);
   const [draftLocation, setDraftLocation] = useState(location);
   const [draftAdditionalContext, setDraftAdditionalContext] = useState(additionalContext);
-
-  const topicsSummary =
-    selectedTopics.length > 0 ? selectedTopics.join(", ") : "None selected";
 
   const displayCompletion: ProgressCompletion = {
     ...progressCompletion,
@@ -333,14 +332,19 @@ export default function ReviewStep({
         </div>
 
         <div className={shared.footerActions}>
+          {submissionError ? (
+            <p role="alert" className={styles.submissionError}>
+              {submissionError}
+            </p>
+          ) : null}
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
           </button>
           <ContinueButton
-            label="Find My Matches"
+            label={isSubmitting ? "Saving..." : "Find My Matches"}
             showArrow={false}
             onClick={onContinue}
-            disabled={!agreedToTerms}
+            disabled={!agreedToTerms || isSubmitting}
           />
         </div>
       </div>

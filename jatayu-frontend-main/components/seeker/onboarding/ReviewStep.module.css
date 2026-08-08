@@ -230,3 +230,11 @@
     gap: 16px;
   }
 }
+.submissionError {
+  max-width: 320px;
+  margin: 0;
+  color: #ffb4b4;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  text-align: right;
+}

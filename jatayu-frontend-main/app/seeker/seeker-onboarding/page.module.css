@@ -29,3 +29,20 @@
   background: radial-gradient(52.86% 52.86% at 49.97% 52.28%, rgba(67, 67, 67, 0) 0%, #000000 100%);
   z-index: 2;
 }
+
+.stepSaveError {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  z-index: 20;
+  max-width: min(560px, calc(100vw - 40px));
+  margin: 0;
+  padding: 12px 18px;
+  border: 1px solid rgba(255, 120, 120, 0.35);
+  background: rgba(55, 10, 10, 0.94);
+  color: #ffb4b4;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: center;
+  transform: translateX(-50%);
+}

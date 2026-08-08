@@ -615,3 +615,57 @@ export async function getSeekerPublicConfig(): Promise<PublicConfig> {
     method: "GET",
   });
 }
+
+export interface SeekerOnboardingPayload {
+  selectedCategory: string;
+  selectedTopics: string[];
+  needsText: string;
+  selectedNeedChips: string[];
+  selectedFormats: string[];
+  selectedBudget: string;
+  selectedLanguages: string[];
+  location: string;
+  additionalContext: string;
+  profilePhotoSrc?: string;
+  onboardingMetadata?: Record<string, unknown>;
+}
+
+export type SeekerOnboardingStep =
+  | "category"
+  | "needs"
+  | "format"
+  | "budget"
+  | "personalisation"
+  | "review";
+
+export type UpdateSeekerOnboardingPayload = Partial<SeekerOnboardingPayload> & {
+  step: SeekerOnboardingStep;
+};
+
+export interface UpdateSeekerOnboardingResponse {
+  message: string;
+  seeker: Record<string, unknown>;
+}
+
+export async function updateSeekerOnboarding(
+  payload: UpdateSeekerOnboardingPayload,
+): Promise<UpdateSeekerOnboardingResponse> {
+  return apiFetch<UpdateSeekerOnboardingResponse>("/api/seeker/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface SubmitSeekerOnboardingResponse {
+  message: string;
+  seeker: Record<string, unknown>;
+}
+
+export async function submitSeekerOnboarding(
+  payload: SeekerOnboardingPayload,
+): Promise<SubmitSeekerOnboardingResponse> {
+  return apiFetch<SubmitSeekerOnboardingResponse>("/api/seeker/submit", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

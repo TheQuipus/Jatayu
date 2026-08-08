@@ -39,6 +39,6 @@ const upload = multer({
 
 router.get('/me', protectSeeker, getProfile);
 router.put('/profile', protectSeeker, upload.single('profilePhoto'), updateProfile);
-router.post('/submit', protectSeeker, submitOnboarding);
+router.post('/submit', protectSeeker, upload.single('profilePhoto'), submitOnboarding);
 
 export default router;
