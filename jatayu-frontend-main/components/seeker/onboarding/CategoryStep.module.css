@@ -487,6 +487,27 @@
   align-items: flex-start;
 }
 
+.categoryItemDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.customLimitMessage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--silver-chalice);
+  margin-top: 10px;
+}
+
+.infoIcon {
+  flex-shrink: 0;
+  color: var(--silver-chalice);
+}
+
 .customHeading {
   font-family: var(--font-body);
   font-size: 18px;

@@ -5,18 +5,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useMemo, type CSSProperties, type ReactNode } from "react";
 import {
+  Bell,
   CalendarDays,
   DollarSign,
   Inbox,
   LayoutDashboard,
   LogOut,
-  MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Star,
   User,
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
 import { ExpertShellContext } from "@/components/expert/ExpertShellContext";
+import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import {
   EXPERT_PROFILE,
   EXPERT_DASHBOARD_HREF,
@@ -26,6 +29,8 @@ import {
   type ExpertNavItem,
 } from "@/lib/expertDashboard";
 import { getExpertProfile } from "@/lib/expertStore";
+import { fetchExpertProfileData } from "@/lib/expertProfileApi";
+import { clearAuthSession } from "@/lib/expertAuth";
 import styles from "./ExpertShell.module.css";
 
 const NAV_ICONS = {
@@ -33,7 +38,7 @@ const NAV_ICONS = {
   profile: User,
   availability: CalendarDays,
   requests: Inbox,
-  messages: MessageSquare,
+  notifications: Bell,
   earnings: DollarSign,
   reviews: Star,
   settings: Settings,
@@ -47,6 +52,7 @@ function isNavItemActive(id: string, pathname: string, href: string, currentHash
   if (id === "dashboard") return pathname === EXPERT_DASHBOARD_HREF && !currentHash;
   if (id === "availability") return pathname.startsWith("/expert/availability/");
   if (id === "requests") return pathname.startsWith("/expert/requests/");
+  if (id === "notifications") return pathname.startsWith("/expert/notifications/");
   if (id === "profile") return pathname.startsWith(EXPERT_PROFILE_HREF);
 
   if (itemHash) {
@@ -60,18 +66,37 @@ type ExpertShellProps = {
   children: ReactNode;
 };
 
-function NavLink({ item, pathname, currentHash }: { item: ExpertNavItem; pathname: string; currentHash: string }) {
+function NavLink({
+  item,
+  pathname,
+  currentHash,
+  isCollapsed,
+}: {
+  item: ExpertNavItem;
+  pathname: string;
+  currentHash: string;
+  isCollapsed?: boolean;
+}) {
   const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? LayoutDashboard;
   const isActive = isNavItemActive(item.id, pathname, item.href, currentHash);
 
   return (
     <Link
       href={item.href}
-      className={`${styles.navLink} ${isActive ? styles.navLinkActive : ""}`}
+      className={`${styles.navLink} ${isActive ? styles.navLinkActive : ""} ${isCollapsed ? styles.navLinkCollapsed : ""
+        }`}
+      title={isCollapsed ? item.label : undefined}
     >
       <Icon size={16} aria-hidden="true" />
-      {item.label}
-      {item.badge ? <span className={styles.navBadge}>{item.badge}</span> : null}
+      {!isCollapsed && <span>{item.label}</span>}
+      {item.badge ? (
+        <span
+          className={`${styles.navBadge} ${isCollapsed ? styles.navBadgeDot : ""}`}
+          title={isCollapsed ? `${item.badge} unread` : undefined}
+        >
+          {isCollapsed ? "" : item.badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -80,6 +105,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
   const pathname = usePathname();
   const [breadcrumbs, setBreadcrumbs] = useState<ReactNode | null>(null);
   const [currentHash, setCurrentHash] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const shellContext = useMemo(() => ({ setBreadcrumbs }), []);
 
   useEffect(() => {
@@ -109,7 +135,15 @@ export default function ExpertShell({ children }: ExpertShellProps) {
       });
     };
 
-    handleUpdate();
+    void fetchExpertProfileData()
+      .then((saved) => {
+        setProfile({
+          name: saved.name || EXPERT_PROFILE.name,
+          role: saved.role || EXPERT_PROFILE.role,
+          avatar: saved.avatar || EXPERT_PROFILE.avatar,
+        });
+      })
+      .catch(handleUpdate);
 
     if (typeof window !== "undefined") {
       window.addEventListener("expert-profile-updated", handleUpdate);
@@ -124,29 +158,59 @@ export default function ExpertShell({ children }: ExpertShellProps) {
   return (
     <ExpertShellContext.Provider value={shellContext}>
       <div className={styles.shell}>
-        <aside className={styles.sidebar} aria-label="Expert navigation">
-          <Link href={EXPERT_DASHBOARD_HREF} className={styles.brand}>
-            <span className={styles.brandMark} aria-hidden="true">
-              2
-            </span>
-            <span>
-              Expertjourney <span className={styles.brandBadge}>2</span>
-            </span>
-          </Link>
+        <aside
+          className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`}
+          aria-label="Expert navigation"
+        >
+          <div className={styles.brandRow}>
+            <Link
+              href={EXPERT_DASHBOARD_HREF}
+              className={styles.brand}
+              title="Jatayu Expert"
+            >
+              <span className={styles.brandMark} aria-hidden="true">
+                J
+              </span>
+              {!isCollapsed && <span>Jatayu</span>}
+            </Link>
+            <button
+              type="button"
+              onClick={() => setIsCollapsed((prev) => !prev)}
+              className={styles.collapseToggleBtn}
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            </button>
+          </div>
 
-          <div className={styles.navLabel}>MAIN MENU</div>
+          {!isCollapsed && <div className={styles.navLabel}>MAIN MENU</div>}
           <nav className={styles.navSection} aria-label="Main">
             {MAIN_NAV.map((item) => (
-              <NavLink key={item.id} item={item} pathname={pathname} currentHash={currentHash} />
+              <NavLink
+                key={item.id}
+                item={item}
+                pathname={pathname}
+                currentHash={currentHash}
+                isCollapsed={isCollapsed}
+              />
             ))}
           </nav>
- 
-          <div className={styles.navLabel}>Account</div>
+
+          {!isCollapsed && <div className={styles.navLabel}>Account</div>}
           <nav className={styles.navSection} aria-label="Account">
-            <NavLink item={SETTINGS_NAV} pathname={pathname} currentHash={currentHash} />
+            <NavLink
+              item={SETTINGS_NAV}
+              pathname={pathname}
+              currentHash={currentHash}
+              isCollapsed={isCollapsed}
+            />
           </nav>
- 
-          <div className={styles.userCard}>
+
+          <div
+            className={`${styles.userCard} ${isCollapsed ? styles.userCardCollapsed : ""
+              }`}
+          >
             {profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:") ? (
               <img
                 src={profile.avatar}
@@ -163,18 +227,23 @@ export default function ExpertShell({ children }: ExpertShellProps) {
                 className={styles.userAvatar}
               />
             )}
-            <div className={styles.userMeta}>
-              <span className={styles.userName}>{profile.name}</span>
-              <span className={styles.userRole}>{profile.role}</span>
-            </div>
+            {!isCollapsed && (
+              <div className={styles.userMeta}>
+                <span className={styles.userName}>{profile.name}</span>
+                <span className={styles.userRole}>{profile.role}</span>
+              </div>
+            )}
             <button
               type="button"
-              onClick={() => window.location.assign("/login")}
+              onClick={() => {
+                clearAuthSession();
+                window.location.assign(EXPERT_LOGIN_HREF);
+              }}
               className={styles.userMenuBtn}
               aria-label="Logout"
               title="Logout"
             >
-              <LogOut size={14} aria-hidden="true" />
+              <LogOut size={20} aria-hidden="true" />
             </button>
           </div>
         </aside>

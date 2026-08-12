@@ -4,45 +4,34 @@
   gap: 20px;
 }
 
-.summaryPageCard {
-  background: var(--white);
-  border: 1px solid var(--mercury);
-  padding: 28px 32px;
-  display: flex;
-  flex-direction: column;
+.layoutSummary {
+  display: grid;
+  align-items: start;
   gap: 24px;
 }
 
-.summaryRefTopLeft {
+.summaryLeft {
+  grid-column: 1 / 4;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-bottom: 4px;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.invoiceEyebrow {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--silver-chalice);
+.bookingBox {
+  overflow: hidden;
 }
 
-.invoiceNumber {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--bunker);
+.bookingBody {
+  background: var(--white);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mercury);
 }
 
 .summarySection {
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
 .sectionHeaderLine {
@@ -50,13 +39,14 @@
   align-items: center;
   gap: 12px;
   width: 100%;
+  margin: 14px 0 10px;
 }
 
 .sectionHeaderTitle {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -.02em;
   text-transform: uppercase;
   color: var(--dove-gray);
   white-space: nowrap;
@@ -71,18 +61,18 @@
 .summaryExpertBanner {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 4px 0 6px;
+  gap: 16px;
 }
 
 .summaryExpertAvatar {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid var(--mercury);
   flex-shrink: 0;
+  background: var(--seashell);
 }
 
 .expertAvatarImg {
@@ -92,33 +82,36 @@
 .summaryExpertInfo {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .summaryExpertName {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 700;
-  color: var(--bunker);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .summaryExpertRole {
-  margin: 2px 0 6px;
+  margin: 0;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--dove-gray);
-  line-height: 1.35;
 }
 
 .summaryExpertMeta {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-body);
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--scorpion);
+  color: var(--dove-gray);
+  margin-top: 2px;
 }
 
 .summaryExpertMeta .statItem {
@@ -128,9 +121,8 @@
 }
 
 .summaryExpertMeta .statItem svg {
-  color: var(--tango);
-  fill: var(--tango);
-  stroke: var(--tango);
+  color: var(--orange);
+  fill: var(--orange);
 }
 
 .summaryExpertMeta .statDot {
@@ -140,49 +132,41 @@
   background: var(--silver-chalice);
 }
 
-.confirmDetailsGrid {
+.sessionGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 24px;
-  padding: 2px 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
-.confirmDetailItem {
+.sessionInset {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  padding: 8px 0px;
 }
 
-.confirmDetailFullWidth {
+.sessionInsetFull {
   grid-column: 1 / -1;
 }
 
-.confirmDetailLabel {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.sessionLabel {
+  font-family: var(--font-body);
+  font-size: 14px;
   color: var(--dove-gray);
 }
 
-.confirmDetailValue {
+.sessionValue {
   font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   color: var(--bunker);
-  line-height: 1.35;
 }
 
-.confirmDetailText {
+.contextText {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--scorpion);
-  background: var(--gallery);
-  border: 1px solid var(--mercury);
-  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--bunker);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -190,25 +174,22 @@
 .priceBreakdownBox {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 20px;
-  background: var(--gallery);
-  border: 1px solid var(--mercury);
-  margin-top: 4px;
 }
 
 .priceRow {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--scorpion);
+  font-size: 13px;
+  color: var(--dove-gray);
 }
 
 .priceRow strong {
   color: var(--bunker);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .creditsRow strong {
@@ -218,64 +199,62 @@
 .invoiceTotalRow {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
-  padding-top: 10px;
-  margin-top: 4px;
+  margin-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--mercury);
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--bunker);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .invoiceTotalRow .totalLabel {
-  color: var(--bunker);
-  font-size: 16px;
-  font-weight: 700;
+  font-family: var(--font-sora);
+  font-size: 28px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ink);
 }
 
 .invoiceTotalRow strong {
-  font-family: var(--font-num);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--bunker);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
 }
 
 .confirmPayWrap {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
   margin-top: 4px;
   width: 100%;
 }
 
 .confirmPayBtn {
   width: 100%;
-  min-height: 50px !important;
+  min-height: 52px !important;
   background-color: var(--pomegranate) !important;
   color: var(--white) !important;
-  border-color: transparent !important;
-  box-shadow: 0 4px 18px color-mix(in srgb, var(--pomegranate) 22%, transparent);
+  border: none !important;
+  border-radius: 40px !important;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--pomegranate) 22%, transparent) !important;
 }
 
-.summaryGuaranteedNote {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--scorpion);
-  text-align: left;
-}
-
-.summaryLockIcon {
-  flex-shrink: 0;
-  color: var(--scorpion);
-}
 
 @media (max-width: 1100px) {
-  .confirmDetailsGrid {
+  .layoutSummary {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .summaryLeft {
+    grid-column: 1;
+  }
+
+  .sessionGrid {
     grid-template-columns: 1fr;
   }
 }

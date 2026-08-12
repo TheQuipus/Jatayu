@@ -762,7 +762,7 @@ export function mapToExpertProfile(app: ExpertApplicationSubmission) {
 
 export function mapToApprovalConfirmation(app: ExpertApplicationSubmission) {
   const completeness = computeCompleteness(app);
-  const hasPricing = Object.values(app.formatPrices).some((price) => Number(price) > 0);
+  const hasPricing = getLowestFormatPrice(app.formatPrices) > 0;
   const hasAvailability = app.availabilitySlots.some((slot) => slot.days.length > 0);
 
   const checklist = [
@@ -824,11 +824,11 @@ export function mapToApprovalConfirmation(app: ExpertApplicationSubmission) {
 
   const passed = checklist.filter((item) => item.status !== "pending").length;
   const recommendation =
-    app.status === "approved"
-      ? ("approve" as const)
-      : app.status === "rejected"
-        ? ("reject" as const)
-        : ("hold" as const);
+    app.status === "rejected"
+      ? ("reject" as const)
+      : app.status === "on_hold"
+        ? ("hold" as const)
+        : ("approve" as const);
 
   return {
     appId: app.appId,

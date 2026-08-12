@@ -32,6 +32,19 @@ import {
   isSeekerOnboardingStep,
   type SeekerOnboardingStepKey,
 } from "@/components/seeker/onboarding/seekerOnboardingSteps";
+import {
+  submitSeekerOnboarding,
+  updateSeekerOnboarding,
+  type AuthResponse,
+  type UpdateSeekerOnboardingPayload,
+} from "@/lib/api";
+import {
+  clearPendingSeekerOtpSession,
+  clearSeekerAuthOnly,
+  persistSeekerAuthSession,
+  readPendingSeekerOtpSession,
+  savePendingSeekerOtpSession,
+} from "@/lib/seekerAuth";
 
 const categories = [
   { id: "career-work", label: "Career & Work", icon: Briefcase },
@@ -258,11 +271,27 @@ function SeekerOnboardingPageContent() {
   const [registeredPhone, setRegisteredPhone] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registeredName, setRegisteredName] = useState("");
+  const [seekerId, setSeekerId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isSavingStep, setIsSavingStep] = useState(false);
+  const [stepSaveError, setStepSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const auth = new URLSearchParams(window.location.search).get("auth");
     if (auth === "login") {
       queueMicrotask(() => setStep("login"));
+    }
+
+    const pendingOtp = readPendingSeekerOtpSession();
+    if (pendingOtp) {
+      queueMicrotask(() => {
+        setSeekerId(pendingOtp.seekerId);
+        setRegisteredEmail(pendingOtp.email);
+        setRegisteredPhone(pendingOtp.phone);
+        if (pendingOtp.fullName) setRegisteredName(pendingOtp.fullName);
+        setStep("otp");
+      });
     }
   }, []);
 
@@ -270,8 +299,35 @@ function SeekerOnboardingPageContent() {
     setStep("register");
   };
 
-  const handleCategoryContinue = () => {
-    setStep("needs");
+  const saveStepAndContinue = async (
+    payload: UpdateSeekerOnboardingPayload,
+    nextStep: OnboardingStep,
+  ) => {
+    if (isSavingStep) return;
+
+    setIsSavingStep(true);
+    setStepSaveError(null);
+    try {
+      await updateSeekerOnboarding(payload);
+      setStep(nextStep);
+    } catch (error) {
+      setStepSaveError(
+        error instanceof Error ? error.message : "Unable to save this step. Please try again.",
+      );
+    } finally {
+      setIsSavingStep(false);
+    }
+  };
+
+  const handleCategoryContinue = async () => {
+    await saveStepAndContinue(
+      {
+        step: "needs",
+        selectedCategory,
+        selectedTopics,
+      },
+      "needs",
+    );
   };
 
   const handleAddCustomCategory = (label: string) => {
@@ -329,28 +385,84 @@ function SeekerOnboardingPageContent() {
     setStep("topics");
   };
 
-  const handleNeedsContinue = () => {
-    setStep("format");
+  const handleNeedsContinue = async () => {
+    await saveStepAndContinue(
+      {
+        step: "format",
+        needsText,
+        selectedNeedChips,
+      },
+      "format",
+    );
   };
 
   const handleBackToNeeds = () => {
     setStep("needs");
   };
 
-  const handleFormatContinue = () => {
-    setStep("budget");
+  const handleFormatContinue = async () => {
+    await saveStepAndContinue(
+      {
+        step: "budget",
+        selectedFormats,
+      },
+      "budget",
+    );
   };
 
-  const handleBudgetContinue = () => {
-    setStep("personalisation");
+  const handleBudgetContinue = async () => {
+    await saveStepAndContinue(
+      {
+        step: "personalisation",
+        selectedBudget,
+      },
+      "personalisation",
+    );
   };
 
-  const handlePersonalisationContinue = () => {
-    setStep("review");
+  const handlePersonalisationContinue = async () => {
+    await saveStepAndContinue(
+      {
+        step: "review",
+        selectedLanguages,
+        location,
+        additionalContext,
+        profilePhotoSrc,
+      },
+      "review",
+    );
   };
 
-  const handleReviewContinue = () => {
-    setStep("success");
+  const handleReviewContinue = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSubmissionError(null);
+
+    try {
+      await submitSeekerOnboarding({
+        selectedCategory,
+        selectedTopics,
+        needsText,
+        selectedNeedChips,
+        selectedFormats,
+        selectedBudget,
+        selectedLanguages,
+        location,
+        additionalContext,
+        profilePhotoSrc,
+        onboardingMetadata: {
+          source: "seeker-onboarding",
+        },
+      });
+      setStep("success");
+    } catch (error) {
+      setSubmissionError(
+        error instanceof Error ? error.message : "Unable to complete onboarding. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBackToPersonalisation = () => {
@@ -371,26 +483,86 @@ function SeekerOnboardingPageContent() {
   };
 
   const handleRegisterComplete = ({
+    seekerId: nextSeekerId,
     phone,
     fullName,
     email,
   }: {
+    seekerId: string;
     phone: string;
     fullName: string;
     email: string;
   }) => {
+    savePendingSeekerOtpSession({
+      seekerId: nextSeekerId,
+      phone,
+      email,
+      fullName,
+    });
+    setSeekerId(nextSeekerId);
     setRegisteredPhone(phone);
     setRegisteredEmail(email);
     setRegisteredName(fullName);
     setStep("otp");
+    clearSeekerAuthOnly();
   };
 
-  const handleLoginComplete = ({ email: _email }: { email: string }) => {
+  const handleLoginRequiresOtp = ({
+    seekerId: nextSeekerId,
+    email,
+    phone,
+    fullName,
+  }: {
+    seekerId: string;
+    email: string;
+    phone: string;
+    fullName?: string;
+  }) => {
+    savePendingSeekerOtpSession({
+      seekerId: nextSeekerId,
+      email,
+      phone,
+      fullName,
+    });
+    setSeekerId(nextSeekerId);
+    setRegisteredEmail(email);
+    setRegisteredPhone(phone);
+    if (fullName) setRegisteredName(fullName);
+    setStep("otp");
+    clearSeekerAuthOnly();
+  };
+
+  const handleAuthSuccess = (response: AuthResponse) => {
+    persistSeekerAuthSession(response);
+    if (response.user.fullName) {
+      setRegisteredName(response.user.fullName);
+    }
+
+    const resumeSteps: OnboardingStep[] = [
+      "category",
+      "needs",
+      "format",
+      "budget",
+      "personalisation",
+      "review",
+    ];
+    const resumeStep = response.user.onboardingStep as OnboardingStep;
+    if (resumeSteps.includes(resumeStep)) {
+      setStep(resumeStep);
+      return;
+    }
+
     window.location.assign("/seeker/dashboard/");
   };
 
-  const handleOtpComplete = () => {
-    setStep(selectedCategory ? "topics" : "category");
+  const handleLoginComplete = (response: AuthResponse) => {
+    clearPendingSeekerOtpSession();
+    handleAuthSuccess(response);
+  };
+
+  const handleOtpComplete = (response: AuthResponse) => {
+    clearPendingSeekerOtpSession();
+    handleAuthSuccess(response);
   };
 
   const handleBackToRegister = () => {
@@ -518,6 +690,11 @@ function SeekerOnboardingPageContent() {
 
   return (
     <main className={styles.pageContainer}>
+      {stepSaveError ? (
+        <p className={styles.stepSaveError} role="alert">
+          {stepSaveError}
+        </p>
+      ) : null}
       <div className={styles.bgWrapper}>
         <img
           src="/assets/img/hero-bg.png"
@@ -614,7 +791,6 @@ function SeekerOnboardingPageContent() {
         <ReviewStep
           userName={seekerDisplayName}
           categoryLabel={activeCategoryLabel}
-          selectedTopics={selectedTopics}
           needsText={needsText}
           selectedFormatLabel={getFormatLabel()}
           selectedLanguageLabel={getLanguageLabel()}
@@ -628,6 +804,8 @@ function SeekerOnboardingPageContent() {
           onEditStep={handleEditStep}
           onBack={handleBackToPersonalisation}
           onContinue={handleReviewContinue}
+          isSubmitting={isSubmitting}
+          submissionError={submissionError}
           progressCompletion={progressCompletion}
           onProgressStepClick={handleProgressStepClick}
         />
@@ -643,18 +821,29 @@ function SeekerOnboardingPageContent() {
       {step === "login" && (
         <LoginStep
           onContinue={handleLoginComplete}
+          onRequiresOtp={handleLoginRequiresOtp}
           onSwitchToRegister={handleSwitchToRegister}
         />
       )}
 
-      {step === "otp" && (
+      {step === "otp" && seekerId ? (
         <OtpStep
+          seekerId={seekerId}
           phone={registeredPhone}
           email={registeredEmail}
           onBack={handleBackToRegister}
           onContinue={handleOtpComplete}
         />
-      )}
+      ) : null}
+
+      {step === "otp" && !seekerId ? (
+        <section className={styles.pageContainer}>
+          <p>Verification session expired. Please register again to receive a new code.</p>
+          <button type="button" onClick={handleBackToRegister}>
+            Back to Register
+          </button>
+        </section>
+      ) : null}
 
       {step === "success" && (
         <SuccessStep

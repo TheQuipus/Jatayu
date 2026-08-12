@@ -14,7 +14,9 @@ import RegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel"
 import ContinueButton from "@/components/ui/ContinueButton";
 import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
+import { registerSeeker } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
+import { isDuplicateRegistrationMessage } from "@/lib/expertOnboardingStatus";
 import {
   buildPasswordContext,
   getPasswordHint,
@@ -25,7 +27,7 @@ import {
 } from "@/lib/passwordValidation";
 
 type RegisterStepProps = {
-  onContinue: (data: { phone: string; fullName: string; email: string }) => void;
+  onContinue: (data: { seekerId: string; phone: string; fullName: string; email: string }) => void;
   onSwitchToLogin?: () => void;
   loginHref?: string;
 };
@@ -109,6 +111,8 @@ export default function RegisterStep({
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState(emptyTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const values = { firstName, lastName, email, password, phone };
   const passwordContext = buildPasswordContext({ email, firstName, lastName });
@@ -137,17 +141,45 @@ export default function RegisterStep({
       .filter(Boolean)
       .join(" ");
 
+  const submitRegistration = async () => {
+    setSubmitAttempted(true);
+    setSubmitError(null);
+    if (!canSubmit || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await registerSeeker({
+        fullName,
+        email: normalizeEmail(email),
+        password,
+        phone,
+      });
+
+      onContinue({
+        seekerId: response.seekerId,
+        phone,
+        fullName,
+        email: normalizeEmail(email),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Registration failed.";
+      if (isDuplicateRegistrationMessage(message)) {
+        setSubmitError(`${message} Please log in to continue.`);
+      } else {
+        setSubmitError(message);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitAttempted(true);
-    if (!canSubmit) return;
-    onContinue({ phone, fullName, email: normalizeEmail(email) });
+    void submitRegistration();
   };
 
   const handleValidatedContinue = () => {
-    setSubmitAttempted(true);
-    if (!canSubmit) return;
-    onContinue({ phone, fullName, email: normalizeEmail(email) });
+    void submitRegistration();
   };
 
   return (
@@ -329,11 +361,17 @@ export default function RegisterStep({
             </div>
           </div>
 
+          {submitError ? (
+            <p className={register.fieldErrorBelow} role="alert">
+              {submitError}
+            </p>
+          ) : null}
+
           <ContinueButton
             type="submit"
-            label="Send Verification Code"
-            disabled={!canSubmit}
-            className={`${styles.registerSubmitBtn} ${canSubmit ? "" : styles.registerSubmitBtnInactive}`}
+            label={isSubmitting ? "Sending code..." : "Send Verification Code"}
+            disabled={!canSubmit || isSubmitting}
+            className={`${styles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : styles.registerSubmitBtnInactive}`}
           />
 
           <div className={styles.registerDivider}>

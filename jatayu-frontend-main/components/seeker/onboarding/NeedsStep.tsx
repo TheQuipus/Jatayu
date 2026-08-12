@@ -133,6 +133,7 @@ export default function NeedsStep({
   const [selectedImproveStyle, setSelectedImproveStyle] = useState<ImprovementStyleId | null>(
     null,
   );
+  const [isImprovementApplied, setIsImprovementApplied] = useState(false);
   const [internalSelectedNeedChips, setInternalSelectedNeedChips] = useState<string[]>(() => {
     if (selectedNeedChipsProp && selectedNeedChipsProp.length > 0) {
       return selectedNeedChipsProp;
@@ -148,6 +149,7 @@ export default function NeedsStep({
   };
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const textareaMirrorRef = useRef<HTMLDivElement | null>(null);
 
   const buildTextFromSelectedChips = (chipIds: string[]) =>
     chipIds
@@ -175,9 +177,12 @@ export default function NeedsStep({
   const handleAiAssist = () => {
     setShowImprovementPanel(true);
     setSelectedImproveStyle("professional");
+    setIsImprovementApplied(false);
   };
 
   const handleNeedChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
+    setIsImprovementApplied(false);
+
     const isSelected = selectedNeedChips.includes(chip.id);
     const nextSelected = isSelected
       ? selectedNeedChips.filter((id) => id !== chip.id)
@@ -214,6 +219,8 @@ export default function NeedsStep({
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setIsImprovementApplied(false);
+
     const val = e.target.value;
     const lockedPrefix = getLockedPrefix();
 
@@ -279,8 +286,9 @@ export default function NeedsStep({
   };
 
   const handleApplyImprovement = () => {
-    if (!selectedImproveStyle) return;
+    if (!selectedImproveStyle || isImprovementApplied) return;
     handleImproveStyle(selectedImproveStyle);
+    setIsImprovementApplied(true);
   };
 
   return (
@@ -328,19 +336,34 @@ export default function NeedsStep({
                   );
                 })}
               </div>
-              <textarea
-                ref={textareaRef}
-                className={`${register.textareaField} ${styles.needsTextarea}`}
-                placeholder={
-                  "Eg. I've been in my current job for 3 years and feel stuck. I want to transition into product management but don't know where to start..."
-                }
-                value={needsText}
-                onChange={handleTextareaChange}
-                onKeyDown={handleTextareaKeyDown}
-                onClick={ensureCursorAfterPrefix}
-                onSelect={ensureCursorAfterPrefix}
-                maxLength={1000}
-              />
+              <div className={styles.needsTextEditor}>
+                <div
+                  ref={textareaMirrorRef}
+                  className={styles.needsTextMirror}
+                  aria-hidden="true"
+                >
+                  <span className={styles.suggestionText}>{lockedPrefix}</span>
+                  <span className={styles.typedText}>{userTypedSuffix}</span>
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  className={`${register.textareaField} ${styles.needsTextarea}`}
+                  placeholder={
+                    "Eg. I've been in my current job for 3 years and feel stuck. I want to transition into product management but don't know where to start..."
+                  }
+                  value={needsText}
+                  onChange={handleTextareaChange}
+                  onKeyDown={handleTextareaKeyDown}
+                  onClick={ensureCursorAfterPrefix}
+                  onSelect={ensureCursorAfterPrefix}
+                  onScroll={(event) => {
+                    if (textareaMirrorRef.current) {
+                      textareaMirrorRef.current.scrollTop = event.currentTarget.scrollTop;
+                    }
+                  }}
+                  maxLength={1000}
+                />
+              </div>
               <div className={styles.charCounter}>
                 {needsText.length} / 1000
               </div>
@@ -377,7 +400,10 @@ export default function NeedsStep({
                         type="button"
                         className={`${styles.suggestedPill} ${isSelected ? styles.suggestedPillSelected : ""
                           }`}
-                        onClick={() => setSelectedImproveStyle(isSelected ? null : style.id)}
+                        onClick={() => {
+                          setSelectedImproveStyle(isSelected ? null : style.id);
+                          setIsImprovementApplied(false);
+                        }}
                         aria-pressed={isSelected}
                       >
                         {style.label}
@@ -392,14 +418,14 @@ export default function NeedsStep({
                   type="button"
                   className={styles.aiApplyBtn}
                   onClick={handleApplyImprovement}
-                  disabled={!selectedImproveStyle}
+                  disabled={!selectedImproveStyle || isImprovementApplied}
                 >
                   <ShinyText
-                    text="Apply"
+                    text={isImprovementApplied ? "Applied" : "Apply"}
                     speed={2.5}
                     color="#E53B17"
                     shineColor="#ffffff"
-                    disabled={!selectedImproveStyle}
+                    disabled={!selectedImproveStyle || isImprovementApplied}
                     className={styles.aiApplyShinyText}
                   />
                 </button>

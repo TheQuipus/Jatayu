@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import {
   getOffsetFromDate,
   getSlotDateById,
@@ -162,6 +162,17 @@ export default function SlotCalendarView({
   );
   const monthCells = useMemo(() => buildMonthCells(viewMonth, today), [viewMonth, today]);
 
+  const availableMonths = useMemo(() => {
+    const result: { label: string; date: Date }[] = [];
+    const start = startOfMonth(today);
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+      const label = d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+      result.push({ label, date: d });
+    }
+    return result;
+  }, [today]);
+
   const periodLabel =
     viewMode === "week"
       ? formatWeekRangeLabel(weekStartOffset)
@@ -220,6 +231,19 @@ export default function SlotCalendarView({
   const selectedDateMeta = getSlotDateById(selectedDate);
   const selectedDaySlots = getTimeSlotsForDate(selectedDate);
 
+
+
+  const handleMonthDropdownChange = (newMonthDate: Date) => {
+    setViewMonth(newMonthDate);
+    const monthStart = startOfMonth(newMonthDate);
+    const diffTime = monthStart.getTime() - startOfMonth(today).getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
+    const targetOffset = Math.max(0, diffDays);
+
+    setWeekStartOffset(clampWeekStartOffset(getRollingWeekStartOffset(targetOffset)));
+    onSelectDate(`date-${targetOffset}`);
+  };
+
   return (
     <div className={styles.calendar}>
       <div className={styles.toolbar}>
@@ -248,23 +272,20 @@ export default function SlotCalendarView({
           <h2 className={styles.periodLabel}>{periodLabel}</h2>
         </div>
 
-        <div className={styles.viewToggle} role="group" aria-label="Calendar view">
-          <button
-            type="button"
-            className={`${styles.viewBtn} ${viewMode === "week" ? styles.viewBtnActive : ""}`}
-            aria-pressed={viewMode === "week"}
-            onClick={() => handleViewModeChange("week")}
+        <div className={styles.monthSelectWrap}>
+          <select
+            className={styles.monthSelect}
+            value={startOfMonth(viewMonth).toISOString()}
+            onChange={(e) => handleMonthDropdownChange(new Date(e.target.value))}
+            aria-label="Select month"
           >
-            Week
-          </button>
-          <button
-            type="button"
-            className={`${styles.viewBtn} ${viewMode === "month" ? styles.viewBtnActive : ""}`}
-            aria-pressed={viewMode === "month"}
-            onClick={() => handleViewModeChange("month")}
-          >
-            Month
-          </button>
+            {availableMonths.map((m) => (
+              <option key={m.date.toISOString()} value={m.date.toISOString()}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className={styles.monthSelectChevron} aria-hidden="true" />
         </div>
       </div>
 
@@ -339,6 +360,7 @@ export default function SlotCalendarView({
           <div className={styles.monthGrid}>
             {monthCells.map((cell) => {
               const isSelected = cell.dateId === selectedDate;
+              const hasAvailableSlots = cell.selectable && cell.availableCount > 0;
               return (
                 <button
                   key={cell.date.toISOString()}
@@ -350,6 +372,7 @@ export default function SlotCalendarView({
                   onClick={() => handleMonthDaySelect(cell)}
                 >
                   <span className={styles.monthDayNum}>{cell.date.getDate()}</span>
+                  {hasAvailableSlots ? <span className={styles.orangeDot} aria-hidden="true" /> : null}
                 </button>
               );
             })}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useMemo, type CSSProperties, type ReactNode } from "react";
@@ -7,7 +8,6 @@ import {
   Bookmark,
   CalendarDays,
   Compass,
-  Crown,
   Headphones,
   Home,
   LogOut,
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
 import { SeekerShellContext } from "@/components/seeker/SeekerShellContext";
-import { MAIN_NAV, PROFILE_NAV, QUICK_LINKS } from "@/lib/seekerDashboard";
+import { MAIN_NAV, PROFILE_NAV, QUICK_LINKS, SEEKER_PROFILE } from "@/lib/seekerDashboard";
 import styles from "./SeekerShell.module.css";
 
 const NAV_ICONS = {
@@ -79,147 +79,147 @@ export default function SeekerShell({ children }: SeekerShellProps) {
   return (
     <SeekerShellContext.Provider value={shellContext}>
       <div className={`${styles.shell} ${isCollapsed ? styles.shellCollapsed : ""}`.trim()}>
-      <aside
-        className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`.trim()}
-        aria-label="Seeker navigation"
-      >
-        <div className={styles.brandContainer}>
-          {!isCollapsed ? (
-            <>
-              <Link href="/seeker/dashboard" className={styles.brand}>
-                <span className={styles.brandMark} aria-hidden="true">
-                  J
-                </span>
-                <span className={styles.brandText}>Jatayu</span>
-              </Link>
+        <aside
+          className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`.trim()}
+          aria-label="Seeker navigation"
+        >
+          <div className={styles.brandContainer}>
+            {!isCollapsed ? (
+              <>
+                <Link href="/seeker/dashboard" className={styles.brand}>
+                  <span className={styles.brandMark} aria-hidden="true">
+                    J
+                  </span>
+                  <span className={styles.brandText}>Jatayu</span>
+                </Link>
+                <button
+                  type="button"
+                  className={styles.collapseBtn}
+                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  aria-label="Collapse sidebar"
+                >
+                  <PanelLeftClose size={16} />
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                className={styles.collapseBtn}
+                className={`${styles.collapseBtn} ${styles.collapseBtnCollapsed}`}
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                aria-label="Collapse sidebar"
+                aria-label="Expand sidebar"
               >
-                <PanelLeftClose size={16} />
+                <PanelLeftOpen size={16} />
               </button>
-            </>
-          ) : (
+            )}
+          </div>
+
+          <nav className={styles.navSection} aria-label="Main">
+            {MAIN_NAV.map((item) => {
+              const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? Home;
+              const isActive = isNavItemActive(item.id, pathname, item.href, currentHash);
+
+              return (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className={`${styles.navLink} ${isActive ? styles.navLinkActive : ""}`}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  {!isCollapsed && <span className={styles.navLabelText}>{item.label}</span>}
+                  {!isCollapsed && item.badge ? <span className={styles.navBadge}>{item.badge}</span> : null}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {!isCollapsed && <div className={styles.navLabel}>Quick Links</div>}
+          <nav className={styles.navSection} aria-label="Quick links">
+            {QUICK_LINKS.map((item) => {
+              const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? Bookmark;
+
+              return (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className={`${styles.navLink} ${isNavItemActive(item.id, pathname, item.href, currentHash) ? styles.navLinkActive : ""
+                    }`}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                  {!isCollapsed && <span className={styles.navLabelText}>{item.label}</span>}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div
+            className={`${styles.userCard} ${isCollapsed ? styles.userCardCollapsed : ""
+              }`}
+          >
+            <Link href={PROFILE_NAV.href} title={SEEKER_PROFILE.name}>
+              {SEEKER_PROFILE.avatar.startsWith("blob:") || SEEKER_PROFILE.avatar.startsWith("data:") ? (
+                <img
+                  src={SEEKER_PROFILE.avatar}
+                  alt={SEEKER_PROFILE.name}
+                  className={styles.userAvatar}
+                  style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
+                />
+              ) : (
+                <Image
+                  src={SEEKER_PROFILE.avatar}
+                  alt={SEEKER_PROFILE.name}
+                  width={36}
+                  height={36}
+                  className={styles.userAvatar}
+                />
+              )}
+            </Link>
+            {!isCollapsed && (
+              <Link href={PROFILE_NAV.href} className={styles.userMeta}>
+                <span className={styles.userName}>{SEEKER_PROFILE.name}</span>
+                <span className={styles.userRole}>
+                  {SEEKER_PROFILE.isPro ? "Pro Seeker" : "Seeker"}
+                </span>
+              </Link>
+            )}
             <button
               type="button"
-              className={`${styles.collapseBtn} ${styles.collapseBtnCollapsed}`}
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              aria-label="Expand sidebar"
+              onClick={() => window.location.assign("/login")}
+              className={styles.userMenuBtn}
+              aria-label="Logout"
+              title="Logout"
             >
-              <PanelLeftOpen size={16} />
-            </button>
-          )}
-        </div>
-
-        <nav className={styles.navSection} aria-label="Main">
-          {MAIN_NAV.map((item) => {
-            const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? Home;
-            const isActive = isNavItemActive(item.id, pathname, item.href, currentHash);
-
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                className={`${styles.navLink} ${isActive ? styles.navLinkActive : ""}`}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <Icon size={16} aria-hidden="true" />
-                {!isCollapsed && <span className={styles.navLabelText}>{item.label}</span>}
-                {!isCollapsed && item.badge ? <span className={styles.navBadge}>{item.badge}</span> : null}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {!isCollapsed && <div className={styles.navLabel}>Quick Links</div>}
-        <nav className={styles.navSection} aria-label="Quick links">
-          {QUICK_LINKS.map((item) => {
-            const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? Bookmark;
-
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                className={`${styles.navLink} ${
-                  isNavItemActive(item.id, pathname, item.href, currentHash) ? styles.navLinkActive : ""
-                }`}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <Icon size={16} aria-hidden="true" />
-                {!isCollapsed && <span className={styles.navLabelText}>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {!isCollapsed && (
-          <div className={styles.upgradeCard}>
-            <Crown size={18} aria-hidden="true" />
-            <p className={styles.upgradeTitle}>Upgrade to Jatayu Pro</p>
-            <p className={styles.upgradeCopy}>Unlock priority booking and exclusive expert access.</p>
-            <button type="button" className={styles.upgradeBtn}>
-              Upgrade Now
+              <LogOut size={20} aria-hidden="true" />
             </button>
           </div>
-        )}
+        </aside>
 
-        <div className={styles.sidebarFooter}>
-          <Link
-            href={PROFILE_NAV.href}
-            className={`${styles.navLink} ${styles.profileLink} ${
-              isNavItemActive(PROFILE_NAV.id, pathname, PROFILE_NAV.href, currentHash)
-                ? styles.navLinkActive
-                : ""
-            }`}
-            title={isCollapsed ? PROFILE_NAV.label : undefined}
-          >
-            <User size={16} aria-hidden="true" />
-            {!isCollapsed && <span className={styles.navLabelText}>{PROFILE_NAV.label}</span>}
-          </Link>
-          <button
-            type="button"
-            onClick={() => window.location.assign("/login")}
-            className={`${styles.navLink} ${styles.logoutLink}`}
-            title={isCollapsed ? "Logout" : undefined}
-          >
-            <LogOut size={16} aria-hidden="true" />
-            {!isCollapsed && <span className={styles.navLabelText}>Logout</span>}
-          </button>
-        </div>
-      </aside>
+        <div className={styles.main}>
+          <div className={`section-grid-wrap ${styles.gridWrap}`}>
+            {(!pathname?.startsWith("/seeker/expert/") || pathname?.includes("/checkout")) && (
+              <div className="section-grid-lines" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
 
-      <div className={styles.main}>
-        <div
-          className={`section-grid-wrap ${styles.gridWrap}`}
-          style={
-            {
-              "--section-grid-line-color": "color-mix(in srgb, var(--ink) 10%, transparent)",
-            } as CSSProperties
-          }
-        >
-          <div className="section-grid-lines" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-
-          <div className={styles.topBar}>
-            <div className="container">
-              <div className={styles.topBarInner}>
-                <div className={styles.breadcrumbsSlot}>{breadcrumbs}</div>
-                <NotificationPanel />
+            <div className={styles.topBar}>
+              <div className="container">
+                <div className={styles.topBarInner}>
+                  <div className={styles.breadcrumbsSlot}>{breadcrumbs}</div>
+                  <NotificationPanel />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className={styles.content}>{children}</div>
+            <div className={styles.content}>{children}</div>
+          </div>
         </div>
       </div>
-    </div>
     </SeekerShellContext.Provider>
   );
 }

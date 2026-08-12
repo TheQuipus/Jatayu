@@ -64,17 +64,17 @@ export type BookingBreakdown = {
   total: number;
 };
 
-export const PLATFORM_FEE = 99;
+export const PLATFORM_FEE = 0;
 
 export function calculateBookingTotal(
   consultationFee: number,
   walletBalance: number,
   useWallet: boolean
 ): BookingBreakdown {
-  const platformFee = consultationFee > 0 ? PLATFORM_FEE : 0;
-  const subtotal = consultationFee + platformFee;
+  const platformFee = 0;
+  const subtotal = consultationFee;
   const gst = Math.round(subtotal * 0.18);
-  const gross = consultationFee + platformFee + gst;
+  const gross = consultationFee + gst;
   const walletApplied = useWallet ? Math.min(walletBalance, gross) : 0;
   const total = gross - walletApplied;
 

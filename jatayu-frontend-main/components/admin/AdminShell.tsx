@@ -17,10 +17,10 @@ import {
   ADMIN_DASHBOARD_HREF,
   ADMIN_EXPERT_PATH_PREFIXES,
   ADMIN_NAV,
-  ADMIN_PROFILE,
   ADMIN_SETTINGS_HREF,
   type AdminNavItem,
 } from "@/lib/adminDashboard";
+import { getAdminMe, removeAdminToken, type AdminAuthUser } from "@/lib/api";
 import {
   SETTINGS_SECTIONS,
   getSettingsSectionHref,
@@ -140,9 +140,26 @@ export default function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
   const { ready, pendingCount } = useExpertApplications();
   const [mounted, setMounted] = useState(false);
+  const [adminUser, setAdminUser] = useState<AdminAuthUser | null>(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    getAdminMe()
+      .then((user) => {
+        if (active) setAdminUser(user);
+      })
+      .catch(() => {
+        if (active) setAdminUser(null);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const navItems = ADMIN_NAV.map((item) =>
@@ -170,19 +187,24 @@ export default function AdminShell({ children }: AdminShellProps) {
 
         <div className={styles.userCard}>
           <Image
-            src={ADMIN_PROFILE.avatar}
-            alt={ADMIN_PROFILE.name}
+            src="/assets/img/manportrait.png"
+            alt={adminUser?.fullName || "Admin"}
             width={36}
             height={36}
             className={styles.userAvatar}
           />
           <div className={styles.userMeta}>
-            <span className={styles.userName}>{ADMIN_PROFILE.shortName}</span>
-            <span className={styles.userRole}>{ADMIN_PROFILE.role}</span>
+            <span className={styles.userName}>
+              {adminUser?.fullName?.split(" ")[0] || "Admin"}
+            </span>
+            <span className={styles.userRole}>{adminUser?.role || "Administrator"}</span>
           </div>
           <button
             type="button"
-            onClick={() => window.location.assign("/admin")}
+            onClick={() => {
+              removeAdminToken();
+              window.location.assign("/admin");
+            }}
             className={styles.userMenuBtn}
             aria-label="Logout"
             title="Logout"

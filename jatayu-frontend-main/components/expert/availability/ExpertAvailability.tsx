@@ -21,27 +21,47 @@ export type { TimeSlot };
 
 type ExpertAvailabilityProps = {
   variant?: "onboarding" | "app";
+  initialSchedule?: { timezone: string; slots: TimeSlot[] };
   onValidityChange?: (isValid: boolean) => void;
   onScheduleChange?: (data: { timezone: string; slots: TimeSlot[] }) => void;
 };
 
 export default function ExpertAvailability({
   variant = "onboarding",
+  initialSchedule,
   onValidityChange,
   onScheduleChange,
 }: ExpertAvailabilityProps) {
   const styles = variant === "app" ? appStyles : onboardingStyles;
   const timePickerTheme = variant === "app" ? "light" : "dark";
 
-  const [timezone, setTimezone] = useState("");
-  const [timezoneLabel, setTimezoneLabel] = useState("Detecting timezone...");
-  const [slots, setSlots] = useState<TimeSlot[]>(() => [createEmptySlot()]);
+  const [timezone, setTimezone] = useState(initialSchedule?.timezone || "");
+  const [timezoneLabel, setTimezoneLabel] = useState(
+    initialSchedule?.timezone
+      ? formatTimezoneLabel(initialSchedule.timezone)
+      : "Detecting timezone...",
+  );
+  const [slots, setSlots] = useState<TimeSlot[]>(
+    () => initialSchedule?.slots?.length ? initialSchedule.slots : [createEmptySlot()],
+  );
 
   useEffect(() => {
+    if (initialSchedule?.timezone) {
+      setTimezone(initialSchedule.timezone);
+      setTimezoneLabel(formatTimezoneLabel(initialSchedule.timezone));
+    }
+    if (initialSchedule?.slots?.length) {
+      setSlots(initialSchedule.slots);
+    }
+  }, [initialSchedule]);
+
+  useEffect(() => {
+    if (initialSchedule?.timezone) return;
+
     const detectedTimezone = getMachineTimezone();
     setTimezone(detectedTimezone);
     setTimezoneLabel(formatTimezoneLabel(detectedTimezone));
-  }, []);
+  }, [initialSchedule?.timezone]);
 
   const getConflictingSlotIds = (currentSlots: TimeSlot[]): Set<string> => {
     const conflictingIds = new Set<string>();

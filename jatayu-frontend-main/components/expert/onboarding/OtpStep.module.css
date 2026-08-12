@@ -58,14 +58,15 @@
 .otpInputRow {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .otpInput {
   width: 52px;
   height: 48px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-chip);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 0;
   padding: 13px 17px;
   font-family: var(--font-body);

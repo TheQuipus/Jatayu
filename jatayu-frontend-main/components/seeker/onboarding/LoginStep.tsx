@@ -7,7 +7,9 @@ import RegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel"
 import ContinueButton from "@/components/ui/ContinueButton";
 import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
+import { seekerLogin, SeekerOtpRequiredError, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
+import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
 import {
   buildPasswordContext,
   getPasswordHint,
@@ -17,7 +19,8 @@ import {
 } from "@/lib/passwordValidation";
 
 type LoginStepProps = {
-  onContinue: (data: { email: string }) => void;
+  onContinue: (response: AuthResponse) => void;
+  onRequiresOtp?: (data: { seekerId: string; email: string; phone: string; fullName?: string }) => void;
   onSwitchToRegister?: () => void;
   registerHref?: string;
 };
@@ -55,6 +58,7 @@ function isFormComplete(email: string, password: string): boolean {
 
 export default function LoginStep({
   onContinue,
+  onRequiresOtp,
   onSwitchToRegister,
   registerHref = "/seeker/seeker-onboarding/",
 }: LoginStepProps) {
@@ -63,6 +67,8 @@ export default function LoginStep({
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState(emptyTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const values = { email, password };
   const passwordContext = buildPasswordContext({ email });
@@ -90,11 +96,41 @@ export default function LoginStep({
       .filter(Boolean)
       .join(" ");
 
+  const submitLogin = async () => {
+    setSubmitAttempted(true);
+    setSubmitError(null);
+    if (!canSubmit || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await seekerLogin({
+        email: normalizeEmail(email),
+        password,
+      });
+      onContinue(response);
+    } catch (error) {
+      if (error instanceof SeekerOtpRequiredError) {
+        savePendingSeekerOtpSession({
+          seekerId: error.seekerId,
+          email: error.email,
+          phone: error.phone,
+        });
+        onRequiresOtp?.({
+          seekerId: error.seekerId,
+          email: error.email,
+          phone: error.phone,
+        });
+        return;
+      }
+      setSubmitError(error instanceof Error ? error.message : "Login failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitAttempted(true);
-    if (!canSubmit) return;
-    onContinue({ email: normalizeEmail(email) });
+    void submitLogin();
   };
 
   return (
@@ -193,11 +229,17 @@ export default function LoginStep({
             </div>
           </div>
 
+          {submitError ? (
+            <p className={register.fieldErrorBelow} role="alert">
+              {submitError}
+            </p>
+          ) : null}
+
           <ContinueButton
             type="submit"
-            label="Login"
-            aria-disabled={!canSubmit}
-            className={`${styles.registerSubmitBtn} ${canSubmit ? "" : styles.registerSubmitBtnInactive}`}
+            label={isSubmitting ? "Logging in..." : "Login"}
+            disabled={!canSubmit || isSubmitting}
+            className={`${styles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : styles.registerSubmitBtnInactive}`}
             arrowSize={16}
           />
 
@@ -211,7 +253,19 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
+              onClick={() =>
+                onContinue({
+                  token: "mock-token",
+                  user: {
+                    id: "seeker-mock",
+                    email: email.trim() || "user@example.com",
+                    fullName: "Seeker User",
+                    onboardingStep: "category",
+                    status: "active",
+                    role: "seeker",
+                  },
+                })
+              }
               aria-label="Continue with Google"
               title="Continue with Google"
             >
@@ -225,7 +279,19 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
+              onClick={() =>
+                onContinue({
+                  token: "mock-token",
+                  user: {
+                    id: "seeker-mock",
+                    email: email.trim() || "user@example.com",
+                    fullName: "Seeker User",
+                    onboardingStep: "category",
+                    status: "active",
+                    role: "seeker",
+                  },
+                })
+              }
               aria-label="Continue with LinkedIn"
               title="Continue with LinkedIn"
             >
@@ -239,7 +305,19 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
+              onClick={() =>
+                onContinue({
+                  token: "mock-token",
+                  user: {
+                    id: "seeker-mock",
+                    email: email.trim() || "user@example.com",
+                    fullName: "Seeker User",
+                    onboardingStep: "category",
+                    status: "active",
+                    role: "seeker",
+                  },
+                })
+              }
               aria-label="Continue with Facebook"
               title="Continue with Facebook"
             >
@@ -253,7 +331,19 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
+              onClick={() =>
+                onContinue({
+                  token: "mock-token",
+                  user: {
+                    id: "seeker-mock",
+                    email: email.trim() || "user@example.com",
+                    fullName: "Seeker User",
+                    onboardingStep: "category",
+                    status: "active",
+                    role: "seeker",
+                  },
+                })
+              }
               aria-label="Continue with Instagram"
               title="Continue with Instagram"
             >

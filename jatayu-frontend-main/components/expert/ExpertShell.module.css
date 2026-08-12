@@ -20,13 +20,26 @@
   background: var(--white);
   border-right: 1px solid var(--mercury);
   overflow-y: auto;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebarCollapsed {
+  width: 72px;
+  padding: 24px 10px 20px;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 20px;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 8px 24px;
+  padding: 0;
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 700;
@@ -38,17 +51,37 @@
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: var(--pomegranate);
+  background: var(--bunker);
   color: var(--white);
   display: grid;
   place-items: center;
   font-size: 14px;
   font-weight: 800;
+  flex-shrink: 0;
 }
 
 .brandBadge {
   font-weight: 700;
   color: var(--pomegranate);
+}
+
+.collapseToggleBtn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--mercury);
+  border-radius: 6px;
+  background: var(--seashell);
+  color: var(--scorpion);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.collapseToggleBtn:hover {
+  background: var(--mercury);
+  color: var(--ink);
 }
 
 .navSection {
@@ -78,6 +111,12 @@
   font-weight: 500;
   color: var(--scorpion);
   transition: background 0.2s ease, color 0.2s ease;
+  position: relative;
+}
+
+.navLinkCollapsed {
+  justify-content: center;
+  padding: 10px 0;
 }
 
 .navLink:hover {
@@ -86,12 +125,12 @@
 }
 
 .navLinkActive {
-  background: var(--pomegranate);
+  background: var(--bunker);
   color: var(--white);
 }
 
 .navLinkActive:hover {
-  background: var(--pomegranate);
+  background: var(--bunker);
   color: var(--white);
 }
 
@@ -110,6 +149,21 @@
   color: var(--ink);
 }
 
+.navBadgeDot {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  min-width: 7px;
+  height: 7px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--pomegranate);
+}
+
+.navLinkActive .navBadgeDot {
+  background: var(--white);
+}
+
 .navLinkActive .navBadge {
   background: color-mix(in srgb, var(--white) 22%, transparent);
   color: var(--white);
@@ -120,16 +174,18 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--mercury);
-  background: var(--seashell);
+}
+
+.userCardCollapsed {
+  flex-direction: column;
+  padding: 10px 4px;
+  gap: 8px;
 }
 
 .userAvatar {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--mercury);
@@ -145,7 +201,7 @@
 
 .userName {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.3;
   color: var(--ink);
@@ -156,7 +212,7 @@
 
 .userRole {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.3;
   color: var(--scorpion);
   white-space: nowrap;
@@ -202,11 +258,9 @@
   top: 0;
   z-index: 20;
   padding: 16px 0 0;
-  background: linear-gradient(
-    to bottom,
-    var(--gallery) 70%,
-    color-mix(in srgb, var(--gallery) 0%, transparent)
-  );
+  background: linear-gradient(to bottom,
+      var(--gallery) 70%,
+      color-mix(in srgb, var(--gallery) 0%, transparent));
 }
 
 .topBarInner {
@@ -253,5 +307,3 @@
     --expert-sticky-top: 52px;
   }
 }
-
-

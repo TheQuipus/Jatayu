@@ -16,17 +16,9 @@ export type MessageTemplateCategory =
 
 export type SmsSettings = {
   provider: SmsProvider;
-  apiKey: string;
-  apiSecret: string;
+  authToken: string;
+  contactNo: string;
   senderId: string;
-  defaultCountryCode: string;
-};
-
-export type EmailSettings = {
-  fromName: string;
-  fromEmail: string;
-  replyToEmail: string;
-  footerText: string;
 };
 
 export type SmtpSettings = {
@@ -48,13 +40,18 @@ export type PaymentSettings = {
   testMode: boolean;
 };
 
-export type GoogleCredentialsSettings = {
+export type ProviderAuthCredentials = {
   clientId: string;
-  clientSecret: string;
   redirectUri: string;
   authorizedDomains: string;
   enableSignIn: boolean;
   enableCalendar: boolean;
+};
+
+export type AuthCredentialsSettings = {
+  google: ProviderAuthCredentials;
+  meta: ProviderAuthCredentials;
+  linkedin: ProviderAuthCredentials;
 };
 
 export type MessageTemplate = {
@@ -66,23 +63,29 @@ export type MessageTemplate = {
   subject?: string;
   body: string;
   variables: string[];
+  status?: "active" | "disabled";
+};
+
+export type AiSettings = {
+  name: string;
+  apiKey: string;
 };
 
 export type AdminSettings = {
   sms: SmsSettings;
-  email: EmailSettings;
   smtp: SmtpSettings;
   payment: PaymentSettings;
-  google: GoogleCredentialsSettings;
+  auth: AuthCredentialsSettings;
+  ai: AiSettings;
   templates: MessageTemplate[];
 };
 
 export type SettingsSection =
   | "sms"
-  | "email"
   | "smtp"
+  | "auth"
   | "payment"
-  | "google"
+  | "ai"
   | "templates";
 
 export const SETTINGS_SECTIONS: {
@@ -90,15 +93,15 @@ export const SETTINGS_SECTIONS: {
   label: string;
   description: string;
 }[] = [
-  { id: "sms", label: "SMS", description: "Provider credentials and sender ID" },
-  { id: "email", label: "Email", description: "From address, reply-to, and footer" },
+  { id: "sms", label: "SMS Config", description: "Provider credentials and sender ID" },
   { id: "smtp", label: "SMTP", description: "Outbound mail server configuration" },
-  { id: "payment", label: "Payment", description: "Gateway keys, webhooks, and payout mode" },
   {
-    id: "google",
-    label: "Google Credentials",
+    id: "auth",
+    label: "Auth Credentials",
     description: "OAuth client ID, secret, and sign-in configuration",
   },
+  { id: "payment", label: "Payment", description: "Gateway keys, webhooks, and payout mode" },
+  { id: "ai", label: "AI Config", description: "AI provider model name and API credentials" },
   { id: "templates", label: "Templates", description: "SMS and email notification templates for experts and seekers" },
 ];
 
@@ -159,16 +162,9 @@ export const ADMIN_SETTINGS_UPDATED_EVENT = "admin-settings-updated";
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   sms: {
     provider: "msg91",
-    apiKey: "",
-    apiSecret: "",
+    authToken: "",
+    contactNo: "",
     senderId: "JATAYU",
-    defaultCountryCode: "+91",
-  },
-  email: {
-    fromName: "Jatayu",
-    fromEmail: "noreply@jatayu.com",
-    replyToEmail: "support@jatayu.com",
-    footerText: "© Jatayu. All rights reserved.",
   },
   smtp: {
     host: "smtp.gmail.com",
@@ -185,13 +181,32 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     currency: "INR",
     testMode: true,
   },
-  google: {
-    clientId: "",
-    clientSecret: "",
-    redirectUri: "https://jatayu.com/api/auth/google/callback",
-    authorizedDomains: "jatayu.com",
-    enableSignIn: true,
-    enableCalendar: false,
+  auth: {
+    google: {
+      clientId: "",
+      redirectUri: "https://jatayu.com/api/auth/google/callback",
+      authorizedDomains: "jatayu.com",
+      enableSignIn: true,
+      enableCalendar: false,
+    },
+    meta: {
+      clientId: "",
+      redirectUri: "https://jatayu.com/api/auth/meta/callback",
+      authorizedDomains: "jatayu.com",
+      enableSignIn: false,
+      enableCalendar: false,
+    },
+    linkedin: {
+      clientId: "",
+      redirectUri: "https://jatayu.com/api/auth/linkedin/callback",
+      authorizedDomains: "jatayu.com",
+      enableSignIn: false,
+      enableCalendar: false,
+    },
+  },
+  ai: {
+    name: "OpenAI GPT-4",
+    apiKey: "",
   },
   templates: [
     {
@@ -340,10 +355,14 @@ function mergeWithDefaults(partial: Partial<AdminSettings>): AdminSettings {
 
   return {
     sms: { ...DEFAULT_ADMIN_SETTINGS.sms, ...partial.sms },
-    email: { ...DEFAULT_ADMIN_SETTINGS.email, ...partial.email },
     smtp: { ...DEFAULT_ADMIN_SETTINGS.smtp, ...partial.smtp },
     payment: { ...DEFAULT_ADMIN_SETTINGS.payment, ...partial.payment },
-    google: { ...DEFAULT_ADMIN_SETTINGS.google, ...partial.google },
+    auth: {
+      google: { ...DEFAULT_ADMIN_SETTINGS.auth.google, ...partial.auth?.google },
+      meta: { ...DEFAULT_ADMIN_SETTINGS.auth.meta, ...partial.auth?.meta },
+      linkedin: { ...DEFAULT_ADMIN_SETTINGS.auth.linkedin, ...partial.auth?.linkedin },
+    },
+    ai: { ...DEFAULT_ADMIN_SETTINGS.ai, ...partial.ai },
     templates: templates.length > 0 ? templates : DEFAULT_ADMIN_SETTINGS.templates,
   };
 }

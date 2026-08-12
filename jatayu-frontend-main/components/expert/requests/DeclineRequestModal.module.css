@@ -1,0 +1,252 @@
+/* DeclineRequestModal.module.css */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.modalContainer {
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modalHeader {
+  background: var(--ink);
+  color: var(--white);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.modalHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.modalHeaderDots {
+  flex: 1;
+  border-bottom: 2px dotted color-mix(in srgb, var(--white) 35%, transparent);
+  height: 3px;
+  flex-shrink: 0;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: red;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+}
+
+.modalBody {
+  background: var(--white);
+  padding: 24px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pomegranate) 12%, var(--white));
+  color: var(--pomegranate);
+  margin: 0 auto;
+}
+
+.modalIntroText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--bunker);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.clientNameSpan {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.requiredStar {
+  color: var(--pomegranate);
+}
+
+.optionalText {
+  font-weight: 400;
+  color: var(--silver-chalice);
+  font-size: 12px;
+}
+
+.reasonsRadioList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+}
+
+.reasonRadioCard {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 16px;
+  gap: 8px;
+  background: var(--background-chip, #f5f5f7);
+  border: 1px solid var(--pomegranate);
+  color: var(--pomegranate);
+  border-radius: 9999px;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+  transition: all 0.2s ease;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.reasonRadioCardActive {
+  background: var(--pomegranate) !important;
+  color: var(--white) !important;
+  border-color: var(--pomegranate) !important;
+}
+
+.radioInput {
+  display: none;
+}
+
+.radioCustom {
+  display: none;
+}
+
+
+.formErrorText {
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--pomegranate);
+  font-weight: 500;
+}
+
+.formTextarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--ink);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.formTextarea:focus {
+  border-color: color-mix(in srgb, var(--pomegranate) 40%, var(--mercury));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pomegranate) 10%, transparent);
+}
+
+.modalActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.cancelBtn {
+  flex: 1;
+  height: 44px;
+  background: var(--white);
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cancelBtn:hover {
+  color: var(--ink);
+}
+
+.confirmBtn {
+  flex: 1;
+}
+
+.modalFooter {
+  height: 24px;
+  background: var(--ink);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

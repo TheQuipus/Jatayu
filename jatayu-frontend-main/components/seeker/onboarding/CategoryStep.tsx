@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import { useState } from "react";
 import Image from "next/image";
-import { Plus, X } from "lucide-react";
+import { Info, Plus, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import MatchingProgress from "./MatchingProgress";
@@ -251,6 +251,7 @@ export function CategoryFields({
 
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isMaxCustomReached) return;
     const trimmed = newCategoryInput.trim();
     if (trimmed) {
       onAddCustomCategory(trimmed);
@@ -260,6 +261,10 @@ export function CategoryFields({
   };
 
   const handleCustomBlur = () => {
+    if (isMaxCustomReached) {
+      setShowInput(false);
+      return;
+    }
     const trimmed = newCategoryInput.trim();
     if (trimmed) {
       onAddCustomCategory(trimmed);
@@ -271,6 +276,7 @@ export function CategoryFields({
   // Filter out the custom/other category from the alphabetical list
   const predefinedCategories = categories.filter((cat) => cat.id !== OTHER_CATEGORY_ID && !isCustomCategory(cat.id));
   const customCategories = categories.filter((cat) => isCustomCategory(cat.id));
+  const isMaxCustomReached = customCategories.length >= 1;
 
   const grouped = predefinedCategories.reduce((acc, cat) => {
     const label = cat.label.trim();
@@ -409,7 +415,7 @@ export function CategoryFields({
                 })}
               </div>
             )}
-            {showInput ? (
+            {!isMaxCustomReached && showInput ? (
               <div
                 className={`${styles.categoryItem} ${
                   selectedCategory === OTHER_CATEGORY_ID ? styles.categoryItemSelected : ""
@@ -443,13 +449,24 @@ export function CategoryFields({
               <button
                 type="button"
                 onClick={() => {
-                  setShowInput(true);
+                  if (!isMaxCustomReached) {
+                    setShowInput(true);
+                  }
                 }}
-                className={styles.categoryItem}
+                disabled={isMaxCustomReached}
+                className={`${styles.categoryItem} ${
+                  isMaxCustomReached ? styles.categoryItemDisabled : ""
+                }`}
               >
                 <Plus size={14} />
                 <span>Add custom</span>
               </button>
+            )}
+            {isMaxCustomReached && (
+              <p className={styles.customLimitMessage}>
+                <Info size={14} className={styles.infoIcon} aria-hidden="true" />
+                <span>Only one entry is allowed. Delete to make another</span>
+              </p>
             )}
           </div>
         )}

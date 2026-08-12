@@ -9,15 +9,37 @@ import {
   type AdminSettings,
   type MessageTemplate,
 } from "@/lib/adminSettings";
+import {
+  fetchAdminSettingsFromBackend,
+  saveAdminSettingsToBackend,
+} from "@/lib/adminSettingsSync";
 
 export function useAdminSettings() {
   const [settings, setSettings] = useState<AdminSettings>(DEFAULT_ADMIN_SETTINGS);
   const [ready, setReady] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setSettings(getAdminSettings());
-    setReady(true);
+    let active = true;
+
+    async function loadSettings() {
+      try {
+        const remoteSettings = await fetchAdminSettingsFromBackend();
+        if (!active) return;
+        saveAdminSettings(remoteSettings);
+        setSettings(remoteSettings);
+      } catch (err) {
+        console.warn("Failed to load admin settings from backend, using local cache.", err);
+        if (!active) return;
+        setSettings(getAdminSettings());
+      } finally {
+        if (active) setReady(true);
+      }
+    }
+
+    loadSettings();
 
     const refresh = () => setSettings(getAdminSettings());
 
@@ -25,15 +47,28 @@ export function useAdminSettings() {
     window.addEventListener("storage", refresh);
 
     return () => {
+      active = false;
       window.removeEventListener(ADMIN_SETTINGS_UPDATED_EVENT, refresh);
       window.removeEventListener("storage", refresh);
     };
   }, []);
 
-  const save = useCallback((next: AdminSettings) => {
-    saveAdminSettings(next);
-    setSettings(next);
-    setSavedAt(Date.now());
+  const save = useCallback(async (next: AdminSettings) => {
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await saveAdminSettingsToBackend(next);
+      saveAdminSettings(next);
+      setSettings(next);
+      setSavedAt(Date.now());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save settings.";
+      setError(message);
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
   }, []);
 
   const updateTemplate = useCallback(
@@ -44,15 +79,18 @@ export function useAdminSettings() {
           template.id === templateId ? { ...template, ...updates } : template,
         ),
       };
-      save(next);
+      saveAdminSettings(next);
+      setSettings(next);
     },
-    [save, settings],
+    [settings],
   );
 
   return {
     ready,
     settings,
     savedAt,
+    isSaving,
+    error,
     save,
     updateTemplate,
   };

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, Bookmark as BookmarkIcon } from "lucide-react";
@@ -34,10 +35,21 @@ export default function ExpertCard({
   priority = false,
   statsText,
 }: ExpertCardProps) {
+  const [showAllLanguages, setShowAllLanguages] = useState(false);
   const detailHref = getExpertDetailHref(expert, { seeker });
   const formattedReplyTime = expert.replyTime
     .replace(/\bhours?\b/gi, "hr")
     .replace(/\bminutes?\b/gi, "min");
+  const visibleLanguages = expert.languages.slice(0, 5);
+  const hiddenLanguages = expert.languages.slice(visibleLanguages.length);
+  const hiddenLanguageCount = hiddenLanguages.length;
+
+  const toggleLanguages = (event: React.SyntheticEvent) => {
+    if (hiddenLanguageCount === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setShowAllLanguages((current) => !current);
+  };
 
   const cardBody = (
     <>
@@ -92,9 +104,37 @@ export default function ExpertCard({
           <div className={styles.expertCardBody}>
             <div className={styles.languagesSection}>
               <ul className={styles.languagesList}>
-                {expert.languages.map((lang) => (
+                {visibleLanguages.map((lang) => (
                   <li key={lang}>{lang}</li>
                 ))}
+                {hiddenLanguageCount > 0 && (
+                  <li className={styles.moreLanguages}>
+                    <div
+                      className={`${styles.languagesDisclosure} ${
+                        showAllLanguages ? styles.languagesDisclosureExpanded : ""
+                      }`}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={showAllLanguages}
+                      aria-label={`Show all ${expert.languages.length} languages`}
+                      onClick={toggleLanguages}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          toggleLanguages(event);
+                        }
+                      }}
+                    >
+                      +{hiddenLanguageCount} more
+                      <div className={styles.languagesPopover} aria-hidden={!showAllLanguages}>
+                        <ul className={styles.languagesPopoverList}>
+                          {hiddenLanguages.map((lang) => (
+                            <li key={lang}>{lang}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </li>
+                )}
               </ul>
             </div>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import BookingCalendar from "@/components/seeker/dashboard/BookingCalendar";
+import BookingCalendar from "@/components/seeker/bookings/BookingCalendar";
 import BookingHistory from "@/components/seeker/bookings/BookingHistory";
 import styles from "./BookingsPageContent.module.css";
 
@@ -19,7 +19,7 @@ export default function BookingsPageContent() {
             className={`${styles.tabBtn} ${activeTab === "calendar" ? styles.tabBtnActive : ""}`}
             onClick={() => setActiveTab("calendar")}
           >
-            Active Schedule
+            Schedule
           </button>
           <button
             type="button"

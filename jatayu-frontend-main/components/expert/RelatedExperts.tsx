@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import ExpertCard from "@/components/ui/ExpertCard";
-import HeroLines from "@/components/ui/HeroLines";
 import { getRelatedExperts, expertiseTags, type Expert, type ExpertiseTag } from "@/lib/experts";
 import { useBookmarks } from "@/lib/useBookmarks";
 import styles from "@/components/homepage/Services.module.css";
@@ -88,7 +87,6 @@ export default function RelatedExperts({ expert, seeker = false }: RelatedExpert
 
   return (
     <>
-      <HeroLines rotate180={true} />
       <section
         className={`${styles.services} ${seeker ? styles.servicesSeeker : ""} dark`}
         data-nav-surface="dark"

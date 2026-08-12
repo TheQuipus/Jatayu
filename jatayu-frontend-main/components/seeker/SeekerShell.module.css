@@ -10,13 +10,13 @@
   top: 0;
   z-index: 40;
   align-self: flex-start;
-  width: 240px;
+  width: 260px;
   height: 100vh;
   max-height: 100vh;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px 64px;
+  padding: 24px 16px 20px;
   background: var(--white);
   border-right: 1px solid var(--mercury);
   overflow-y: auto;
@@ -75,6 +75,7 @@
   display: grid;
   place-items: center;
   font-size: 14px;
+  font-weight: 800;
 }
 
 .navSection {
@@ -141,71 +142,74 @@
   color: var(--white);
 }
 
-.upgradeCard {
+.userCard {
   margin-top: auto;
-  padding: 16px;
-  border-radius: 12px;
-  background: var(--bunker);
-  color: var(--white);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.sidebarFooter {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
-  display: flex;
+.userCardCollapsed {
   flex-direction: column;
+  padding: 10px 4px;
   gap: 8px;
 }
 
-.profileLink {
-  width: 100%;
+.userAvatar {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--mercury);
 }
 
-.logoutLink {
-  width: 100%;
-  border: none;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
+.userMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
 }
 
-.upgradeTitle {
-  margin: 8px 0 4px;
-  font-family: var(--font-display);
-  font-size: 15px;
+.userName {
+  font-family: var(--font-body);
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.3;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.upgradeCopy {
-  margin: 0 0 14px;
-  font-family: var(--font-body);
-  font-size: 12px;
-  line-height: 1.45;
-  color: color-mix(in srgb, var(--white) 72%, transparent);
-}
-
-.upgradeBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 36px;
-  border: none;
-  border-radius: 8px;
-  background: var(--white);
-  color: var(--bunker);
+.userRole {
   font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
+  line-height: 1.3;
+  color: var(--scorpion);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.upgradeBtn:hover {
-  opacity: 0.92;
+.userMenuBtn {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--silver-chalice);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.userMenuBtn:hover {
+  background: color-mix(in srgb, var(--ink) 6%, var(--white));
+  color: var(--ink);
 }
 
 .main {
@@ -220,18 +224,16 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  --section-grid-line-color: var(--white);
 }
 
 .topBar {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 20;
-  padding: 16px 0 0;
-  background: linear-gradient(
-    to bottom,
-    var(--gallery) 70%,
-    color-mix(in srgb, var(--gallery) 0%, transparent)
-  );
+  padding: 24px 0 0;
+  background: linear-gradient(to bottom,
+      var(--gallery) 70%,
+      color-mix(in srgb, var(--gallery) 0%, transparent));
 }
 
 .topBarInner {
@@ -252,25 +254,13 @@
 }
 
 .sidebarCollapsed {
-  width: 68px;
-  padding: 24px 8px 64px;
+  width: 72px;
+  padding: 24px 10px 20px;
 }
-
-
 
 .sidebarCollapsed .navLink {
   justify-content: center;
   padding: 10px 0;
-}
-
-.sidebarCollapsed .sidebarFooter {
-  left: 8px;
-  right: 8px;
-}
-
-.sidebarCollapsed .profileLink,
-.sidebarCollapsed .logoutLink {
-  justify-content: center;
 }
 
 @media (max-width: 900px) {
@@ -289,17 +279,11 @@
     max-height: none;
     border-right: none;
     border-bottom: 1px solid var(--mercury);
-    padding-bottom: 64px;
     overflow-y: visible;
   }
 
-  .upgradeCard {
+  .userCard {
     margin-top: 16px;
-  }
-
-  .sidebarFooter {
-    position: absolute;
-    bottom: 16px;
   }
 
   .topBar {

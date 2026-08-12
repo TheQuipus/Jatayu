@@ -53,13 +53,14 @@
 .subjectInput {
   width: 100%;
   border: 1px solid var(--mercury);
+  border-radius: 0;
   background: var(--white);
   padding: 12px 14px;
   font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.4;
-  color: var(--bunker);
-  transition: border-color 0.2s ease;
+  color: var(--ink);
+  outline: none;
 }
 
 .subjectInput::placeholder {
@@ -72,8 +73,8 @@
 .subjectInput:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px var(--white) inset !important;
   box-shadow: 0 0 0 1000px var(--white) inset !important;
-  -webkit-text-fill-color: var(--bunker) !important;
-  caret-color: var(--bunker);
+  -webkit-text-fill-color: var(--ink) !important;
+  caret-color: var(--ink);
   transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -86,9 +87,9 @@
   min-height: 220px;
   margin: 0;
   border: 1px solid var(--mercury);
+  border-radius: 0;
   background: var(--white);
   padding: 16px 18px 64px;
-  transition: border-color 0.2s ease;
   box-sizing: border-box;
 }
 
@@ -130,18 +131,50 @@
   color: inherit;
 }
 
-.textarea {
+.contextTextEditor {
+  position: relative;
   width: 100%;
   min-height: 88px;
   height: 88px;
   max-height: 88px;
-  border: none;
-  background: transparent;
-  padding: 0;
+}
+
+.contextTextMirror,
+.textarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 88px;
+  height: 88px;
+  max-height: 88px;
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.6;
-  color: var(--bunker);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.contextTextMirror {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.suggestionText {
+  color: var(--silver-chalice);
+}
+
+.typedText {
+  color: var(--ink);
+}
+
+.textarea {
+  z-index: 1;
+  color: transparent;
+  caret-color: var(--ink);
+  border: none;
+  background: transparent;
+  padding: 0;
   resize: none;
   overflow-y: auto;
   scrollbar-width: none;
@@ -223,28 +256,33 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .improvementChip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--mercury);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gallery) 45%, var(--white));
+  color: var(--scorpion);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
-  color: var(--scorpion);
-  background: color-mix(in srgb, var(--gallery) 45%, var(--white));
-  border: 1px solid var(--mercury);
-  border-radius: 999px;
-  padding: 8px 14px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
-  outline: none;
+  line-height: 1.4;
   white-space: nowrap;
-  max-height: 36px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
 }
 
 .improvementChipSelected {
-  background: color-mix(in srgb, var(--pomegranate) 8%, var(--white));
+  background: var(--pomegranate);
   border-color: var(--pomegranate);
-  color: var(--bunker);
+  color: var(--white);
 }
 
 .aiImproveHint {
@@ -275,6 +313,14 @@
 
 .aiApplyBtn:hover:not(:disabled) {
   opacity: 0.85;
+}
+
+.aiApplyShinyText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 
 .proTip {

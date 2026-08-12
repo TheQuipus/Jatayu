@@ -4,19 +4,21 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import {
-  ArrowLeft,
   BadgeCheck,
+  Captions,
   CheckCheck,
   Flag,
   Mic,
   MicOff,
+  Phone,
   Send,
   Video,
   VideoOff,
   Maximize,
   Minimize,
 } from "lucide-react";
-import ContinueButton from "@/components/ui/ContinueButton";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
 import { formatCurrency, type BookingDetail } from "@/lib/seekerDashboard";
 import styles from "./ActiveRoom.module.css";
 
@@ -55,6 +57,8 @@ export default function ActiveRoom({
   // Video toggle states
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isTranscriptVisible, setIsTranscriptVisible] = useState(true);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -90,30 +94,52 @@ export default function ActiveRoom({
     };
   }, []);
 
+  // Reusable confirmation modal state
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    variant: "warning" | "danger" | "default";
+    onConfirmAction: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "",
+    cancelText: "",
+    variant: "default",
+    onConfirmAction: () => { },
+  });
+
+  const handleLeaveClick = () => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "Leave Active Session?",
+      message: "Are you sure you want to leave the session room? You can return anytime before the consultation ends.",
+      confirmText: "Yes, Leave",
+      cancelText: "No, Stay",
+      variant: "warning",
+      onConfirmAction: onLeaveRoom,
+    });
+  };
+
+  const handleFinishClick = () => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: "Finish Consultation?",
+      message: "Are you sure you want to end this session?",
+      confirmText: "Yes, Finish Session",
+      cancelText: "No, Keep Call Active",
+      variant: "danger",
+      onConfirmAction: onFinishSession,
+    });
+  };
+
   return (
     <section className={styles.sessionRoom}>
       <div className="container">
-        <div className={styles.roomHeader}>
-          <div className={styles.roomHeaderLeft}>
-            <button
-              type="button"
-              onClick={onLeaveRoom}
-              className={styles.roomBackBtn}
-            >
-              <ArrowLeft size={14} />
-              Leave Room
-            </button>
-          </div>
-
-          <div className={styles.roomHeaderRight}>
-            <ContinueButton
-              label="Finish Session"
-              onClick={onFinishSession}
-              className={styles.endSessionBtn}
-            />
-          </div>
-        </div>
-
         <div className={styles.roomGrid}>
           {/* Left Column: Chat & Video feed */}
           <div className={styles.roomMain}>
@@ -188,6 +214,56 @@ export default function ActiveRoom({
                   >
                     {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
                   </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.controlBtn} ${isTranscriptVisible ? styles.controlBtnActive : ""}`}
+                    onClick={() => setIsTranscriptVisible(!isTranscriptVisible)}
+                    title={isTranscriptVisible ? "Hide Transcript" : "Show Transcript"}
+                  >
+                    <Captions size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`${styles.controlBtn} ${styles.controlBtnEndCall}`}
+                    onClick={handleFinishClick}
+                    title="End Call"
+                  >
+                    <Phone size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Live Transcript Panel */}
+            {booking.consultationType === "video" && isTranscriptVisible && (
+              <div className={styles.transcriptPanel}>
+                <div className={styles.transcriptHeader}>
+                  <Captions size={14} className={styles.transcriptIcon} />
+                  <span className={styles.transcriptTitle}>Transcript</span>
+                </div>
+                <div className={styles.transcriptBody}>
+                  <div className={styles.transcriptLine}>
+                    <span className={styles.transcriptSpeaker}>Expert</span>
+                    <span className={styles.transcriptText}>Welcome to the session! Let me start by understanding your current situation...</span>
+                    <span className={styles.transcriptTime}>00:12</span>
+                  </div>
+                  <div className={styles.transcriptLine}>
+                    <span className={`${styles.transcriptSpeaker} ${styles.transcriptSpeakerYou}`}>You</span>
+                    <span className={styles.transcriptText}>Thank you! I wanted to discuss the funding strategy for my startup...</span>
+                    <span className={styles.transcriptTime}>00:34</span>
+                  </div>
+                  <div className={styles.transcriptLine}>
+                    <span className={styles.transcriptSpeaker}>Expert</span>
+                    <span className={styles.transcriptText}>That's a great starting point. Let's talk about your current traction and metrics first.</span>
+                    <span className={styles.transcriptTime}>00:51</span>
+                  </div>
+                  <div className={`${styles.transcriptLine} ${styles.transcriptLineCurrent}`}>
+                    <span className={styles.transcriptSpeaker}>Expert</span>
+                    <span className={styles.transcriptText}>What stage are you at — pre-seed, seed, or Series A?</span>
+                    <span className={styles.transcriptTime}>01:10</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -202,8 +278,8 @@ export default function ActiveRoom({
                     <div
                       key={msg.id}
                       className={`${styles.chatMessage} ${msg.sender === "seeker"
-                          ? styles.seekerMessage
-                          : styles.expertMessage
+                        ? styles.seekerMessage
+                        : styles.expertMessage
                         }`}
                     >
                       <div className={styles.msgBubble}>
@@ -301,16 +377,16 @@ export default function ActiveRoom({
                   </div>
 
                   <div className={styles.sessionInfoReportContainer}>
-                    <Link
-                      href={`/seeker/report/${booking.id}`}
+                    <button
+                      type="button"
+                      onClick={() => setIsReportModalOpen(true)}
                       className={styles.sessionInfoReportLink}
                     >
                       <Flag size={12} aria-hidden="true" />
                       Report Expert
-                    </Link>
+                    </button>
                   </div>
                 </div>
-                <div className={styles.bookingFooter} aria-hidden="true" />
               </div>
 
               {/* Notepad Box */}
@@ -338,12 +414,29 @@ export default function ActiveRoom({
                     </div>
                   </div>
                 </div>
-                <div className={styles.bookingFooter} aria-hidden="true" />
               </div>
             </div>
           </aside>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModalConfig.isOpen}
+        onClose={() => setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalConfig.onConfirmAction}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        confirmText={confirmModalConfig.confirmText}
+        cancelText={confirmModalConfig.cancelText}
+        variant={confirmModalConfig.variant}
+      />
+
+      {isReportModalOpen && (
+        <ReportForm
+          booking={booking}
+          onClose={() => setIsReportModalOpen(false)}
+        />
+      )}
     </section>
   );
 }

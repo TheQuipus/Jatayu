@@ -2,11 +2,67 @@
   grid-column: 2 / 4;
   display: flex;
   flex-direction: column;
-  align-items: center;
   width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 8px 0 48px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modalHeader {
+  background: var(--ink);
+  color: var(--white);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.modalHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.modalHeaderDots {
+  flex: 1;
+  border-bottom: 2px dotted color-mix(in srgb, var(--white) 35%, transparent);
+  height: 3px;
+  flex-shrink: 0;
+}
+
+.modalBody {
+  background: var(--white);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.modalFooter {
+  height: 24px;
+  background: var(--ink);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .header {
@@ -15,7 +71,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 8px;
 }
 
 .successIconWrap {
@@ -186,7 +242,7 @@
   background: var(--white);
   border: 1px solid var(--mercury);
   padding: 20px 22px 18px;
-  margin-bottom: 28px;
+  margin-bottom: 0;
   clip-path: polygon(
     0% 5.063%,
     1.727% 0%,
@@ -320,29 +376,8 @@
   width: 100%;
 }
 
-.secondaryBtn {
+.secondaryCtaBtn {
   flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 10px 18px;
-  border: 1px solid var(--mercury);
-  border-radius: 0;
-  background: var(--white);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--bunker);
-  text-decoration: none;
-  transition: border-color 0.2s ease, color 0.2s ease;
-}
-
-.secondaryBtn:hover {
-  border-color: var(--orange);
-  color: var(--orange);
 }
 
 .primaryBtn {
@@ -407,7 +442,7 @@
     flex-direction: column;
   }
 
-  .secondaryBtn,
+  .secondaryCtaBtn,
   .primaryBtn {
     width: 100%;
   }

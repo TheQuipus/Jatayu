@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { Target, Zap, Brain, Handshake, ShieldCheck, Lightbulb } from "lucide-react";
 import ShinyText from "@/components/ui/ShinyText";
 import {
@@ -60,7 +61,10 @@ export default function StepQuestionContext({
   selectedContextImproveStyle,
   onSelectedContextImproveStyleChange,
 }: StepQuestionContextProps) {
-  const hasSelectedContextChip = selectedContextChips.length > 0;
+  const [isImprovementApplied, setIsImprovementApplied] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const textareaMirrorRef = useRef<HTMLDivElement | null>(null);
+
   const canUseContextAiAssist = context.trim().length > 0;
 
   const buildTextFromSelectedContextChips = (chipIds: string[]) =>
@@ -72,7 +76,21 @@ export default function StepQuestionContext({
       .filter(Boolean)
       .join("\n");
 
+  const getLockedPrefixForChips = (chipIds: string[]) => {
+    if (chipIds.length === 0) return "";
+    const text = buildTextFromSelectedContextChips(chipIds);
+    return text ? text + "\n" : "";
+  };
+
+  const getLockedPrefix = () => getLockedPrefixForChips(selectedContextChips);
+
+  const lockedPrefix = getLockedPrefix();
+  const userTypedSuffix = lockedPrefix
+    ? (context.startsWith(lockedPrefix) ? context.slice(lockedPrefix.length) : "")
+    : context;
+
   const handleContextChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
+    setIsImprovementApplied(false);
     const isSelected = selectedContextChips.includes(chip.id);
     const nextSelected = isSelected
       ? selectedContextChips.filter((id) => id !== chip.id)
@@ -84,12 +102,81 @@ export default function StepQuestionContext({
     }
 
     onSelectedContextChipsChange(nextSelected);
-    onContextChange(buildTextFromSelectedContextChips(nextSelected).slice(0, MAX_CONTEXT_LENGTH));
+
+    const currentPrefix = getLockedPrefix();
+    let userSuffix = "";
+    if (currentPrefix && context.startsWith(currentPrefix)) {
+      userSuffix = context.slice(currentPrefix.length);
+    } else if (!currentPrefix && context) {
+      userSuffix = context;
+    }
+
+    const newPrefix = getLockedPrefixForChips(nextSelected);
+    const updatedText = (newPrefix + userSuffix).slice(0, MAX_CONTEXT_LENGTH);
+    onContextChange(updatedText);
+
+    if (newPrefix) {
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const targetPos = Math.min(newPrefix.length, updatedText.length);
+          textareaRef.current.setSelectionRange(targetPos, targetPos);
+        }
+      }, 0);
+    }
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setIsImprovementApplied(false);
+    const val = e.target.value;
+
+    if (!lockedPrefix) {
+      onContextChange(val.slice(0, MAX_CONTEXT_LENGTH));
+      return;
+    }
+
+    if (val.startsWith(lockedPrefix)) {
+      onContextChange(val.slice(0, MAX_CONTEXT_LENGTH));
+    } else {
+      let userSuffix = "";
+      if (val.length > lockedPrefix.length) {
+        userSuffix = val.slice(lockedPrefix.length);
+      }
+      onContextChange((lockedPrefix + userSuffix).slice(0, MAX_CONTEXT_LENGTH));
+    }
+  };
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!lockedPrefix) return;
+    const target = e.currentTarget;
+    const { selectionStart, selectionEnd } = target;
+
+    if (e.key === "Backspace") {
+      if (selectionStart <= lockedPrefix.length && selectionEnd <= lockedPrefix.length) {
+        e.preventDefault();
+      } else if (selectionStart < lockedPrefix.length) {
+        e.preventDefault();
+        target.setSelectionRange(lockedPrefix.length, selectionEnd);
+      }
+    } else if (e.key === "Delete") {
+      if (selectionStart < lockedPrefix.length) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const ensureCursorAfterPrefix = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    if (!lockedPrefix) return;
+    const target = e.currentTarget;
+    if (target.selectionStart < lockedPrefix.length) {
+      target.setSelectionRange(lockedPrefix.length, lockedPrefix.length);
+    }
   };
 
   const handleContextAiAssist = () => {
     onShowContextImprovementPanelChange(true);
     onSelectedContextImproveStyleChange("professional");
+    setIsImprovementApplied(false);
   };
 
   const handleContextImproveStyle = (styleId: ContextImprovementStyleId) => {
@@ -99,8 +186,9 @@ export default function StepQuestionContext({
   };
 
   const handleApplyContextImprovement = () => {
-    if (!selectedContextImproveStyle) return;
+    if (!selectedContextImproveStyle || isImprovementApplied) return;
     handleContextImproveStyle(selectedContextImproveStyle);
+    setIsImprovementApplied(true);
   };
 
   return (
@@ -137,8 +225,9 @@ export default function StepQuestionContext({
                 <button
                   key={chip.id}
                   type="button"
-                  className={`${styles.contextChip} ${isSelected ? styles.contextChipSelected : ""
-                    }`}
+                  className={`${styles.contextChip} ${
+                    isSelected ? styles.contextChipSelected : ""
+                  }`}
                   onClick={() => handleContextChipClick(chip)}
                   aria-pressed={isSelected}
                 >
@@ -148,18 +237,37 @@ export default function StepQuestionContext({
               );
             })}
           </div>
-          <textarea
-            id="booking-context"
-            className={styles.textarea}
-            placeholder="Eg. I've been in my current job for 3 years and feel stuck. I want to transition into product management but don't know where to start..."
-            value={context}
-            maxLength={MAX_CONTEXT_LENGTH}
-            onChange={(event) => onContextChange(event.target.value)}
-          />
+          <div className={styles.contextTextEditor}>
+            <div
+              ref={textareaMirrorRef}
+              className={styles.contextTextMirror}
+              aria-hidden="true"
+            >
+              <span className={styles.suggestionText}>{lockedPrefix}</span>
+              <span className={styles.typedText}>{userTypedSuffix}</span>
+            </div>
+            <textarea
+              ref={textareaRef}
+              id="booking-context"
+              className={styles.textarea}
+              placeholder="Eg. I've been in my current job for 3 years and feel stuck. I want to transition into product management but don't know where to start..."
+              value={context}
+              maxLength={MAX_CONTEXT_LENGTH}
+              onChange={handleTextareaChange}
+              onKeyDown={handleTextareaKeyDown}
+              onClick={ensureCursorAfterPrefix}
+              onSelect={ensureCursorAfterPrefix}
+              onScroll={(event) => {
+                if (textareaMirrorRef.current) {
+                  textareaMirrorRef.current.scrollTop = event.currentTarget.scrollTop;
+                }
+              }}
+            />
+          </div>
           <span className={styles.charCounter}>
             {context.length} / {MAX_CONTEXT_LENGTH}
           </span>
-          {hasSelectedContextChip && !showContextImprovementPanel ? (
+          {canUseContextAiAssist && !showContextImprovementPanel ? (
             <button
               type="button"
               className={styles.aiAssistTextBtn}
@@ -167,7 +275,7 @@ export default function StepQuestionContext({
               disabled={!canUseContextAiAssist}
             >
               <ShinyText
-                text="Improve With AI"
+                text="Improve With Jatayu AI"
                 icon="sparkles"
                 iconSize={14}
                 speed={2.5}
@@ -191,9 +299,13 @@ export default function StepQuestionContext({
                 <button
                   key={style.id}
                   type="button"
-                  className={`${styles.improvementChip} ${isSelected ? styles.improvementChipSelected : ""
-                    }`}
-                  onClick={() => onSelectedContextImproveStyleChange(style.id)}
+                  className={`${styles.improvementChip} ${
+                    isSelected ? styles.improvementChipSelected : ""
+                  }`}
+                  onClick={() => {
+                    onSelectedContextImproveStyleChange(isSelected ? null : style.id);
+                    setIsImprovementApplied(false);
+                  }}
                   aria-pressed={isSelected}
                 >
                   {style.label}
@@ -208,14 +320,15 @@ export default function StepQuestionContext({
             type="button"
             className={styles.aiApplyBtn}
             onClick={handleApplyContextImprovement}
-            disabled={!selectedContextImproveStyle}
+            disabled={!selectedContextImproveStyle || isImprovementApplied}
           >
             <ShinyText
-              text="Apply"
-              disabled={!selectedContextImproveStyle}
-              speed={2}
+              text={isImprovementApplied ? "Applied" : "Apply"}
+              speed={2.5}
               color="#E53B17"
               shineColor="#ffffff"
+              disabled={!selectedContextImproveStyle || isImprovementApplied}
+              className={styles.aiApplyShinyText}
             />
           </button>
         </div>

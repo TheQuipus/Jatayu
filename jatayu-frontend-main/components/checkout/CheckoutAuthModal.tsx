@@ -1,5 +1,5 @@
 import { type RefObject, type KeyboardEvent, type ClipboardEvent } from "react";
-import { X, Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
 import {
   type CheckoutRegistrationFieldKey,
@@ -135,47 +135,41 @@ export default function CheckoutAuthModal({
       aria-modal="true"
       aria-labelledby="checkout-auth-modal-title"
     >
-      <div className={styles.authModal}>
-        {registerOtpSent ? (
-          <button
-            type="button"
-            className={styles.otpBackBtn}
-            onClick={onResetRegisterOtpState}
-          >
-            <ArrowLeft size={14} className={styles.otpBackIcon} />
-            <span>Back to details</span>
-          </button>
-        ) : null}
-
-        <div className={styles.authModalHeader}>
-          <div>
-            <h2 id="checkout-auth-modal-title" className={styles.authModalTitle}>
-              {registerOtpSent
-                ? "Verification Code"
-                : isAuthLogin
-                  ? "Log In"
-                  : "Sign Up"}
-            </h2>
-            {!registerOtpSent ? (
-              <p className={styles.authModalSubtitle}>
-                {isAuthLogin
-                  ? "Welcome back! Enter your details to log in to your account."
-                  : "Create your account to save this booking before final confirmation."}
-              </p>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            className={styles.authModalClose}
-            onClick={onClose}
-            aria-label="Close auth popup"
-          >
-            <X size={18} />
-          </button>
+      <div
+        className={styles.modalContainer}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.modalHeader}>
+          <span id="checkout-auth-modal-title" className={styles.modalHeaderTitle}>
+            {registerOtpSent
+              ? "Verification Code"
+              : isAuthLogin
+                ? "Log In"
+                : "Sign Up"}
+          </span>
+          <span className={styles.modalHeaderDots} />
         </div>
 
-        {!registerOtpSent ? (
-          isAuthLogin ? (
+        <div className={styles.modalBody}>
+          {registerOtpSent ? (
+            <button
+              type="button"
+              className={styles.otpBackBtn}
+              onClick={onResetRegisterOtpState}
+            >
+              <ArrowLeft size={14} className={styles.otpBackIcon} />
+              <span>Back to details</span>
+            </button>
+          ) : (
+            <p className={styles.authModalSubtitle}>
+              {isAuthLogin
+                ? "Welcome back! Enter your details to log in to your account."
+                : "Create your account to save this booking before final confirmation."}
+            </p>
+          )}
+
+          {!registerOtpSent ? (
+            isAuthLogin ? (
             <div className={styles.registerPanel}>
               <div className={styles.registerForm}>
                 <div className={styles.registerFieldGroup}>
@@ -484,7 +478,7 @@ export default function CheckoutAuthModal({
             </div>
           )
         ) : (
-          <div className={styles.registerPanel}>
+            <div className={styles.registerPanel}>
             <p className={styles.registerOtpSentText}>
               A 6 digit verification code has been sent to
               <br />
@@ -569,6 +563,8 @@ export default function CheckoutAuthModal({
             </div>
           </div>
         )}
+        </div>
+        <div className={styles.modalFooter} aria-hidden="true" />
       </div>
     </div>
   );

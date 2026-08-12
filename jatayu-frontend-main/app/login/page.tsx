@@ -1,15 +1,14 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import ExpertLoginStep from "@/components/expert/onboarding/LoginStep";
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import SeekerLoginStep from "@/components/seeker/onboarding/LoginStep";
-import { EXPERT_DASHBOARD_HREF } from "@/lib/expertDashboard";
+import { type AuthResponse } from "@/lib/api";
+import { persistSeekerAuthSession } from "@/lib/seekerAuth";
+import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import styles from "@/app/expert/expert-onboarding/page.module.css";
 
 type LoginRole = "expert" | "user";
-
-
 
 function LoginShell({ children }: { children?: React.ReactNode }) {
   return (
@@ -29,22 +28,28 @@ function LoginShell({ children }: { children?: React.ReactNode }) {
 }
 
 function LoginPageContent({ role }: { role: LoginRole }) {
-  const handleContinue = ({ email: _email }: { email: string }) => {
-    if (role === "expert") {
-      window.location.assign(EXPERT_DASHBOARD_HREF);
-      return;
-    }
+  const router = useRouter();
 
+  useEffect(() => {
+    if (role === "expert") {
+      router.replace(EXPERT_LOGIN_HREF);
+    }
+  }, [role, router]);
+
+  const handleSeekerContinue = (response: AuthResponse) => {
+    persistSeekerAuthSession(response);
     window.location.assign("/seeker/dashboard/");
   };
 
-  const LoginStep = role === "expert" ? ExpertLoginStep : SeekerLoginStep;
+  if (role === "expert") {
+    return <LoginShell />;
+  }
 
   return (
     <LoginShell>
-      <LoginStep
-        onContinue={handleContinue}
-        registerHref={role === "expert" ? "/expert/expert-onboarding/" : "/seeker/seeker-onboarding/"}
+      <SeekerLoginStep
+        onContinue={handleSeekerContinue}
+        registerHref="/seeker/seeker-onboarding/"
       />
     </LoginShell>
   );

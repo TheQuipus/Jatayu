@@ -13,6 +13,7 @@ import {
   type ExperienceLevel,
 } from "@/lib/expertProfile";
 import { getExpertProfile, saveExpertProfile } from "@/lib/expertStore";
+import { fetchExpertProfileData, saveExpertProfileData } from "@/lib/expertProfileApi";
 import styles from "./ExpertProfileEditor.module.css";
 
 const MAX_CHARS = 160;
@@ -32,10 +33,14 @@ export default function ExpertProfileEditor({
   const [skillInput, setSkillInput] = useState("");
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   useEffect(() => {
-    const savedProfile = getExpertProfile();
-    setProfile(savedProfile);
+    void fetchExpertProfileData()
+      .then(setProfile)
+      .catch(() => setProfile(getExpertProfile()));
   }, []);
 
   const isUploadedPhoto =
@@ -74,6 +79,7 @@ export default function ExpertProfileEditor({
     if (profile.avatar.startsWith("blob:")) {
       URL.revokeObjectURL(profile.avatar);
     }
+    setPhotoFile(file);
     updateProfile("avatar", URL.createObjectURL(file));
   };
 
@@ -370,16 +376,23 @@ export default function ExpertProfileEditor({
                 )
               }
               variant={saved ? "light" : "orange"}
-              disabled={!canSave}
+              disabled={!canSave || isSaving}
               staticLabel={true}
-              onClick={() => {
-                saveExpertProfile(profile);
-                setSaved(true);
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(new Event("expert-profile-updated"));
+              onClick={async () => {
+                setIsSaving(true);
+                setSaveError(null);
+                try {
+                  await saveExpertProfileData(profile, photoFile);
+                  setPhotoFile(null);
+                  setSaved(true);
+                } catch (error) {
+                  setSaveError(error instanceof Error ? error.message : "Could not save profile.");
+                } finally {
+                  setIsSaving(false);
                 }
               }}
             />
+            {saveError ? <p className={styles.savedNote}>{saveError}</p> : null}
             {saved ? <p className={styles.savedNote}>Your profile updates are ready to publish.</p> : null}
           </div>
       </div>

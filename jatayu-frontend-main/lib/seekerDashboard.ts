@@ -21,7 +21,7 @@ export type CalendarBooking = {
   startHour: number;
   startMinute: number;
   durationMinutes: number;
-  status: "confirmed" | "pending" | "cancelled";
+  status: "confirmed" | "pending" | "cancelled" | "completed";
 };
 
 export type BookingAttachment = {
@@ -134,8 +134,8 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     id: "booking-1",
     expert: featuredExperts[0],
     specialty: "Startup Advisor",
-    dayOffset: 3,
-    startHour: 14,
+    dayOffset: 0,
+    startHour: 10,
     startMinute: 0,
     durationMinutes: 60,
     status: "confirmed",
@@ -155,8 +155,8 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     expert: featuredExperts[2],
     specialty: "Tax & Finance",
     dayOffset: 0,
-    startHour: 20,
-    startMinute: 0,
+    startHour: 10,
+    startMinute: 30,
     durationMinutes: 45,
     status: "confirmed",
   },
@@ -164,7 +164,7 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     id: "booking-4",
     expert: featuredExperts[1],
     specialty: "Legal Tech",
-    dayOffset: 0,
+    dayOffset: 1,
     startHour: 11,
     startMinute: 30,
     durationMinutes: 30,
@@ -174,7 +174,7 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     id: "booking-5",
     expert: featuredExperts[3],
     specialty: "Product Strategy",
-    dayOffset: 0,
+    dayOffset: 4,
     startHour: 16,
     startMinute: 0,
     durationMinutes: 45,
@@ -188,7 +188,7 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     startHour: 14,
     startMinute: 30,
     durationMinutes: 60,
-    status: "confirmed",
+    status: "completed",
   },
   {
     id: "booking-7",
@@ -198,7 +198,7 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     startHour: 10,
     startMinute: 0,
     durationMinutes: 45,
-    status: "confirmed",
+    status: "completed",
   },
   {
     id: "booking-8",
@@ -208,7 +208,17 @@ export const UPCOMING_BOOKINGS: CalendarBooking[] = [
     startHour: 17,
     startMinute: 0,
     durationMinutes: 30,
-    status: "cancelled",
+    status: "completed",
+  },
+  {
+    id: "booking-9",
+    expert: featuredExperts[1],
+    specialty: "Strategy & Advisory",
+    dayOffset: 12,
+    startHour: 11,
+    startMinute: 0,
+    durationMinutes: 45,
+    status: "pending",
   },
 ];
 
@@ -324,7 +334,7 @@ function buildBookingDetail(
       booking.durationMinutes
     ),
     durationLabel: formatDurationLabel(booking.durationMinutes),
-    paymentStatus: booking.status === "confirmed" ? "paid" : "pending",
+    paymentStatus: booking.status === "confirmed" || booking.status === "completed" ? "paid" : "pending",
     consultationFee: breakdown.consultationFee,
     platformFee: breakdown.platformFee,
     gst: breakdown.gst,
@@ -440,6 +450,17 @@ export const BOOKING_DETAILS: BookingDetail[] = [
       "Initial feedback on financial projections and cap table structure for pre-seed round.",
     attachments: [],
   }),
+  buildBookingDetail(UPCOMING_BOOKINGS[8], {
+    referenceId: "BK-98282",
+    consultationType: "video",
+    placedDaysAgo: 0,
+    walletApplied: 0,
+    invoiceId: "JTY-20260810-98282",
+    subject: "Strategy & Advisory Session",
+    context:
+      "Faraway consultation scheduled for deep dive into product roadmap and market positioning.",
+    attachments: [],
+  }),
 ];
 
 export function getBookingById(id: string): BookingDetail | undefined {
@@ -530,4 +551,31 @@ export function formatCurrency(amount: number): string {
 
 export function getExpertHref(expert: Expert): string {
   return getExpertDetailHref(expert, { seeker: true });
+}
+
+export function getPokeState(bookingId: string): { count: number; lastPokedAt: number | null } {
+  if (typeof window === "undefined") {
+    return { count: 0, lastPokedAt: null };
+  }
+  try {
+    const raw = sessionStorage.getItem(`poke_state_${bookingId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed.count === "number") {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to read poke state from sessionStorage", e);
+  }
+  return { count: 0, lastPokedAt: null };
+}
+
+export function savePokeState(bookingId: string, count: number, lastPokedAt: number | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(`poke_state_${bookingId}`, JSON.stringify({ count, lastPokedAt }));
+  } catch (e) {
+    console.error("Failed to save poke state to sessionStorage", e);
+  }
 }

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { MapPin, Languages } from "lucide-react";
 import type { ExpertApplicationSubmission } from "@/lib/expertApplicationSubmission";
 import type { ApplicationReviewDetail } from "@/lib/adminApplicationReview";
+import { formatFormatPriceDisplay } from "@/components/expert/onboarding/preferencesData";
 import ExpertCard from "@/components/ui/ExpertCard";
 import type { Expert } from "@/lib/experts";
 import styles from "./ApplicationReviewHero.module.css";
@@ -136,9 +137,7 @@ export default function ApplicationReviewHero({
                   else if (fmtId === "shoutout") title = "PHONE CALL";
                   else if (fmtId === "group") title = "GROUP SESSION";
 
-                  const price = formatPrices[fmtId]
-                    ? `₹${formatPrices[fmtId]}`
-                    : "—";
+                  const price = formatFormatPriceDisplay(formatPrices[fmtId]);
                   return (
                     <div key={fmtId} className={styles.contactItemBox}>
                       <span className={styles.contactLabel}>{title}</span>

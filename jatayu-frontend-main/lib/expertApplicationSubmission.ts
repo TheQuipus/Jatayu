@@ -86,6 +86,7 @@ export type ExpertApplicationSubmission = {
   acceptCustomRequests: boolean;
   termsAcceptedAt: string;
   reviewerNote?: string;
+  onboardingStep?: string;
 };
 
 export type ExpertApplicationDraft = Partial<

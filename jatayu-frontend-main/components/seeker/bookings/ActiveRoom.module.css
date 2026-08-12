@@ -34,16 +34,11 @@
   flex-shrink: 0;
 }
 
-.bookingFooter {
-  height: 39px;
-  background: var(--ink);
-  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
-  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
-}
-
 .panelBody {
   background: var(--white);
-  padding: 18px 16px 16px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 96%, 96% 100%, 4% 100%, 0% 96%);
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 96%, 96% 100%, 4% 100%, 0% 96%);
+  padding: 18px 16px;
 }
 
 .soundwaveIcon {
@@ -84,38 +79,6 @@
   padding: 24px 0 24px;
   background: var(--gallery);
   min-height: calc(100vh - 120px);
-}
-
-.roomHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px 16px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-}
-
-.roomHeaderLeft {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.roomBackBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--scorpion);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.roomBackBtn:hover {
-  color: var(--ink);
 }
 
 .roomIndicator {
@@ -160,27 +123,6 @@
   text-transform: uppercase;
   color: color-mix(in srgb, var(--green) 85%, var(--ink));
   letter-spacing: 0.05em;
-}
-
-.roomHeaderRight {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.timerDisplay {
-  font-family: var(--font-num);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--ink);
-  background: var(--gallery);
-  padding: 6px 14px;
-  border-radius: 4px;
-  border: 1px solid var(--mercury);
-}
-
-.endSessionBtn {
-  align-self: center;
 }
 
 .roomGrid {
@@ -346,6 +288,117 @@
 .controlBtnActive:hover {
   background: var(--thunderbird);
 }
+
+.controlBtnEndCall {
+  background: var(--pomegranate, #e53935);
+  color: var(--white);
+  margin-left: 4px;
+}
+
+
+.controlBtnEndCall:hover {
+  background: var(--thunderbird, #c62828);
+}
+
+/* ==========================================================================
+   Transcript Panel (White Theme)
+   ========================================================================== */
+.transcriptPanel {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  margin-top: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.transcriptHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mercury);
+  background: var(--gallery);
+}
+
+.transcriptIcon {
+  color: var(--scorpion);
+  flex-shrink: 0;
+}
+
+.transcriptTitle {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  flex: 1;
+}
+
+.transcriptBody {
+  padding: 10px 0;
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.transcriptBody::-webkit-scrollbar {
+  display: none;
+}
+
+.transcriptLine {
+  display: grid;
+  grid-template-columns: 52px 1fr 40px;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 16px;
+  transition: background 0.15s ease;
+}
+
+.transcriptLine:hover {
+  background: var(--gallery);
+}
+
+.transcriptLineCurrent {
+  background: color-mix(in srgb, var(--orange) 6%, var(--white));
+  border-left: 3px solid var(--orange);
+  padding-left: 13px;
+}
+
+.transcriptSpeaker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--scorpion);
+  white-space: nowrap;
+}
+
+.transcriptSpeakerYou {
+  color: var(--orange);
+}
+
+.transcriptText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--bunker);
+  line-height: 1.5;
+}
+
+.transcriptLineCurrent .transcriptText {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.transcriptTime {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dove-gray);
+  text-align: right;
+  white-space: nowrap;
+}
+
 
 /* Chat Screen */
 .chatInterface {

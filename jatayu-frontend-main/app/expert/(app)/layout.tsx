@@ -1,9 +1,14 @@
 import ExpertShell from "@/components/expert/ExpertShell";
+import ExpertAuthGuard from "@/components/expert/ExpertAuthGuard";
 
 export default function ExpertAppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <ExpertShell>{children}</ExpertShell>;
+  return (
+    <ExpertAuthGuard>
+      <ExpertShell>{children}</ExpertShell>
+    </ExpertAuthGuard>
+  );
 }

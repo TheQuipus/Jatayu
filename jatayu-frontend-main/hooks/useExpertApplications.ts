@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ExpertApplicationSubmission } from "@/lib/expertApplicationSubmission";
 import {
-  APPLICATIONS_UPDATED_EVENT,
   computeCompleteness,
   formatSubmittedDate,
   getCategoryColor,
-  getExpertApplicationByAppId,
-  getExpertApplications,
   getSlaStatus,
   getSubmittedAgo,
-  seedDemoApplicationIfEmpty,
 } from "@/lib/expertApplicationsStore";
 import type { ApplicationStatus } from "@/lib/expertApplicationSubmission";
+import { getAdminApplications } from "@/lib/api";
+import {
+  mapBackendExpertToApplication,
+  type BackendExpertApplication,
+} from "@/lib/backendApplicationMapper";
+
+export const APPLICATIONS_UPDATED_EVENT = "expert-applications-updated";
 
 export type ExpertApplicationListItem = {
   id: string;
@@ -32,6 +35,7 @@ export type ExpertApplicationListItem = {
   slaLimit: string;
   status: ApplicationStatus;
   reviewer: { name: string; avatar: string } | null;
+  onboardingStep?: string;
 };
 
 function toListItem(application: ExpertApplicationSubmission): ExpertApplicationListItem {
@@ -55,28 +59,72 @@ function toListItem(application: ExpertApplicationSubmission): ExpertApplication
     slaLimit: sla.slaLimit,
     status: application.status,
     reviewer: null,
+    onboardingStep: application.onboardingStep,
   };
+}
+
+function dispatchUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(APPLICATIONS_UPDATED_EVENT));
 }
 
 export function useExpertApplications() {
   const [applications, setApplications] = useState<ExpertApplicationSubmission[]>([]);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshToken((value) => value + 1);
+    dispatchUpdated();
+  }, []);
 
   useEffect(() => {
-    seedDemoApplicationIfEmpty();
-    setApplications(getExpertApplications());
-    setReady(true);
+    let active = true;
 
-    const refresh = () => setApplications(getExpertApplications());
+    async function loadApplications() {
+      setError(null);
 
-    window.addEventListener(APPLICATIONS_UPDATED_EVENT, refresh);
-    window.addEventListener("storage", refresh);
+      try {
+        const records = await getAdminApplications();
+        if (!active) return;
+        const mapped = (records as BackendExpertApplication[]).flatMap((record) => {
+          try {
+            return [mapBackendExpertToApplication(record)];
+          } catch (err) {
+            console.warn("Failed to map admin application record", record.id, err);
+            return [];
+          }
+        });
+        setApplications(mapped);
+      } catch (err) {
+        console.warn("Failed to load applications from backend.", err);
+        if (!active) return;
+        setApplications([]);
+        setError(err instanceof Error ? err.message : "Failed to load applications.");
+      } finally {
+        if (active) setReady(true);
+      }
+    }
+
+    loadApplications();
+
+    const handleRefresh = () => {
+      void loadApplications();
+    };
+
+    window.addEventListener(APPLICATIONS_UPDATED_EVENT, handleRefresh);
 
     return () => {
-      window.removeEventListener(APPLICATIONS_UPDATED_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
+      active = false;
+      window.removeEventListener(APPLICATIONS_UPDATED_EVENT, handleRefresh);
     };
-  }, []);
+  }, [refreshToken]);
+
+  const getByAppId = useCallback(
+    (appId: string) => applications.find((application) => application.appId === appId) ?? null,
+    [applications],
+  );
 
   const listItems = useMemo(
     () =>
@@ -158,22 +206,59 @@ export function useExpertApplications() {
 
   return {
     ready,
+    error,
     applications,
     listItems,
     statusCounts,
     kpis,
     pendingCount: statusCounts.pending,
     breachedApplications,
-    getByAppId: (appId: string) => getExpertApplicationByAppId(appId),
+    getByAppId,
+    refresh,
   };
 }
 
 export function useExpertApplication(appId: string) {
-  const { ready, getByAppId } = useExpertApplications();
-  const application = useMemo(
-    () => getByAppId(appId),
-    [appId, getByAppId],
-  );
+  const { ready, getByAppId, refresh, error } = useExpertApplications();
+  const [application, setApplication] = useState<ExpertApplicationSubmission | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  return { ready, application };
+  useEffect(() => {
+    const cached = getByAppId(appId);
+    if (cached) {
+      setApplication(cached);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadApplication() {
+      setLoading(true);
+      try {
+        const { getAdminApplication } = await import("@/lib/api");
+        const record = await getAdminApplication(appId);
+        if (!active) return;
+        setApplication(mapBackendExpertToApplication(record as BackendExpertApplication));
+      } catch {
+        if (!active) return;
+        setApplication(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadApplication();
+
+    return () => {
+      active = false;
+    };
+  }, [appId, getByAppId]);
+
+  return {
+    ready: ready && !loading,
+    application,
+    error,
+    refresh,
+  };
 }

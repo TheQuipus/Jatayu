@@ -22,7 +22,8 @@ const CONSULTATION_ICONS: Record<ConsultationType, typeof MessageSquare> = {
 };
 
 function formatStatus(status: BookingDetail["status"]): string {
-  if (status === "confirmed") return "Completed";
+  if (status === "confirmed") return "Accepted";
+  if (status === "completed") return "Completed";
   if (status === "cancelled") return "Cancelled";
   return "Pending";
 }
@@ -32,7 +33,7 @@ export default function BookingHistory() {
 
   const groupedBookings = useMemo(() => {
     const filtered = BOOKING_DETAILS.filter(
-      (booking) => booking.status === "confirmed" || booking.status === "cancelled"
+      (booking) => booking.status === "confirmed" || booking.status === "completed" || booking.status === "cancelled"
     );
 
     const groupsMap = new Map<string, { dateKey: string; dateObj: Date; bookings: BookingDetail[] }>();
@@ -84,7 +85,7 @@ export default function BookingHistory() {
                   <div className={styles.statusLine}>
                     <span
                       className={`${styles.statusText} ${
-                        booking.status === "confirmed"
+                        booking.status === "confirmed" || booking.status === "completed"
                           ? styles.statusTextConfirmed
                           : booking.status === "cancelled"
                           ? styles.statusTextCancelled

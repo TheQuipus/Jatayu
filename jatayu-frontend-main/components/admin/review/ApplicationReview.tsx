@@ -43,12 +43,12 @@ import { useExpertApplication } from "@/hooks/useExpertApplications";
 import { WEEK_DAYS } from "@/lib/expertAvailability";
 import {
   CONSULTATION_FORMATS,
+  formatFormatPriceDisplay,
   getSessionLengthLabel,
 } from "@/components/expert/onboarding/preferencesData";
 import {
-  updateExpertApplicationReviewerNote,
   updateExpertApplicationStatus,
-} from "@/lib/expertApplicationsStore";
+} from "@/lib/expertApplicationsApi";
 import styles from "./ApplicationReview.module.css";
 
 const REVIEW_STATUS_CLASS: Record<ApplicationStatus, string> = {
@@ -141,7 +141,7 @@ const REVIEW_SECTIONS = [
 ] as const;
 
 export default function ApplicationReview({ appId }: ApplicationReviewProps) {
-  const { ready, application } = useExpertApplication(appId);
+  const { ready, application, refresh } = useExpertApplication(appId);
   const review = useMemo(
     () => (application ? mapToApplicationReview(application) : null),
     [application],
@@ -157,30 +157,57 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     id: string;
     state: SectionReviewState;
   } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const isApproved = review?.status === "approved";
 
-  const handleApproveConfirm = (notes: string) => {
-    if (!review) return;
-    updateExpertApplicationStatus(review.appId, "approved");
-    if (notes.trim()) {
-      updateExpertApplicationReviewerNote(review.appId, notes);
+  const handleApproveConfirm = async (notes: string) => {
+    if (!review || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    setActionError(null);
+
+    try {
+      await updateExpertApplicationStatus(review.appId, "approved", notes.trim() || undefined);
+      refresh();
+      setShowApproveConfirm(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not approve application.");
+    } finally {
+      setIsUpdatingStatus(false);
     }
-    setShowApproveConfirm(false);
   };
 
-  const handleHoldConfirm = (notes: string) => {
-    if (!review) return;
-    updateExpertApplicationStatus(review.appId, "on_hold");
-    updateExpertApplicationReviewerNote(review.appId, notes);
-    setShowHoldConfirm(false);
+  const handleHoldConfirm = async (notes: string) => {
+    if (!review || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    setActionError(null);
+
+    try {
+      await updateExpertApplicationStatus(review.appId, "on_hold", notes);
+      refresh();
+      setShowHoldConfirm(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not place application on hold.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
-  const handleRejectConfirm = (notes: string) => {
-    if (!review) return;
-    updateExpertApplicationStatus(review.appId, "rejected");
-    updateExpertApplicationReviewerNote(review.appId, notes);
-    setShowRejectConfirm(false);
+  const handleRejectConfirm = async (notes: string) => {
+    if (!review || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    setActionError(null);
+
+    try {
+      await updateExpertApplicationStatus(review.appId, "rejected", notes);
+      refresh();
+      setShowRejectConfirm(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Could not reject application.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const getSectionTitle = (id: string): string => {
@@ -457,6 +484,12 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         </header>
 
         <ApplicationReviewHero application={application} review={review} />
+
+        {actionError ? (
+          <p className={styles.actionError} role="alert">
+            {actionError}
+          </p>
+        ) : null}
 
         <div 
           className={`${styles.stickyChipsContainer} ${isTabsStuck ? styles.stickyChipsContainerStuck : ""}`} 
@@ -977,7 +1010,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                     .filter((fmt) => (application.formats || []).includes(fmt.id))
                     .map((fmt) => {
                       const Icon = FORMAT_ICONS[fmt.id as keyof typeof FORMAT_ICONS];
-                      const price = application.formatPrices?.[fmt.id];
+                      const price = formatFormatPriceDisplay(application.formatPrices?.[fmt.id]);
                       return (
                         <div key={fmt.id} className={styles.preferenceListItem}>
                           <div className={styles.preferenceIconWrap}>
@@ -986,7 +1019,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                           <div className={styles.preferenceItemBody}>
                             <div className={styles.preferenceItemHeader}>
                               <span className={styles.preferenceTitle}>{fmt.title}</span>
-                              <span className={styles.preferencePrice}>₹{price}/min</span>
+                              <span className={styles.preferencePrice}>{price}/min</span>
                             </div>
                             <p className={styles.preferenceDesc}>{fmt.desc}</p>
                           </div>

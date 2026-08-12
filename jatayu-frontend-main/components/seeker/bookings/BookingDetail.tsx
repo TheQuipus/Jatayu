@@ -17,15 +17,18 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const action = searchParams.get("action");
+  const from = searchParams.get("from");
 
   // Session states: 'detail' | 'active' | 'review' | 'completed'
   const [sessionState, setSessionState] = useState<'detail' | 'active' | 'review' | 'completed'>(
-    action === 'join' ? 'active' : (booking.status === 'confirmed' ? 'completed' : 'detail')
+    action === 'join' ? 'active' : (action === 'review' ? 'review' : (booking.status === 'completed' ? 'completed' : 'detail'))
   );
 
   useEffect(() => {
     if (action === 'join') {
       setSessionState('active');
+    } else if (action === 'review') {
+      setSessionState('review');
     }
   }, [action]);
 
@@ -137,17 +140,30 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
     setSessionState('completed');
   };
 
-  const breadcrumbNode = useMemo(
-    () => (
+  const breadcrumbNode = useMemo(() => {
+    if (sessionState === "active") {
+      return null;
+    }
+    if (sessionState === "review") {
+      return (
+        <Breadcrumbs
+          items={[
+            { label: "Bookings", href: "/seeker/bookings" },
+            { label: booking.referenceId, href: `/seeker/bookings/${booking.id}` },
+            { label: "Session Review" },
+          ]}
+        />
+      );
+    }
+    return (
       <Breadcrumbs
         items={[
           { label: "Bookings", href: "/seeker/bookings" },
           { label: booking.referenceId },
         ]}
       />
-    ),
-    [booking.referenceId]
-  );
+    );
+  }, [booking.id, booking.referenceId, sessionState]);
 
   useSeekerBreadcrumbs(breadcrumbNode);
 
@@ -162,8 +178,18 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
         newMessage={newMessage}
         setNewMessage={setNewMessage}
         onSendMessage={handleSendMessage}
-        onLeaveRoom={() => setSessionState('detail')}
-        onFinishSession={() => setSessionState('review')}
+        onLeaveRoom={() => {
+          if (from === "calendar") {
+            router.push("/seeker/bookings");
+          } else {
+            setSessionState('detail');
+            router.replace(`/seeker/bookings/${booking.id}`);
+          }
+        }}
+        onFinishSession={() => {
+          setSessionState('review');
+          router.replace(`/seeker/bookings/${booking.id}`);
+        }}
       />
     );
   }
@@ -174,7 +200,6 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
         booking={booking}
         onSubmit={(rating, comment) => {
           handleSubmitReview(rating, comment);
-          router.push("/seeker/bookings");
         }}
         onCancel={() => router.push("/seeker/bookings")}
       />

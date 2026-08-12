@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
 import AdminLoginLeftPanel from "@/components/admin/AdminLoginLeftPanel";
@@ -10,11 +10,13 @@ import formStyles from "@/components/expert/onboarding/RegisterStep.module.css";
 import otpStyles from "@/components/expert/onboarding/OtpStep.module.css";
 import pageStyles from "@/app/expert/expert-onboarding/page.module.css";
 import { ADMIN_DASHBOARD_HREF } from "@/lib/adminDashboard";
-import { getEmailValidationError } from "@/lib/emailValidation";
+import { adminLogin, getAdminMe, getAdminToken, setAdminToken } from "@/lib/api";
+import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 
 type FieldKey = "email" | "password";
 
 const OTP_LENGTH = 6;
+const TEMP_ADMIN_OTP = "123456";
 
 const emptyTouched: Record<FieldKey, boolean> = {
   email: false,
@@ -55,7 +57,20 @@ export default function AdminLogin() {
   const [touched, setTouched] = useState(emptyTouched);
   const [otpTouched, setOtpTouched] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    const token = getAdminToken();
+    if (!token) return;
+
+    getAdminMe()
+      .then(() => router.replace(ADMIN_DASHBOARD_HREF))
+      .catch(() => {
+        // Invalid token — stay on login page.
+      });
+  }, [router]);
 
   const values = { email, password };
   const otpComplete = digits.every((digit) => digit !== "");
@@ -116,12 +131,30 @@ export default function AdminLogin() {
     inputRefs.current[focusIndex]?.focus();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitAttempted(true);
     setOtpTouched(true);
-    if (!canSubmit) return;
-    router.push(ADMIN_DASHBOARD_HREF);
+    setSubmitError(null);
+
+    if (!canSubmit || isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await adminLogin({
+        email: normalizeEmail(email),
+        password,
+        otp: digits.join(""),
+      });
+
+      setAdminToken(response.token);
+      router.push(ADMIN_DASHBOARD_HREF);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Login failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -155,7 +188,7 @@ export default function AdminLogin() {
                   id="adminLoginEmail"
                   type="email"
                   className={register.textFieldWithIcon}
-                  placeholder="admin@jatayu.com"
+                  placeholder="admin@thequipus.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onBlur={() => markTouched("email")}
@@ -220,6 +253,7 @@ export default function AdminLogin() {
                     placeholder="__"
                     aria-label={`OTP digit ${index + 1}`}
                     aria-invalid={Boolean(otpError)}
+                    disabled={isSubmitting}
                     onChange={(e) => {
                       setOtpTouched(true);
                       updateDigit(index, e.target.value);
@@ -234,16 +268,22 @@ export default function AdminLogin() {
               ) : null}
               <p className={otpStyles.otpResendText}>
                 <span className={otpStyles.otpResendMuted}>
-                  Use Google Authenticator.
+                  Temporary OTP: {TEMP_ADMIN_OTP} (until Google Authenticator is configured)
                 </span>
               </p>
             </div>
 
+            {submitError ? (
+              <p className={register.fieldErrorBelow} role="alert">
+                {submitError}
+              </p>
+            ) : null}
+
             <ContinueButton
               type="submit"
-              label="Login"
-              aria-disabled={!canSubmit}
-              className={`${formStyles.registerSubmitBtn} ${canSubmit ? "" : formStyles.registerSubmitBtnInactive}`}
+              label={isSubmitting ? "Logging in..." : "Login"}
+              aria-disabled={!canSubmit || isSubmitting}
+              className={`${formStyles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : formStyles.registerSubmitBtnInactive}`}
               arrowSize={16}
             />
           </form>

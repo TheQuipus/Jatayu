@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -27,7 +28,9 @@ import {
   Bell,
 } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
-import { formatCurrency, type BookingDetail } from "@/lib/seekerDashboard";
+import SecondaryCTA from "@/components/ui/SecondaryCTA";
+import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
+import { formatCurrency, getPokeState, savePokeState, type BookingDetail } from "@/lib/seekerDashboard";
 import type { ConsultationType } from "@/lib/booking";
 import styles from "./BookingDetailInfo.module.css";
 
@@ -91,13 +94,18 @@ export default function BookingDetailInfo({
   submittedReview,
   notes,
 }: BookingDetailInfoProps) {
+  const router = useRouter();
   const [pokeState, setPokeState] = useState<{
     count: number;
     lastPokedAt: number | null;
-  }>(() => ({
+  }>({
     count: 0,
     lastPokedAt: null,
-  }));
+  });
+
+  useEffect(() => {
+    setPokeState(getPokeState(booking.id));
+  }, [booking.id]);
 
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [pokeFeedback, setPokeFeedback] = useState<string | null>(null);
@@ -112,6 +120,7 @@ export default function BookingDetailInfo({
   const [completedRating, setCompletedRating] = useState<number>(0);
   const [completedHoverRating, setCompletedHoverRating] = useState<number | null>(null);
   const [completedComment, setCompletedComment] = useState("");
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
 
 
@@ -187,8 +196,26 @@ export default function BookingDetailInfo({
 
   const isOneHourPassed = booking.placedDaysAgo > 0 || booking.placedDaysAgo === undefined;
 
+  const timeStatus = useMemo(() => {
+    if (booking.status !== "confirmed") return booking.status;
+
+    const targetDate = new Date(currentTime);
+    targetDate.setDate(targetDate.getDate() + booking.dayOffset);
+    targetDate.setHours(booking.startHour, booking.startMinute, 0, 0);
+
+    const startDiffMs = targetDate.getTime() - currentTime;
+
+    if (startDiffMs > 5 * 60 * 1000) {
+      return "upcoming";
+    } else {
+      return "active";
+    }
+  }, [booking, currentTime]);
+
+  const isCompletedSession = sessionState === "completed" || booking.status === "completed";
+
   const countdownText = useMemo(() => {
-    if (booking.status === "confirmed" || sessionState === "completed") {
+    if (isCompletedSession || timeStatus !== "upcoming") {
       return null;
     }
 
@@ -211,12 +238,12 @@ export default function BookingDetailInfo({
       const remainingHours = totalHours % 24;
       const dd = String(totalDays).padStart(2, "0");
       const hh = String(remainingHours).padStart(2, "0");
-      return `Time Remaining: ${dd}D::${hh}H`;
+      return `${dd}D:${hh}H`;
     } else {
       const remainingMinutes = totalMinutes % 60;
       const hh = String(totalHours).padStart(2, "0");
       const mm = String(remainingMinutes).padStart(2, "0");
-      return `Time Remaining: ${hh}H:${mm}M`;
+      return `${hh}H:${mm}M`;
     }
   }, [booking, currentTime, sessionState]);
 
@@ -232,10 +259,14 @@ export default function BookingDetailInfo({
     if (!isOneHourPassed) return;
     if (cooldownSeconds > 0) return;
 
-    setPokeState((prev) => ({
-      count: prev.count + 1,
-      lastPokedAt: Date.now(),
-    }));
+    const nextCount = pokeState.count + 1;
+    const now = Date.now();
+
+    setPokeState({
+      count: nextCount,
+      lastPokedAt: now,
+    });
+    savePokeState(booking.id, nextCount, now);
 
     setPokeFeedback("Expert poked successfully! A priority alert has been sent.");
     setTimeout(() => {
@@ -321,9 +352,10 @@ export default function BookingDetailInfo({
                   className={styles.detailFeedbackTextarea}
                 />
                 <ContinueButton
-                  disabled={!feedback.category}
+                  disabled={!feedback.category && !feedback.comment.trim()}
                   onClick={handleSubmitFeedback}
                   label="Submit Feedback"
+                  className={styles.detailSubmitReviewBtn}
                 />
               </div>
             ) : (
@@ -337,8 +369,10 @@ export default function BookingDetailInfo({
                   className={styles.detailFeedbackTextarea}
                 />
                 <ContinueButton
+                  disabled={!feedback.rating && !feedback.comment.trim()}
                   onClick={handleSubmitFeedback}
                   label="Submit & Earn Credits"
+                  className={styles.detailSubmitReviewBtn}
                 />
               </div>
             )}
@@ -383,8 +417,8 @@ export default function BookingDetailInfo({
                       ? "#EAB308"
                       : "transparent"
                     : star <= completedRating
-                    ? "#EAB308"
-                    : "transparent"
+                      ? "#EAB308"
+                      : "transparent"
                 }
                 stroke={
                   completedHoverRating !== null
@@ -392,8 +426,8 @@ export default function BookingDetailInfo({
                       ? "#EAB308"
                       : "var(--dove-gray)"
                     : star <= completedRating
-                    ? "#EAB308"
-                    : "var(--dove-gray)"
+                      ? "#EAB308"
+                      : "var(--dove-gray)"
                 }
               />
             </button>
@@ -415,9 +449,10 @@ export default function BookingDetailInfo({
             rows={4}
           />
           <ContinueButton
-            disabled={completedRating === 0}
+            disabled={completedRating === 0 && !completedComment.trim()}
             onClick={handleCompletedReviewSubmit}
             label="Submit Review"
+            className={styles.detailSubmitReviewBtn}
             style={{ marginTop: 10 }}
           />
         </div>
@@ -434,10 +469,20 @@ export default function BookingDetailInfo({
     <section className={styles.detail}>
       <div className={`container ${styles.detailInner}`}>
         <div className={styles.pageTop}>
-          <Link href="/seeker/bookings" className={styles.backLink}>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/seeker/bookings");
+              }
+            }}
+            className={styles.backLink}
+          >
             <ArrowLeft size={14} aria-hidden="true" />
             Back to Bookings
-          </Link>
+          </button>
         </div>
 
         <div className={styles.mainGrid}>
@@ -518,6 +563,22 @@ export default function BookingDetailInfo({
               </div>
             </div>
 
+            <div className={styles.badgeFloatAnchor}>
+              {(isCompletedSession || submittedReview) ? (
+                <div className={styles.completedBadgeWrap}>
+                  <span className={styles.completedBadge}>
+                    Session Completed
+                  </span>
+                </div>
+              ) : booking.status === "cancelled" ? (
+                <div className={styles.cancelledBadgeWrap}>
+                  <span className={styles.cancelledBadge}>
+                    Session Cancelled
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
             <article className={styles.sessionCard}>
               <div className={styles.sectionHead}>
                 <ClipboardList size={16} aria-hidden="true" />
@@ -537,27 +598,110 @@ export default function BookingDetailInfo({
                   </div>
                 </div>
 
-                {sessionState === "completed" || booking.status === "confirmed" || submittedReview ? null : booking.status === "cancelled" ? (
-                  <div className={styles.cancelledBadgeWrap}>
-                    <span className={styles.cancelledBadge}>
-                      Session Cancelled
-                    </span>
-                  </div>
-                ) : (
+                {booking.status === "pending" ? (
                   <div className={styles.sessionSummaryAction}>
-                    {countdownText ? (
-                      <div className={styles.countdownActionText}>
-                        {countdownText}
-                      </div>
+                    {!isOneHourPassed ? (
+                      <ContinueButton
+                        leadingIcon={
+                          <Image
+                            src="/pointright.svg"
+                            alt=""
+                            width={16}
+                            height={16}
+                            className={styles.pokeIconSvg}
+                            aria-hidden="true"
+                          />
+                        }
+                        label="Poke Expert (Locked 1h)"
+                        disabled
+                        className={styles.sessionPokeBtn}
+                      />
+                    ) : pokeState.count === 0 ? (
+                      <ContinueButton
+                        leadingIcon={
+                          <Image
+                            src="/pointright.svg"
+                            alt=""
+                            width={16}
+                            height={16}
+                            className={styles.pokeIconSvg}
+                            aria-hidden="true"
+                          />
+                        }
+                        label="Poke Expert"
+                        onClick={handlePoke}
+                        className={styles.sessionPokeBtn}
+                      />
+                    ) : pokeState.count === 1 && cooldownSeconds > 0 ? (
+                      <ContinueButton
+                        leadingIcon={
+                          <Image
+                            src="/pointright.svg"
+                            alt=""
+                            width={16}
+                            height={16}
+                            className={styles.pokeIconSvg}
+                            aria-hidden="true"
+                          />
+                        }
+                        label={`Poke Cooldown (${formatCooldown(cooldownSeconds)})`}
+                        disabled
+                        className={styles.sessionPokeBtn}
+                      />
+                    ) : pokeState.count === 1 && cooldownSeconds === 0 ? (
+                      <ContinueButton
+                        leadingIcon={
+                          <Image
+                            src="/pointright.svg"
+                            alt=""
+                            width={16}
+                            height={16}
+                            className={styles.pokeIconSvg}
+                            aria-hidden="true"
+                          />
+                        }
+                        label="Poke Expert Again"
+                        onClick={handlePoke}
+                        className={styles.sessionPokeBtn}
+                      />
                     ) : (
                       <ContinueButton
-                        label="Join Session"
-                        onClick={onJoinSession}
-                        className={styles.joinSessionBtn}
+                        leadingIcon={
+                          <Image
+                            src="/pointright.svg"
+                            alt=""
+                            width={16}
+                            height={16}
+                            className={styles.pokeIconSvg}
+                            aria-hidden="true"
+                          />
+                        }
+                        label="No Pokes Remaining"
+                        disabled
+                        className={styles.sessionPokeBtn}
                       />
                     )}
                   </div>
-                )}
+                ) : timeStatus === "active" ? (
+                  <div className={styles.sessionSummaryAction}>
+                    <ContinueButton
+                      label="Join Session"
+                      onClick={onJoinSession}
+                      className={styles.joinSessionBtn}
+                    />
+                  </div>
+                ) : timeStatus === "upcoming" && countdownText ? (
+                  <div className={styles.sessionSummaryAction}>
+                    <div className={styles.countdownActionWrapper}>
+                      <div className={styles.countdownActionText}>
+                        {countdownText}
+                      </div>
+                      <span className={styles.countdownActionHint}>
+                        Join room activates 5m prior
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className={styles.sessionGrid}>
@@ -583,7 +727,7 @@ export default function BookingDetailInfo({
             </article>
 
             {/* Render rating & comments feedback card on details view after session is complete */}
-            {(sessionState === "completed" || booking.status === "confirmed") && (
+            {isCompletedSession && (
               submittedReview ? (
                 <article className={styles.feedbackDetailsCard}>
                   <div className={styles.sectionHead}>
@@ -644,104 +788,6 @@ export default function BookingDetailInfo({
 
           <aside className={styles.rightCol}>
             <div className={styles.rightColInner}>
-              {booking.status === "pending" && (
-                <div className={styles.bookingBox}>
-                  <div className={styles.bookingHeader}>
-                    <span className={styles.bookingHeaderTitle}>Poke Expert</span>
-                    <span className={styles.bookingHeaderDots} />
-                    <div className={styles.soundwaveIcon} aria-hidden="true">
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  </div>
-
-                  <div className={styles.panelBody}>
-                    {!isOneHourPassed ? (
-                      <div className={styles.pokeLocked}>
-                        <p className={styles.pokeText}>
-                          Poke option will be available 1 hour after booking is placed in a pending state.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className={styles.pokeActive}>
-                        {pokeState.count === 0 && (
-                          <>
-                            <p className={styles.pokeText}>
-                              Is the expert taking too long? You can send a direct reminder poke to get their attention.
-                            </p>
-                            <button
-                              type="button"
-                              onClick={handlePoke}
-                              className={styles.pokeBtn}
-                            >
-                              <Bell size={14} /> Poke Expert
-                            </button>
-                            <span className={styles.pokeCountText}>0 of 2 pokes used</span>
-                          </>
-                        )}
-
-                        {pokeState.count === 1 && cooldownSeconds > 0 && (
-                          <>
-                            <p className={styles.pokeText}>
-                              Expert poked! If they do not respond, you can poke them one last time after the cooldown.
-                            </p>
-                            <button
-                              type="button"
-                              disabled
-                              className={`${styles.pokeBtn} ${styles.pokeBtnDisabled}`}
-                            >
-                              Poke on Cooldown ({formatCooldown(cooldownSeconds)})
-                            </button>
-                            <span className={styles.pokeCountText}>1 of 2 pokes used</span>
-                          </>
-                        )}
-
-                        {pokeState.count === 1 && cooldownSeconds === 0 && (
-                          <>
-                            <p className={styles.pokeText}>
-                              Cooldown complete! You can send your second and final poke reminder to the expert.
-                            </p>
-                            <button
-                              type="button"
-                              onClick={handlePoke}
-                              className={styles.pokeBtn}
-                            >
-                              <Bell size={14} /> Poke Expert Again
-                            </button>
-                            <span className={styles.pokeCountText}>1 of 2 pokes used</span>
-                          </>
-                        )}
-
-                        {pokeState.count >= 2 && (
-                          <>
-                            <p className={styles.pokeText}>
-                              You have sent the maximum number of pokes. The booking will be auto-cancelled if the expert does not accept soon.
-                            </p>
-                            <button
-                              type="button"
-                              disabled
-                              className={`${styles.pokeBtn} ${styles.pokeBtnDisabled}`}
-                            >
-                              No Pokes Remaining
-                            </button>
-                            <span className={styles.pokeCountText}>2 of 2 pokes used</span>
-                          </>
-                        )}
-
-                        {pokeFeedback && (
-                          <div className={styles.pokeSuccessFeedback}>
-                            {pokeFeedback}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles.bookingFooter} aria-hidden="true" />
-                </div>
-              )}
-
               <div className={styles.bookingBox}>
                 <div className={styles.bookingHeader}>
                   <span className={styles.bookingHeaderTitle}>Payment Summary</span>
@@ -758,11 +804,10 @@ export default function BookingDetailInfo({
                   <div className={styles.paymentHead}>
                     <span className={styles.paymentStatusLabel}>Status</span>
                     <span
-                      className={`${styles.paymentBadge} ${
-                        booking.paymentStatus === "paid"
-                          ? styles.paymentBadgePaid
-                          : styles.paymentBadgePending
-                      }`}
+                      className={`${styles.paymentBadge} ${booking.paymentStatus === "paid"
+                        ? styles.paymentBadgePaid
+                        : styles.paymentBadgePending
+                        }`}
                     >
                       {booking.paymentStatus === "paid" ? "Paid" : "Pending"}
                     </span>
@@ -773,10 +818,12 @@ export default function BookingDetailInfo({
                       <span>Consultation Fee</span>
                       <strong>{formatCurrency(booking.consultationFee)}</strong>
                     </div>
-                    <div className={styles.priceRow}>
-                      <span>Platform Fee</span>
-                      <strong>{formatCurrency(booking.platformFee)}</strong>
-                    </div>
+                    {booking.platformFee > 0 ? (
+                      <div className={styles.priceRow}>
+                        <span>Platform Fee</span>
+                        <strong>{formatCurrency(booking.platformFee)}</strong>
+                      </div>
+                    ) : null}
                     <div className={styles.priceRow}>
                       <span>GST (18%)</span>
                       <strong>{formatCurrency(booking.gst)}</strong>
@@ -794,14 +841,13 @@ export default function BookingDetailInfo({
                     <strong>{formatCurrency(booking.totalPaid)}</strong>
                   </div>
 
-                  <button
-                    type="button"
-                    className={styles.sidebarInvoiceBtn}
+                  <SecondaryCTA
+                    label="Download Invoice"
+                    showArrow={false}
+                    leadingIcon={<Download size={14} aria-hidden="true" />}
                     onClick={() => handleDownloadInvoice(booking)}
-                  >
-                    <Download size={14} aria-hidden="true" />
-                    Download Invoice
-                  </button>
+                    className={styles.sidebarInvoiceBtn}
+                  />
                 </div>
 
                 <div className={styles.bookingFooter} aria-hidden="true" />
@@ -831,31 +877,35 @@ export default function BookingDetailInfo({
                           <span>Change date or time (Free up to 24h before)</span>
                         </span>
                       </button>
-                      <button type="button" className={styles.manageAction}>
-                        <span
-                          className={`${styles.manageActionIcon} ${styles.manageActionIconDanger}`}
-                          aria-hidden="true"
-                        >
-                          <X size={18} />
-                        </span>
-                        <span className={styles.manageActionCopy}>
-                          <strong>Cancel Booking</strong>
-                          <span>Review cancellation policy before proceeding</span>
-                        </span>
-                      </button>
+                      {booking.status !== "cancelled" && (
+                        <button type="button" className={styles.manageAction}>
+                          <span
+                            className={`${styles.manageActionIcon} ${styles.manageActionIconDanger}`}
+                            aria-hidden="true"
+                          >
+                            <X size={18} />
+                          </span>
+                          <span className={styles.manageActionCopy}>
+                            <strong>Cancel Booking</strong>
+                            <span>Review cancellation policy before proceeding</span>
+                          </span>
+                        </button>
+                      )}
                     </div>
 
-                    <div className={styles.policyBox}>
-                      <Info size={16} className={styles.policyIcon} aria-hidden="true" />
-                      <p className={styles.policyText}>
-                        <strong>Cancellation Policy:</strong> Free cancellation up to 24
-                        hours before the session. 50% refund within 24 hours. No-shows
-                        are non-refundable.{" "}
-                        <Link href="/terms-of-service/" className={styles.policyLink}>
-                          Read full policy
-                        </Link>
-                      </p>
-                    </div>
+                    {booking.status !== "cancelled" && (
+                      <div className={styles.policyBox}>
+                        <Info size={16} className={styles.policyIcon} aria-hidden="true" />
+                        <p className={styles.policyText}>
+                          <strong>Cancellation Policy:</strong> Free cancellation up to 24
+                          hours before the session. 50% refund within 24 hours. No-shows
+                          are non-refundable.{" "}
+                          <Link href="/terms-of-service/" className={styles.policyLink}>
+                            Read full policy
+                          </Link>
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className={styles.bookingFooter} aria-hidden="true" />
@@ -893,10 +943,14 @@ export default function BookingDetailInfo({
                       </Link>
                     </li>
                     <li>
-                      <Link href="/seeker/dashboard/#support" className={styles.helpLinkDanger}>
+                      <button
+                        type="button"
+                        onClick={() => setIsReportModalOpen(true)}
+                        className={styles.helpLinkDanger}
+                      >
                         <Flag size={14} aria-hidden="true" />
                         Report an Issue
-                      </Link>
+                      </button>
                     </li>
                   </ul>
                 </div>
@@ -907,6 +961,13 @@ export default function BookingDetailInfo({
           </aside>
         </div>
       </div>
+
+      {isReportModalOpen && (
+        <ReportForm
+          booking={booking}
+          onClose={() => setIsReportModalOpen(false)}
+        />
+      )}
     </section>
   );
 }

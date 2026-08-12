@@ -16,6 +16,8 @@ export function isPersonalisationFormComplete(selectedLanguages: string[]): bool
   return selectedLanguages.length > 0;
 }
 
+const ADDITIONAL_CONTEXT_CHARACTER_LIMIT = 500;
+
 type PersonalisationStepProps = {
   userName: string;
   categoryLabel: string;
@@ -369,6 +371,7 @@ export default function PersonalisationStep({
                     placeholder="Anything else you want your expert to know?"
                     value={additionalContext}
                     onChange={(e) => onChangeAdditionalContext(e.target.value)}
+                    maxLength={ADDITIONAL_CONTEXT_CHARACTER_LIMIT}
                     className={`${register.textareaField} ${styles.additionalContextTextarea}`}
                     rows={4}
                   />

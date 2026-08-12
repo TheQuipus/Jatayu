@@ -2,6 +2,7 @@ import { getEmailValidationError } from "@/lib/emailValidation";
 import { buildPasswordContext } from "@/lib/passwordValidation";
 import {
   PAYMENT_METHODS,
+  ALL_BANKS,
   DEFAULT_CONTEXT_IMPROVE_HINT,
   CHECKOUT_REGISTRATION_FIELDS,
   type PaymentMethodId,
@@ -147,3 +148,91 @@ export function isCheckoutRegistrationComplete(values: CheckoutRegistrationValue
     (field) => !getCheckoutRegistrationFieldError(field, values)
   );
 }
+
+export function isValidUpiId(upiId: string): boolean {
+  const trimmed = upiId.trim();
+  if (!trimmed.includes("@")) return false;
+  const parts = trimmed.split("@");
+  if (parts.length !== 2) return false;
+  const [handle, provider] = parts;
+  return (handle?.length ?? 0) >= 2 && (provider?.length ?? 0) >= 2;
+}
+
+export function formatCardNumber(val: string): string {
+  const digits = val.replace(/\D/g, "").slice(0, 19);
+  return digits.replace(/(.{4})/g, "$1 ").trim();
+}
+
+export function formatMaskedCardNumber(val: string): string {
+  const digits = val.replace(/\D/g, "");
+  if (digits.length < 4) return val;
+  const last4 = digits.slice(-4);
+  return `•••• •••• •••• ${last4}`;
+}
+
+export function detectCardNetwork(cardNumber: string): "visa" | "mastercard" | "rupay" | "amex" | "generic" {
+  const digits = cardNumber.replace(/\D/g, "");
+  if (!digits) return "generic";
+  if (digits.startsWith("4")) return "visa";
+  if (/^5[1-5]/.test(digits) || /^2[2-7]/.test(digits)) return "mastercard";
+  if (/^(60|65|353|356)/.test(digits)) return "rupay";
+  if (/^3[47]/.test(digits)) return "amex";
+  return "generic";
+}
+
+export function formatCardExpiry(val: string): string {
+  const digits = val.replace(/\D/g, "").slice(0, 4);
+  if (digits.length >= 3) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+  return digits;
+}
+
+export function isValidCardExpiry(expiry: string): boolean {
+  const digits = expiry.replace(/\D/g, "");
+  if (digits.length !== 4) return false;
+  const month = parseInt(digits.slice(0, 2), 10);
+  const year = parseInt(digits.slice(2), 10);
+  if (month < 1 || month > 12) return false;
+  return year >= 24 && year <= 99;
+}
+
+export function getDetailedPaymentMethodLabel(
+  method: PaymentMethodId | null,
+  details?: {
+    upi?: { mode: string; upiId: string; selectedApp: string };
+    card?: { cardNumber: string; saveCard: boolean };
+    netbanking?: { bankId: string };
+  },
+  walletApplied = 0,
+  total = 1
+): string {
+  if (walletApplied > 0 && total === 0) {
+    return "Jatayu Balance (Fully Covered)";
+  }
+  if (!method) return "Not selected";
+  if (method === "upi") {
+    return "UPI";
+  }
+  if (method === "card") {
+    const rawCard = details?.card?.cardNumber?.replace(/\D/g, "") ?? "";
+    if (rawCard.length >= 4) {
+      const network = detectCardNetwork(rawCard).toUpperCase();
+      const last4 = rawCard.slice(-4);
+      return `${network !== "GENERIC" ? network : "Card"} ending in •••• ${last4}`;
+    }
+    return "Debit / Credit Card";
+  }
+  if (method === "netbanking") {
+    const bankItem = ALL_BANKS.find((b) => b.id === details?.netbanking?.bankId);
+    return bankItem ? `Net Banking (${bankItem.name})` : "Net Banking";
+  }
+  if (method === "cod") {
+    return "Cash on Delivery / Pay on Delivery";
+  }
+  if (method === "emi") {
+    return "EMI";
+  }
+  return getPaymentMethodLabel(method);
+}
+

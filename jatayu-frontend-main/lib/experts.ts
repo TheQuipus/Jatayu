@@ -468,7 +468,7 @@ export function getExpertDetailHref(
 ): string {
   const slug =
     typeof expertOrSlug === "string" ? expertOrSlug : expertSlug(expertOrSlug.name);
-  return options?.seeker ? `/seeker/expert/${slug}` : `/expert/${slug}`;
+  return options?.seeker ? `/seeker/expert/${slug}/` : `/expert/${slug}/`;
 }
 
 export function getExpertCheckoutHref(
@@ -478,10 +478,10 @@ export function getExpertCheckoutHref(
 ): string {
   const slug =
     typeof expertOrSlug === "string" ? expertOrSlug : expertSlug(expertOrSlug.name);
-  const base = options?.seeker
+  const basePath = options?.seeker
     ? `/seeker/expert/${slug}/checkout`
     : `/expert/${slug}/checkout`;
-  return type ? `${base}?type=${type}` : base;
+  return type ? `${basePath}?type=${type}` : `${basePath}/`;
 }
 
 export function getExpertBySlug(slug: string): Expert | undefined {

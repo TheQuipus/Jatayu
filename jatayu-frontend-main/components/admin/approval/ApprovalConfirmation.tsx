@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   CheckCircle2,
@@ -17,6 +18,7 @@ import {
   type ChecklistStatus,
 } from "@/lib/adminApproval";
 import { useExpertApplication } from "@/hooks/useExpertApplications";
+import { updateExpertApplicationStatus } from "@/lib/expertApplicationsApi";
 import styles from "./ApprovalConfirmation.module.css";
 
 type ApprovalConfirmationProps = {
@@ -66,12 +68,15 @@ function ChecklistRow({ item }: { item: ApprovalChecklistItem }) {
 }
 
 export default function ApprovalConfirmation({ appId }: ApprovalConfirmationProps) {
+  const router = useRouter();
   const { ready, application } = useExpertApplication(appId);
   const data = useMemo(
     () => (application ? mapToApprovalConfirmation(application) : null),
     [application],
   );
   const [confirmed, setConfirmed] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
+  const [activateError, setActivateError] = useState<string | null>(null);
 
   if (!ready) {
     return null;
@@ -90,7 +95,8 @@ export default function ApprovalConfirmation({ appId }: ApprovalConfirmationProp
     );
   }
 
-  const canActivate = confirmed && data.recommendation === "approve";
+  const canActivate =
+    confirmed && data.recommendation === "approve" && application?.status !== "approved";
 
   const recommendationLabel =
     data.recommendation === "approve"
@@ -275,10 +281,33 @@ export default function ApprovalConfirmation({ appId }: ApprovalConfirmationProp
                 </span>
               </label>
 
-              <button type="button" className={styles.activateBtn} disabled={!canActivate}>
+              <button
+                type="button"
+                className={styles.activateBtn}
+                disabled={!canActivate || isActivating}
+                onClick={async () => {
+                  setIsActivating(true);
+                  setActivateError(null);
+                  try {
+                    await updateExpertApplicationStatus(
+                      data.appId,
+                      "approved",
+                      data.reviewerNote.text,
+                    );
+                    router.push("/admin/applications");
+                  } catch (error) {
+                    setActivateError(
+                      error instanceof Error ? error.message : "Could not activate account.",
+                    );
+                  } finally {
+                    setIsActivating(false);
+                  }
+                }}
+              >
                 <Zap size={18} />
-                Activate Account
+                {isActivating ? "Activating..." : "Activate Account"}
               </button>
+              {activateError ? <p className={styles.activateSummary}>{activateError}</p> : null}
             </div>
           </article>
         </div>

@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
+import SecondaryCTA from "@/components/ui/SecondaryCTA";
 import styles from "./CheckoutStepFooter.module.css";
 
 export type CheckoutStepFooterProps = {
@@ -15,8 +16,8 @@ export default function CheckoutStepFooter({
   onBack,
   onContinue,
 }: CheckoutStepFooterProps) {
-  const showBack = currentStep > 1 && currentStep < 5;
-  const showContinue = currentStep < 5;
+  const showBack = currentStep > 1 && currentStep < 4;
+  const showContinue = currentStep < 4;
   const continueLabel = "Continue";
 
   if (!showBack && !showContinue) return null;
@@ -25,10 +26,12 @@ export default function CheckoutStepFooter({
     <div className={styles.stepFooter}>
       <div className={styles.stepFooterLeft}>
         {showBack ? (
-          <button type="button" className={styles.backBtn} onClick={onBack}>
-            <ArrowLeft size={14} aria-hidden="true" />
-            Back
-          </button>
+          <SecondaryCTA
+            label="Back"
+            showArrow={false}
+            leadingIcon={<ArrowLeft size={14} aria-hidden="true" />}
+            onClick={onBack}
+          />
         ) : null}
         {showContinue ? (
           <ContinueButton

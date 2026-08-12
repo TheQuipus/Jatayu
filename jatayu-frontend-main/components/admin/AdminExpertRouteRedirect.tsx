@@ -2,10 +2,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  getExpertApplications,
-  seedDemoApplicationIfEmpty,
-} from "@/lib/expertApplicationsStore";
+import { getAdminApplications } from "@/lib/api";
+import { mapBackendExpertsToApplications, type BackendExpertApplication } from "@/lib/backendApplicationMapper";
+import { getFirstReviewAppId } from "@/lib/adminNavigation";
 
 type AdminExpertRouteRedirectProps = {
   basePath: string;
@@ -15,15 +14,32 @@ export default function AdminExpertRouteRedirect({ basePath }: AdminExpertRouteR
   const router = useRouter();
 
   useEffect(() => {
-    seedDemoApplicationIfEmpty();
-    const applications = getExpertApplications();
+    let active = true;
 
-    if (applications.length > 0) {
-      router.replace(`${basePath}/${applications[0].appId}`);
-      return;
+    async function redirectToFirstApplication() {
+      try {
+        const records = await getAdminApplications();
+        if (!active) return;
+
+        const applications = mapBackendExpertsToApplications(records as BackendExpertApplication[]);
+        const firstAppId = getFirstReviewAppId(applications);
+
+        if (firstAppId) {
+          router.replace(`${basePath}/${firstAppId}`);
+          return;
+        }
+      } catch {
+        // Fall through to applications list.
+      }
+
+      router.replace("/admin/applications");
     }
 
-    router.replace("/admin/applications");
+    void redirectToFirstApplication();
+
+    return () => {
+      active = false;
+    };
   }, [basePath, router]);
 
   return null;

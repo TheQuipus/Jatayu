@@ -30,12 +30,47 @@
   gap: 12px;
 }
 
+.needsTextEditor {
+  position: relative;
+  width: 100%;
+  min-height: 88px;
+  height: 88px;
+  max-height: 88px;
+}
+
+.needsTextMirror,
 .needsTextarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   min-height: 88px;
   height: 88px;
   max-height: 88px;
   font-size: 15px;
   line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.needsTextMirror {
+  overflow: hidden;
+  font-family: var(--font-body);
+  pointer-events: none;
+}
+
+.suggestionText {
+  color: var(--silver-chalice);
+}
+
+.typedText {
+  color: var(--white);
+}
+
+.needsTextarea {
+  z-index: 1;
+  color: transparent;
+  caret-color: var(--white);
   resize: none;
   overflow-y: auto;
   scrollbar-width: none;

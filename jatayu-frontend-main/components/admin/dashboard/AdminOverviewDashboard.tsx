@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -21,6 +21,7 @@ import type { LucideIcon } from "lucide-react";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import problemStyles from "@/components/homepage/Problem.module.css";
 import { useExpertApplications } from "@/hooks/useExpertApplications";
+import { getAdminApplicationStats, getAdminMe, type AdminAuthUser } from "@/lib/api";
 import { getFirstReviewAppId } from "@/lib/adminNavigation";
 import {
   ADMIN_PROFILE,
@@ -258,11 +259,52 @@ function SessionsDonut() {
 
 export default function AdminOverviewDashboard() {
   const [chartRange, setChartRange] = useState<"14D" | "30D" | "90D">("14D");
+  const [adminUser, setAdminUser] = useState<AdminAuthUser | null>(null);
+  const [applicationStats, setApplicationStats] = useState<Record<string, number> | null>(
+    null,
+  );
   const { ready, pendingCount, applications } = useExpertApplications();
   const reviewHref = useMemo(() => {
     const appId = getFirstReviewAppId(applications);
     return appId ? `/admin/review/${appId}` : "/admin/applications";
   }, [applications]);
+
+  useEffect(() => {
+    let active = true;
+
+    getAdminMe()
+      .then((user) => {
+        if (active) setAdminUser(user);
+      })
+      .catch(() => {
+        if (active) setAdminUser(null);
+      });
+
+    getAdminApplicationStats()
+      .then((stats) => {
+        if (active) setApplicationStats(stats);
+      })
+      .catch(() => {
+        if (active) setApplicationStats(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const metrics = useMemo(() => {
+    const pendingApprovals = applicationStats?.pending ?? pendingCount;
+    return PRIMARY_METRICS.map((metric) =>
+      metric.id === "approvals"
+        ? {
+            ...metric,
+            value: String(pendingApprovals),
+            footer: `${applicationStats?.in_review ?? 0} currently in review`,
+          }
+        : metric,
+    );
+  }, [applicationStats, pendingCount]);
 
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
@@ -271,7 +313,8 @@ export default function AdminOverviewDashboard() {
     year: "numeric",
   });
 
-  const firstName = ADMIN_PROFILE.name.split(" ")[0];
+  const firstName = (adminUser?.fullName || ADMIN_PROFILE.name).split(" ")[0];
+  const greeting = adminUser?.fullName ? "Welcome back" : ADMIN_PROFILE.greeting;
 
   return (
     <section className={styles.dashboard}>
@@ -279,7 +322,7 @@ export default function AdminOverviewDashboard() {
         <header className={styles.welcomeBlock}>
           <div className={styles.welcomeText}>
             <h1 className={styles.pageTitle}>
-              {ADMIN_PROFILE.greeting},{" "}
+              {greeting},{" "}
               <span className={styles.accentWord}>{firstName}</span>
             </h1>
             <p className={styles.pageDate}>{today}</p>
@@ -312,7 +355,7 @@ export default function AdminOverviewDashboard() {
         </div>
 
         <div className={styles.statsGrid}>
-          {PRIMARY_METRICS.map((metric) => {
+          {metrics.map((metric) => {
             const Icon = PRIMARY_ICONS[metric.id as keyof typeof PRIMARY_ICONS] ?? IndianRupee;
             return <DashboardKpiCard key={metric.id} metric={metric} icon={Icon} />;
           })}

@@ -35,21 +35,23 @@ import {
   CHECKOUT_OTP_RESEND_SECONDS,
   CHECKOUT_REGISTRATION_TOUCHED_DEFAULT,
   MIN_CONTEXT_LENGTH,
+  INITIAL_PAYMENT_DETAILS,
   type CheckoutProps,
   type PaymentMethodId,
   type ContextImprovementStyleId,
   type CheckoutRegistrationFieldKey,
   type CheckoutRegistrationValues,
+  type PaymentDetailsState,
 } from "./checkoutTypes";
 import {
   isCheckoutRegistrationComplete,
   formatCurrency,
+  getDetailedPaymentMethodLabel,
 } from "./checkoutUtils";
 import CheckoutStepper from "./CheckoutStepper";
 import StepConsultationType from "./StepConsultationType";
 import StepQuestionContext from "./StepQuestionContext";
 import StepPickSlot from "./StepPickSlot";
-import StepPayment from "./StepPayment";
 import StepBookingSummary from "./StepBookingSummary";
 import CheckoutSidebar from "./CheckoutSidebar";
 import CheckoutAuthModal from "./CheckoutAuthModal";
@@ -64,7 +66,6 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setMaxStepReached((prev) => Math.max(prev, currentStep));
   }, [currentStep]);
 
-  const invoiceSeed = useId();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [consultationType, setConsultationType] = useState<ConsultationType | null>(null);
   const [selectedDate, setSelectedDate] = useState("date-0");
@@ -92,9 +93,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     CHECKOUT_OTP_RESEND_SECONDS
   );
   const registerOtpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [priceBreakdownExpanded, setPriceBreakdownExpanded] = useState(false);
   const [useCredits, setUseCredits] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailsState>(INITIAL_PAYMENT_DETAILS);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [isAuthLogin, setIsAuthLogin] = useState(false);
@@ -115,12 +116,12 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const breadcrumbItems = useMemo(
     () => [
-      { label: "Discover", href: seeker ? "/seeker/discover" : "/expert" },
+      { label: "Discover", href: seeker ? "/seeker/discover/" : "/expert/" },
       {
         label: expert.name,
         href: seeker
-          ? `/seeker/expert/${expertSlug(expert.name)}`
-          : `/expert/${expertSlug(expert.name)}`,
+          ? `/seeker/expert/${expertSlug(expert.name)}/`
+          : `/expert/${expertSlug(expert.name)}/`,
       },
       { label: "Checkout" },
     ],
@@ -195,7 +196,16 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       registerPhone.trim() &&
       registerPassword.trim()
   );
-  const canContinueStep4 = Boolean(paymentMethod);
+  const isFullyCoveredByCredits = creditsActive && breakdown.total === 0;
+  const isNetbankingValid =
+    paymentMethod === "netbanking" ? Boolean(paymentDetails.netbanking.bankId) : true;
+  const isCardValid =
+    paymentMethod === "card"
+      ? Boolean(paymentDetails.card.cardNumber.replace(/\D/g, "").length >= 12)
+      : true;
+  const canContinueStep4 =
+    isFullyCoveredByCredits ||
+    (Boolean(paymentMethod) && isNetbankingValid && isCardValid);
   const canSendRegisterOtp = isRegisterFormFilled;
   const canContinueStep5 =
     isRegisterFormComplete && registerOtpVerified && termsAccepted;
@@ -312,7 +322,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setRegisterOtpVerified(true);
     setTermsAccepted(true);
     setShowAuthModal(false);
-    setCurrentStep(5);
+    setCurrentStep(4);
   };
 
   const stepCanContinue =
@@ -322,13 +332,11 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         ? canContinueStep2
         : currentStep === 3
           ? canContinueStep3
-          : currentStep === 4
-            ? canContinueStep4
-            : false;
+          : false;
 
   function goToStep(step: number) {
     if (step >= 1 && step <= maxStepReached) {
-      if (showAuthModal && step < 5) {
+      if (showAuthModal && step < 4) {
         setShowAuthModal(false);
         resetRegisterOtpState();
       }
@@ -345,15 +353,15 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   function handleContinue() {
     if (!stepCanContinue) return;
-    if (currentStep === 4) {
+    if (currentStep === 3) {
       if (seeker || registerOtpVerified) {
-        setCurrentStep(5);
+        setCurrentStep(4);
       } else {
         setShowAuthModal(true);
       }
       return;
     }
-    if (currentStep < 4) {
+    if (currentStep < 3) {
       setCurrentStep((step) => step + 1);
     }
   }
@@ -362,10 +370,10 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setRegisterSubmitAttempted(true);
     if (!canContinueStep5) return;
     setShowAuthModal(false);
-    setCurrentStep(5);
+    setCurrentStep(4);
   }
 
-  const invoiceId = `JTY-${invoiceSeed.replace(/:/g, "").toUpperCase()}`;
+  const [invoiceId] = useState(() => `JTY-${Math.floor(100000 + Math.random() * 900000)}`);
 
   const confirmationSchedule = formatConfirmationSchedule(
     selectedDate,
@@ -381,7 +389,6 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   });
 
   function handleConfirmBooking() {
-    if (!paymentMethod || !termsAccepted) return;
     setBookingConfirmed(true);
   }
 
@@ -391,54 +398,14 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       resetRegisterOtpState();
       return;
     }
-    if (currentStep === 5) {
-      setCurrentStep(4);
+    if (currentStep === 4) {
+      setCurrentStep(3);
       return;
     }
     goToStep(currentStep - 1);
   }
 
-  const renderPriceBreakdown = () => (
-    <>
-      <div className={`${styles.sectionDivider} ${styles.sectionDividerLeft}`}>
-        <span>credits</span>
-      </div>
 
-      <div
-        className={`${styles.priceListCollapse} ${
-          priceBreakdownExpanded ? styles.priceListCollapseOpen : ""
-        }`}
-        aria-hidden={!priceBreakdownExpanded}
-      >
-        <div className={styles.priceList}>
-          <div className={styles.priceRow}>
-            <span>Consultation Fee</span>
-            <strong>
-              {consultationFee > 0 ? formatCurrency(breakdown.consultationFee) : "—"}
-            </strong>
-          </div>
-          <div className={styles.priceRow}>
-            <span>Platform Fee</span>
-            <strong>
-              {consultationFee > 0 ? formatCurrency(breakdown.platformFee) : "—"}
-            </strong>
-          </div>
-          <div className={styles.priceRow}>
-            <span>GST (18%)</span>
-            <strong>{consultationFee > 0 ? formatCurrency(breakdown.gst) : "—"}</strong>
-          </div>
-          <div className={`${styles.priceRow} ${styles.creditsRow}`}>
-            <span>Credits Applied</span>
-            <strong>
-              {breakdown.walletApplied > 0
-                ? `− ${formatCurrency(breakdown.walletApplied)}`
-                : "—"}
-            </strong>
-          </div>
-        </div>
-      </div>
-    </>
-  );
 
   if (bookingConfirmed) {
     return (
@@ -461,7 +428,6 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     canContinueStep1,
     canContinueStep2,
     canContinueStep3,
-    canContinueStep4,
   ];
 
   return (
@@ -476,12 +442,8 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
           onGoToStep={goToStep}
         />
 
-        <div className={`${styles.layout} ${currentStep === 5 ? styles.layoutSummary : ""}`}>
-          <div
-            className={`${styles.layoutMain} ${
-              currentStep === 5 ? styles.layoutMainSummary : ""
-            }`}
-          >
+        <div className={styles.layout}>
+          <div className={styles.layoutMain}>
             <div className={styles.stepViewport}>
               {currentStep === 1 && (
                 <StepConsultationType
@@ -516,20 +478,12 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
               )}
 
               {currentStep === 4 && (
-                <StepPayment
-                  useCredits={useCredits}
-                  onUseCreditsChange={setUseCredits}
-                  paymentMethod={paymentMethod}
-                  onSelectPaymentMethod={setPaymentMethod}
-                />
-              )}
-
-              {currentStep === 5 && (
                 <StepBookingSummary
                   expert={expert}
                   consultationType={consultationType}
                   scheduleLabel={scheduleLabel}
                   paymentMethod={paymentMethod}
+                  paymentDetails={paymentDetails}
                   subject={subject}
                   context={context}
                   registerFirstName={registerFirstName}
@@ -538,7 +492,6 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   registerPhone={registerPhone}
                   invoiceId={invoiceId}
                   breakdown={breakdown}
-                  onConfirmBooking={handleConfirmBooking}
                 />
               )}
 
@@ -601,19 +554,14 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
             />
           </div>
 
-          {currentStep < 5 ? (
-            <CheckoutSidebar
-              expert={expert}
-              consultationType={consultationType}
-              consultationFee={consultationFee}
-              scheduleLabel={scheduleLabel}
-              breakdown={breakdown}
-              priceBreakdownExpanded={priceBreakdownExpanded}
-              onTogglePriceBreakdown={() =>
-                setPriceBreakdownExpanded((expanded) => !expanded)
-              }
-            />
-          ) : null}
+          <CheckoutSidebar
+            expert={expert}
+            consultationType={consultationType}
+            consultationFee={consultationFee}
+            scheduleLabel={scheduleLabel}
+            breakdown={breakdown}
+            onConfirmBooking={currentStep === 4 ? handleConfirmBooking : undefined}
+          />
         </div>
       </div>
     </section>

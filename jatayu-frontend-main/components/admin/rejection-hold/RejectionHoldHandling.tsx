@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -21,6 +22,7 @@ import {
   type NotificationChannel,
 } from "@/lib/adminRejectionHold";
 import { useExpertApplication } from "@/hooks/useExpertApplications";
+import { updateExpertApplicationStatus } from "@/lib/expertApplicationsApi";
 import styles from "./RejectionHoldHandling.module.css";
 
 type RejectionHoldHandlingProps = {
@@ -28,6 +30,7 @@ type RejectionHoldHandlingProps = {
 };
 
 export default function RejectionHoldHandling({ appId }: RejectionHoldHandlingProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const decisionParam = searchParams.get("decision");
   const initialDecision = (decisionParam === "hold" || decisionParam === "reject") ? decisionParam : undefined;
@@ -46,6 +49,33 @@ export default function RejectionHoldHandling({ appId }: RejectionHoldHandlingPr
   const [whatsappOn, setWhatsappOn] = useState(true);
   const [smsOn, setSmsOn] = useState(true);
   const [emailOn, setEmailOn] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmitDecision = async () => {
+    if (!data) return;
+
+    const status = decision === "hold" ? "on_hold" : "rejected";
+    const noteParts = [
+      decisionSummary.trim(),
+      additionalNotes.trim() ? `Internal notes: ${additionalNotes.trim()}` : "",
+      guidance.trim() ? `Applicant guidance: ${guidance.trim()}` : "",
+      selectedReason ? `Reason: ${selectedReason}` : "",
+    ].filter(Boolean);
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await updateExpertApplicationStatus(data.appId, status, noteParts.join("\n\n"));
+      router.push("/admin/applications");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Could not update application status.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!data) return;
@@ -258,16 +288,27 @@ export default function RejectionHoldHandling({ appId }: RejectionHoldHandlingPr
             </div>
             <div className={styles.submitBar}>
               {decision === "hold" ? (
-                <button type="button" className={styles.submitBtnHold}>
+                <button
+                  type="button"
+                  className={styles.submitBtnHold}
+                  disabled={isSubmitting}
+                  onClick={() => void handleSubmitDecision()}
+                >
                   <PauseCircle size={16} />
-                  Place on Hold
+                  {isSubmitting ? "Updating..." : "Place on Hold"}
                 </button>
               ) : (
-                <button type="button" className={styles.submitBtnReject}>
+                <button
+                  type="button"
+                  className={styles.submitBtnReject}
+                  disabled={isSubmitting}
+                  onClick={() => void handleSubmitDecision()}
+                >
                   <Ban size={16} />
-                  Confirm Rejection
+                  {isSubmitting ? "Updating..." : "Confirm Rejection"}
                 </button>
               )}
+              {submitError ? <p className={styles.decisionDesc}>{submitError}</p> : null}
             </div>
           </article>
         </div>

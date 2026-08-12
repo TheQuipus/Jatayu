@@ -162,6 +162,16 @@ export function updateExpertApplicationReviewerNote(
   writeApplications(applications);
 }
 
+function hasPositiveFormatPrice(value: unknown): boolean {
+  if (value == null) return false;
+  if (typeof value === "number") return value > 0;
+  if (typeof value === "string") return Number(value) > 0;
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some(hasPositiveFormatPrice);
+  }
+  return false;
+}
+
 export function computeCompleteness(application: ExpertApplicationSubmission): number {
   const checks = [
     Boolean(application.name),
@@ -174,7 +184,7 @@ export function computeCompleteness(application: ExpertApplicationSubmission): n
     Boolean(application.avatar),
     application.certificates.length > 0,
     application.formats.length > 0,
-    Object.values(application.formatPrices).some((price) => Number(price) > 0),
+    Object.values(application.formatPrices).some(hasPositiveFormatPrice),
     application.languages.length > 0,
     application.availabilitySlots.some((slot) => slot.days.length > 0),
     application.employmentPositions.some(
@@ -183,7 +193,7 @@ export function computeCompleteness(application: ExpertApplicationSubmission): n
     application.educationDegrees.some(
       (degree) =>
         degree.degree ||
-        degree.fieldOfStudy.trim() ||
+        (degree.fieldOfStudy || "").trim() ||
         degree.institution.trim() ||
         degree.graduationYear.trim(),
     ),
