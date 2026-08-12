@@ -1,0 +1,124 @@
+{
+  "info": {
+    "name": "Jatayu Backend API",
+    "description": "Complete HTTP API collection for the Jatayu backend. Run registration/login requests first so test scripts populate authentication variables automatically. OTP defaults to 123456 when providers are not configured.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "expertToken", "value": "" },
+    { "key": "expertId", "value": "" },
+    { "key": "seekerToken", "value": "" },
+    { "key": "seekerId", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "applicationId", "value": "" },
+    { "key": "otp", "value": "123456" }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        { "name": "Health", "request": { "method": "GET", "url": "{{baseUrl}}/health" } },
+        { "name": "WebSocket Health", "request": { "method": "GET", "url": "{{baseUrl}}/health/ws" } }
+      ]
+    },
+    {
+      "name": "Expert Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.expertId) pm.collectionVariables.set('expertId', data.expertId);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Postman Expert\",\n  \"email\": \"postman.expert@example.com\",\n  \"password\": \"Password@123\",\n  \"phone\": \"+919999999901\"\n}" }, "url": "{{baseUrl}}/api/auth/register" }
+        },
+        {
+          "name": "Verify OTP",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) pm.collectionVariables.set('expertToken', data.token);", "if (data.user?.id) pm.collectionVariables.set('expertId', data.user.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"expertId\": \"{{expertId}}\",\n  \"code\": \"{{otp}}\"\n}" }, "url": "{{baseUrl}}/api/auth/verify-otp" }
+        },
+        { "name": "Resend OTP", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"expertId\": \"{{expertId}}\"\n}" }, "url": "{{baseUrl}}/api/auth/resend-otp" } },
+        {
+          "name": "Login",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) pm.collectionVariables.set('expertToken', data.token);", "if (data.user?.id) pm.collectionVariables.set('expertId', data.user.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"postman.expert@example.com\",\n  \"password\": \"Password@123\"\n}" }, "url": "{{baseUrl}}/api/auth/login" }
+        },
+        { "name": "Google Login (Development Mock)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"mock-google-token\",\n  \"email\": \"google.expert@example.com\",\n  \"fullName\": \"Google Expert\",\n  \"googleId\": \"postman-google-expert\"\n}" }, "url": "{{baseUrl}}/api/auth/google" } },
+        { "name": "LinkedIn Login (Development Mock)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"authCode\": \"mock-linkedin-code\",\n  \"email\": \"linkedin.expert@example.com\",\n  \"fullName\": \"LinkedIn Expert\",\n  \"linkedinId\": \"postman-linkedin-expert\"\n}" }, "url": "{{baseUrl}}/api/auth/linkedin" } },
+        { "name": "Public Config", "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/config" } }
+      ]
+    },
+    {
+      "name": "Expert Profile & Onboarding",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{expertToken}}", "type": "string" }] },
+      "item": [
+        { "name": "Get Profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/me" } },
+        { "name": "Update Profile", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"preferences\",\n  \"category\": \"software\",\n  \"skills\": [\"Backend Architecture\", \"API Integrations\"],\n  \"experienceLevel\": \"senior\",\n  \"professionalTitle\": \"Backend Architect\",\n  \"tagLine\": \"Building scalable systems\",\n  \"bio\": \"Experienced backend engineering mentor.\",\n  \"focusAreas\": [\"System Design\"],\n  \"selectedFormats\": [\"video\"],\n  \"selectedLengths\": [\"60\"],\n  \"formatPrices\": { \"video\": 2500 },\n  \"timezone\": \"Asia/Kolkata\"\n}" }, "url": "{{baseUrl}}/api/expert/profile" } },
+        { "name": "Submit Onboarding", "request": { "method": "POST", "url": "{{baseUrl}}/api/expert/submit" } }
+      ]
+    },
+    {
+      "name": "Seeker Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.seekerId) pm.collectionVariables.set('seekerId', data.seekerId);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Postman Seeker\",\n  \"email\": \"postman.seeker@example.com\",\n  \"password\": \"Password@123\",\n  \"phone\": \"+919999999902\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/register" }
+        },
+        {
+          "name": "Verify OTP",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) pm.collectionVariables.set('seekerToken', data.token);", "if (data.user?.id) pm.collectionVariables.set('seekerId', data.user.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"seekerId\": \"{{seekerId}}\",\n  \"code\": \"{{otp}}\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/verify-otp" }
+        },
+        { "name": "Resend OTP", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"seekerId\": \"{{seekerId}}\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/resend-otp" } },
+        {
+          "name": "Login",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) pm.collectionVariables.set('seekerToken', data.token);", "if (data.user?.id) pm.collectionVariables.set('seekerId', data.user.id);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"postman.seeker@example.com\",\n  \"password\": \"Password@123\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/login" }
+        },
+        { "name": "Google Login (Development Mock)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"mock-google-token\",\n  \"email\": \"google.seeker@example.com\",\n  \"fullName\": \"Google Seeker\",\n  \"googleId\": \"postman-google-seeker\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/google" } },
+        { "name": "LinkedIn Login (Development Mock)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"authCode\": \"mock-linkedin-code\",\n  \"email\": \"linkedin.seeker@example.com\",\n  \"fullName\": \"LinkedIn Seeker\",\n  \"linkedinId\": \"postman-linkedin-seeker\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/linkedin" } },
+        { "name": "Public Config", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker-auth/config" } }
+      ]
+    },
+    {
+      "name": "Seeker Profile, Credits & Matches",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{seekerToken}}", "type": "string" }] },
+      "item": [
+        { "name": "Get Profile and Credit Balance", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/me" } },
+        { "name": "Featured Matches", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/featured-matches?limit=3" } },
+        { "name": "Save Category Step", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"needs\",\n  \"selectedCategory\": \"software\",\n  \"selectedTopics\": [\"Backend Architecture\", \"API Integrations\"]\n}" }, "url": "{{baseUrl}}/api/seeker/profile" } },
+        { "name": "Save Needs Step", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"format\",\n  \"needsText\": \"I need help designing a scalable backend API.\",\n  \"selectedNeedChips\": [\"career-guidance\"]\n}" }, "url": "{{baseUrl}}/api/seeker/profile" } },
+        { "name": "Save Format Step", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"budget\",\n  \"selectedFormats\": [\"video\"]\n}" }, "url": "{{baseUrl}}/api/seeker/profile" } },
+        { "name": "Save Budget Step", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"personalisation\",\n  \"selectedBudget\": \"standard\"\n}" }, "url": "{{baseUrl}}/api/seeker/profile" } },
+        { "name": "Save Personalisation Step", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"review\",\n  \"selectedLanguages\": [\"english\", \"hindi\"],\n  \"location\": \"Delhi\",\n  \"additionalContext\": \"Evening sessions preferred.\",\n  \"profilePhotoSrc\": \"/assets/img/manportrait.png\"\n}" }, "url": "{{baseUrl}}/api/seeker/profile" } },
+        { "name": "Submit Onboarding", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/seeker/submit" } }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Login",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) pm.collectionVariables.set('adminToken', data.token);"] } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@thequipus.com\",\n  \"password\": \"Admin@theQuipus\",\n  \"otp\": \"{{otp}}\"\n}" }, "url": "{{baseUrl}}/api/admin/auth/login" }
+        },
+        {
+          "name": "Authenticated Admin APIs",
+          "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+          "item": [
+            { "name": "Current Admin", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/auth/me" } },
+            { "name": "Get Settings", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/settings" } },
+            { "name": "Update Settings", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"settings\": {\n    \"GOOGLE_LOGIN_ENABLED\": true\n  }\n}" }, "url": "{{baseUrl}}/api/admin/settings" } },
+            { "name": "Application Stats", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/stats" } },
+            {
+              "name": "List Applications",
+              "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (Array.isArray(data) && data[0]?.id) pm.collectionVariables.set('applicationId', data[0].id);"] } }],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications?status=all" }
+            },
+            { "name": "Get Application", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}" } },
+            { "name": "Update Application Status", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"in_review\",\n  \"reviewerNote\": \"Reviewed through Postman\"\n}" }, "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/status" } }
+          ]
+        }
+      ]
+    }
+  ]
+}
