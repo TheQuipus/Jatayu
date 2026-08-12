@@ -1,5 +1,5 @@
 import { DataTypes } from 'sequelize';
-import seekerDb from '../config/db/seeker.js';
+import seekerDb from '../../config/db/seeker.js';
 
 function readJsonField(instance, fieldName) {
   const value = instance.getDataValue(fieldName);

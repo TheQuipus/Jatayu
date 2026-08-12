@@ -12,8 +12,8 @@ import { Server } from 'socket.io';
 import { connectAllDatabases, syncAllDatabases } from './config/db/index.js';
 import authRoutes from './routes/authRoutes.js';
 import expertRoutes from './routes/expertRoutes.js';
-import seekerAuthRoutes from './routes/seekerAuthRoutes.js';
-import seekerRoutes from './routes/seekerRoutes.js';
+import seekerAuthRoutes from './routes/seeker/seekerAuthRoutes.js';
+import seekerRoutes from './routes/seeker/seekerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 

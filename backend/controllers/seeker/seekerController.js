@@ -1,4 +1,4 @@
-import { Seeker, SeekerCreditTransaction, seekerDb } from '../models/index.js';
+import { Seeker, SeekerCreditTransaction, seekerDb } from '../../models/index.js';
 
 const ONBOARDING_STEPS = new Set([
   'category',

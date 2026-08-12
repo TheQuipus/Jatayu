@@ -1,6 +1,6 @@
 import { DataTypes } from 'sequelize';
 import seekerDb from '../config/db/seeker.js';
-import SeekerCreditTransaction from '../models/SeekerCreditTransaction.js';
+import SeekerCreditTransaction from '../models/seeker/SeekerCreditTransaction.js';
 
 async function addColumnIfMissing(table, columns, name, definition) {
   if (columns[name]) {

@@ -1,17 +1,17 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
-import { Seeker } from '../models/index.js';
+import { Seeker } from '../../models/index.js';
 import dotenv from 'dotenv';
-import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
-import { deliverOtpChannels, handleOtpDeliveryError } from '../utils/otpDelivery.js';
-import { getSetting, getSettingBool } from '../utils/settingsHelper.js';
+import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../../utils/smsService.js';
+import { deliverOtpChannels, handleOtpDeliveryError } from '../../utils/otpDelivery.js';
+import { getSetting, getSettingBool } from '../../utils/settingsHelper.js';
 import {
   storeOtpOnModel,
   readOtpFromModel,
   clearPendingOtpMetadata,
   isStoredOtpValid,
-} from '../utils/otpPersistence.js';
+} from '../../utils/otpPersistence.js';
 
 dotenv.config();
 

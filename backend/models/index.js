@@ -1,11 +1,11 @@
 import { expertDb, seekerDb, adminDb, sequelize } from '../config/db/index.js';
 import Expert from './Expert.js';
-import Seeker from './Seeker.js';
+import Seeker from './seeker/Seeker.js';
 import Credential from './Credential.js';
 import Availability from './Availability.js';
 import Setting from './Setting.js';
 import Admin from './Admin.js';
-import SeekerCreditTransaction from './SeekerCreditTransaction.js';
+import SeekerCreditTransaction from './seeker/SeekerCreditTransaction.js';
 
 // Expert-module relationships (same database connection)
 Expert.hasMany(Credential, { foreignKey: 'expertId', as: 'credentials', onDelete: 'CASCADE' });

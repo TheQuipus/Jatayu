@@ -7,7 +7,7 @@ import {
   googleLogin,
   linkedinLogin,
   getPublicConfig,
-} from '../controllers/seekerAuthController.js';
+} from '../../controllers/seeker/seekerAuthController.js';
 
 const router = express.Router();
 
