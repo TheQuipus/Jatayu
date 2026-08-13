@@ -23,6 +23,19 @@
       ]
     },
     {
+      "name": "Public Experts",
+      "item": [
+        {
+          "name": "Get Approved Expert Details",
+          "request": {
+            "method": "GET",
+            "description": "Public endpoint. Use an approved expert UUID, for example an id returned by Featured Matches.",
+            "url": "{{baseUrl}}/api/public/experts/{{expertId}}"
+          }
+        }
+      ]
+    },
+    {
       "name": "Expert Auth",
       "item": [
         {

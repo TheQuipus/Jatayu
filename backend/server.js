@@ -15,6 +15,7 @@ import expertRoutes from './routes/expertRoutes.js';
 import seekerAuthRoutes from './routes/seeker/seekerAuthRoutes.js';
 import seekerRoutes from './routes/seeker/seekerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import publicExpertRoutes from './routes/publicExpertRoutes.js';
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 
 dotenv.config();
@@ -59,6 +60,7 @@ app.use('/api/expert', expertRoutes);
 app.use('/api/seeker-auth', seekerAuthRoutes);
 app.use('/api/seeker', seekerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/public/experts', publicExpertRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
