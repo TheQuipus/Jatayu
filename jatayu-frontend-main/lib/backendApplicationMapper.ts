@@ -125,7 +125,7 @@ function mapAvailabilities(
 
   return availabilities.map((slot) => ({
     id: slot.id,
-    days: slot.days || [],
+    days: asStringArray(slot.days),
     from: slot.fromTime,
     to: slot.toTime,
   }));

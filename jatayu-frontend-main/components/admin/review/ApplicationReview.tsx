@@ -1142,7 +1142,12 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                       <div className={styles.slotDaysCol}>
                         <div className={styles.slotDaysCluster}>
                           {WEEK_DAYS.map((day) => {
-                            const isSelected = slot.days.includes(day);
+                            const daysArr = Array.isArray(slot.days)
+                              ? slot.days
+                              : typeof slot.days === "string"
+                                ? (slot.days as string).split(",").map((d) => d.trim())
+                                : [];
+                            const isSelected = daysArr.includes(day);
                             return (
                               <span
                                 key={day}

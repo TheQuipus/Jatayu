@@ -37,6 +37,14 @@ function safeSkills(skills: unknown): string[] {
   return [];
 }
 
+function safeDays(days: unknown): string[] {
+  if (Array.isArray(days)) return days.filter((d): d is string => typeof d === "string");
+  if (typeof days === "string" && days.trim()) {
+    return days.split(",").map((d) => d.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 function isAdminVerified(app: ExpertApplicationSubmission): boolean {
   return app.status === "approved";
 }
@@ -345,12 +353,13 @@ function buildReviewAvailability(app: ExpertApplicationSubmission) {
   const slots: { id: string; days: string; hours: string }[] = [];
 
   for (const slot of app.availabilitySlots ?? []) {
-    const key = `${slot.days.join(",")}_${slot.from}_${slot.to}`;
+    const daysArr = safeDays(slot.days);
+    const key = `${daysArr.join(",")}_${slot.from}_${slot.to}`;
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
     slots.push({
       id: slot.id,
-      days: slot.days.length > 0 ? slot.days.join(", ") : "No days selected",
+      days: daysArr.length > 0 ? daysArr.join(", ") : "No days selected",
       hours: slot.from && slot.to ? `${slot.from} – ${slot.to}` : "Hours not set",
     });
   }
@@ -712,18 +721,19 @@ export function mapToExpertProfile(app: ExpertApplicationSubmission) {
     videoTranscript: app.tagLine ? `"${app.tagLine}"` : "",
     videoDuration: app.formats.includes("video") ? "Pending upload" : "Not provided",
     pricing: buildPricingMenu(app),
-    availability: app.availabilitySlots.flatMap((slot) =>
-      slot.days.length > 0
+    availability: (app.availabilitySlots ?? []).flatMap((slot) => {
+      const daysArr = safeDays(slot.days);
+      return daysArr.length > 0
         ? [
             {
               id: slot.id,
-              label: slot.days.join(", "),
+              label: daysArr.join(", "),
               hours: `${slot.from} – ${slot.to}`,
               variant: "open" as const,
             },
           ]
-        : [],
-    ),
+        : [];
+    }),
     availabilityNote: app.timezone ? `Timezone: ${app.timezone}` : "Availability set during onboarding.",
     experience: (getFilledEmploymentPositions(app.employmentPositions ?? []).length > 0
       ? getFilledEmploymentPositions(app.employmentPositions ?? []).map((pos) => ({
@@ -773,7 +783,7 @@ export function mapToExpertProfile(app: ExpertApplicationSubmission) {
 export function mapToApprovalConfirmation(app: ExpertApplicationSubmission) {
   const completeness = computeCompleteness(app);
   const hasPricing = getLowestFormatPrice(app.formatPrices) > 0;
-  const hasAvailability = app.availabilitySlots.some((slot) => slot.days.length > 0);
+  const hasAvailability = (app.availabilitySlots ?? []).some((slot) => safeDays(slot.days).length > 0);
 
   const checklist = [
     {
