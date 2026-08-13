@@ -29,6 +29,14 @@ const AUDIENCE_LABELS: Record<string, string> = {
   smb: "Small Business Owners",
 };
 
+function safeSkills(skills: unknown): string[] {
+  if (Array.isArray(skills)) return skills.filter((s): s is string => typeof s === "string");
+  if (typeof skills === "string" && skills.trim()) {
+    return skills.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 function isAdminVerified(app: ExpertApplicationSubmission): boolean {
   return app.status === "approved";
 }
@@ -291,7 +299,7 @@ function buildReviewExperience(app: ExpertApplicationSubmission) {
         level: getExperienceYearsLabel(app.experienceLevel),
         dates: formatPositionDates(position),
         description: position.responsibilities.trim() || "No responsibilities provided.",
-        skills: app.skills.slice(0, 3),
+        skills: safeSkills(app.skills).slice(0, 3),
       }));
   }
 
@@ -307,7 +315,7 @@ function buildReviewExperience(app: ExpertApplicationSubmission) {
       level: getExperienceYearsLabel(app.experienceLevel),
       dates: "Submitted via onboarding",
       description: app.bio || app.tagLine || "No experience summary provided.",
-      skills: app.skills.slice(0, 3),
+      skills: safeSkills(app.skills).slice(0, 3),
     },
   ];
 }
@@ -356,13 +364,15 @@ function buildReviewAvailability(app: ExpertApplicationSubmission) {
 }
 
 function buildCategoryFit(app: ExpertApplicationSubmission) {
-  const audiences = app.audiences.map(getAudienceLabel);
+  const skills = safeSkills(app.skills);
+  const audiences = (Array.isArray(app.audiences) ? app.audiences : []).map(getAudienceLabel);
+  const languages = Array.isArray(app.languages) ? app.languages : [];
   const checks = [
     Boolean(app.categoryLabel),
-    app.skills.length >= 3,
-    app.languages.length >= 1,
-    app.audiences.length >= 1,
-    app.skills.length >= 5,
+    skills.length >= 3,
+    languages.length >= 1,
+    audiences.length >= 1,
+    skills.length >= 5,
   ];
   const passed = checks.filter(Boolean).length;
   const matchScore = Math.round((passed / checks.length) * 100);
@@ -374,17 +384,17 @@ function buildCategoryFit(app: ExpertApplicationSubmission) {
   return {
     primaryCategory: app.categoryLabel,
     categoryId: app.categoryId,
-    skills: app.skills,
+    skills,
     audiences,
-    languages: app.languages,
-    skillCount: app.skills.length,
+    languages,
+    skillCount: skills.length,
     matchScore,
     recommendation,
     flags: [
       {
         id: "f1",
         label: "Category–skills alignment",
-        clear: app.skills.length >= 3,
+        clear: skills.length >= 3,
       },
       {
         id: "f2",
@@ -637,7 +647,7 @@ export function mapApplicationToExpert(app: ExpertApplicationSubmission): Expert
     bio: app.bio,
     image: app.avatar,
     category: app.categoryLabel,
-    topics: [primaryTopic, ...(app.skills.slice(0, 4) as ExpertiseTag[])],
+    topics: [primaryTopic, ...(safeSkills(app.skills).slice(0, 4) as ExpertiseTag[])],
     languages: app.languages.length > 0 ? app.languages : ["English"],
     price,
     rating: 5,
@@ -693,8 +703,8 @@ export function mapToExpertProfile(app: ExpertApplicationSubmission) {
       { label: "PORTFOLIO", value: app.portfolio ? "1" : "0" },
       { label: "COMPLETE", value: `${completeness}%` },
     ],
-    languages: app.languages,
-    expertise: app.skills.slice(0, 4).map((skill, index) => ({
+    languages: Array.isArray(app.languages) ? app.languages : [],
+    expertise: safeSkills(app.skills).slice(0, 4).map((skill, index) => ({
       label: skill,
       color: [getCategoryColor(app.categoryLabel), "var(--tango)", "#3B82F6", "var(--green)"][index % 4],
     })),
@@ -722,7 +732,7 @@ export function mapToExpertProfile(app: ExpertApplicationSubmission) {
           company: `${pos.company.trim()} · ${app.location}`,
           dates: formatPositionDates(pos),
           description: pos.responsibilities.trim() || app.bio || app.tagLine,
-          skills: app.skills.slice(0, 3),
+          skills: safeSkills(app.skills).slice(0, 3),
           iconVariant: "purple" as const,
         }))
       : [
@@ -732,12 +742,12 @@ export function mapToExpertProfile(app: ExpertApplicationSubmission) {
             company: `${app.categoryLabel} · ${app.location}`,
             dates: "From onboarding",
             description: app.bio || app.tagLine,
-            skills: app.skills.slice(0, 3),
+            skills: safeSkills(app.skills).slice(0, 3),
             iconVariant: "purple" as const,
           },
         ]
     ),
-    allSkills: app.skills,
+    allSkills: safeSkills(app.skills),
     audiences: app.audiences.map(getAudienceLabel),
     portfolioItems: buildPortfolioItems(app),
     verification: buildVerificationChecks(app),
@@ -939,7 +949,7 @@ export function mapToRejectionHold(app: ExpertApplicationSubmission) {
       {
         id: "h2",
         title: "Onboarding Data Received",
-        description: `Category: ${app.categoryLabel}. Skills: ${app.skills.slice(0, 3).join(", ")}.`,
+        description: `Category: ${app.categoryLabel}. Skills: ${safeSkills(app.skills).slice(0, 3).join(", ")}.`,
         timestamp: getSubmittedAgo(app.submittedAt),
         status: "done" as const,
       },

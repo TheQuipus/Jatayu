@@ -12,7 +12,6 @@ import {
   Clapperboard,
   ClipboardList,
   Download,
-  FileText,
   Flag,
   Headphones,
   Info,
@@ -726,64 +725,6 @@ export default function BookingDetailInfo({
               </div>
             </article>
 
-            {/* Render rating & comments feedback card on details view after session is complete */}
-            {isCompletedSession && (
-              submittedReview ? (
-                <article className={styles.feedbackDetailsCard}>
-                  <div className={styles.sectionHead}>
-                    <Star size={16} fill="#EAB308" stroke="#EAB308" className={styles.feedbackSectionIcon} />
-                    <h2 className={styles.sectionTitle}>Your Review & Feedback</h2>
-                  </div>
-                  <div className={styles.feedbackContent}>
-                    <div className={styles.feedbackRatingStars}>
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          size={20}
-                          fill={i < submittedReview.rating ? "#EAB308" : "transparent"}
-                          stroke={i < submittedReview.rating ? "#EAB308" : "#9E9E9E"}
-                          className={styles.feedbackStarIcon}
-                        />
-                      ))}
-                      <span className={styles.feedbackDate}>{submittedReview.date}</span>
-                    </div>
-                    <p className={styles.feedbackComment}>{submittedReview.comment}</p>
-                  </div>
-                </article>
-              ) : (
-                <article className={styles.feedbackDetailsCard}>
-                  <div className={styles.sectionHead}>
-                    <Star size={16} fill="#EAB308" stroke="#EAB308" className={styles.feedbackSectionIcon} />
-                    <h2 className={styles.sectionTitle}>Rate your experience</h2>
-                  </div>
-                  {renderCompletedFeedbackForm()}
-                </article>
-              )
-            )}
-
-            {/* Render rating & comments feedback card on details view for cancelled bookings */}
-            {booking.status === "cancelled" && (
-              <article className={styles.feedbackDetailsCard}>
-                <div className={styles.sectionHead}>
-                  <Star size={16} fill="#EAB308" stroke="#EAB308" className={styles.feedbackSectionIcon} />
-                  <h2 className={styles.sectionTitle}>Rate your experience</h2>
-                </div>
-                {renderCancelledFeedbackForm()}
-              </article>
-            )}
-
-            {/* Render personal session notes card on details view after session is complete */}
-            {sessionState === "completed" && notes && (
-              <article className={styles.notesDetailsCard}>
-                <div className={styles.sectionHead}>
-                  <FileText size={16} className={styles.notesSectionIcon} />
-                  <h2 className={styles.sectionTitle}>Your Session Notes</h2>
-                </div>
-                <div className={styles.notesContent}>
-                  <p className={styles.notesText}>{notes}</p>
-                </div>
-              </article>
-            )}
           </div>
 
           <aside className={styles.rightCol}>

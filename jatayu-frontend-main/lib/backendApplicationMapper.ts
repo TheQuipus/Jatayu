@@ -132,8 +132,23 @@ function mapAvailabilities(
 }
 
 function asStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
-  if (typeof value === "string" && value.trim()) return [value];
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+  }
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === "string" && item.trim() !== "");
+      }
+    } catch {
+      // not a JSON string
+    }
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
   return [];
 }
 
@@ -151,6 +166,10 @@ export function mapBackendExpertToApplication(
     asStringArray(metadata.languages).length > 0
       ? asStringArray(metadata.languages)
       : asStringArray(expert.focusAreas);
+  const skills =
+    asStringArray(metadata.skills).length > 0
+      ? asStringArray(metadata.skills)
+      : asStringArray(expert.skills);
 
   return {
     appId: expert.applicationNumber || expert.id,
@@ -161,7 +180,7 @@ export function mapBackendExpertToApplication(
     phone: expert.phone || "",
     categoryId: slugifyCategory(categoryLabel),
     categoryLabel,
-    skills: expert.skills || [],
+    skills,
     experienceLevel: (expert.experienceLevel as ExperienceLevel) || "established",
     professionalTitle: expert.professionalTitle || categoryLabel,
     tagLine: expert.tagLine || "",
@@ -179,8 +198,8 @@ export function mapBackendExpertToApplication(
     certificates: Array.isArray(metadata.certificates)
       ? (metadata.certificates as ExpertCertificate[])
       : [],
-    formats: expert.selectedFormats || [],
-    lengths: expert.selectedLengths || [],
+    formats: asStringArray(expert.selectedFormats),
+    lengths: asStringArray(expert.selectedLengths),
     formatPrices: expert.formatPrices || {},
     languages: languages.length > 0 ? languages : ["English"],
     audiences,

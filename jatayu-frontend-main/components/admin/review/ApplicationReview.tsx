@@ -544,11 +544,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                   <div className={styles.audienceSectionTitle} style={{ marginBottom: "16px" }}>
                     Expertise Skills
                   </div>
-                  {(!application.skills || application.skills.length === 0) ? (
+                  {!Array.isArray(application.skills) || application.skills.length === 0 ? (
                     <p className={styles.emptyTabMessage}>No skills selected.</p>
                   ) : (
                     <div className={styles.tagRow}>
-                      {application.skills.map((skill) => (
+                      {(Array.isArray(application.skills) ? application.skills : []).map((skill) => (
                         <span key={skill} className={styles.categoryTag}>
                           {skill}
                         </span>
@@ -585,11 +585,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                     <div className={styles.audienceSectionTitle} style={{ marginBottom: "16px" }}>
                       Employment History
                     </div>
-                    {!application.employmentPositions || application.employmentPositions.length === 0 ? (
+                    {!Array.isArray(application.employmentPositions) || application.employmentPositions.length === 0 ? (
                       <p className={styles.emptyTabMessage}>No employment history submitted.</p>
                     ) : (
                       <div className={styles.employmentList}>
-                        {application.employmentPositions.map((pos) => (
+                        {(Array.isArray(application.employmentPositions) ? application.employmentPositions : []).map((pos) => (
                           <div key={pos.id} className={styles.employmentItem}>
                             <div className={styles.employmentHeader}>
                               <strong className={styles.employmentTitle}>{pos.jobTitle}</strong>
@@ -612,11 +612,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                     <div className={styles.audienceSectionTitle} style={{ marginBottom: "16px" }}>
                       Education & Degrees
                     </div>
-                    {!application.educationDegrees || application.educationDegrees.length === 0 ? (
+                    {!Array.isArray(application.educationDegrees) || application.educationDegrees.length === 0 ? (
                       <p className={styles.emptyTabMessage}>No educational credentials submitted.</p>
                     ) : (
                       <div className={styles.educationList}>
-                        {application.educationDegrees.map((deg) => (
+                        {(Array.isArray(application.educationDegrees) ? application.educationDegrees : []).map((deg) => (
                           <div key={deg.id} className={styles.educationItem}>
                             <div className={styles.educationHeader}>
                               <strong className={styles.educationDegreeName}>{deg.degree} in {deg.fieldOfStudy}</strong>
@@ -678,11 +678,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                     <div className={styles.audienceSectionTitle} style={{ marginBottom: "16px" }}>
                       Portfolio Samples
                     </div>
-                    {!application.portfolioSamples || application.portfolioSamples.length === 0 ? (
+                    {!Array.isArray(application.portfolioSamples) || application.portfolioSamples.length === 0 ? (
                       <p className={styles.emptyTabMessage}>No portfolio samples submitted.</p>
                     ) : (
                       <div className={styles.credentialsList}>
-                        {application.portfolioSamples.map((sample) => (
+                        {(Array.isArray(application.portfolioSamples) ? application.portfolioSamples : []).map((sample) => (
                           <div key={sample.id} className={styles.credentialsItem}>
                             <div className={styles.credentialsItemLeft}>
                               <FileText size={16} className={styles.credentialsIcon} />
@@ -944,11 +944,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                     <div className={styles.audienceSectionTitle} style={{ marginBottom: "16px" }}>
                       Professional Certificates
                     </div>
-                    {!application.certificates || application.certificates.length === 0 ? (
+                    {!Array.isArray(application.certificates) || application.certificates.length === 0 ? (
                       <p className={styles.emptyTabMessage}>No certificates submitted.</p>
                     ) : (
                       <div className={styles.credentialsList}>
-                        {application.certificates.map((cert) => (
+                        {(Array.isArray(application.certificates) ? application.certificates : []).map((cert) => (
                           <div key={cert.id} className={styles.credentialsItem}>
                             <div className={styles.credentialsItemLeft}>
                               <GraduationCap size={16} className={styles.credentialsIcon} />
@@ -1007,7 +1007,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 <div className={styles.preferenceSectionTitle}>Consultation Formats & Pricing</div>
                 <div className={styles.preferenceList}>
                   {CONSULTATION_FORMATS
-                    .filter((fmt) => (application.formats || []).includes(fmt.id))
+                    .filter((fmt) => (Array.isArray(application.formats) ? application.formats : []).includes(fmt.id))
                     .map((fmt) => {
                       const Icon = FORMAT_ICONS[fmt.id as keyof typeof FORMAT_ICONS];
                       const price = formatFormatPriceDisplay(application.formatPrices?.[fmt.id]);
@@ -1034,7 +1034,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                   Preferred Session Lengths
                 </div>
                 <div className={styles.tagRow}>
-                  {(application.lengths || []).map((lenId) => {
+                  {(Array.isArray(application.lengths) ? application.lengths : []).map((lenId) => {
                     const label = getSessionLengthLabel(lenId);
                     return (
                       <span key={lenId} className={styles.categoryTag}>
@@ -1069,7 +1069,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                   Languages Consulted In
                 </div>
                 <div className={styles.tagRow}>
-                  {(application.languages || []).map((lang) => (
+                  {(Array.isArray(application.languages) ? application.languages : []).map((lang) => (
                     <span key={lang} className={styles.categoryTag}>
                       {lang}
                     </span>
@@ -1081,7 +1081,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 <div className={styles.audienceSectionTitle}>Primary Audiences</div>
                 <div className={styles.audienceList}>
                   {AUDIENCE_TYPES
-                    .filter((aud) => (application.audiences || []).includes(aud.id))
+                    .filter((aud) => (Array.isArray(application.audiences) ? application.audiences : []).includes(aud.id))
                     .map((aud) => {
                       const Icon = aud.icon;
                       return (
@@ -1122,11 +1122,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
               <div className={styles.timezoneDisplay}>
                 Timezone - {review.availability.timezoneLabel}
               </div>
-              {!application.availabilitySlots || application.availabilitySlots.length === 0 ? (
+              {!Array.isArray(application.availabilitySlots) || application.availabilitySlots.length === 0 ? (
                 <p className={styles.emptyTabMessage}>No availability slots submitted during onboarding.</p>
               ) : (
                 <div className={styles.slotsList}>
-                  {application.availabilitySlots.map((slot) => (
+                  {(Array.isArray(application.availabilitySlots) ? application.availabilitySlots : []).map((slot) => (
                     <div key={slot.id} className={styles.slotCard}>
                       <div className={styles.slotTimeInfo}>
                         <div className={styles.clockIconWrap}>
