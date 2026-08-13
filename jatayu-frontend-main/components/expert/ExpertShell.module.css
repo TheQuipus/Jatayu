@@ -51,7 +51,7 @@
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: var(--pomegranate);
+  background: var(--bunker);
   color: var(--white);
   display: grid;
   place-items: center;
@@ -125,12 +125,12 @@
 }
 
 .navLinkActive {
-  background: var(--pomegranate);
+  background: var(--bunker);
   color: var(--white);
 }
 
 .navLinkActive:hover {
-  background: var(--pomegranate);
+  background: var(--bunker);
   color: var(--white);
 }
 
@@ -174,10 +174,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--mercury);
-  background: var(--seashell);
 }
 
 .userCardCollapsed {
@@ -188,8 +184,8 @@
 
 .userAvatar {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--mercury);
@@ -205,7 +201,7 @@
 
 .userName {
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.3;
   color: var(--ink);
@@ -216,7 +212,7 @@
 
 .userRole {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.3;
   color: var(--scorpion);
   white-space: nowrap;
@@ -262,11 +258,9 @@
   top: 0;
   z-index: 20;
   padding: 16px 0 0;
-  background: linear-gradient(
-    to bottom,
-    var(--gallery) 70%,
-    color-mix(in srgb, var(--gallery) 0%, transparent)
-  );
+  background: linear-gradient(to bottom,
+      var(--gallery) 70%,
+      color-mix(in srgb, var(--gallery) 0%, transparent));
 }
 
 .topBarInner {
@@ -313,5 +307,3 @@
     --expert-sticky-top: 52px;
   }
 }
-
-

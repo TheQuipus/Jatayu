@@ -1,0 +1,167 @@
+/* ==========================================================================
+   Reusable Confirm Modal Styles
+   ========================================================================== */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.modalContainer {
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modalHeader {
+  background: var(--ink);
+  color: var(--white);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.modalHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--silver-chalice);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  transition: color 0.2s ease;
+}
+
+.modalBody {
+  background: var(--white);
+  padding: 24px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.iconWrapper {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+}
+
+.iconDanger {
+  color: var(--pomegranate);
+}
+
+.iconWarning {
+  color: var(--orange);
+}
+
+.iconDefault {
+  color: var(--bunker);
+}
+
+.messageText {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--bunker);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.modalActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.cancelBtn {
+  flex: 1;
+  height: 44px;
+  background: var(--white);
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cancelBtn:hover {
+  color: var(--ink);
+}
+
+.confirmBtn {
+  flex: 1;
+}
+
+.confirmDanger {
+  background: var(--pomegranate) !important;
+}
+
+.confirmDanger:hover {
+  background: var(--thunderbird) !important;
+}
+
+.confirmWarning {
+  background: var(--orange) !important;
+}
+
+.modalFooter {
+  height: 24px;
+  background: var(--ink);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

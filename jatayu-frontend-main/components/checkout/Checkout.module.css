@@ -50,10 +50,10 @@
 }
 
 .layoutMainSummary {
-  grid-column: 1 / 4;
+  grid-column: 1 / -1;
   margin: 0;
   width: 100%;
-  padding-right: 24px;
+  padding-right: 0;
 }
 
 .stepViewport {

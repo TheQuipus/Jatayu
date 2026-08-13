@@ -3,6 +3,8 @@
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SeekerLoginStep from "@/components/seeker/onboarding/LoginStep";
+import { type AuthResponse } from "@/lib/api";
+import { persistSeekerAuthSession } from "@/lib/seekerAuth";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import styles from "@/app/expert/expert-onboarding/page.module.css";
 
@@ -34,7 +36,8 @@ function LoginPageContent({ role }: { role: LoginRole }) {
     }
   }, [role, router]);
 
-  const handleSeekerContinue = ({ email: _email }: { email: string }) => {
+  const handleSeekerContinue = (response: AuthResponse) => {
+    persistSeekerAuthSession(response);
     window.location.assign("/seeker/dashboard/");
   };
 

@@ -189,7 +189,7 @@ export default function ExpertCard({
   );
 
   return (
-    <div className={`${styles.expertCardShell} ${disableHover ? styles.disableHover : ""} ${className}`}>
+    <div className={`${styles.expertCardShell} ${seeker ? styles.expertCardSeeker : ""} ${disableHover ? styles.disableHover : ""} ${className}`}>
       {linkToDetail ? (
         <Link href={detailHref} className={styles.expertCardLink}>
           {cardBody}

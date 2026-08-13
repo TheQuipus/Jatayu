@@ -1,3 +1,5 @@
+import { getStoredRequests, formatRequestPrice } from "./expertRequests";
+
 export type RequestDetailAttachment = {
   id: string;
   name: string;
@@ -65,7 +67,7 @@ export type RequestDetailModel = {
 export const REQUEST_DETAIL_DATA: RequestDetailModel = {
   id: "req-1",
   title: "Product Strategy Workshop",
-  subtitle: "Product Strategy Workshop — Full Day",
+  subtitle: "Product Strategy Workshop — 09:00 AM - 05:00 PM",
   submittedDate: "Dec 17, 2024 at 10:32 AM",
   status: "new",
   statusText: "New Request — Awaiting your response",
@@ -86,7 +88,7 @@ export const REQUEST_DETAIL_DATA: RequestDetailModel = {
     isOrg: true,
     stats: {
       sessionsBooked: 3,
-      totalSpent: "$2,400",
+      totalSpent: "₹12,000",
       completionRate: "100%",
     },
   },
@@ -114,12 +116,12 @@ export const REQUEST_DETAIL_DATA: RequestDetailModel = {
   },
   sessionDetails: {
     requestedDate: "December 20, 2024",
-    duration: "Full Day - 8 hours",
-    format: "Video Call (Zoom)",
+    duration: "09:00 AM - 05:00 PM",
+    format: "Video Call",
     participantsCount: "8 team members",
     language: "English",
     recurrence: "One-time session",
-    proposedPrice: "$2,400.00",
+    proposedPrice: "₹12,000.00",
   },
   attachments: [
     {
@@ -151,8 +153,115 @@ export const REQUEST_DETAIL_DATA: RequestDetailModel = {
       id: "hist-2",
       title: "Payment Authorized",
       timestamp: "Dec 17, 2024 at 10:32 AM",
-      description: "Escrow funds held in full ($2,400.00).",
+      description: "Escrow funds held in full (₹12,000.00).",
       actor: "System",
     },
   ],
 };
+
+export function getRequestDetailById(requestId: string): RequestDetailModel {
+  const list = getStoredRequests();
+  const found = list.find((item) => item.id === requestId);
+
+  if (!found) {
+    return REQUEST_DETAIL_DATA;
+  }
+
+  return {
+    id: found.id,
+    title: found.title,
+    subtitle: `${found.title} — ${found.durationLabel}`,
+    submittedDate: found.dateLabel,
+    status: found.status,
+    statusText:
+      found.status === "new"
+        ? "New Request — Awaiting your response"
+        : found.status === "pending"
+        ? "Pending Response"
+        : found.status === "accepted"
+        ? "Session Confirmed & Accepted"
+        : "Request Declined",
+    timeReceivedAgo: `Received ${found.timeAgo}`,
+    respondTimeLeft: "Respond within 24h to maintain response rate",
+    client: {
+      name: found.clientName,
+      avatar: found.clientAvatar || "/assets/img/avatar2.png",
+      role: "Client",
+      company: "Client Organization",
+      location: "San Francisco, CA",
+      timezone: "PST (UTC-8)",
+      isOnline: true,
+      rating: 5.0,
+      totalSessions: 8,
+      isVerified: true,
+      isPro: true,
+      isOrg: false,
+      stats: {
+        sessionsBooked: 2,
+        totalSpent: formatRequestPrice(found.price),
+        completionRate: "100%",
+      },
+    },
+    proposal: {
+      summary: found.description,
+      paragraphs: [
+        found.description,
+        "Looking for an experienced expert to facilitate this session, review current challenges, and provide an actionable strategy and roadmap.",
+        "Please review the proposed duration and format to confirm or suggest adjustments.",
+      ],
+      tags: ["Strategy", "Consultation", "Expert Review", "Direct Session"],
+      scopeDeliverables: [
+        "Pre-session discovery & requirements review",
+        `Interactive consultation session (${found.durationLabel})`,
+        "Post-session action items & recommendations summary",
+      ],
+    },
+    sessionDetails: {
+      requestedDate: found.dateLabel,
+      duration: found.durationLabel,
+      format: found.formatLabel,
+      participantsCount: "1-on-1 session",
+      language: "English",
+      recurrence: "One-time session",
+      proposedPrice: formatRequestPrice(found.price),
+    },
+    attachments: REQUEST_DETAIL_DATA.attachments,
+    history: [
+      {
+        id: "hist-1",
+        title: "Request Submitted",
+        timestamp: found.dateLabel,
+        description: `${found.clientName} submitted a session request.`,
+        actor: found.clientName,
+      },
+      {
+        id: "hist-2",
+        title: "Payment Authorized",
+        timestamp: found.dateLabel,
+        description: `Escrow funds held in full (${formatRequestPrice(found.price)}).`,
+        actor: "System",
+      },
+      ...(found.status === "accepted"
+        ? [
+            {
+              id: "hist-3",
+              title: "Request Accepted",
+              timestamp: "Recently",
+              description: "Expert accepted the request and confirmed session schedule.",
+              actor: "Expert",
+            },
+          ]
+        : found.status === "declined"
+        ? [
+            {
+              id: "hist-3",
+              title: "Request Declined",
+              timestamp: "Recently",
+              description: `Expert declined request. Reason: ${found.declineReason || "Not specified"}.`,
+              actor: "Expert",
+            },
+          ]
+        : []),
+    ],
+  };
+}

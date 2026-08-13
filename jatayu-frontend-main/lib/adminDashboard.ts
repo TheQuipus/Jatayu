@@ -66,7 +66,7 @@ export const ADMIN_PROFILE = {
 
 export const ADMIN_NAV: AdminNavItem[] = [
   { id: "dashboard", label: "Dashboard", href: ADMIN_DASHBOARD_HREF },
-  { id: "expert", label: "Expert", href: ADMIN_EXPERT_HREF },
+  { id: "expert", label: "Expert Applications", href: ADMIN_EXPERT_HREF },
 ];
 
 export const PRIMARY_METRICS: AdminMetric[] = [

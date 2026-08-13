@@ -6,15 +6,13 @@
   gap: 16px;
   width: 100%;
   min-height: 56px;
-  padding-top: 20px;
 }
 
 .stepFooterLeft {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
-  min-height: 44px;
+  gap: 45px;
 }
 
 .mainContinueBtn {
@@ -25,20 +23,22 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: none;
+  border: 1px solid transparent;
   text-transform: uppercase;
   background: transparent;
-  padding: 0;
+  padding: 20px;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
   color: var(--scorpion);
   cursor: pointer;
+  max-height: 36px;
   transition: color 0.2s ease;
 }
 
 .backBtn:hover {
   color: var(--ink);
+  border: 1px solid var(--pomegranate);
 }
 
 @media (max-width: 1100px) {

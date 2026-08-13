@@ -12,8 +12,7 @@ export const BOOKING_STEPS = [
   "Consultation Type",
   "Your Question",
   "Pick Slot",
-  "Payment",
-  "Confirm",
+  "Confirm & Pay",
 ] as const;
 
 export const PAYMENT_ICON_CLASSES = {
@@ -22,27 +21,36 @@ export const PAYMENT_ICON_CLASSES = {
   paymentIconBank: "paymentIconBank",
 } as const;
 
-export const PAYMENT_METHODS = [
+export type PaymentMethodItem = {
+  id: "card" | "netbanking" | "upi";
+  title: string;
+  hint: string;
+  icon: React.ComponentType<{ size?: number }>;
+  iconClass: string;
+  disabled?: boolean;
+};
+
+export const PAYMENT_METHODS: PaymentMethodItem[] = [
   {
-    id: "upi" as const,
-    title: "UPI",
-    hint: "Google Pay, PhonePe, Paytm, or any UPI ID",
-    icon: Smartphone,
-    iconClass: PAYMENT_ICON_CLASSES.paymentIconUpi,
-  },
-  {
-    id: "card" as const,
-    title: "Debit / Credit Card",
-    hint: "Visa, Mastercard, RuPay",
+    id: "card",
+    title: "Credit or debit card",
+    hint: "Visa, Mastercard, AMEX, Diners, Maestro, RuPay",
     icon: CreditCard,
     iconClass: PAYMENT_ICON_CLASSES.paymentIconCard,
   },
   {
-    id: "netbanking" as const,
+    id: "netbanking",
     title: "Net Banking",
     hint: "All major banks supported",
     icon: Building2,
     iconClass: PAYMENT_ICON_CLASSES.paymentIconBank,
+  },
+  {
+    id: "upi",
+    title: "Scan and Pay with",
+    hint: "Scan QR code or use GPay, PhonePe, Paytm",
+    icon: Smartphone,
+    iconClass: PAYMENT_ICON_CLASSES.paymentIconUpi,
   },
 ];
 
@@ -202,7 +210,7 @@ export const INITIAL_PAYMENT_DETAILS: PaymentDetailsState = {
     saveCard: true,
   },
   netbanking: {
-    bankId: "hdfc",
+    bankId: "",
   },
 };
 

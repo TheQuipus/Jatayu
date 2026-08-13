@@ -468,7 +468,7 @@ export function getExpertDetailHref(
 ): string {
   const slug =
     typeof expertOrSlug === "string" ? expertOrSlug : expertSlug(expertOrSlug.name);
-  return options?.seeker ? `/seeker/expert/${slug}` : `/expert/${slug}`;
+  return options?.seeker ? `/seeker/expert/${slug}/` : `/expert/${slug}/`;
 }
 
 export function getExpertCheckoutHref(
@@ -478,10 +478,10 @@ export function getExpertCheckoutHref(
 ): string {
   const slug =
     typeof expertOrSlug === "string" ? expertOrSlug : expertSlug(expertOrSlug.name);
-  const base = options?.seeker
+  const basePath = options?.seeker
     ? `/seeker/expert/${slug}/checkout`
     : `/expert/${slug}/checkout`;
-  return type ? `${base}?type=${type}` : base;
+  return type ? `${basePath}?type=${type}` : `${basePath}/`;
 }
 
 export function getExpertBySlug(slug: string): Expert | undefined {
@@ -505,6 +505,121 @@ export function getRelatedExperts(expert: Expert, limit = 4): Expert[] {
   );
 
   return [...related, ...fillers].slice(0, limit);
+}
+
+export function normalizeExpert(data: Record<string, unknown>): Expert {
+  const name = String(data.name || data.fullName || "Verified Expert");
+  const role = String(data.role || data.professionalTitle || "Consultant & Advisor");
+  
+  const descRaw = String(data.desc || data.bio || data.tagLine || "").trim();
+  const desc = descRaw.length > 0 ? descRaw : `${role} expert specializing in ${data.category || "consultation"}.`;
+  
+  const image = String(data.image || data.profilePhotoSrc || data.avatar || "/assets/img/team1.png");
+
+  let price = 199;
+  if (typeof data.price === "number" && !isNaN(data.price)) {
+    price = data.price;
+  } else if (data.price && !isNaN(Number(data.price))) {
+    price = Number(data.price);
+  } else if (data.formatPrices && typeof data.formatPrices === "object") {
+    const values = Object.values(data.formatPrices as Record<string, unknown>)
+      .map((val) => Number(val))
+      .filter((n) => !isNaN(n) && n > 0);
+    if (values.length > 0) price = values[0];
+  }
+
+  const rating = typeof data.rating === "number" && !isNaN(data.rating) ? data.rating : Number(data.rating || 4.8);
+  const replyTime = String(data.replyTime || "< 30 min");
+  
+  const topicsRaw = Array.isArray(data.topics) ? data.topics : Array.isArray(data.skills) ? data.skills : [];
+  const topics = topicsRaw.map(String) as ExpertiseTag[];
+
+  const languagesRaw = Array.isArray(data.languages) ? data.languages : ["English"];
+  const languages = languagesRaw.map(String);
+
+  return {
+    name,
+    role,
+    desc,
+    image,
+    category: typeof data.category === "string" ? data.category : undefined,
+    topics: topics.length > 0 ? topics : ["Startup & Fundraising"],
+    languages,
+    price,
+    rating,
+    replyTime,
+    reviewsCount: typeof data.reviewsCount === "number" ? data.reviewsCount : 85,
+    sessionsCompleted: typeof data.sessionsCompleted === "string" ? data.sessionsCompleted : "150+ Sessions Completed",
+    location: typeof data.location === "string" ? data.location : "India",
+  };
+}
+
+export function getTopMatchesByCategory(category?: string, limit = 3): Expert[] {
+  if (!category) {
+    return featuredExperts.slice(0, limit);
+  }
+
+  const searchKey = category.toLowerCase().trim();
+  const filtered = featuredExperts.filter((exp) => {
+    const categoryMatch = exp.category?.toLowerCase().includes(searchKey);
+    const topicsString = exp.topics.map((t) => t.toLowerCase()).join(" ");
+
+    if (categoryMatch) return true;
+    if (
+      searchKey.includes("software") ||
+      searchKey.includes("tech") ||
+      searchKey.includes("engineering") ||
+      searchKey.includes("development")
+    ) {
+      return topicsString.includes("jobs") || topicsString.includes("career") || topicsString.includes("tech");
+    }
+    if (
+      searchKey.includes("design") ||
+      searchKey.includes("ux") ||
+      searchKey.includes("ui") ||
+      searchKey.includes("creative")
+    ) {
+      return topicsString.includes("creator") || topicsString.includes("design");
+    }
+    if (
+      searchKey.includes("business") ||
+      searchKey.includes("startup") ||
+      searchKey.includes("entrepreneur") ||
+      searchKey.includes("growth")
+    ) {
+      return topicsString.includes("startup") || topicsString.includes("smb") || topicsString.includes("fundraising");
+    }
+    if (searchKey.includes("career") || searchKey.includes("work") || searchKey.includes("job")) {
+      return topicsString.includes("career") || topicsString.includes("jobs");
+    }
+    if (searchKey.includes("marketing") || searchKey.includes("growth")) {
+      return topicsString.includes("growth") || topicsString.includes("creator") || topicsString.includes("smb");
+    }
+    if (
+      searchKey.includes("finance") ||
+      searchKey.includes("tax") ||
+      searchKey.includes("investment")
+    ) {
+      return topicsString.includes("finance") || topicsString.includes("tax");
+    }
+    if (searchKey.includes("legal") || searchKey.includes("compliance") || searchKey.includes("contract")) {
+      return topicsString.includes("legal");
+    }
+    if (searchKey.includes("product")) {
+      return topicsString.includes("jobs") || topicsString.includes("startup");
+    }
+    if (searchKey.includes("education") || searchKey.includes("admission") || searchKey.includes("learning")) {
+      return topicsString.includes("education") || topicsString.includes("learning");
+    }
+
+    return topicsString.includes(searchKey);
+  });
+
+  if (filtered.length === 0) {
+    return featuredExperts.slice(0, limit);
+  }
+
+  return filtered.slice(0, limit);
 }
 
 export const consultationOptions = [

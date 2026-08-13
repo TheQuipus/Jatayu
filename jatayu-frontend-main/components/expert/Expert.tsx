@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Search, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Bookmark, ChevronDown, Search, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ExpertCard from "../ui/ExpertCard";
 import ExpertFilterSection from "./ExpertFilterSection";
 import PriceFilterSection from "./PriceFilterSection";
@@ -75,6 +75,42 @@ export type SortOption =
   | "alphabetical"
   | "saving-desc";
 
+const sortOptions: { value: SortOption; label: string }[] = [
+  { value: "popularity", label: "Popularity" },
+  { value: "price-asc", label: "Price (Low to High)" },
+  { value: "price-desc", label: "Price (High to Low)" },
+  { value: "alphabetical", label: "Alphabetical" },
+  { value: "saving-desc", label: "Saving (High to Low)" },
+];
+
+const matchScore = (text: string, query: string): number => {
+  const t = text.toLowerCase();
+  const q = query.toLowerCase();
+  if (t.startsWith(q)) return 2; // prefix match
+  if (t.includes(q)) return 1; // substring match
+  return 0; // no match
+};
+
+function renderHighlightedText(text: string, highlight: string) {
+  if (!highlight.trim()) return <span>{text}</span>;
+  const parts = text.split(
+    new RegExp(`(${highlight.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")})`, "gi")
+  );
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.toLowerCase() === highlight.trim().toLowerCase() ? (
+          <strong key={index} style={{ fontWeight: 700, color: "var(--ink)" }}>
+            {part}
+          </strong>
+        ) : (
+          <span key={index}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export default function Expert({
   seeker = false,
   showBreadcrumb = false,
@@ -96,6 +132,38 @@ export default function Expert({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("popularity");
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const searchFieldRef = useRef<HTMLDivElement>(null);
+
+  // Click outside listener for SortSelect dropdown
+  useEffect(() => {
+    if (!isSortOpen) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+        setIsSortOpen(false);
+      }
+    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
+  }, [isSortOpen]);
+
+  // Click outside listener for Search suggestions dropdown
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        searchFieldRef.current &&
+        !searchFieldRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -108,6 +176,80 @@ export default function Expert({
     () => availableLanguages.map((language) => ({ value: language, label: language })),
     [availableLanguages]
   );
+
+  const suggestions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+
+    const results: { type: "name" | "category" | "language"; text: string; score: number }[] = [];
+
+    // Names
+    featuredExperts.forEach((expert) => {
+      const score = matchScore(expert.name, query);
+      if (score > 0) {
+        results.push({ type: "name", text: expert.name, score });
+      }
+    });
+
+    // Categories
+    expertiseTags.forEach((topic) => {
+      const score = matchScore(topic, query);
+      if (score > 0) {
+        results.push({ type: "category", text: topic, score });
+      }
+    });
+
+    // Languages
+    availableLanguages.forEach((lang) => {
+      const score = matchScore(lang, query);
+      if (score > 0) {
+        results.push({ type: "language", text: lang, score });
+      }
+    });
+
+    // Sort by score desc, then alphabetically by text
+    results.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.text.localeCompare(b.text);
+    });
+
+    return results.slice(0, 8).map((r) => ({
+      ...r,
+      key: `${r.type}-${r.text}`,
+    }));
+  }, [searchQuery, availableLanguages]);
+
+  const selectSuggestion = (suggestion: { text: string }) => {
+    setSearchQuery(suggestion.text);
+    setIsOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || suggestions.length === 0) return;
+
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        setActiveIndex((prev) => (prev + 1 >= suggestions.length ? 0 : prev + 1));
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        setActiveIndex((prev) => (prev - 1 < 0 ? suggestions.length - 1 : prev - 1));
+        break;
+      case "Enter":
+        if (activeIndex >= 0 && activeIndex < suggestions.length) {
+          event.preventDefault();
+          selectSuggestion(suggestions[activeIndex]);
+        }
+        break;
+      case "Escape":
+        event.preventDefault();
+        setIsOpen(false);
+        setActiveIndex(-1);
+        break;
+    }
+  };
 
   const appliedFilters = useMemo(() => {
     const items: AppliedFilter[] = [];
@@ -302,10 +444,13 @@ export default function Expert({
               <div className={styles.filterBookmarkRow}>
                 <Link
                   href={seeker ? "/seeker/bookmark" : "/bookmark"}
-                  className="eyebrow eyebrow--dark"
+                  className={styles.bookmarkBadge}
+                  aria-label={`${bookmarkedExperts.size} bookmarked experts`}
                 >
-                  <i className="dot"></i>
-                  {String(bookmarkedExperts.size).padStart(2, "0")}&nbsp;&nbsp;BOOKMARKED
+                  <Bookmark className={styles.bookmarkIcon} />
+                  <span className={styles.bookmarkCount}>
+                    {bookmarkedExperts.size}
+                  </span>
                 </Link>
               </div>
               <span className={styles.speaksRule} aria-hidden="true"></span>
@@ -408,40 +553,119 @@ export default function Expert({
               <div className={styles.topBar}>
                 <span className={styles.topBarLine1} aria-hidden="true" />
                 <span className={styles.topBarLine2} aria-hidden="true" />
-                <label className={styles.searchField}>
-                  <Search
-                    size={16}
-                    strokeWidth={2}
-                    className={styles.searchIcon}
-                    aria-hidden="true"
-                  />
-                  <input
-                    type="search"
-                    className={styles.searchInput}
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    aria-label="Search experts"
-                  />
-                </label>
-
-                <div className={styles.sortWrapper}>
-                  <label htmlFor="sort-by" className={styles.sortLabel}>
-                    Sort by:
+                <div className={styles.searchFieldContainer} ref={searchFieldRef}>
+                  <label className={styles.searchField}>
+                    <Search
+                      size={16}
+                      strokeWidth={2}
+                      className={styles.searchIcon}
+                      aria-hidden="true"
+                    />
+                    <input
+                      type="search"
+                      className={styles.searchInput}
+                      placeholder="Search..."
+                      value={searchQuery}
+                      onChange={(event) => {
+                        setSearchQuery(event.target.value);
+                        setIsOpen(true);
+                        setActiveIndex(-1);
+                      }}
+                      onFocus={() => {
+                        setIsOpen(true);
+                        setActiveIndex(-1);
+                      }}
+                      onKeyDown={handleKeyDown}
+                      aria-label="Search experts"
+                      role="combobox"
+                      aria-expanded={isOpen && suggestions.length > 0}
+                      aria-autocomplete="list"
+                      aria-controls="search-suggestions"
+                    />
                   </label>
-                  <select
-                    id="sort-by"
-                    className={styles.sortSelect}
-                    value={sortBy}
-                    onChange={(event) => setSortBy(event.target.value as SortOption)}
-                    aria-label="Sort experts by"
-                  >
-                    <option value="popularity">Popularity</option>
-                    <option value="price-asc">Price (Low to High)</option>
-                    <option value="price-desc">Price (High to Low)</option>
-                    <option value="alphabetical">Alphabetical</option>
-                    <option value="saving-desc">Saving (High to Low)</option>
-                  </select>
+                  {isOpen && suggestions.length > 0 && (
+                    <ul
+                      id="search-suggestions"
+                      className={styles.suggestionsList}
+                      role="listbox"
+                    >
+                      {suggestions.map((suggestion, index) => {
+                        const isSelected = index === activeIndex;
+                        return (
+                          <li key={suggestion.key} role="presentation">
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={isSelected}
+                              className={`${styles.suggestionItem} ${
+                                isSelected ? styles.suggestionItemActive : ""
+                              }`}
+                              onClick={() => selectSuggestion(suggestion)}
+                            >
+                              <div className={styles.suggestionLeft}>
+                                <span className={styles.suggestionText}>
+                                  {renderHighlightedText(suggestion.text, searchQuery)}
+                                </span>
+                              </div>
+                              <span className={styles.suggestionType}>
+                                {suggestion.type === "name" && "Expert"}
+                                {suggestion.type === "category" && "Category"}
+                                {suggestion.type === "language" && "Language"}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div className={styles.sortWrapper} ref={sortRef}>
+                  <span className={styles.sortLabel}>
+                    Sort by:
+                  </span>
+                  <div className={styles.customSelectContainer}>
+                    <button
+                      type="button"
+                      className={styles.customSelectTrigger}
+                      onClick={() => setIsSortOpen(!isSortOpen)}
+                      aria-haspopup="listbox"
+                      aria-expanded={isSortOpen}
+                    >
+                      <span>{sortOptions.find((o) => o.value === sortBy)?.label}</span>
+                      <ChevronDown
+                        size={14}
+                        strokeWidth={2}
+                        className={styles.customSelectChevron}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {isSortOpen && (
+                      <ul className={styles.customSelectList} role="listbox">
+                        {sortOptions.map((option) => {
+                          const isSelected = option.value === sortBy;
+                          return (
+                            <li key={option.value} role="presentation">
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                className={`${styles.customSelectItem} ${
+                                  isSelected ? styles.customSelectItemActive : ""
+                                }`}
+                                onClick={() => {
+                                  setSortBy(option.value);
+                                  setIsSortOpen(false);
+                                }}
+                              >
+                                {option.label}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </div>
 

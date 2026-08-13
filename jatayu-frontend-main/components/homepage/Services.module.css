@@ -175,6 +175,7 @@
 
 .speaksCards {
   position: relative;
+  z-index: 3;
   overflow: hidden;
   width: 100%;
   --slide-w: calc((min(100vw, 1440px) - 96px) / 4);

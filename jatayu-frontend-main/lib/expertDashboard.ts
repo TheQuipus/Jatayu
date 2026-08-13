@@ -203,9 +203,9 @@ export const MAIN_NAV: ExpertNavItem[] = [
     href: "/expert/availability/",
   },
   { id: "requests", label: "Requests", href: "/expert/requests/", badge: 3 },
-  { id: "messages", label: "Messages", href: "/expert/messages/", badge: 5 },
   { id: "earnings", label: "Earnings", href: "/expert/earnings/" },
   { id: "reviews", label: "Reviews", href: "/expert/reviews/" },
+  { id: "notifications", label: "Notifications", href: "/expert/notifications/", badge: 5 },
 ];
 
 export const SETTINGS_NAV: ExpertNavItem = {

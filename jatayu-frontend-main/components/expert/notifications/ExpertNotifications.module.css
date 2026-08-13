@@ -1,0 +1,567 @@
+.page {
+  min-height: 100vh;
+  padding: 24px 0 72px;
+  background: var(--gallery);
+  color: var(--ink);
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3vw, 36px);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.header p {
+  margin: 7px 0 0;
+  color: var(--dove-gray);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.headerActions > * {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid var(--mercury);
+  border-radius: 9px;
+  background: var(--white);
+  color: var(--ink);
+  font: 600 12px/1 var(--font-body);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.headerActions > *:hover {
+  background: var(--seashell);
+  border-color: var(--silver-chalice);
+}
+
+.headerActions > *:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stat {
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--mercury);
+  border-radius: 13px;
+  background: var(--white);
+  box-shadow: 0 1px 2px rgba(11, 13, 20, 0.03);
+}
+
+.statIcon,
+.notificationIcon {
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 10%, var(--white));
+  color: var(--notification-tone, var(--pomegranate));
+}
+
+.statIcon {
+  width: 28px;
+  height: 28px;
+}
+
+.stat strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.stat > span:last-child {
+  color: var(--dove-gray);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.request { --notification-tone: #e9681e; }
+.message { --notification-tone: #377dca; }
+.session { --notification-tone: #d63614; }
+.payment { --notification-tone: #b98a00; }
+.review { --notification-tone: #7357c9; }
+.system { --notification-tone: #218a62; }
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 16px;
+}
+
+.feed {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--mercury);
+  border-radius: 11px;
+  background: var(--white);
+  overflow-x: auto;
+}
+
+.filters button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dove-gray);
+  font: 600 11px/1 var(--font-body);
+  cursor: pointer;
+}
+
+.filters button:hover {
+  background: var(--seashell);
+  color: var(--ink);
+}
+
+.filters button.active {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 3px;
+}
+
+.groupTitle h2 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--scorpion);
+}
+
+.groupTitle span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pomegranate) 10%, var(--white));
+  color: var(--pomegranate);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.notificationCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 8px;
+  align-items: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  background: var(--white);
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notificationCard:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--notification-tone) 30%, var(--mercury));
+  box-shadow: 0 4px 15px rgba(11, 13, 20, 0.05);
+}
+
+.notificationCard.unread {
+  background: color-mix(in srgb, var(--notification-tone) 3.5%, var(--white));
+  border-color: color-mix(in srgb, var(--notification-tone) 18%, var(--mercury));
+}
+
+.notificationIcon {
+  width: 36px;
+  height: 36px;
+}
+
+.notificationCopy {
+  min-width: 0;
+}
+
+.notificationTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notificationTitleRow h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.notificationTitleRow time {
+  flex: 0 0 auto;
+  color: var(--silver-chalice);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.notificationCopy > p {
+  max-width: 800px;
+  margin: 3px 0 0;
+  color: var(--dove-gray);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.unreadDot {
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--notification-tone);
+}
+
+.notificationActions {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.notificationActions button {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--pomegranate);
+  border-radius: 7px;
+  background: var(--pomegranate);
+  color: var(--white);
+  font: 700 10px/1 var(--font-body);
+  cursor: pointer;
+}
+
+.notificationActions button.secondary {
+  border-color: var(--mercury);
+  background: var(--white);
+  color: var(--scorpion);
+}
+
+.rail {
+  position: sticky;
+  top: calc(var(--expert-sticky-top, 56px) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sideCard {
+  overflow: hidden;
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  background: var(--white);
+}
+
+.sideHeading {
+  padding: 14px;
+  border-bottom: 1px solid var(--mercury);
+}
+
+.sideHeading h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sideHeading span {
+  display: block;
+  margin-top: 3px;
+  color: var(--silver-chalice);
+  font-size: 10px;
+}
+
+.sideCard > a:not(.manageLink) {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 60px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--mercury);
+  color: var(--scorpion);
+}
+
+.sideCard > a:not(.manageLink):hover {
+  background: var(--seashell);
+  color: var(--pomegranate);
+}
+
+.sideCard > a svg {
+  width: 30px;
+  height: 30px;
+  padding: 8px;
+  border-radius: 7px;
+  background: var(--seashell);
+}
+
+.sideCard > a span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sideCard > a strong,
+.toggleRow strong {
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.sideCard > a small,
+.toggleRow small {
+  color: var(--silver-chalice);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.sideCard > a b {
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 61px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--mercury);
+  cursor: pointer;
+}
+
+.toggleRow > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggleRow input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggleRow i {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--silver);
+  transition: background 0.2s ease;
+}
+
+.toggleRow i::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.toggleRow input:checked + i {
+  background: var(--pomegranate);
+}
+
+.toggleRow input:checked + i::after {
+  transform: translateX(14px);
+}
+
+.manageLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  color: var(--pomegranate);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 18%, var(--mercury));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pomegranate) 4%, var(--white));
+  color: var(--pomegranate);
+}
+
+.tip div {
+  flex: 1;
+}
+
+.tip strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.tip p {
+  margin: 3px 0 0;
+  color: var(--dove-gray);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.empty {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px dashed var(--silver);
+  border-radius: 12px;
+  color: var(--silver-chalice);
+}
+
+.empty strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.empty span {
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .summary {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tip {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding-top: 18px;
+  }
+
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .headerActions > * {
+    flex: 1;
+  }
+
+  .summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat {
+    min-height: 82px;
+  }
+
+  .rail {
+    grid-template-columns: 1fr;
+  }
+
+  .tip {
+    grid-column: auto;
+  }
+
+  .notificationCard {
+    grid-template-columns: 32px minmax(0, 1fr) 7px;
+    padding: 12px;
+    gap: 9px;
+  }
+
+  .notificationIcon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .notificationTitleRow {
+    flex-direction: column;
+    gap: 2px;
+  }
+}

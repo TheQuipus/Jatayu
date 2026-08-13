@@ -2,6 +2,7 @@ import { getEmailValidationError } from "@/lib/emailValidation";
 import { buildPasswordContext } from "@/lib/passwordValidation";
 import {
   PAYMENT_METHODS,
+  ALL_BANKS,
   DEFAULT_CONTEXT_IMPROVE_HINT,
   CHECKOUT_REGISTRATION_FIELDS,
   type PaymentMethodId,
@@ -162,6 +163,13 @@ export function formatCardNumber(val: string): string {
   return digits.replace(/(.{4})/g, "$1 ").trim();
 }
 
+export function formatMaskedCardNumber(val: string): string {
+  const digits = val.replace(/\D/g, "");
+  if (digits.length < 4) return val;
+  const last4 = digits.slice(-4);
+  return `•••• •••• •••• ${last4}`;
+}
+
 export function detectCardNetwork(cardNumber: string): "visa" | "mastercard" | "rupay" | "amex" | "generic" {
   const digits = cardNumber.replace(/\D/g, "");
   if (!digits) return "generic";
@@ -186,7 +194,7 @@ export function isValidCardExpiry(expiry: string): boolean {
   const month = parseInt(digits.slice(0, 2), 10);
   const year = parseInt(digits.slice(2), 10);
   if (month < 1 || month > 12) return false;
-  return year >= 24 && year <= 45;
+  return year >= 24 && year <= 99;
 }
 
 export function getDetailedPaymentMethodLabel(
@@ -195,25 +203,16 @@ export function getDetailedPaymentMethodLabel(
     upi?: { mode: string; upiId: string; selectedApp: string };
     card?: { cardNumber: string; saveCard: boolean };
     netbanking?: { bankId: string };
-  }
+  },
+  walletApplied = 0,
+  total = 1
 ): string {
+  if (walletApplied > 0 && total === 0) {
+    return "Jatayu Balance (Fully Covered)";
+  }
   if (!method) return "Not selected";
   if (method === "upi") {
-    if (details?.upi?.mode === "qr") {
-      return "UPI (QR Code Scan)";
-    }
-    if (details?.upi?.upiId) {
-      return `UPI (${details.upi.upiId.trim()})`;
-    }
-    const appNames: Record<string, string> = {
-      gpay: "Google Pay",
-      phonepe: "PhonePe",
-      paytm: "Paytm UPI",
-      bhim: "BHIM",
-      cred: "CRED UPI",
-    };
-    const app = details?.upi?.selectedApp ? appNames[details.upi.selectedApp] : null;
-    return app ? `UPI (${app})` : "UPI";
+    return "UPI";
   }
   if (method === "card") {
     const rawCard = details?.card?.cardNumber?.replace(/\D/g, "") ?? "";
@@ -225,23 +224,14 @@ export function getDetailedPaymentMethodLabel(
     return "Debit / Credit Card";
   }
   if (method === "netbanking") {
-    const bankMap: Record<string, string> = {
-      hdfc: "HDFC Bank",
-      icici: "ICICI Bank",
-      sbi: "State Bank of India",
-      axis: "Axis Bank",
-      kotak: "Kotak Mahindra Bank",
-      pnb: "Punjab National Bank",
-      bob: "Bank of Baroda",
-      canara: "Canara Bank",
-      union: "Union Bank of India",
-      indusind: "IndusInd Bank",
-      idfc: "IDFC FIRST Bank",
-      federal: "Federal Bank",
-      yes: "YES Bank",
-    };
-    const bankName = details?.netbanking?.bankId ? bankMap[details.netbanking.bankId] : null;
-    return bankName ? `Net Banking (${bankName})` : "Net Banking";
+    const bankItem = ALL_BANKS.find((b) => b.id === details?.netbanking?.bankId);
+    return bankItem ? `Net Banking (${bankItem.name})` : "Net Banking";
+  }
+  if (method === "cod") {
+    return "Cash on Delivery / Pay on Delivery";
+  }
+  if (method === "emi") {
+    return "EMI";
   }
   return getPaymentMethodLabel(method);
 }

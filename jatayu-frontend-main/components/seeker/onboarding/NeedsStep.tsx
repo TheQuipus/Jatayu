@@ -65,12 +65,12 @@ function getImprovementHint(
     ? (currentText.startsWith(lockedPrefix) ? currentText.slice(lockedPrefix.length) : "")
     : currentText;
 
-  if (!styleId || !userSuffix.trim()) {
+  const targetText = userSuffix.trim() || currentText.trim();
+  if (!styleId || !targetText) {
     return DEFAULT_IMPROVE_HINT;
   }
 
-  const improved = getImprovedText(styleId, userSuffix.trim());
-  return lockedPrefix ? `${lockedPrefix}${improved}` : improved;
+  return getImprovedText(styleId, targetText);
 }
 
 function NeedChipIcon({ chipId, isSelected }: { chipId: string; isSelected?: boolean }) {
@@ -148,6 +148,8 @@ export default function NeedsStep({
     onSelectedNeedChipsChangeProp?.(chips);
   };
 
+  const [sourceTextForImprovement, setSourceTextForImprovement] = useState<string>("");
+
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const textareaMirrorRef = useRef<HTMLDivElement | null>(null);
 
@@ -178,6 +180,9 @@ export default function NeedsStep({
     setShowImprovementPanel(true);
     setSelectedImproveStyle("professional");
     setIsImprovementApplied(false);
+    const prefix = getLockedPrefix();
+    const userSuffix = prefix && needsText.startsWith(prefix) ? needsText.slice(prefix.length) : needsText;
+    setSourceTextForImprovement(userSuffix.trim() || needsText.trim());
   };
 
   const handleNeedChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
@@ -274,13 +279,15 @@ export default function NeedsStep({
 
   const handleImproveStyle = (styleId: ImprovementStyleId) => {
     const currentPrefix = getLockedPrefix();
-    const userSuffix = currentPrefix
-      ? (needsText.startsWith(currentPrefix) ? needsText.slice(currentPrefix.length) : "")
-      : needsText;
-    const trimmed = userSuffix.trim();
-    if (!trimmed) return;
+    const targetText =
+      sourceTextForImprovement ||
+      (currentPrefix && needsText.startsWith(currentPrefix)
+        ? needsText.slice(currentPrefix.length)
+        : needsText).trim() ||
+      needsText.trim();
+    if (!targetText) return;
 
-    const improvedSuffix = getImprovedText(styleId, trimmed);
+    const improvedSuffix = getImprovedText(styleId, targetText);
     const updatedText = currentPrefix ? `${currentPrefix}${improvedSuffix}` : improvedSuffix;
     onChangeNeedsText(updatedText.slice(0, 1000));
   };
@@ -375,7 +382,7 @@ export default function NeedsStep({
                   disabled={!canUseAiAssist}
                 >
                   <ShinyText
-                    text="Improve With Jatayu's AI"
+                    text="Improve With Jatayu AI"
                     icon="sparkles"
                     iconSize={14}
                     speed={2.5}
@@ -412,7 +419,11 @@ export default function NeedsStep({
                   })}
                 </div>
                 <p className={styles.aiImproveHint}>
-                  {getImprovementHint(selectedImproveStyle, needsText, getLockedPrefix())}
+                  {getImprovementHint(
+                    selectedImproveStyle,
+                    sourceTextForImprovement || userTypedSuffix || needsText,
+                    ""
+                  )}
                 </p>
                 <button
                   type="button"

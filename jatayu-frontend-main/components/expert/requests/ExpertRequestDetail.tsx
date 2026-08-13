@@ -1,487 +1,581 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Calendar,
+  BadgeCheck,
+  Briefcase,
+  CalendarDays,
   Check,
-  CheckCircle2,
+  ClipboardList,
   Clock,
-  Download,
-  Eye,
-  FileSpreadsheet,
-  FileText,
-  Globe2,
-  Globe,
+  Flag,
+  Headphones,
+  Info,
+  Languages,
   MapPin,
-  MoreHorizontal,
-  Repeat,
-  Share2,
   Star,
-  Users,
   Video,
+  X,
   Zap,
 } from "lucide-react";
-import { REQUEST_DETAIL_DATA } from "@/lib/expertRequestDetailStore";
+import { getRequestDetailById } from "@/lib/expertRequestDetailStore";
+import ExpertReportForm from "@/app/expert/(app)/report/[requestId]/ExpertReportForm";
+import AcceptRequestModal from "./AcceptRequestModal";
+import DeclineRequestModal from "./DeclineRequestModal";
+import ExpertActiveRoom from "./ExpertActiveRoom";
+import ContinueButton from "@/components/ui/ContinueButton";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { updateStoredRequestStatus, getStoredRequests, type ClientRequest } from "@/lib/expertRequests";
 import styles from "./ExpertRequestDetail.module.css";
 
-export default function ExpertRequestDetail() {
+export default function ExpertRequestDetail({ requestId }: { requestId?: string }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "scope" | "attachments" | "history">("overview");
-  const [requestStatus, setRequestStatus] = useState<"new" | "pending" | "accepted" | "declined">(
-    REQUEST_DETAIL_DATA.status
-  );
+  const params = useParams();
+  const activeRequestId = (params?.id as string) || requestId || "req-1";
+  const data = getRequestDetailById(activeRequestId);
 
-  const data = REQUEST_DETAIL_DATA;
+  const [requestStatus, setRequestStatus] = useState<"new" | "pending" | "accepted" | "declined">(() => {
+    if (typeof window !== "undefined") {
+      const stored = getStoredRequests();
+      const match = stored.find((r) => r.id === activeRequestId);
+      if (match) return match.status;
+    }
+    return data.status;
+  });
 
-  const handleAccept = () => {
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [isInActiveRoom, setIsInActiveRoom] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    if (requestStatus !== "accepted") return;
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [requestStatus]);
+
+  const targetTimeMs = React.useMemo(() => {
+    const text = data.sessionDetails.requestedDate;
+    if (text.includes("Tomorrow")) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      d.setHours(14, 0, 0, 0);
+      return d.getTime();
+    }
+    const parsed = Date.parse(text);
+    if (!isNaN(parsed) && parsed > Date.now()) {
+      return parsed;
+    }
+    // Demo countdown target: 1 hour 45 minutes from mount time if past/mocked
+    return Date.now() + (1 * 60 * 60 + 45 * 60) * 1000;
+  }, [data.sessionDetails.requestedDate]);
+
+  const countdownText = React.useMemo(() => {
+    if (requestStatus !== "accepted") return null;
+
+    const diffMs = targetTimeMs - currentTime;
+    // Within 5 minutes or past start time => JOIN SESSION is active!
+    if (diffMs <= 5 * 60 * 1000) {
+      return null;
+    }
+
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalDays = Math.floor(totalHours / 24);
+
+    const remainingSecs = totalSeconds % 60;
+    const remainingMins = totalMinutes % 60;
+    const remainingHrs = totalHours % 24;
+
+    const hh = String(remainingHrs).padStart(2, "0");
+    const mm = String(remainingMins).padStart(2, "0");
+    const ss = String(remainingSecs).padStart(2, "0");
+
+    if (totalDays > 0) {
+      const dd = String(totalDays).padStart(2, "0");
+      return `${dd}D:${hh}H:${mm}M`;
+    }
+    return `${hh}:${mm}:${ss}`;
+  }, [requestStatus, targetTimeMs, currentTime]);
+
+  // Sync state if activeRequestId changes
+  useEffect(() => {
+    const stored = getStoredRequests();
+    const match = stored.find((r) => r.id === activeRequestId);
+    if (match) {
+      setRequestStatus(match.status);
+    } else {
+      setRequestStatus(data.status);
+    }
+  }, [activeRequestId, data.status]);
+
+  const clientRequestAdapter: ClientRequest = {
+    id: data.id,
+    clientName: data.client.name,
+    clientAvatar: data.client.avatar,
+    title: data.title,
+    description: data.proposal.summary,
+    status: requestStatus,
+    price: 2400,
+    timeAgo: data.timeReceivedAgo,
+    dateLabel: data.sessionDetails.requestedDate,
+    durationLabel: data.sessionDetails.duration,
+    formatLabel: data.sessionDetails.format,
+    createdAt: Date.now(),
+  };
+
+  const handleConfirmAccept = () => {
+    updateStoredRequestStatus(data.id, "accepted");
     setRequestStatus("accepted");
+    setShowAcceptModal(false);
   };
 
-  const handleDecline = () => {
+  const handleConfirmDecline = (reqId: string, reason: string, notes: string) => {
+    updateStoredRequestStatus(data.id, "declined", reason, notes);
     setRequestStatus("declined");
+    setShowDeclineModal(false);
   };
+
+  const nameParts = data.client.name.split(" ");
+  const firstName = nameParts[0] || "";
+  const lastName = nameParts.slice(1).join(" ") || "";
+
+  if (isInActiveRoom) {
+    return (
+      <ExpertActiveRoom
+        requestId={data.id}
+        clientName={data.client.name}
+        clientAvatar={data.client.avatar}
+        clientRole={`${data.client.role} · ${data.client.company}`}
+        title={data.title}
+        proposedPrice={data.sessionDetails.proposedPrice}
+        formatLabel={data.sessionDetails.format}
+        onLeaveRoom={() => setIsInActiveRoom(false)}
+        onFinishSession={() => {
+          setIsInActiveRoom(false);
+          updateStoredRequestStatus(data.id, "accepted");
+        }}
+      />
+    );
+  }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.pageInner}>
-        {/* --------------------------------------------------
-            1. BREADCRUMB & HEADER
-        -------------------------------------------------- */}
-        <div className={styles.topNavRow}>
-          <div className={styles.titleArea}>
-            <div className={styles.breadcrumbRow}>
-              <button
-                type="button"
-                onClick={() => router.push("/expert/requests/")}
-                className={styles.backBtn}
-                title="Back to requests"
-                aria-label="Back to requests"
-              >
-                <ArrowLeft size={16} />
-              </button>
-              <span>Requests</span>
-              <span>/</span>
-              <span className={styles.breadcrumbCurrent}>Request Details</span>
-            </div>
-            <h1 className={styles.pageTitle}>{data.title}</h1>
-          </div>
-
-          <div className={styles.headerActions}>
-            <button type="button" className={styles.actionBtn}>
-              <MoreHorizontal size={16} /> More
-            </button>
-            <button type="button" className={styles.actionBtn}>
-              <Share2 size={16} /> Share
-            </button>
-          </div>
-        </div>
-
-        {/* --------------------------------------------------
-            2. STATUS NOTIFICATION BANNER
-        -------------------------------------------------- */}
-        <div className={styles.statusBanner}>
-          <div className={styles.statusLeft}>
-            <span className={styles.statusDot} />
-            <span>
-              {requestStatus === "accepted"
-                ? "Request Accepted — Session Scheduled"
-                : requestStatus === "declined"
-                ? "Request Declined"
-                : data.statusText}
-            </span>
-            <span className={styles.statusSubtext}>· {data.timeReceivedAgo}</span>
-          </div>
-
-          {requestStatus === "new" && (
-            <div className={styles.timerBadge}>
-              <Clock size={13} />
-              <span>{data.respondTimeLeft}</span>
-            </div>
-          )}
-        </div>
-
-        {/* --------------------------------------------------
-            3. CLIENT PROFILE CARD
-        -------------------------------------------------- */}
-        <div className={styles.clientCard}>
-          <div className={styles.clientTopRow}>
-            <div className={styles.clientLeft}>
-              <img
-                src={data.client.avatar}
-                alt={data.client.name}
-                className={styles.clientAvatar}
-              />
-              <div className={styles.clientMeta}>
-                <div className={styles.clientNameRow}>
-                  <span className={styles.clientName}>{data.client.name}</span>
-                  {data.client.isPro && <span className={styles.badgePro}>PRO</span>}
-                  {data.client.isOrg && <span className={styles.badgeOrg}>ORGANIZATION</span>}
-                </div>
-                <span className={styles.clientRole}>
-                  {data.client.role} · {data.client.company}
-                </span>
-                <div className={styles.clientLocRow}>
-                  <span>
-                    <MapPin size={12} style={{ display: "inline", marginRight: 2 }} />
-                    {data.client.location}
-                  </span>
-                  <span>
-                    <Clock size={12} style={{ display: "inline", marginRight: 2 }} />
-                    {data.client.timezone}
-                  </span>
-                  {data.client.isOnline && (
-                    <span className={styles.onlineDot}>
-                      <span className={styles.onlineCircle} /> Online now
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.clientRight}>
-              <div className={styles.ratingRow}>
-                <Star size={16} fill="#FFB800" color="#FFB800" />
-                <span>
-                  {data.client.rating.toFixed(1)} ({data.client.totalSessions} sessions)
-                </span>
-              </div>
-              {data.client.isVerified && (
-                <span className={styles.verifiedBadge}>
-                  <CheckCircle2 size={12} /> Verified Client
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Client Historical Stats */}
-          <div className={styles.clientStatsGrid}>
-            <div className={styles.statItem}>
-              <span className={styles.statVal}>{data.client.stats.sessionsBooked}</span>
-              <span className={styles.statLabel}>Sessions booked</span>
-            </div>
-            <div className={styles.statItem}>
-              <span className={styles.statVal}>{data.client.stats.totalSpent}</span>
-              <span className={styles.statLabel}>Total spent</span>
-            </div>
-            <div className={styles.statItem}>
-              <span className={styles.statVal}>{data.client.stats.completionRate}</span>
-              <span className={styles.statLabel}>Completion rate</span>
-            </div>
-          </div>
-        </div>
-
-        {/* --------------------------------------------------
-            4. TAB NAVIGATION BAR
-        -------------------------------------------------- */}
-        <div className={styles.tabsRow}>
+    <section className={styles.detail}>
+      <div className={`container ${styles.detailInner}`}>
+        {/* Page Top / Back Button */}
+        <div className={styles.pageTop}>
           <button
             type="button"
-            onClick={() => setActiveTab("overview")}
-            className={`${styles.tabBtn} ${
-              activeTab === "overview" ? styles.tabBtnActive : ""
-            }`}
+            onClick={() => {
+              if (typeof window !== "undefined" && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/expert/requests");
+              }
+            }}
+            className={styles.backLink}
           >
-            Overview
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("scope")}
-            className={`${styles.tabBtn} ${
-              activeTab === "scope" ? styles.tabBtnActive : ""
-            }`}
-          >
-            Scope & Deliverables
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("attachments")}
-            className={`${styles.tabBtn} ${
-              activeTab === "attachments" ? styles.tabBtnActive : ""
-            }`}
-          >
-            Attachments <span className={styles.tabBadge}>{data.attachments.length}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("history")}
-            className={`${styles.tabBtn} ${
-              activeTab === "history" ? styles.tabBtnActive : ""
-            }`}
-          >
-            History
+            <ArrowLeft size={14} aria-hidden="true" />
+            <span>Back to Requests</span>
           </button>
         </div>
 
-        {/* --------------------------------------------------
-            5. TAB CONTENT PANELS
-        -------------------------------------------------- */}
-        {activeTab === "overview" && (
-          <div className={styles.overviewSection}>
-            {/* Sub-card 1: Description & Proposal */}
-            <div className={styles.cardBlock}>
-              <div className={styles.blockHeader}>
-                <h2 className={styles.proposalTitle}>{data.subtitle}</h2>
-                <span className={styles.proposalDate}>Submitted {data.submittedDate}</span>
-              </div>
-
-              {data.proposal.paragraphs.map((p, idx) => (
-                <p key={idx} className={styles.proposalText}>
-                  {p}
-                </p>
-              ))}
-
-              <div className={styles.tagsRow}>
-                {data.proposal.tags.map((tag) => (
-                  <span key={tag} className={styles.tagChip}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Sub-card 2: Session Details 6-Cell Grid */}
-            <div className={styles.cardBlock}>
-              <span className={styles.sectionTitleLabel}>SESSION DETAILS</span>
-              <div className={styles.sessionGrid}>
-                <div className={styles.sessionCell}>
-                  <div className={styles.cellIconBox}>
-                    <Calendar size={18} />
-                  </div>
-                  <div className={styles.cellTextGroup}>
-                    <span className={styles.cellLabel}>REQUESTED DATE</span>
-                    <span className={styles.cellValue}>{data.sessionDetails.requestedDate}</span>
-                  </div>
+        {/* Main Layout Grid matching Seeker BookingDetailInfo */}
+        <div className={styles.mainGrid}>
+          {/* Main Column */}
+          <div className={styles.mainCol}>
+            {/* Booking Hero (Client Photo Card & Info Header) */}
+            <div className={styles.bookingHero}>
+              <article className={styles.bookingExpertCard}>
+                <div className={styles.expertCategoryBadge}>
+                  <span className={styles.expertCategoryDot} />
+                  CLIENT REQUEST
                 </div>
-
-                <div className={styles.sessionCell}>
-                  <div className={styles.cellIconBox}>
-                    <Clock size={18} />
-                  </div>
-                  <div className={styles.cellTextGroup}>
-                    <span className={styles.cellLabel}>DURATION</span>
-                    <span className={styles.cellValue}>{data.sessionDetails.duration}</span>
-                  </div>
+                <div className={styles.bookingExpertImageWrap}>
+                  <Image
+                    src={data.client.avatar}
+                    alt={data.client.name}
+                    fill
+                    className={styles.bookingExpertImage}
+                    sizes="348px"
+                    priority
+                  />
                 </div>
-
-                <div className={styles.sessionCell}>
-                  <div className={styles.cellIconBox}>
-                    <Video size={18} />
-                  </div>
-                  <div className={styles.cellTextGroup}>
-                    <span className={styles.cellLabel}>SESSION FORMAT</span>
-                    <span className={styles.cellValue}>{data.sessionDetails.format}</span>
-                  </div>
-                </div>
-
-                <div className={styles.sessionCell}>
-                  <div className={styles.cellIconBox}>
-                    <Users size={18} />
-                  </div>
-                  <div className={styles.cellTextGroup}>
-                    <span className={styles.cellLabel}>PARTICIPANTS</span>
-                    <span className={styles.cellValue}>{data.sessionDetails.participantsCount}</span>
-                  </div>
-                </div>
-
-                <div className={styles.sessionCell}>
-                  <div className={styles.cellIconBox}>
-                    <Globe size={18} />
-                  </div>
-                  <div className={styles.cellTextGroup}>
-                    <span className={styles.cellLabel}>LANGUAGE</span>
-                    <span className={styles.cellValue}>{data.sessionDetails.language}</span>
-                  </div>
-                </div>
-
-                <div className={styles.sessionCell}>
-                  <div className={styles.cellIconBox}>
-                    <Repeat size={18} />
-                  </div>
-                  <div className={styles.cellTextGroup}>
-                    <span className={styles.cellLabel}>RECURRENCE</span>
-                    <span className={styles.cellValue}>{data.sessionDetails.recurrence}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Sub-card 3: Attachments */}
-            <div className={styles.cardBlock}>
-              <div className={styles.attachmentsHeaderRow}>
-                <span className={styles.sectionTitleLabel}>ATTACHMENTS</span>
-                <span className={styles.viewAllLink}>View all ({data.attachments.length})</span>
-              </div>
-
-              <div className={styles.attachmentsList}>
-                {data.attachments.map((att) => (
-                  <div key={att.id} className={styles.fileCard}>
-                    <div className={styles.fileLeft}>
-                      {att.type === "pdf" ? (
-                        <div className={styles.fileIconPdf}>PDF</div>
-                      ) : (
-                        <div className={styles.fileIconExcel}>XLS</div>
-                      )}
-                      <div className={styles.fileMeta}>
-                        <span className={styles.fileName}>{att.name}</span>
-                        <span className={styles.fileSubtext}>
-                          {att.size} · {att.uploadedTime}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className={styles.fileActions}>
-                      <button type="button" className={styles.previewBtn}>
-                        <Eye size={13} /> Preview
-                      </button>
-                      <button type="button" className={styles.downloadBtn}>
-                        <Download size={13} /> Download
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "scope" && (
-          <div className={styles.cardBlock}>
-            <span className={styles.sectionTitleLabel}>EXPECTED DELIVERABLES</span>
-            <ul style={{ paddingLeft: 20, margin: 0, lineHeight: 1.8 }}>
-              {data.proposal.scopeDeliverables.map((item, index) => (
-                <li key={index} style={{ fontSize: 14, color: "var(--ink)" }}>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {activeTab === "attachments" && (
-          <div className={styles.cardBlock}>
-            <span className={styles.sectionTitleLabel}>ATTACHED FILES ({data.attachments.length})</span>
-            <div className={styles.attachmentsList}>
-              {data.attachments.map((att) => (
-                <div key={att.id} className={styles.fileCard}>
-                  <div className={styles.fileLeft}>
-                    {att.type === "pdf" ? (
-                      <div className={styles.fileIconPdf}>PDF</div>
-                    ) : (
-                      <div className={styles.fileIconExcel}>XLS</div>
+                <div className={styles.bookingExpertOverlay}>
+                  <p className={styles.bookingExpertName}>
+                    {data.client.name.toUpperCase()}
+                    {data.client.isVerified && (
+                      <BadgeCheck size={18} className={styles.expertVerified} aria-hidden="true" />
                     )}
-                    <div className={styles.fileMeta}>
-                      <span className={styles.fileName}>{att.name}</span>
-                      <span className={styles.fileSubtext}>
-                        {att.size} · {att.uploadedTime}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className={styles.fileActions}>
-                    <button type="button" className={styles.previewBtn}>
-                      <Eye size={13} /> Preview
-                    </button>
-                    <button type="button" className={styles.downloadBtn}>
-                      <Download size={13} /> Download
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "history" && (
-          <div className={styles.cardBlock}>
-            <span className={styles.sectionTitleLabel}>AUDIT TIMELINE</span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {data.history.map((evt) => (
-                <div
-                  key={evt.id}
-                  style={{
-                    padding: 12,
-                    borderRadius: 10,
-                    background: "var(--seashell)",
-                    border: "1px solid var(--mercury)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontWeight: 700,
-                      fontSize: 13,
-                      marginBottom: 4,
-                    }}
-                  >
-                    <span>{evt.title}</span>
-                    <span style={{ fontSize: 11, color: "var(--silver-chalice)" }}>
-                      {evt.timestamp}
-                    </span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--dove-gray)" }}>
-                    {evt.description}
+                  </p>
+                  <p className={styles.bookingExpertDesc}>
+                    {data.client.role} at {data.client.company}
                   </p>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </article>
 
-        {/* --------------------------------------------------
-            6. BOTTOM DECISION ACTION BAR
-        -------------------------------------------------- */}
-        <div className={styles.decisionBar}>
-          <div className={styles.decisionBarInner}>
-            <div className={styles.priceLabelGroup}>
-              <span className={styles.proposedPriceText}>
-                {data.sessionDetails.proposedPrice}
-              </span>
-              <span className={styles.escrowText}>
-                <CheckCircle2 size={12} style={{ display: "inline", marginRight: 4 }} />
-                Escrow payment authorized
-              </span>
+              <div className={styles.bookingExpertInfo}>
+                <h1 className={`display ${styles.displayName}`}>
+                  <span>{firstName}</span>
+                  <span className="t-muted">{lastName}</span>
+                </h1>
+
+                <p className={styles.roleSub}>
+                  {data.client.role} at <strong>{data.client.company}</strong>
+                </p>
+
+                <div className={styles.starDivider}>
+                  <span className={styles.dividerStar}>✦</span>
+                  <span className={styles.dividerLine} />
+                </div>
+
+                <div className={styles.ratingsRow}>
+                  <div className={styles.ratingItem}>
+                    <Star size={16} fill="#EAB308" stroke="#EAB308" />
+                    <span className={styles.ratingText}>
+                      <strong>{data.client.rating.toFixed(1)}</strong> ({data.client.totalSessions} sessions completed)
+                    </span>
+                  </div>
+                  <div className={styles.ratingItem}>
+                    <Briefcase size={16} className={styles.statsIcon} />
+                    <span className={styles.ratingText}>
+                      <strong>{data.client.stats.sessionsBooked} Bookings</strong>
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.metaRow}>
+                  <div className={styles.metaItem}>
+                    <div className={styles.metaIconBadge}>
+                      <MapPin size={13} />
+                    </div>
+                    <span className={styles.metaVal}>{data.client.location}</span>
+                  </div>
+                  <div className={styles.metaItem}>
+                    <div className={styles.metaIconBadge}>
+                      <Clock size={13} />
+                    </div>
+                    <span className={styles.metaVal}>{data.client.timezone}</span>
+                  </div>
+                  {data.client.isOnline && (
+                    <div className={`${styles.metaItem} ${styles.metaItemGreen}`}>
+                      <Zap size={14} fill="currentColor" />
+                      <span className={styles.metaVal}>Online now</span>
+                    </div>
+                  )}
+                </div>
+
+                <p className={styles.bioText}>{data.proposal.summary}</p>
+              </div>
             </div>
 
-            <div className={styles.decisionButtons}>
-              {requestStatus === "new" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleDecline}
-                    className={styles.declineBtn}
-                  >
-                    Decline Request
-                  </button>
-                  <button type="button" className={styles.rescheduleBtn}>
-                    Reschedule
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAccept}
-                    className={styles.acceptBtn}
-                  >
-                    <Check size={16} /> Accept Request ({data.sessionDetails.proposedPrice})
-                  </button>
-                </>
-              ) : (
-                <span
-                  style={{
-                    fontWeight: 700,
-                    fontSize: 14,
-                    color: requestStatus === "accepted" ? "#2e7d32" : "#c62828",
-                  }}
-                >
-                  Status: {requestStatus.toUpperCase()}
-                </span>
-              )}
-            </div>
+            {/* Request Details Card */}
+            <article className={styles.sessionCard}>
+              <div className={styles.sectionHead}>
+                <ClipboardList size={16} aria-hidden="true" />
+                <h2 className={styles.sectionTitle}>Request Details</h2>
+              </div>
+
+              <div className={styles.sessionSummary}>
+                <div className={styles.summaryMain}>
+                  <span className={styles.summaryIconWrap} aria-hidden="true">
+                    <Video size={22} strokeWidth={2} />
+                  </span>
+                  <div className={styles.summaryCopy}>
+                    <h1 className={styles.summaryTitle}>{data.title}</h1>
+                    <p className={styles.summaryMeta}>
+                      Request ID: {data.id} • Submitted on {data.submittedDate}
+                    </p>
+                  </div>
+                </div>
+
+                <div className={styles.completedBadgeWrap}>
+                  {requestStatus === "accepted" ? (
+                    countdownText ? (
+                      <div className={styles.countdownWrapper}>
+                        <span className={styles.countdownTimer}>
+                          {countdownText}
+                        </span>
+                        <span className={styles.countdownHint}>
+                          Join room activates 5m prior
+                        </span>
+                      </div>
+                    ) : (
+                      <ContinueButton
+                        label="JOIN SESSION"
+                        onClick={() => setIsInActiveRoom(true)}
+                      />
+                    )
+                  ) : requestStatus === "declined" ? (
+                    <span className={styles.cancelledBadge}>Request Declined</span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className={styles.sessionGrid}>
+                <div className={styles.sessionInset}>
+                  <span className={styles.sessionLabel}>Requested Date</span>
+                  <strong className={styles.sessionValue}>{data.sessionDetails.requestedDate}</strong>
+                  <span className={styles.sessionHint}>{data.sessionDetails.duration}</span>
+                </div>
+                <div className={styles.sessionInset}>
+                  <span className={styles.sessionLabel}>Format & Language</span>
+                  <strong className={styles.sessionValue}>{data.sessionDetails.format}</strong>
+                  <span className={styles.sessionHint}>{data.sessionDetails.language} • {data.sessionDetails.recurrence}</span>
+                </div>
+              </div>
+
+              <div className={styles.contextSection}>
+                <span className={styles.fieldLabel}>Client Request Details</span>
+                <p className={styles.contextSubject}>{data.subtitle}</p>
+                {data.proposal.paragraphs.map((p, idx) => (
+                  <p key={idx} className={styles.contextText} style={{ marginBottom: 10 }}>
+                    {p}
+                  </p>
+                ))}
+                <div className={styles.tagsRow} style={{ marginTop: 12 }}>
+                  {data.proposal.tags.map((tag) => (
+                    <span key={tag} className={styles.tagChip}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </article>
           </div>
+
+          {/* Right Column / Sidebar */}
+          <aside className={styles.rightCol}>
+            <div className={styles.rightColInner}>
+              {/* Card 1: Payment Summary */}
+              <div className={styles.bookingBox}>
+                <div className={styles.bookingHeader}>
+                  <span className={styles.bookingHeaderTitle}>Payment Summary</span>
+                  <span className={styles.bookingHeaderDots} />
+                  <div className={styles.soundwaveIcon} aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+
+                <div className={styles.panelBody}>
+                  <div className={styles.paymentHead}>
+                    <span className={styles.paymentStatusLabel}>Status</span>
+                    <span className={`${styles.paymentBadge} ${styles.paymentBadgePaid}`}>
+                      Escrow Authorized
+                    </span>
+                  </div>
+
+                  <div className={styles.priceList}>
+                    <div className={styles.priceRow}>
+                      <span>Proposed Fee</span>
+                      <strong>{data.sessionDetails.proposedPrice}</strong>
+                    </div>
+                    <div className={styles.priceRow}>
+                      <span>Escrow Guarantee</span>
+                      <strong>100% Secured</strong>
+                    </div>
+                  </div>
+
+                  <div className={styles.totalRow}>
+                    <span>Total Payout</span>
+                    <strong>{data.sessionDetails.proposedPrice}</strong>
+                  </div>
+                </div>
+
+                <div className={styles.bookingFooter} aria-hidden="true" />
+              </div>
+
+              {/* Card 2: Manage Request */}
+              {requestStatus !== "declined" ? (
+                <div className={styles.bookingBox}>
+                  <div className={styles.bookingHeader}>
+                    <span className={styles.bookingHeaderTitle}>Manage Request</span>
+                    <span className={styles.bookingHeaderDots} />
+                    <div className={styles.soundwaveIcon} aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+
+                  <div className={styles.panelBody}>
+                    <div className={styles.manageActions}>
+                      {requestStatus === "new" || requestStatus === "pending" ? (
+                        <>
+                          <button
+                            type="button"
+                            className={styles.manageAction}
+                            onClick={() => setShowAcceptModal(true)}
+                          >
+                            <span
+                              className={styles.manageActionIcon}
+                              style={{ background: "color-mix(in srgb, var(--green) 16%, var(--white))", color: "var(--green)" }}
+                              aria-hidden="true"
+                            >
+                              <Check size={18} />
+                            </span>
+                            <span className={styles.manageActionCopy}>
+                              <strong>Accept Request</strong>
+                              <span>Confirm session for {data.sessionDetails.proposedPrice}</span>
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={styles.manageAction}
+                            onClick={() => setShowDeclineModal(true)}
+                          >
+                            <span
+                              className={`${styles.manageActionIcon} ${styles.manageActionIconDanger}`}
+                              aria-hidden="true"
+                            >
+                              <X size={18} />
+                            </span>
+                            <span className={styles.manageActionCopy}>
+                              <strong>Decline Request</strong>
+                              <span>Decline booking and notify client</span>
+                            </span>
+                          </button>
+                        </>
+                      ) : requestStatus === "accepted" ? (
+                        <>
+                          <button
+                            type="button"
+                            className={styles.manageAction}
+                            onClick={() => setShowRescheduleModal(true)}
+                          >
+                            <span
+                              className={styles.manageActionIcon}
+                              style={{ background: "color-mix(in srgb, var(--ink) 10%, var(--white))", color: "var(--ink)" }}
+                              aria-hidden="true"
+                            >
+                              <CalendarDays size={18} />
+                            </span>
+                            <span className={styles.manageActionCopy}>
+                              <strong>Reschedule Session</strong>
+                              <span>Propose a new date or time for this session</span>
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={styles.manageAction}
+                            onClick={() => setShowDeclineModal(true)}
+                          >
+                            <span
+                              className={`${styles.manageActionIcon} ${styles.manageActionIconDanger}`}
+                              aria-hidden="true"
+                            >
+                              <X size={18} />
+                            </span>
+                            <span className={styles.manageActionCopy}>
+                              <strong>Cancel Session</strong>
+                              <span>Cancel accepted session & notify client</span>
+                            </span>
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+
+                    <div className={styles.policyBox}>
+                      <Info size={16} className={styles.policyIcon} aria-hidden="true" />
+                      <p className={styles.policyText}>
+                        <strong>Response Window:</strong> {data.respondTimeLeft}. Escrow funds are held safely until session completion.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={styles.bookingFooter} aria-hidden="true" />
+                </div>
+              ) : null}
+
+              {/* Card 3: Need Help? */}
+              <div className={styles.bookingBox}>
+                <div className={styles.bookingHeader}>
+                  <span className={styles.bookingHeaderTitle}>Need Assistance?</span>
+                  <span className={styles.bookingHeaderDots} />
+                  <div className={styles.soundwaveIcon} aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+
+                <div className={styles.panelBody}>
+                  <div className={styles.helpList}>
+                    <a href="#support" className={styles.helpItem}>
+                      <Headphones size={16} aria-hidden="true" />
+                      <span>Contact Expert Support</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setIsReportModalOpen(true)}
+                      className={styles.helpItem}
+                    >
+                      <Flag size={16} aria-hidden="true" />
+                      <span>Report Client Issue</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className={styles.bookingFooter} aria-hidden="true" />
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
-    </div>
+
+      {/* Modals */}
+      {showAcceptModal && (
+        <AcceptRequestModal
+          request={clientRequestAdapter}
+          onClose={() => setShowAcceptModal(false)}
+          onConfirm={handleConfirmAccept}
+        />
+      )}
+
+      {showDeclineModal && (
+        <DeclineRequestModal
+          request={clientRequestAdapter}
+          onClose={() => setShowDeclineModal(false)}
+          onConfirm={handleConfirmDecline}
+        />
+      )}
+
+      {showRescheduleModal && (
+        <ConfirmModal
+          isOpen={showRescheduleModal}
+          onClose={() => setShowRescheduleModal(false)}
+          onConfirm={() => {
+            setShowRescheduleModal(false);
+          }}
+          title="Reschedule Session"
+          message={`Propose a new date or time for the session with ${data.client.name}? A request notification will be sent to the client.`}
+          confirmText="Send Reschedule Request"
+          cancelText="Keep Original Time"
+        />
+      )}
+
+      {isReportModalOpen && (
+        <ExpertReportForm
+          request={data}
+          onClose={() => setIsReportModalOpen(false)}
+        />
+      )}
+    </section>
   );
 }

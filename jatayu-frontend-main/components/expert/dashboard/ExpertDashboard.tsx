@@ -241,24 +241,27 @@ export default function ExpertDashboard() {
           {EXPERT_STATS.map((stat) => {
             const Icon = STAT_ICONS[stat.icon];
             return (
-              <article key={stat.id} className={problemStyles.scardMini}>
-                <span className={problemStyles.scardMiniLabel}>
-                  <Icon size={14} aria-hidden="true" />
-                  {stat.label}
-                </span>
-                <p className={problemStyles.scardMiniQuote}>{stat.value}</p>
-                <div className={problemStyles.scardMiniRule} aria-hidden="true" />
-                <span
-                  className={`${styles.statDelta} ${
-                    stat.deltaType === "positive"
-                      ? styles.statDeltaPositive
-                      : stat.deltaType === "alert"
-                        ? styles.statDeltaAlert
-                        : ""
-                  }`}
-                >
-                  {stat.delta}
-                </span>
+              <article key={stat.id} className={styles.statCard}>
+                <div className={styles.statHeader}>
+                  <span className={styles.statLabel}>{stat.label}</span>
+                  <div className={styles.statIconBox}>
+                    <Icon size={20} aria-hidden="true" />
+                  </div>
+                </div>
+                <div className={styles.statFooter}>
+                  <p className={styles.statValue}>{stat.value}</p>
+                  <span
+                    className={`${styles.statDelta} ${
+                      stat.deltaType === "positive"
+                        ? styles.statDeltaPositive
+                        : stat.deltaType === "alert"
+                          ? styles.statDeltaAlert
+                          : ""
+                    }`}
+                  >
+                    {stat.delta}
+                  </span>
+                </div>
               </article>
             );
           })}

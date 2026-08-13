@@ -58,16 +58,11 @@ export default function ReviewStep({
   onProgressStepClick,
 }: ReviewStepProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [draftLocation, setDraftLocation] = useState(location);
-  const [draftAdditionalContext, setDraftAdditionalContext] = useState(additionalContext);
 
   const displayCompletion: ProgressCompletion = {
     ...progressCompletion,
     review: agreedToTerms,
   };
-
-
 
   const nameParts = userName.trim().split(/\s+/);
   const firstName = nameParts[0] ?? "";
@@ -91,19 +86,6 @@ export default function ReviewStep({
     price: 0,
     rating: 0,
     replyTime: "—",
-  };
-
-  const handleToggleEdit = () => {
-    if (isEditing) {
-      onChangeLocation(draftLocation);
-      onChangeAdditionalContext(draftAdditionalContext);
-      setIsEditing(false);
-      return;
-    }
-
-    setDraftLocation(location);
-    setDraftAdditionalContext(additionalContext);
-    setIsEditing(true);
   };
 
   return (
@@ -134,9 +116,6 @@ export default function ReviewStep({
         <div className={styles.reviewBlockCard} style={{ marginBottom: "20px" }}>
           <div className={styles.reviewBlockHeader} style={{ marginBottom: "20px" }}>
             <h4 className={styles.reviewBlockTitle}>Your Profile</h4>
-            <button type="button" onClick={handleToggleEdit} className={styles.reviewEditBtn}>
-              {isEditing ? "Save" : "Edit"}
-            </button>
           </div>
 
           <div className={styles.reviewIdentityColumns}>
@@ -144,6 +123,7 @@ export default function ReviewStep({
               <div className={styles.expertCardWrapper}>
                 <ExpertCard
                   expert={mockExpert}
+                  seeker={true}
                   linkToDetail={false}
                   disableHover={true}
                   showLanguages={false}
@@ -152,97 +132,51 @@ export default function ReviewStep({
               </div>
             </div>
             <div className={`${detailStyles.centerCol} ${styles.reviewCenterCol}`}>
-              {isEditing ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%", textAlign: "left" }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <label style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", marginBottom: "6px", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>Location</label>
-                    <input
-                      type="text"
-                      value={draftLocation}
-                      onChange={(e) => setDraftLocation(e.target.value)}
-                      placeholder="City, Country"
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        padding: "10px 14px",
-                        color: "#fff",
-                        fontSize: "14px",
-                        outline: "none",
-                        fontFamily: "var(--font-body)",
-                      }}
-                    />
-                  </div>
+              <h1 className={`display ${detailStyles.displayName}`} style={{ textAlign: "left" }}>
+                <span>{firstName}</span>
+                <span className="t-muted"> {lastName}</span>
+              </h1>
 
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <label style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)", marginBottom: "6px", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>Additional Context</label>
-                    <textarea
-                      value={draftAdditionalContext}
-                      onChange={(e) => setDraftAdditionalContext(e.target.value)}
-                      rows={4}
-                      placeholder="Anything else you want your expert to know?"
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        padding: "10px 14px",
-                        color: "#fff",
-                        fontSize: "14px",
-                        outline: "none",
-                        resize: "vertical",
-                        fontFamily: "var(--font-body)",
-                        lineHeight: "1.5",
-                      }}
-                    />
-                  </div>
+              <p className={detailStyles.roleSub} style={{ textAlign: "left" }}>{categoryLabel || "Domain not selected"}</p>
+
+              <div className={detailStyles.starDivider}>
+                <span className={detailStyles.dividerStar}>✦</span>
+                <span className={detailStyles.dividerLine} />
+              </div>
+
+              <div className={detailStyles.ratingsRow}>
+                <div className={detailStyles.ratingItem}>
+                  <Star size={16} fill="#EAB308" stroke="#EAB308" />
+                  <span className={detailStyles.ratingText}>
+                    <strong>0.0</strong> (0 reviews)
+                  </span>
                 </div>
-              ) : (
-                <>
-                  <h1 className={`display ${detailStyles.displayName}`} style={{ textAlign: "left" }}>
-                    <span>{firstName}</span>
-                    <span className="t-muted"> {lastName}</span>
-                  </h1>
+                <div className={detailStyles.ratingItem}>
+                  <Briefcase size={16} className={detailStyles.statsIcon} />
+                  <span className={detailStyles.ratingText}>
+                    <strong>0 Sessions Completed</strong>
+                  </span>
+                </div>
+              </div>
 
-                  <p className={detailStyles.roleSub} style={{ textAlign: "left" }}>{categoryLabel || "Domain not selected"}</p>
-
-                  <div className={detailStyles.starDivider}>
-                    <span className={detailStyles.dividerStar}>✦</span>
-                    <span className={detailStyles.dividerLine} />
+              <div className={detailStyles.metaRow}>
+                <div className={detailStyles.metaItem}>
+                  <div className={detailStyles.metaIconBadge}>
+                    <Languages size={13} />
                   </div>
-
-                  <div className={detailStyles.ratingsRow}>
-                    <div className={detailStyles.ratingItem}>
-                      <Star size={16} fill="#EAB308" stroke="#EAB308" />
-                      <span className={detailStyles.ratingText}>
-                        <strong>0.0</strong> (0 reviews)
-                      </span>
-                    </div>
-                    <div className={detailStyles.ratingItem}>
-                      <Briefcase size={16} className={detailStyles.statsIcon} />
-                      <span className={detailStyles.ratingText}>
-                        <strong>0 Sessions Completed</strong>
-                      </span>
-                    </div>
+                  <span className={detailStyles.metaVal}>{selectedLanguageLabel || "Not selected"}</span>
+                </div>
+                <div className={detailStyles.metaItem}>
+                  <div className={detailStyles.metaIconBadge}>
+                    <MapPin size={13} />
                   </div>
+                  <span className={detailStyles.metaVal}>{location.trim() || "Location not set"}</span>
+                </div>
+              </div>
 
-                  <div className={detailStyles.metaRow}>
-                    <div className={detailStyles.metaItem}>
-                      <div className={detailStyles.metaIconBadge}>
-                        <Languages size={13} />
-                      </div>
-                      <span className={detailStyles.metaVal}>{selectedLanguageLabel || "Not selected"}</span>
-                    </div>
-                    <div className={detailStyles.metaItem}>
-                      <div className={detailStyles.metaIconBadge}>
-                        <MapPin size={13} />
-                      </div>
-                      <span className={detailStyles.metaVal}>{location.trim() || "Location not set"}</span>
-                    </div>
-                  </div>
-
-                  <p className={detailStyles.bioText} style={{ textAlign: "left" }}>
-                    {profileBio}
-                  </p>
-                </>
-              )}
+              <p className={detailStyles.bioText} style={{ textAlign: "left" }}>
+                {profileBio}
+              </p>
             </div>
           </div>
         </div>
@@ -251,9 +185,6 @@ export default function ReviewStep({
           <div className={styles.reviewBlockCard}>
             <div className={styles.reviewBlockHeader}>
               <h4 className={styles.reviewBlockTitle}>Guidance Overview</h4>
-              <button type="button" onClick={() => onEditStep("category")} className={styles.reviewEditBtn}>
-                Edit
-              </button>
             </div>
 
             <div className={styles.reviewBlockContent}>
@@ -272,9 +203,6 @@ export default function ReviewStep({
           <div className={styles.reviewBlockCard}>
             <div className={styles.reviewBlockHeader}>
               <h4 className={styles.reviewBlockTitle}>Session Preferences</h4>
-              <button type="button" onClick={() => onEditStep("format")} className={styles.reviewEditBtn}>
-                Edit
-              </button>
             </div>
 
             <div className={styles.reviewBlockContent}>

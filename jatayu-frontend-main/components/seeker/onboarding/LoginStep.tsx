@@ -253,7 +253,19 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
+              onClick={() =>
+                onContinue({
+                  token: "mock-token",
+                  user: {
+                    id: "seeker-mock",
+                    email: email.trim() || "user@example.com",
+                    fullName: "Seeker User",
+                    onboardingStep: "category",
+                    status: "active",
+                    role: "seeker",
+                  },
+                })
+              }
               aria-label="Continue with Google"
               title="Continue with Google"
             >
@@ -267,7 +279,19 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
+              onClick={() =>
+                onContinue({
+                  token: "mock-token",
+                  user: {
+                    id: "seeker-mock",
+                    email: email.trim() || "user@example.com",
+                    fullName: "Seeker User",
+                    onboardingStep: "category",
+                    status: "active",
+                    role: "seeker",
+                  },
+                })
+              }
               aria-label="Continue with LinkedIn"
               title="Continue with LinkedIn"
             >
@@ -281,7 +305,19 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
+              onClick={() =>
+                onContinue({
+                  token: "mock-token",
+                  user: {
+                    id: "seeker-mock",
+                    email: email.trim() || "user@example.com",
+                    fullName: "Seeker User",
+                    onboardingStep: "category",
+                    status: "active",
+                    role: "seeker",
+                  },
+                })
+              }
               aria-label="Continue with Facebook"
               title="Continue with Facebook"
             >
@@ -295,7 +331,19 @@ export default function LoginStep({
             <button
               type="button"
               className={styles.socialButton}
-              onClick={() => onContinue({ email: email.trim() || "user@example.com" })}
+              onClick={() =>
+                onContinue({
+                  token: "mock-token",
+                  user: {
+                    id: "seeker-mock",
+                    email: email.trim() || "user@example.com",
+                    fullName: "Seeker User",
+                    onboardingStep: "category",
+                    status: "active",
+                    role: "seeker",
+                  },
+                })
+              }
               aria-label="Continue with Instagram"
               title="Continue with Instagram"
             >

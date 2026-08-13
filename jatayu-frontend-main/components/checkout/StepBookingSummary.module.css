@@ -4,45 +4,21 @@
   gap: 20px;
 }
 
+.layoutSummary {
+  display: grid;
+  align-items: start;
+  gap: 24px;
+}
+
+.summaryLeft {
+  grid-column: 1 / 4;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .bookingBox {
   overflow: hidden;
-}
-
-.bookingHeader {
-  background: var(--ink);
-  color: var(--white);
-  padding: 18px 24px;
-  min-height: 56px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
-  -webkit-clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
-}
-
-.bookingHeaderTitle {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
-  color: var(--white);
-  white-space: nowrap;
-}
-
-.bookingHeaderDots {
-  flex: 1;
-  border-bottom: 2px dotted color-mix(in srgb, var(--white) 35%, transparent);
-  height: 3px;
-  flex-shrink: 0;
-}
-
-.bookingRefBadge {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--white);
-  letter-spacing: 0.04em;
 }
 
 .bookingBody {
@@ -50,22 +26,12 @@
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  border-left: 1px solid var(--mercury);
-  border-right: 1px solid var(--mercury);
-}
-
-.bookingFooter {
-  height: 32px;
-  background: var(--ink);
-  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
-  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  border: 1px solid var(--mercury);
 }
 
 .summarySection {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 .sectionHeaderLine {
@@ -73,15 +39,16 @@
   align-items: center;
   gap: 12px;
   width: 100%;
+  margin: 14px 0 10px;
 }
 
 .sectionHeaderTitle {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -.02em;
   text-transform: uppercase;
-  color: var(--silver-chalice);
+  color: var(--dove-gray);
   white-space: nowrap;
 }
 
@@ -122,8 +89,8 @@
 
 .summaryExpertName {
   margin: 0;
-  font-family: var(--font-body);
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-size: 15px;
   font-weight: 600;
   color: var(--ink);
   letter-spacing: -0.02em;
@@ -132,8 +99,8 @@
 
 .summaryExpertRole {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: 13px;
+  font-family: var(--font-body);
+  font-size: 12px;
   color: var(--dove-gray);
 }
 
@@ -167,15 +134,14 @@
 
 .sessionGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .sessionInset {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 4px 0px;
+  gap: 2px;
+  padding: 8px 0px;
 }
 
 .sessionInsetFull {
@@ -183,37 +149,30 @@
 }
 
 .sessionLabel {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--silver-chalice);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--dove-gray);
 }
 
 .sessionValue {
   font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--bunker);
 }
 
 .contextText {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--scorpion);
+  font-size: 16px;
+  color: var(--bunker);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .priceBreakdownBox {
-  padding: 18px 0px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 .priceRow {
@@ -251,19 +210,17 @@
 }
 
 .invoiceTotalRow .totalLabel {
-  font-family: var(--font-body);
+  font-family: var(--font-sora);
   font-size: 28px;
   font-weight: 600;
-  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink);
 }
 
 .invoiceTotalRow strong {
-  font-family: var(--font-num);
+  font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 700;
-  color: var(--pomegranate);
+  font-weight: 600;
 }
 
 .confirmPayWrap {
@@ -285,22 +242,17 @@
   box-shadow: 0 4px 18px color-mix(in srgb, var(--pomegranate) 22%, transparent) !important;
 }
 
-.summaryGuaranteedNote {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-body);
-  font-size: 12.5px;
-  color: var(--scorpion);
-  text-align: center;
-}
-
-.summaryLockIcon {
-  flex-shrink: 0;
-  color: var(--scorpion);
-}
 
 @media (max-width: 1100px) {
+  .layoutSummary {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .summaryLeft {
+    grid-column: 1;
+  }
+
   .sessionGrid {
     grid-template-columns: 1fr;
   }

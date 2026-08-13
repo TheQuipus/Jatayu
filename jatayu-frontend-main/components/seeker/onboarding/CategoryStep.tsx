@@ -227,6 +227,7 @@ export function CategoryFields({
 }) {
   const otherInputRef = useRef<HTMLInputElement>(null);
   const [showInput, setShowInput] = useState(false);
+  const [hoveredCatId, setHoveredCatId] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedCategory === OTHER_CATEGORY_ID && showInput) {
@@ -298,11 +299,6 @@ export function CategoryFields({
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const activeLetters = new Set(Object.keys(grouped));
 
-  const selectedCategoryObj = categories.find((c) => c.id === selectedCategory);
-  const selectedCategoryLabel = selectedCategoryObj ? selectedCategoryObj.label : "";
-  const lookupKey = selectedCategory === OTHER_CATEGORY_ID ? "other" : selectedCategory;
-  const topicsText = (topicsByCategory[lookupKey] || []).join(", ");
-
   return (
     <div className={styles.directoryWrapper}>
       <div className={styles.alphabetBar}>
@@ -346,9 +342,17 @@ export function CategoryFields({
               <div className={styles.groupItems}>
                 {items.map((cat) => {
                   const isSelected = selectedCategory === cat.id;
+                  const isHovered = hoveredCatId === cat.id;
+                  const catLookupKey = cat.id === OTHER_CATEGORY_ID ? "other" : cat.id;
+                  const catTopicsText = (topicsByCategory[catLookupKey] || []).join(", ");
 
                   return (
-                    <div className={styles.categoryItemWrapper} key={cat.id}>
+                    <div
+                      className={styles.categoryItemWrapper}
+                      key={cat.id}
+                      onMouseEnter={() => setHoveredCatId(cat.id)}
+                      onMouseLeave={() => setHoveredCatId(null)}
+                    >
                       <button
                         type="button"
                         onClick={() => handleSelectCategory(cat.id, isSelected)}
@@ -359,9 +363,9 @@ export function CategoryFields({
                           {cat.label}
                         </span>
                       </button>
-                      {isSelected && topicsText && (
+                      {isHovered && catTopicsText && (
                         <div className={styles.topicsTooltipBox}>
-                          <p className={styles.topicsTooltipText}>{topicsText}</p>
+                          <p className={styles.topicsTooltipText}>{catTopicsText}</p>
                         </div>
                       )}
                     </div>
@@ -382,8 +386,17 @@ export function CategoryFields({
               <div className={styles.customChipsList}>
                 {customCategories.map((cat) => {
                   const isSelected = selectedCategory === cat.id;
+                  const isHovered = hoveredCatId === cat.id;
+                  const catLookupKey = cat.id === OTHER_CATEGORY_ID ? "other" : cat.id;
+                  const catTopicsText = (topicsByCategory[catLookupKey] || []).join(", ");
+
                   return (
-                    <div className={styles.categoryItemWrapper} key={cat.id}>
+                    <div
+                      className={styles.categoryItemWrapper}
+                      key={cat.id}
+                      onMouseEnter={() => setHoveredCatId(cat.id)}
+                      onMouseLeave={() => setHoveredCatId(null)}
+                    >
                       <div
                         className={`${styles.categoryItem} ${styles.categoryItemRemovable} ${
                           isSelected ? styles.categoryItemSelected : ""
@@ -410,6 +423,11 @@ export function CategoryFields({
                           </button>
                         )}
                       </div>
+                      {isHovered && catTopicsText && (
+                        <div className={styles.topicsTooltipBox}>
+                          <p className={styles.topicsTooltipText}>{catTopicsText}</p>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -611,9 +629,6 @@ export default function CategoryStep({
               Back
             </button>
           )}
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
           <ContinueButton onClick={handleContinue} disabled={!canContinue} />
         </div>
       </div>

@@ -1,13 +1,50 @@
-.page {
-  padding: 60px 0 80px;
-  background: var(--gallery);
-  min-height: calc(100vh - 120px);
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+  animation: backdropFadeIn 0.2s ease-out;
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .container {
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 0 24px;
+  width: 100%;
+  max-width: 580px;
+  margin: auto;
+  position: relative;
+  z-index: 1000000;
+  animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .headerRow {
@@ -15,22 +52,24 @@
   margin-bottom: 20px;
 }
 
-.backBtn {
+.closeBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--scorpion);
-  background: none;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--white);
   cursor: pointer;
-  transition: color 0.2s ease;
+  margin-left: 8px;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
-.backBtn:hover {
-  color: var(--ink);
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.05);
 }
 
 /* Report Card */
@@ -38,10 +77,11 @@
   position: relative;
   z-index: 100;
   border: 1px solid var(--mercury);
+  background: var(--white);
   clip-path: polygon(0% 2.5%, 1.5% 0%, 98.5% 0%, 100% 2.5%, 100% 100%, 0% 100%);
   -webkit-clip-path: polygon(0% 2.5%, 1.5% 0%, 98.5% 0%, 100% 2.5%, 100% 100%, 0% 100%);
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
 }
 
 .reportHeader {
@@ -88,21 +128,10 @@
   border-radius: 1px;
 }
 
-.soundwaveIcon span:nth-child(1) {
-  height: 4px;
-}
-
-.soundwaveIcon span:nth-child(2) {
-  height: 8px;
-}
-
-.soundwaveIcon span:nth-child(3) {
-  height: 6px;
-}
-
-.soundwaveIcon span:nth-child(4) {
-  height: 10px;
-}
+.soundwaveIcon span:nth-child(1) { height: 4px; }
+.soundwaveIcon span:nth-child(2) { height: 8px; }
+.soundwaveIcon span:nth-child(3) { height: 6px; }
+.soundwaveIcon span:nth-child(4) { height: 10px; }
 
 .reportForm {
   background: var(--white);
@@ -112,8 +141,8 @@
   gap: 24px;
 }
 
-/* Expert Brief Row */
-.expertBrief {
+/* Client Brief Row */
+.clientBrief {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -132,11 +161,11 @@
   object-fit: cover;
 }
 
-.expertBriefInfo {
+.clientBriefInfo {
   min-width: 0;
 }
 
-.expertName {
+.clientName {
   margin: 0 0 4px;
   font-family: var(--font-display);
   font-size: 16px;
@@ -169,85 +198,42 @@
 
 /* Reasons Layout */
 .reasonsGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-@media (max-width: 560px) {
-  .reasonsGrid {
-    grid-template-columns: 1fr;
-  }
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
 }
 
 .reasonLabel {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-start;
+  padding: 8px 16px;
+  gap: 8px;
+  background: var(--background-chip);
+  border: 1px solid var(--ink);
+  border-radius: 9999px;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+  transition: all 0.2s ease;
   font-family: var(--font-body);
   font-size: 13px;
-  color: var(--scorpion);
-  cursor: pointer;
+  font-weight: 500;
+  width: fit-content;
+  max-height: 36px;
+  white-space: nowrap;
   user-select: none;
-  transition: color 0.2s ease;
-  padding: 8px 12px;
-  background: var(--white);
-  border: 1px solid var(--mercury);
-}
-
-.reasonLabel:hover {
-  color: var(--ink);
-  border-color: var(--silver-chalice);
 }
 
 .reasonCheckbox {
-  /* Hide standard browser checkbox styling */
-  appearance: none;
-  -webkit-appearance: none;
-
-  /* Create our custom checkbox square */
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--mercury);
-  border-radius: 4px;
-  outline: none;
-  background-color: var(--white);
-  cursor: pointer;
-
-  display: inline-grid;
-  place-content: center;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
-  margin: 0;
-  flex-shrink: 0;
-}
-
-.reasonCheckbox:hover {
-  border-color: var(--dove-gray);
-}
-
-/* Custom inner square when checked */
-.reasonCheckbox::before {
-  content: "";
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  transform: scale(0);
-  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background-color: var(--orange);
-}
-
-.reasonCheckbox:checked {
-  border-color: var(--orange);
-}
-
-.reasonCheckbox:checked::before {
-  transform: scale(1);
+  display: none;
 }
 
 .reasonLabel:has(.reasonCheckbox:checked) {
-  border-color: var(--orange);
-  color: var(--ink);
-  background: color-mix(in srgb, var(--orange) 4%, var(--white));
+  background: var(--bunker);
+  color: var(--white);
 }
 
 /* Textarea details */
@@ -257,15 +243,13 @@
   padding: 12px;
   border: 1px solid var(--mercury);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--ink);
   background: var(--white);
   resize: none;
   outline: none;
   transition: border-color 0.2s ease;
 }
-
-
 
 /* Actions Row */
 .actionsRow {
@@ -279,11 +263,12 @@
   height: 44px;
   padding: 0 24px;
   background: var(--white);
-  border: 1px solid var(--mercury);
+  text-transform: uppercase;
   color: var(--scorpion);
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
+  border: 1px solid var(--mercury);
   cursor: pointer;
   transition: border-color 0.2s ease, color 0.2s ease;
 }
@@ -296,7 +281,7 @@
 .submitBtn {
   height: 44px;
   padding: 0 32px;
-  background: var(--ink);
+  background: var(--pomegranate);
   color: var(--white);
   border: none;
   font-family: var(--font-body);
@@ -307,7 +292,7 @@
 }
 
 .submitBtn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ink) 85%, var(--white));
+  background: var(--pomegranate);
 }
 
 .submitBtn:active:not(:disabled) {

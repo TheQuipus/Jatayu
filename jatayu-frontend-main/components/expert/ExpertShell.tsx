@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useMemo, type CSSProperties, type ReactNode } from "react";
 import {
+  Bell,
   CalendarDays,
   DollarSign,
   Inbox,
   LayoutDashboard,
   LogOut,
-  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -38,7 +38,7 @@ const NAV_ICONS = {
   profile: User,
   availability: CalendarDays,
   requests: Inbox,
-  messages: MessageSquare,
+  notifications: Bell,
   earnings: DollarSign,
   reviews: Star,
   settings: Settings,
@@ -52,6 +52,7 @@ function isNavItemActive(id: string, pathname: string, href: string, currentHash
   if (id === "dashboard") return pathname === EXPERT_DASHBOARD_HREF && !currentHash;
   if (id === "availability") return pathname.startsWith("/expert/availability/");
   if (id === "requests") return pathname.startsWith("/expert/requests/");
+  if (id === "notifications") return pathname.startsWith("/expert/notifications/");
   if (id === "profile") return pathname.startsWith(EXPERT_PROFILE_HREF);
 
   if (itemHash) {
@@ -82,9 +83,8 @@ function NavLink({
   return (
     <Link
       href={item.href}
-      className={`${styles.navLink} ${isActive ? styles.navLinkActive : ""} ${
-        isCollapsed ? styles.navLinkCollapsed : ""
-      }`}
+      className={`${styles.navLink} ${isActive ? styles.navLinkActive : ""} ${isCollapsed ? styles.navLinkCollapsed : ""
+        }`}
       title={isCollapsed ? item.label : undefined}
     >
       <Icon size={16} aria-hidden="true" />
@@ -208,9 +208,8 @@ export default function ExpertShell({ children }: ExpertShellProps) {
           </nav>
 
           <div
-            className={`${styles.userCard} ${
-              isCollapsed ? styles.userCardCollapsed : ""
-            }`}
+            className={`${styles.userCard} ${isCollapsed ? styles.userCardCollapsed : ""
+              }`}
           >
             {profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:") ? (
               <img
@@ -244,7 +243,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
               aria-label="Logout"
               title="Logout"
             >
-              <LogOut size={14} aria-hidden="true" />
+              <LogOut size={20} aria-hidden="true" />
             </button>
           </div>
         </aside>
@@ -258,26 +257,22 @@ export default function ExpertShell({ children }: ExpertShellProps) {
               } as CSSProperties
             }
           >
-            {!pathname.startsWith("/expert/messages") && (
-              <div className="section-grid-lines" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-            )}
+            <div className="section-grid-lines" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
 
-            {!pathname.startsWith("/expert/messages") && (
-              <div className={styles.topBar}>
-                <div className="container">
-                  <div className={styles.topBarInner}>
-                    <div className={styles.breadcrumbsSlot}>{breadcrumbs}</div>
-                    <NotificationPanel />
-                  </div>
+            <div className={styles.topBar}>
+              <div className="container">
+                <div className={styles.topBarInner}>
+                  <div className={styles.breadcrumbsSlot}>{breadcrumbs}</div>
+                  <NotificationPanel />
                 </div>
               </div>
-            )}
+            </div>
 
             <div className={styles.content}>{children}</div>
           </div>

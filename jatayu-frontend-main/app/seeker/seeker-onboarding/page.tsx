@@ -849,6 +849,7 @@ function SeekerOnboardingPageContent() {
         <SuccessStep
           userName={seekerDisplayName}
           selectedCategory={selectedCategory}
+          selectedTopics={selectedTopics}
         />
       )}
     </main>

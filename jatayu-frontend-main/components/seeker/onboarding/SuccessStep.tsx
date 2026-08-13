@@ -9,6 +9,7 @@ import shared from "./onboarding.shared.module.css";
 import styles from "./SuccessStep.module.css";
 import ExpertCard from "@/components/ui/ExpertCard";
 import { featuredExperts, type Expert } from "@/lib/experts";
+import { getFeaturedMatches } from "@/lib/api";
 
 const FOOTER_TIPS = [
   {
@@ -63,19 +64,38 @@ const track3 = [...reelPool3, ...reelPool3];
 type SuccessStepProps = {
   userName: string;
   selectedCategory: string;
+  selectedTopics?: string[];
 };
 
 export default function SuccessStep({
   userName,
   selectedCategory,
+  selectedTopics = [],
 }: SuccessStepProps) {
-  const matches = getTopMatches(selectedCategory);
+  const [matches, setMatches] = useState<Expert[]>([]);
   const [isMatching, setIsMatching] = useState(true);
   const [matchingMessageIndex, setMatchingMessageIndex] = useState(0);
   const [activeTipIndex, setActiveTipIndex] = useState(0);
   const activeTip = FOOTER_TIPS[activeTipIndex];
 
+  const topicsKey = (selectedTopics || []).join(",");
+
   useEffect(() => {
+    let isMounted = true;
+
+    // Fetch featured matches dynamically from backend / API helper
+    getFeaturedMatches({ category: selectedCategory, topics: selectedTopics, limit: 3 })
+      .then((data) => {
+        if (isMounted) {
+          setMatches(data || []);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setMatches([]);
+        }
+      });
+
     const messageTimer = window.setInterval(() => {
       setMatchingMessageIndex((current) =>
         Math.min(current + 1, MATCHING_MESSAGES.length - 1),
@@ -83,14 +103,15 @@ export default function SuccessStep({
     }, MATCHING_MESSAGE_INTERVAL_MS);
 
     const completeTimer = window.setTimeout(() => {
-      setIsMatching(false);
+      if (isMounted) setIsMatching(false);
     }, MATCHING_DURATION_MS);
 
     return () => {
+      isMounted = false;
       window.clearInterval(messageTimer);
       window.clearTimeout(completeTimer);
     };
-  }, []);
+  }, [selectedCategory, topicsKey]);
 
   useEffect(() => {
     if (isMatching) return;
@@ -121,7 +142,9 @@ export default function SuccessStep({
 
         {!isMatching ? (
           <p className={`${shared.questionSubtitle} ${styles.resultsSubtitle}`}>
-            We found {matches.length} verified experts that match your profile.
+            {matches.length > 0
+              ? `We found ${matches.length} verified expert${matches.length > 1 ? "s" : ""} that match your profile.`
+              : "No live expert matches found for your selected criteria."}
           </p>
         ) : null}
 
@@ -129,7 +152,7 @@ export default function SuccessStep({
           <h2 className={styles.featuredTitle}>
             {isMatching ? "Scanning Expert Database..." : "Featured Matches"}
           </h2>
-          {!isMatching && (
+          {!isMatching && matches.length > 0 && (
             <div className={styles.featuredHeaderMeta}>
               <button
                 type="button"
@@ -198,7 +221,7 @@ export default function SuccessStep({
                 </div>
               </div>
             </>
-          ) : (
+          ) : matches.length > 0 ? (
             matches.slice(0, 3).map((expert, index) => (
               <div
                 key={expert.name}
@@ -212,6 +235,10 @@ export default function SuccessStep({
                 />
               </div>
             ))
+          ) : (
+            <div style={{ padding: "2rem", textAlign: "center", color: "#666" }}>
+              No matches found for this search.
+            </div>
           )}
         </div>
       </div>
@@ -243,28 +270,4 @@ export default function SuccessStep({
       ) : null}
     </section>
   );
-}
-
-function getTopMatches(selectedCategory: string): Expert[] {
-  const searchKey = selectedCategory.toLowerCase();
-  const filtered = featuredExperts.filter((exp) => {
-    const topicsString = exp.topics.map((t) => t.toLowerCase()).join(" ");
-
-    if (searchKey === "software" && topicsString.includes("jobs")) return true;
-    if (searchKey === "design" && topicsString.includes("creator")) return true;
-    if (searchKey === "business" && topicsString.includes("startup")) return true;
-    if (searchKey === "marketing" && topicsString.includes("growth")) return true;
-    if (searchKey === "finance" && topicsString.includes("finance")) return true;
-    if (searchKey === "legal" && topicsString.includes("legal")) return true;
-    if (searchKey === "product" && topicsString.includes("jobs")) return true;
-    if (searchKey === "data" && topicsString.includes("finance")) return true;
-
-    return false;
-  });
-
-  if (filtered.length === 0) {
-    return featuredExperts.slice(0, 3);
-  }
-
-  return filtered.slice(0, 3);
 }

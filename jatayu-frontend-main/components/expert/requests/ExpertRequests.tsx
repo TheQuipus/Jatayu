@@ -1,71 +1,122 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import {
-  Bell,
   CalendarDays,
-  Check,
   CheckCircle2,
-  ChevronDown,
   Clock,
   ExternalLink,
   Hourglass,
   Inbox,
-  MessageSquare,
-  Search,
-  SlidersHorizontal,
   Video,
   X,
   XCircle,
   Zap,
 } from "lucide-react";
 import {
-  CLIENT_REQUESTS,
   formatRequestPrice,
-  getRequestCounts,
+  getStoredRequests,
+  updateStoredRequestStatus,
   type ClientRequest,
-  type RequestSort,
   type RequestStatusFilter,
 } from "@/lib/expertRequests";
+import ContinueButton from "@/components/ui/ContinueButton";
+import AcceptRequestModal from "./AcceptRequestModal";
+import DeclineRequestModal from "./DeclineRequestModal";
 import styles from "./ExpertRequests.module.css";
 
-const STATUS_FILTERS: { id: RequestStatusFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "new", label: "New" },
-  { id: "pending", label: "Pending" },
-  { id: "accepted", label: "Accepted" },
-  { id: "declined", label: "Declined" },
-];
+const SUMMARY_CARDS = [
+  { id: "new", label: "New Requests", icon: Inbox },
+  { id: "pending", label: "Pending", icon: Hourglass },
+  { id: "accepted", label: "Accepted", icon: CheckCircle2 },
+  { id: "declined", label: "Declined", icon: XCircle },
+] as const;
 
-function matchesSearch(request: ClientRequest, query: string) {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return true;
+function getTargetTimeMs(dateLabel: string): number {
+  if (dateLabel.includes("Tomorrow")) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(14, 0, 0, 0);
+    return d.getTime();
+  }
+  const parsed = Date.parse(dateLabel);
+  if (!isNaN(parsed) && parsed > Date.now()) {
+    return parsed;
+  }
+  return Date.now() + (1 * 60 * 60 + 45 * 60) * 1000;
+}
 
-  return (
-    request.clientName.toLowerCase().includes(normalized) ||
-    request.title.toLowerCase().includes(normalized) ||
-    request.description.toLowerCase().includes(normalized)
-  );
+function getCountdownTextForRequest(dateLabel: string, currentTime: number): string | null {
+  const targetMs = getTargetTimeMs(dateLabel);
+  const diffMs = targetMs - currentTime;
+
+  if (diffMs <= 5 * 60 * 1000) {
+    return null;
+  }
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const totalHours = Math.floor(totalMinutes / 60);
+  const totalDays = Math.floor(totalHours / 24);
+
+  const remainingSecs = totalSeconds % 60;
+  const remainingMins = totalMinutes % 60;
+  const remainingHrs = totalHours % 24;
+
+  const hh = String(remainingHrs).padStart(2, "0");
+  const mm = String(remainingMins).padStart(2, "0");
+  const ss = String(remainingSecs).padStart(2, "0");
+
+  if (totalDays > 0) {
+    const dd = String(totalDays).padStart(2, "0");
+    return `${dd}D:${hh}H:${mm}M`;
+  }
+  return `${hh}:${mm}:${ss}`;
 }
 
 export default function ExpertRequests() {
-  const [activeFilter, setActiveFilter] = useState<RequestStatusFilter>("all");
-  const [sort, setSort] = useState<RequestSort>("newest");
-  const [search, setSearch] = useState("");
-  const counts = getRequestCounts();
+  const [requests, setRequests] = useState<ClientRequest[]>([]);
+  const [statusFilter, setStatusFilter] = useState<RequestStatusFilter>("all");
 
-  const filteredRequests = useMemo(() => {
-    const list = CLIENT_REQUESTS.filter((request) => {
-      const matchesStatus = activeFilter === "all" || request.status === activeFilter;
-      return matchesStatus && matchesSearch(request, search);
-    });
+  const [acceptingRequest, setAcceptingRequest] = useState<ClientRequest | null>(null);
+  const [decliningRequest, setDecliningRequest] = useState<ClientRequest | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
 
-    return [...list].sort((a, b) =>
-      sort === "newest" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt,
-    );
-  }, [activeFilter, search, sort]);
+  useEffect(() => {
+    setRequests(getStoredRequests());
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Dynamic counts calculated from current requests state
+  const counts = {
+    all: requests.length,
+    new: requests.filter((r) => r.status === "new").length,
+    pending: requests.filter((r) => r.status === "pending").length,
+    accepted: requests.filter((r) => r.status === "accepted").length,
+    declined: requests.filter((r) => r.status === "declined").length,
+  };
+
+  const filteredRequests =
+    statusFilter === "all"
+      ? requests
+      : requests.filter((request) => request.status === statusFilter);
+
+  const handleConfirmAccept = (requestId: string) => {
+    const updated = updateStoredRequestStatus(requestId, "accepted");
+    setRequests(updated);
+    setAcceptingRequest(null);
+  };
+
+  const handleConfirmDecline = (requestId: string, reason: string, notes: string) => {
+    const updated = updateStoredRequestStatus(requestId, "declined", reason, notes);
+    setRequests(updated);
+    setDecliningRequest(null);
+  };
 
   return (
     <section className={styles.page}>
@@ -80,134 +131,39 @@ export default function ExpertRequests() {
               Client <span className={styles.accentWord}>Requests</span>
             </h1>
           </div>
-
-          <div className={styles.pageHeaderActions}>
-            <button
-              type="button"
-              className={styles.notificationBtn}
-              aria-label="Notifications"
-            >
-              <Bell size={18} aria-hidden="true" />
-              <span className={styles.notificationBadge}>3</span>
-            </button>
-
-            <label className={styles.sortControl}>
-              <span className={styles.sortLabel}>Sort</span>
-              <select
-                value={sort}
-                onChange={(event) => setSort(event.target.value as RequestSort)}
-                className={styles.sortSelect}
-                aria-label="Sort requests"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-              </select>
-              <ChevronDown size={14} className={styles.sortChevron} aria-hidden="true" />
-            </label>
-
-            <button type="button" className={styles.exportBtn}>
-              <SlidersHorizontal size={14} aria-hidden="true" />
-              Export
-            </button>
-          </div>
         </header>
 
-        {/* Summary Stat Cards */}
-        <div className={styles.summaryGrid}>
-          <div className={styles.summaryCard}>
-            <div className={`${styles.summaryIconBox} ${styles.summaryIconNew}`}>
-              <Inbox size={20} aria-hidden="true" />
-            </div>
-            <div className={styles.summaryContent}>
-              <span className={styles.summaryLabel}>New Requests</span>
-              <span className={styles.summaryValue}>{counts.new}</span>
-            </div>
-          </div>
+        {/* Summary Stat Cards / KPI Row */}
+        <div className={`${styles.summaryGrid} ${styles.kpiRow}`} role="group" aria-label="Filter by status">
+          {SUMMARY_CARDS.map((card) => {
+            const Icon = card.icon;
+            const count = counts[card.id];
+            const isActive = statusFilter === card.id;
 
-          <div className={styles.summaryCard}>
-            <div className={`${styles.summaryIconBox} ${styles.summaryIconPending}`}>
-              <Hourglass size={20} aria-hidden="true" />
-            </div>
-            <div className={styles.summaryContent}>
-              <span className={styles.summaryLabel}>Pending</span>
-              <span className={styles.summaryValue}>{counts.pending}</span>
-            </div>
-          </div>
-
-          <div className={styles.summaryCard}>
-            <div className={`${styles.summaryIconBox} ${styles.summaryIconAccepted}`}>
-              <CheckCircle2 size={20} aria-hidden="true" />
-            </div>
-            <div className={styles.summaryContent}>
-              <span className={styles.summaryLabel}>Accepted</span>
-              <span className={styles.summaryValue}>{counts.accepted}</span>
-            </div>
-          </div>
-
-          <div className={styles.summaryCard}>
-            <div className={`${styles.summaryIconBox} ${styles.summaryIconDeclined}`}>
-              <XCircle size={20} aria-hidden="true" />
-            </div>
-            <div className={styles.summaryContent}>
-              <span className={styles.summaryLabel}>Declined</span>
-              <span className={styles.summaryValue}>{counts.declined}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Filter Tabs & Search Toolbar */}
-        <div className={styles.toolbar}>
-          <div className={styles.filterTabs} role="tablist" aria-label="Filter requests by status">
-            {STATUS_FILTERS.map((filter) => {
-              const isActive = activeFilter === filter.id;
-              const count = counts[filter.id];
-              const dotClass =
-                filter.id === "new"
-                  ? styles.dotNew
-                  : filter.id === "pending"
-                  ? styles.dotPending
-                  : filter.id === "accepted"
-                  ? styles.dotAccepted
-                  : filter.id === "declined"
-                  ? styles.dotDeclined
-                  : styles.dotAll;
-
-              return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setActiveFilter(filter.id)}
-                  className={`${styles.filterTab} ${isActive ? styles.filterTabActive : ""}`}
-                >
-                  <span className={`${styles.tabDot} ${dotClass}`} aria-hidden="true" />
-                  {filter.label}
-                  <span className={styles.filterCount}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <label className={styles.searchField}>
-            <Search size={16} className={styles.searchIcon} aria-hidden="true" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search requests..."
-              className={styles.searchInput}
-              aria-label="Search requests"
-            />
-          </label>
-        </div>
-
-        {/* Section Header */}
-        <div className={styles.sectionHeader}>
-          <span className={styles.sectionDot} aria-hidden="true" />
-          <h2 className={styles.sectionTitle}>
-            {activeFilter === "all" ? "NEW REQUESTS" : `${activeFilter.toUpperCase()} REQUESTS`}
-          </h2>
+            return (
+              <button
+                key={card.id}
+                type="button"
+                className={`${styles.summaryCard} ${styles.kpiCard} ${
+                  isActive ? `${styles.summaryCardActive} ${styles.kpiCardActive}` : ""
+                }`}
+                onClick={() =>
+                  setStatusFilter((prev) => (prev === card.id ? "all" : card.id))
+                }
+                aria-pressed={isActive}
+              >
+                <div className={`${styles.summaryHeader} ${styles.kpiHeader}`}>
+                  <span className={`${styles.summaryLabel} ${styles.kpiLabel}`}>{card.label}</span>
+                  <span className={`${styles.summaryIconBox} ${styles.kpiIconBox}`}>
+                    <Icon size={24} aria-hidden="true" />
+                  </span>
+                </div>
+                <p className={`${styles.summaryValue} ${styles.kpiValue}`}>
+                  {String(count).padStart(2, "0")}
+                </p>
+              </button>
+            );
+          })}
         </div>
 
         {/* Request Cards */}
@@ -225,17 +181,16 @@ export default function ExpertRequests() {
                     <Image
                       src={request.clientAvatar}
                       alt={request.clientName}
-                      width={48}
-                      height={48}
+                      width={72}
+                      height={82}
                       className={styles.clientAvatar}
                     />
-                    <span className={styles.onlineDot} aria-hidden="true" />
                   </div>
 
                   <div className={styles.headerMain}>
                     <div className={styles.clientRow}>
                       <span className={styles.clientName}>{request.clientName}</span>
-                      <span className={styles.badgeNew}>• New</span>
+                      {request.status === "new" && <span className={styles.badgeNew}>• New</span>}
                       {request.urgent && (
                         <span className={styles.badgeUrgent}>
                           <Zap size={11} aria-hidden="true" /> Urgent
@@ -248,6 +203,21 @@ export default function ExpertRequests() {
 
                     <h3 className={styles.requestTitle}>{request.title}</h3>
                     <p className={styles.requestDescription}>{request.description}</p>
+
+                    <div className={styles.cardMetaRow}>
+                      <span className={styles.metaItem}>
+                        <CalendarDays size={14} aria-hidden="true" />
+                        {request.dateLabel}
+                      </span>
+                      <span className={styles.metaItem}>
+                        <Clock size={14} aria-hidden="true" />
+                        {request.durationLabel}
+                      </span>
+                      <span className={styles.metaItem}>
+                        <Video size={14} aria-hidden="true" />
+                        {request.formatLabel}
+                      </span>
+                    </div>
                   </div>
 
                   <div className={styles.priceMeta}>
@@ -256,37 +226,50 @@ export default function ExpertRequests() {
                   </div>
                 </div>
 
-                <div className={styles.cardMetaRow}>
-                  <span className={styles.metaItem}>
-                    <CalendarDays size={14} aria-hidden="true" />
-                    {request.dateLabel}
-                  </span>
-                  <span className={styles.metaItem}>
-                    <Clock size={14} aria-hidden="true" />
-                    {request.durationLabel}
-                  </span>
-                  <span className={styles.metaItem}>
-                    <Video size={14} aria-hidden="true" />
-                    {request.formatLabel}
-                  </span>
-                </div>
-
                 <div className={styles.cardActions}>
-                  <button type="button" className={styles.btnAccept}>
-                    <Check size={14} aria-hidden="true" />
-                    Accept
-                  </button>
-                  <button type="button" className={styles.btnDecline}>
-                    <X size={14} aria-hidden="true" />
-                    Decline
-                  </button>
-                  <button type="button" className={styles.btnMessage}>
-                    <MessageSquare size={14} aria-hidden="true" />
-                    Message
-                  </button>
+                  {request.status === "accepted" ? (
+                    (() => {
+                      const countdown = getCountdownTextForRequest(request.dateLabel, currentTime);
+                      if (countdown) {
+                        return (
+                          <Link href={`/expert/requests/${request.id}/`}>
+                            <ContinueButton
+                              label={countdown}
+                              disabled
+                              className={styles.timerButton}
+                            />
+                          </Link>
+                        );
+                      }
+                      return (
+                        <Link href={`/expert/requests/${request.id}/`}>
+                          <ContinueButton label="JOIN SESSION" />
+                        </Link>
+                      );
+                    })()
+                  ) : request.status === "declined" ? (
+                    <span className={styles.statusBadgeDeclined}>
+                      <XCircle size={14} aria-hidden="true" />
+                      Declined
+                    </span>
+                  ) : (
+                    <>
+                      <div onClick={() => setAcceptingRequest(request)}>
+                        <ContinueButton label="ACCEPT" />
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.btnDecline}
+                        onClick={() => setDecliningRequest(request)}
+                      >
+                        <X size={14} aria-hidden="true" />
+                        DECLINE
+                      </button>
+                    </>
+                  )}
                   <Link href={`/expert/requests/${request.id}/`} className={styles.btnDetails}>
                     <ExternalLink size={14} aria-hidden="true" />
-                    View Details
+                    VIEW DETAILS
                   </Link>
                 </div>
               </article>
@@ -294,6 +277,24 @@ export default function ExpertRequests() {
           )}
         </div>
       </div>
+
+      {/* Accept Confirmation Modal */}
+      {acceptingRequest && (
+        <AcceptRequestModal
+          request={acceptingRequest}
+          onClose={() => setAcceptingRequest(null)}
+          onConfirm={handleConfirmAccept}
+        />
+      )}
+
+      {/* Decline Reason Modal */}
+      {decliningRequest && (
+        <DeclineRequestModal
+          request={decliningRequest}
+          onClose={() => setDecliningRequest(null)}
+          onConfirm={handleConfirmDecline}
+        />
+      )}
     </section>
   );
 }

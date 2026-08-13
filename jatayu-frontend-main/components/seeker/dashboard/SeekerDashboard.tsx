@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import ExpertCard from "@/components/ui/ExpertCard";
@@ -18,6 +18,11 @@ import {
   formatCurrency,
   getExpertHref,
 } from "@/lib/seekerDashboard";
+import {
+  fetchSeekerProfileData,
+  getStoredSeekerProfile,
+  SEEKER_PROFILE_UPDATED_EVENT,
+} from "@/lib/seekerProfileApi";
 import { useBookmarks } from "@/lib/useBookmarks";
 import styles from "./SeekerDashboard.module.css";
 
@@ -26,7 +31,45 @@ const DASHBOARD_TRENDING_PREVIEW = TRENDING_CATEGORIES.slice(0, 6);
 export default function SeekerDashboard() {
   const [activeCategory, setActiveCategory] = useState<string>(TRENDING_CATEGORIES[0]);
   const { bookmarkedExperts, toggleBookmark } = useBookmarks();
-  const firstName = SEEKER_PROFILE.name.split(" ")[0];
+  const [profile, setProfile] = useState({
+    name: SEEKER_PROFILE.name,
+    avatar: SEEKER_PROFILE.avatar,
+    isPro: SEEKER_PROFILE.isPro,
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      const stored = getStoredSeekerProfile();
+      setProfile({
+        name: stored.name || SEEKER_PROFILE.name,
+        avatar: stored.avatar || SEEKER_PROFILE.avatar,
+        isPro: stored.isPro ?? SEEKER_PROFILE.isPro,
+      });
+    };
+
+    handleUpdate();
+
+    void fetchSeekerProfileData()
+      .then((saved) => {
+        setProfile({
+          name: saved.name || SEEKER_PROFILE.name,
+          avatar: saved.avatar || SEEKER_PROFILE.avatar,
+          isPro: saved.isPro ?? SEEKER_PROFILE.isPro,
+        });
+      })
+      .catch(() => {});
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(SEEKER_PROFILE_UPDATED_EVENT, handleUpdate);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener(SEEKER_PROFILE_UPDATED_EVENT, handleUpdate);
+      }
+    };
+  }, []);
+
+  const firstName = (profile.name || SEEKER_PROFILE.name).trim().split(" ")[0];
 
   return (
     <section className={styles.dashboard}>

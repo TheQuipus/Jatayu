@@ -100,6 +100,15 @@
   gap: 12px;
 }
 
+.avatarRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  margin: 4px 0;
+  position: relative;
+}
+
 .reviewAvatar {
   position: relative;
   width: 80px;
@@ -107,20 +116,32 @@
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid var(--mercury);
+  flex-shrink: 0;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.reviewAvatarShifted {
+  transform: translateX(-14px);
 }
 
 .reviewAvatarImg {
   object-fit: cover;
 }
 
-.reviewIntro h2 {
+.reviewIntro h2,
+.expertNameTitle {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;
   color: var(--bunker);
   letter-spacing: -0.02em;
-  margin: 4px 0 0;
+  margin: 0;
   text-transform: uppercase;
+}
+
+.expertNameTitle {
+  margin: 2px 0 0;
 }
 
 .reviewIntro p {
@@ -135,23 +156,29 @@
 .reviewForm {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .ratingFormGroup {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
 .formLabel {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-family: var(--font-body);
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--silver-chalice);
+}
+
+.ratingRow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
 }
 
 .starRatingSelector {
@@ -160,11 +187,53 @@
   gap: 8px;
 }
 
+.emojiBadgeCircle {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--gallery);
+  border: 3px solid var(--mercury);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: -4px 4px 14px rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+  margin-left: -70px;
+  z-index: 2;
+  opacity: 0;
+  transform: scale(0.2) rotate(-15deg);
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    margin-left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.emojiBadgeCircleActive {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+  margin-left: -20px;
+  pointer-events: auto;
+}
+
+.emojiImg {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
 .starBtn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: visible;
   transition: transform 0.15s ease;
 }
 
@@ -173,7 +242,27 @@
 }
 
 .ratingStarIcon {
-  transition: fill 0.25s ease, stroke 0.25s ease;
+  transition: fill 0.25s ease, stroke 0.25s ease, transform 0.2s ease;
+}
+
+.ratingStarIconFilled {
+  animation: starFillWave 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes starFillWave {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.6;
+  }
+
+  60% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .commentFormGroup {
@@ -188,7 +277,7 @@
   background: var(--gallery);
   padding: 14px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--ink);
   transition: all 0.2s ease;
   outline: none;
@@ -207,9 +296,8 @@
   flex: 1;
   height: 48px;
   background: var(--white);
-  color: var(--bunker);
-  border: 1px solid var(--mercury);
-  font-family: var(--font-display);
+  color: var(--scorpion);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 14px;
   text-transform: uppercase;
@@ -222,6 +310,166 @@
   text-decoration: none;
 }
 
+.cancelReviewBtn:hover {
+  color: var(--ink);
+}
+
 .submitReviewBtn {
-  flex: 2;
+  width: 100%;
+  flex: 1;
+}
+
+/* ==========================================================================
+   Submitted Review Success Screen Styles
+   ========================================================================== */
+.submittedBody {
+  background: var(--white);
+  padding: 40px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.successIconBadge {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--green) 12%, var(--white));
+  display: grid;
+  place-items: center;
+  margin-bottom: 20px;
+  border: 1px solid color-mix(in srgb, var(--green) 25%, transparent);
+}
+
+.successCheckIcon {
+  color: var(--green);
+}
+
+.submittedTitle {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--bunker);
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.submittedDesc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--dove-gray);
+  max-width: 440px;
+  margin: 0 0 24px;
+}
+
+.submittedDesc strong {
+  color: var(--ink);
+}
+
+.submittedSummaryBox {
+  width: 100%;
+  max-width: 460px;
+  background: var(--gallery);
+  border: 1px solid var(--mercury);
+  padding: 18px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.submittedStarsRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.submittedRatingLabel {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bunker);
+  margin-left: 8px;
+}
+
+.submittedCommentQuote {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--scorpion);
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.redirectHintBox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--pomegranate) 8%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 18%, transparent);
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pomegranate);
+  margin-bottom: 28px;
+}
+
+.redirectSpinner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pomegranate);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.submittedActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.homeBtnLink {
+  width: 100%;
+  text-decoration: none;
+}
+
+.fullWidthBtn {
+  width: 100%;
+}
+
+.secondaryBtnLink {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dove-gray);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+}
+
+.secondaryBtnLink:hover {
+  color: var(--ink);
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
 }

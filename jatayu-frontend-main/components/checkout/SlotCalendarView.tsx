@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import {
   getOffsetFromDate,
   getSlotDateById,
@@ -155,12 +155,45 @@ export default function SlotCalendarView({
   const [viewMonth, setViewMonth] = useState(() =>
     startOfMonth(dateFromOffset(selectedOffset)),
   );
+  const [isMonthSelectOpen, setIsMonthSelectOpen] = useState(false);
+  const monthSelectRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMonthSelectOpen) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (monthSelectRef.current && !monthSelectRef.current.contains(event.target as Node)) {
+        setIsMonthSelectOpen(false);
+      }
+    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
+  }, [isMonthSelectOpen]);
 
   const weekDays = useMemo(
     () => buildWeekDays(weekStartOffset, today),
     [weekStartOffset, today],
   );
   const monthCells = useMemo(() => buildMonthCells(viewMonth, today), [viewMonth, today]);
+
+  const availableMonths = useMemo(() => {
+    const result: { label: string; date: Date }[] = [];
+    const start = startOfMonth(today);
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+      const label = d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+      result.push({ label, date: d });
+    }
+    return result;
+  }, [today]);
+
+  const selectedMonthObj = availableMonths.find(
+    (m) =>
+      m.date.getFullYear() === viewMonth.getFullYear() &&
+      m.date.getMonth() === viewMonth.getMonth()
+  );
+  const selectedMonthLabel =
+    selectedMonthObj?.label ||
+    viewMonth.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
   const periodLabel =
     viewMode === "week"
@@ -220,6 +253,19 @@ export default function SlotCalendarView({
   const selectedDateMeta = getSlotDateById(selectedDate);
   const selectedDaySlots = getTimeSlotsForDate(selectedDate);
 
+
+
+  const handleMonthDropdownChange = (newMonthDate: Date) => {
+    setViewMonth(newMonthDate);
+    const monthStart = startOfMonth(newMonthDate);
+    const diffTime = monthStart.getTime() - startOfMonth(today).getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
+    const targetOffset = Math.max(0, diffDays);
+
+    setWeekStartOffset(clampWeekStartOffset(getRollingWeekStartOffset(targetOffset)));
+    onSelectDate(`date-${targetOffset}`);
+  };
+
   return (
     <div className={styles.calendar}>
       <div className={styles.toolbar}>
@@ -248,23 +294,49 @@ export default function SlotCalendarView({
           <h2 className={styles.periodLabel}>{periodLabel}</h2>
         </div>
 
-        <div className={styles.viewToggle} role="group" aria-label="Calendar view">
+        <div className={styles.customSelectContainer} ref={monthSelectRef}>
           <button
             type="button"
-            className={`${styles.viewBtn} ${viewMode === "week" ? styles.viewBtnActive : ""}`}
-            aria-pressed={viewMode === "week"}
-            onClick={() => handleViewModeChange("week")}
+            className={styles.customSelectTrigger}
+            onClick={() => setIsMonthSelectOpen(!isMonthSelectOpen)}
+            aria-haspopup="listbox"
+            aria-expanded={isMonthSelectOpen}
           >
-            Week
+            <span>{selectedMonthLabel}</span>
+            <ChevronDown
+              size={14}
+              strokeWidth={2}
+              className={styles.customSelectChevron}
+              aria-hidden="true"
+            />
           </button>
-          <button
-            type="button"
-            className={`${styles.viewBtn} ${viewMode === "month" ? styles.viewBtnActive : ""}`}
-            aria-pressed={viewMode === "month"}
-            onClick={() => handleViewModeChange("month")}
-          >
-            Month
-          </button>
+          {isMonthSelectOpen && (
+            <ul className={styles.customSelectList} role="listbox">
+              {availableMonths.map((m) => {
+                const isSelected =
+                  m.date.getFullYear() === viewMonth.getFullYear() &&
+                  m.date.getMonth() === viewMonth.getMonth();
+                return (
+                  <li key={m.date.toISOString()} role="presentation">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      className={`${styles.customSelectItem} ${
+                        isSelected ? styles.customSelectItemActive : ""
+                      }`}
+                      onClick={() => {
+                        handleMonthDropdownChange(m.date);
+                        setIsMonthSelectOpen(false);
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -339,6 +411,7 @@ export default function SlotCalendarView({
           <div className={styles.monthGrid}>
             {monthCells.map((cell) => {
               const isSelected = cell.dateId === selectedDate;
+              const hasAvailableSlots = cell.selectable && cell.availableCount > 0;
               return (
                 <button
                   key={cell.date.toISOString()}
@@ -350,6 +423,7 @@ export default function SlotCalendarView({
                   onClick={() => handleMonthDaySelect(cell)}
                 >
                   <span className={styles.monthDayNum}>{cell.date.getDate()}</span>
+                  {hasAvailableSlots ? <span className={styles.orangeDot} aria-hidden="true" /> : null}
                 </button>
               );
             })}

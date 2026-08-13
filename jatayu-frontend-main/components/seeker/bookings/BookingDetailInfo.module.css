@@ -57,6 +57,9 @@
 .bookingBox {
   overflow: hidden;
   margin-bottom: 20px;
+  max-width: 290px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .bookingHeader {
@@ -88,15 +91,13 @@
 }
 
 .bookingFooter {
-  height: 39px;
-  background: var(--ink);
-  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
-  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  display: none;
 }
 
 .sessionCard {
   background: var(--white);
   border: 1px solid var(--mercury);
+  margin-left: calc(var(--grid-col) - 13px);
   clip-path: polygon(0% 5.063%,
       1.727% 0%,
       68.633% 0%,
@@ -621,29 +622,8 @@
 }
 
 .sidebarInvoiceBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
   width: 100%;
-  min-height: 42px;
   margin-top: 16px;
-  padding: 8px 14px;
-  border: 1px solid var(--mercury);
-  background: var(--white);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--bunker);
-  cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease;
-}
-
-.sidebarInvoiceBtn:hover {
-  border-color: var(--orange);
-  color: var(--orange);
 }
 
 .panelBox {
@@ -713,14 +693,13 @@
 
 .panelBody {
   background: var(--white);
-  padding: 18px 16px 16px;
+  padding: 18px 16px 20px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% calc(100% - 12px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 12px));
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% calc(100% - 12px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 12px));
 }
 
 .panelFooter {
-  height: 39px;
-  background: var(--ink);
-  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
-  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  display: none;
 }
 
 .expertVerified {
@@ -862,18 +841,16 @@
    Details Page Completed State Displays
    ========================================================================== */
 .completedBadgeWrap {
-  display: inline-flex;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .completedBadge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: color-mix(in srgb, var(--green) 12%, var(--white));
   color: color-mix(in srgb, var(--green) 80%, var(--ink));
-  border: 1px solid color-mix(in srgb, var(--green) 25%, var(--mercury));
-  padding: 8px 16px;
-  border-radius: 99px;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
@@ -886,6 +863,7 @@
   background: var(--white);
   border: 1px solid var(--mercury);
   padding: 22px 24px 24px;
+  margin-left: calc(var(--grid-col) - 13px);
   clip-path: polygon(0% 5.063%,
       1.727% 0%,
       68.633% 0%,
@@ -983,6 +961,12 @@
 
   .rightColInner {
     position: static;
+  }
+
+  .sessionCard,
+  .feedbackDetailsCard,
+  .notesDetailsCard {
+    margin-left: 0;
   }
 }
 
@@ -1171,7 +1155,6 @@
 }
 
 .detailFeedbackForm {
-  padding: 16px 20px 20px 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1207,13 +1190,17 @@
 .detailFeedbackDetailsBlock {
   display: flex;
   flex-direction: column;
-  gap: 14px;
   animation: slideDown 0.2s ease;
+}
+
+.detailSubmitReviewBtn {
+  align-self: flex-start;
+  width: fit-content;
 }
 
 .detailInputLabel {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--dove-gray);
   text-transform: uppercase;
@@ -1300,7 +1287,7 @@
   padding: 10px 12px;
   border: 1px solid var(--mercury);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 16px;
   color: var(--ink);
   background: var(--white);
   resize: none;
@@ -1371,6 +1358,13 @@
   line-height: 1.4;
 }
 
+.countdownActionWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 .countdownActionText {
   font-family: var(--font-sora);
   font-size: 22px;
@@ -1378,10 +1372,24 @@
   color: #000;
 }
 
+.countdownActionHint {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--dove-gray);
+}
+
+.badgeFloatAnchor {
+  position: relative;
+  height: 0;
+  overflow: visible;
+  z-index: 2;
+}
+
 .cancelledBadgeWrap,
 .completedBadgeWrap {
-  display: flex;
-  align-items: center;
+  position: absolute;
+  top: 22px;
+  left: 0;
 }
 
 .cancelledBadge {
@@ -1389,7 +1397,23 @@
   font-size: 22px;
   font-weight: 600;
   color: var(--thunderbird);
-  text-align: center;
+  line-height: 1.2;
+}
+
+.completedBadge {
+  font-family: var(--font-sora);
+  font-size: 22px;
+  font-weight: 600;
+  color: #16a34a;
+  line-height: 1.2;
+}
+
+.pokeIconSvg {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 @keyframes slideDown {

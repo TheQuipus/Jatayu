@@ -17,6 +17,8 @@
   cursor: pointer;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--pomegranate) 25%, transparent);
   transition: background 0.3s ease;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 .continueBtn:active:not(:disabled):not([aria-disabled="true"]) {

@@ -4,6 +4,8 @@
  * Base URL is read from NEXT_PUBLIC_API_URL env variable.
  */
 
+import { type Expert, getTopMatchesByCategory, normalizeExpert } from "@/lib/experts";
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -668,4 +670,55 @@ export async function submitSeekerOnboarding(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function getSeekerProfile(): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>("/api/seeker/me", {
+    method: "GET",
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Featured Matches API
+// ---------------------------------------------------------------------------
+
+export interface FeaturedMatchQuery {
+  category?: string;
+  topics?: string[];
+  limit?: number;
+}
+
+export async function getFeaturedMatches(
+  query?: FeaturedMatchQuery,
+): Promise<Expert[]> {
+  const params = new URLSearchParams();
+  if (query?.category) params.set("category", query.category);
+  if (query?.limit) params.set("limit", String(query.limit));
+  if (query?.topics && query.topics.length > 0) {
+    params.set("topics", query.topics.join(","));
+  }
+
+  const queryString = params.toString() ? `?${params.toString()}` : "";
+
+  return apiFetch<unknown>(`/api/seeker/featured-matches${queryString}`, {
+    method: "GET",
+  })
+    .then((res) => {
+      let rawList: Record<string, unknown>[] = [];
+      if (Array.isArray(res)) {
+        rawList = res as Record<string, unknown>[];
+      } else if (res && typeof res === "object") {
+        const obj = res as Record<string, unknown>;
+        if (Array.isArray(obj.matches)) {
+          rawList = obj.matches as Record<string, unknown>[];
+        } else if (Array.isArray(obj.data)) {
+          rawList = obj.data as Record<string, unknown>[];
+        }
+      }
+
+      return rawList.map((item) => normalizeExpert(item));
+    })
+    .catch(() => {
+      return [];
+    });
 }

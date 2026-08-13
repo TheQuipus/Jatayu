@@ -6,6 +6,15 @@ export const metadata: Metadata = {
   description: "View and respond to client session requests.",
 };
 
-export default function RequestDynamicDetailPage() {
-  return <ExpertRequestDetail />;
+export function generateStaticParams() {
+  return [{ id: "1" }, { id: "2" }];
+}
+
+export default async function RequestDynamicDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }> | { id: string };
+}) {
+  const resolvedParams = await params;
+  return <ExpertRequestDetail requestId={resolvedParams.id} />;
 }

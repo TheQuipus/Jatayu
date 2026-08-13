@@ -431,6 +431,7 @@
   display: inline-flex;
 }
 
+.categoryItemWrapper:hover,
 .categoryItemWrapper:has(.categoryItemSelected) {
   z-index: 100;
 }
@@ -448,6 +449,7 @@
   z-index: 999;
   text-align: left;
   white-space: normal;
+  pointer-events: none;
   animation: popIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

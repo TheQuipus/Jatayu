@@ -334,7 +334,7 @@ function ExpertOnboardingPageContent() {
         if (otpFlowLockRef.current) return;
         if (readPendingOtpSession()) return;
 
-        const user = profile as AuthUser & {
+        const user = (profile as unknown) as AuthUser & {
           category?: string;
           skills?: string[];
           experienceLevel?: string;

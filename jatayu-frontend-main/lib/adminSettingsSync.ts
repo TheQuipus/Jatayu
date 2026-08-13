@@ -2,7 +2,7 @@ import { getSettings, updateSettings, type SettingItem } from "@/lib/api";
 import {
   DEFAULT_ADMIN_SETTINGS,
   type AdminSettings,
-  type LinkedinCredentialsSettings,
+  type ProviderAuthCredentials,
   type SmsProvider,
 } from "@/lib/adminSettings";
 
@@ -24,128 +24,87 @@ function readString(map: Record<string, string>, key: string, fallback = ""): st
 
 function readSmsProvider(map: Record<string, string>): SmsProvider {
   const provider = readString(map, "SMS_PROVIDER", DEFAULT_ADMIN_SETTINGS.sms.provider);
-  if (provider === "twilio" || provider === "fast2sms" || provider === "msg91" || provider === "textlocal") {
+  if (provider === "twilio" || provider === "msg91" || provider === "textlocal") {
     return provider;
   }
   return DEFAULT_ADMIN_SETTINGS.sms.provider;
 }
 
-function readSmsCredentials(map: Record<string, string>, provider: SmsProvider) {
-  if (provider === "fast2sms" || provider === "textlocal") {
-    return {
-      apiKey: readString(map, "SMS_API_KEY") || readString(map, "TWILIO_ACCOUNT_SID"),
-      apiSecret: readString(map, "SMS_API_SECRET") || readString(map, "TWILIO_AUTH_TOKEN"),
-      senderId:
-        readString(map, "SMS_SENDER_ID") ||
-        readString(map, "TWILIO_PHONE_NUMBER", DEFAULT_ADMIN_SETTINGS.sms.senderId),
-    };
-  }
-
-  return {
-    apiKey: readString(map, "TWILIO_ACCOUNT_SID") || readString(map, "SMS_API_KEY"),
-    apiSecret: readString(map, "TWILIO_AUTH_TOKEN") || readString(map, "SMS_API_SECRET"),
-    senderId:
-      readString(map, "TWILIO_PHONE_NUMBER") ||
-      readString(map, "SMS_SENDER_ID", DEFAULT_ADMIN_SETTINGS.sms.senderId),
-  };
-}
-
 function mapSmsSettingsToBackend(sms: AdminSettings["sms"]): Record<string, string> {
-  const base = {
-    SMS_PROVIDER: sms.provider,
-    SMS_DEFAULT_COUNTRY_CODE: sms.defaultCountryCode,
-  };
-
-  if (sms.provider === "fast2sms") {
-    return {
-      ...base,
-      SMS_API_KEY: sms.apiKey,
-      SMS_API_SECRET: "",
-      SMS_SENDER_ID: "",
-      TWILIO_ACCOUNT_SID: "",
-      TWILIO_AUTH_TOKEN: "",
-      TWILIO_PHONE_NUMBER: "",
-    };
-  }
-
-  if (sms.provider === "textlocal") {
-    return {
-      ...base,
-      SMS_API_KEY: sms.apiKey,
-      SMS_API_SECRET: "",
-      SMS_SENDER_ID: sms.senderId,
-      TWILIO_ACCOUNT_SID: "",
-      TWILIO_AUTH_TOKEN: "",
-      TWILIO_PHONE_NUMBER: "",
-    };
-  }
-
   return {
-    ...base,
-    TWILIO_ACCOUNT_SID: sms.apiKey,
-    TWILIO_AUTH_TOKEN: sms.apiSecret,
-    TWILIO_PHONE_NUMBER: sms.senderId,
-    SMS_API_KEY: sms.apiKey,
-    SMS_API_SECRET: sms.apiSecret,
+    SMS_PROVIDER: sms.provider,
+    SMS_AUTH_TOKEN: sms.authToken,
+    SMS_CONTACT_NO: sms.contactNo,
     SMS_SENDER_ID: sms.senderId,
+    TWILIO_ACCOUNT_SID: sms.provider === "twilio" ? sms.authToken : "",
+    TWILIO_PHONE_NUMBER: sms.senderId,
   };
 }
 
 export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSettings {
   const smtpEncryption = readString(map, "SMTP_SECURE", "false") === "true" ? "ssl" : "tls";
   const smsProvider = readSmsProvider(map);
-  const smsCredentials = readSmsCredentials(map, smsProvider);
 
-  const linkedin: LinkedinCredentialsSettings = {
-    clientId: readString(map, "LINKEDIN_CLIENT_ID"),
-    clientSecret: readString(map, "LINKEDIN_CLIENT_SECRET"),
-    redirectUri: readString(
+  const google: ProviderAuthCredentials = {
+    clientId: readString(map, "GOOGLE_CLIENT_ID"),
+    redirectUri: readString(map, "GOOGLE_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.google.redirectUri),
+    authorizedDomains: readString(
       map,
-      "LINKEDIN_REDIRECT_URI",
-      DEFAULT_ADMIN_SETTINGS.linkedin.redirectUri,
+      "GOOGLE_AUTHORIZED_DOMAINS",
+      DEFAULT_ADMIN_SETTINGS.auth.google.authorizedDomains,
     ),
-    enableSignIn: readBool(map, "LINKEDIN_LOGIN_ENABLED", true),
+    enableSignIn: readBool(map, "GOOGLE_LOGIN_ENABLED", true),
+    enableCalendar: readBool(map, "GOOGLE_ENABLE_CALENDAR", false),
+  };
+
+  const meta: ProviderAuthCredentials = {
+    clientId: readString(map, "META_CLIENT_ID"),
+    redirectUri: readString(map, "META_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.meta.redirectUri),
+    authorizedDomains: readString(
+      map,
+      "META_AUTHORIZED_DOMAINS",
+      DEFAULT_ADMIN_SETTINGS.auth.meta.authorizedDomains,
+    ),
+    enableSignIn: readBool(map, "META_LOGIN_ENABLED", false),
+    enableCalendar: false,
+  };
+
+  const linkedin: ProviderAuthCredentials = {
+    clientId: readString(map, "LINKEDIN_CLIENT_ID"),
+    redirectUri: readString(map, "LINKEDIN_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.linkedin.redirectUri),
+    authorizedDomains: readString(
+      map,
+      "LINKEDIN_AUTHORIZED_DOMAINS",
+      DEFAULT_ADMIN_SETTINGS.auth.linkedin.authorizedDomains,
+    ),
+    enableSignIn: readBool(map, "LINKEDIN_LOGIN_ENABLED", false),
+    enableCalendar: false,
   };
 
   return {
     sms: {
       provider: smsProvider,
-      apiKey: smsCredentials.apiKey,
-      apiSecret: smsCredentials.apiSecret,
-      senderId: smsCredentials.senderId,
-      defaultCountryCode: readString(
-        map,
-        "SMS_DEFAULT_COUNTRY_CODE",
-        DEFAULT_ADMIN_SETTINGS.sms.defaultCountryCode,
-      ),
-    },
-    email: {
-      fromName: readString(map, "EMAIL_FROM_NAME", DEFAULT_ADMIN_SETTINGS.email.fromName),
-      fromEmail: readString(map, "FROM_EMAIL", DEFAULT_ADMIN_SETTINGS.email.fromEmail),
-      replyToEmail: readString(map, "EMAIL_REPLY_TO", DEFAULT_ADMIN_SETTINGS.email.replyToEmail),
-      footerText: readString(map, "EMAIL_FOOTER_TEXT", DEFAULT_ADMIN_SETTINGS.email.footerText),
+      authToken: readString(map, "SMS_AUTH_TOKEN") || readString(map, "TWILIO_ACCOUNT_SID"),
+      contactNo: readString(map, "SMS_CONTACT_NO"),
+      senderId: readString(map, "SMS_SENDER_ID", DEFAULT_ADMIN_SETTINGS.sms.senderId),
     },
     smtp: {
       host: readString(map, "SMTP_HOST", DEFAULT_ADMIN_SETTINGS.smtp.host),
       port: readString(map, "SMTP_PORT", DEFAULT_ADMIN_SETTINGS.smtp.port),
       username: readString(map, "SMTP_USER"),
       password: readString(map, "SMTP_PASS"),
-      encryption: smtpEncryption,
+      encryption: smtpEncryption === "ssl" || smtpEncryption === "tls" ? smtpEncryption : "tls",
     },
     payment: DEFAULT_ADMIN_SETTINGS.payment,
-    google: {
-      clientId: readString(map, "GOOGLE_CLIENT_ID"),
-      clientSecret: readString(map, "GOOGLE_CLIENT_SECRET"),
-      redirectUri: readString(map, "GOOGLE_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.google.redirectUri),
-      authorizedDomains: readString(
-        map,
-        "GOOGLE_AUTHORIZED_DOMAINS",
-        DEFAULT_ADMIN_SETTINGS.google.authorizedDomains,
-      ),
-      enableSignIn: readBool(map, "GOOGLE_LOGIN_ENABLED", true),
-      enableCalendar: readBool(map, "GOOGLE_ENABLE_CALENDAR", false),
+    auth: {
+      google,
+      meta,
+      linkedin,
     },
-    linkedin,
+    ai: {
+      name: readString(map, "AI_PROVIDER_NAME", DEFAULT_ADMIN_SETTINGS.ai.name),
+      apiKey: readString(map, "AI_API_KEY"),
+    },
     templates: DEFAULT_ADMIN_SETTINGS.templates,
   };
 }
@@ -155,34 +114,32 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     SMS_ENABLED: "true",
     ...mapSmsSettingsToBackend(settings.sms),
     EMAIL_ENABLED: "true",
-    EMAIL_FROM_NAME: settings.email.fromName,
-    FROM_EMAIL: settings.email.fromEmail,
-    EMAIL_REPLY_TO: settings.email.replyToEmail,
-    EMAIL_FOOTER_TEXT: settings.email.footerText,
     SMTP_HOST: settings.smtp.host,
     SMTP_PORT: settings.smtp.port,
     SMTP_USER: settings.smtp.username,
     SMTP_PASS: settings.smtp.password,
     SMTP_SECURE: settings.smtp.encryption === "ssl" ? "true" : "false",
-    GOOGLE_CLIENT_ID: settings.google.clientId,
-    GOOGLE_CLIENT_SECRET: settings.google.clientSecret,
-    GOOGLE_REDIRECT_URI: settings.google.redirectUri,
-    GOOGLE_AUTHORIZED_DOMAINS: settings.google.authorizedDomains,
-    GOOGLE_LOGIN_ENABLED: String(settings.google.enableSignIn),
-    GOOGLE_ENABLE_CALENDAR: String(settings.google.enableCalendar),
-    LINKEDIN_CLIENT_ID: settings.linkedin.clientId,
-    LINKEDIN_CLIENT_SECRET: settings.linkedin.clientSecret,
-    LINKEDIN_REDIRECT_URI: settings.linkedin.redirectUri,
-    LINKEDIN_LOGIN_ENABLED: String(settings.linkedin.enableSignIn),
+    GOOGLE_CLIENT_ID: settings.auth.google.clientId,
+    GOOGLE_REDIRECT_URI: settings.auth.google.redirectUri,
+    GOOGLE_AUTHORIZED_DOMAINS: settings.auth.google.authorizedDomains,
+    GOOGLE_LOGIN_ENABLED: String(settings.auth.google.enableSignIn),
+    GOOGLE_ENABLE_CALENDAR: String(settings.auth.google.enableCalendar),
+    LINKEDIN_CLIENT_ID: settings.auth.linkedin.clientId,
+    LINKEDIN_REDIRECT_URI: settings.auth.linkedin.redirectUri,
+    LINKEDIN_AUTHORIZED_DOMAINS: settings.auth.linkedin.authorizedDomains,
+    LINKEDIN_LOGIN_ENABLED: String(settings.auth.linkedin.enableSignIn),
+    AI_PROVIDER_NAME: settings.ai.name,
+    AI_API_KEY: settings.ai.apiKey,
   };
 }
 
 export async function fetchAdminSettingsFromBackend(): Promise<AdminSettings> {
   const items = await getSettings();
-  if (!items.length) return DEFAULT_ADMIN_SETTINGS;
-  return mapBackendSettingsToAdmin(settingsArrayToMap(items));
+  const map = settingsArrayToMap(items);
+  return mapBackendSettingsToAdmin(map);
 }
 
 export async function saveAdminSettingsToBackend(settings: AdminSettings): Promise<void> {
-  await updateSettings(mapAdminSettingsToBackend(settings));
+  const map = mapAdminSettingsToBackend(settings);
+  await updateSettings(map);
 }

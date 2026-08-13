@@ -1,0 +1,59 @@
+.secondaryCtaBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  border-radius: 30px;
+  min-height: 44px;
+  padding: 0 20px;
+  background: transparent;
+  color: var(--bunker);
+  border: 1.5px solid var(--pomegranate);
+  cursor: pointer;
+  box-shadow: none;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.secondaryCtaBtn:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(0);
+}
+
+.secondaryCtaBtn:disabled,
+.secondaryCtaBtn[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.labelText {
+  display: block;
+  overflow: hidden;
+  height: 1em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.labelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.secondaryCtaBtn:hover:not(:disabled):not([aria-disabled="true"]) .labelTrack {
+  transform: translateY(-50%);
+}
+
+.labelUp {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  white-space: nowrap;
+}

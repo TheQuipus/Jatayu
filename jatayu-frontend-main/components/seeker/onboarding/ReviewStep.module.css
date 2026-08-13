@@ -172,6 +172,21 @@
   flex-shrink: 0;
 }
 
+.expertCardWrapper [class*="expertDesc"],
+.expertCardWrapper [class*="divider"],
+.expertCardWrapper [class*="bottomInteractiveArea"] {
+  display: none !important;
+}
+
+.expertCardWrapper [class*="expertMeta"] {
+  margin-top: auto !important;
+  padding-top: 16px !important;
+}
+
+.expertCardWrapper [class*="expertStats"] {
+  margin-bottom: 0 !important;
+}
+
 .reviewIdentityColumns {
   display: grid;
   grid-template-columns: 336px 1fr;

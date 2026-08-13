@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { Target, Zap, Brain, Handshake, ShieldCheck, Lightbulb } from "lucide-react";
 import ShinyText from "@/components/ui/ShinyText";
 import {
@@ -60,7 +61,10 @@ export default function StepQuestionContext({
   selectedContextImproveStyle,
   onSelectedContextImproveStyleChange,
 }: StepQuestionContextProps) {
-  const hasSelectedContextChip = selectedContextChips.length > 0;
+  const [isImprovementApplied, setIsImprovementApplied] = useState(false);
+  const [sourceTextForImprovement, setSourceTextForImprovement] = useState<string>("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
   const canUseContextAiAssist = context.trim().length > 0;
 
   const buildTextFromSelectedContextChips = (chipIds: string[]) =>
@@ -72,7 +76,14 @@ export default function StepQuestionContext({
       .filter(Boolean)
       .join("\n");
 
+  const getPrefixForChips = (chipIds: string[]) => {
+    if (chipIds.length === 0) return "";
+    const text = buildTextFromSelectedContextChips(chipIds);
+    return text ? text + "\n" : "";
+  };
+
   const handleContextChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
+    setIsImprovementApplied(false);
     const isSelected = selectedContextChips.includes(chip.id);
     const nextSelected = isSelected
       ? selectedContextChips.filter((id) => id !== chip.id)
@@ -84,23 +95,54 @@ export default function StepQuestionContext({
     }
 
     onSelectedContextChipsChange(nextSelected);
-    onContextChange(buildTextFromSelectedContextChips(nextSelected).slice(0, MAX_CONTEXT_LENGTH));
+
+    const currentPrefix = getPrefixForChips(selectedContextChips);
+    let userSuffix = context;
+    if (currentPrefix && context.startsWith(currentPrefix)) {
+      userSuffix = context.slice(currentPrefix.length);
+    }
+
+    const newPrefix = getPrefixForChips(nextSelected);
+    const updatedText = (newPrefix + userSuffix).slice(0, MAX_CONTEXT_LENGTH);
+    onContextChange(updatedText);
+
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 0);
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setIsImprovementApplied(false);
+    onContextChange(e.target.value.slice(0, MAX_CONTEXT_LENGTH));
   };
 
   const handleContextAiAssist = () => {
     onShowContextImprovementPanelChange(true);
     onSelectedContextImproveStyleChange("professional");
+    setIsImprovementApplied(false);
+    const prefix = getPrefixForChips(selectedContextChips);
+    const userSuffix = prefix && context.startsWith(prefix) ? context.slice(prefix.length) : context;
+    setSourceTextForImprovement(userSuffix.trim() || context.trim());
   };
 
   const handleContextImproveStyle = (styleId: ContextImprovementStyleId) => {
-    const current = context.trim();
-    if (!current) return;
-    onContextChange(getImprovedContextText(styleId, current).slice(0, MAX_CONTEXT_LENGTH));
+    const prefix = getPrefixForChips(selectedContextChips);
+    const targetText =
+      sourceTextForImprovement ||
+      (prefix && context.startsWith(prefix) ? context.slice(prefix.length) : context).trim() ||
+      context.trim();
+    if (!targetText) return;
+    const improvedSuffix = getImprovedContextText(styleId, targetText);
+    const updatedText = prefix ? `${prefix}${improvedSuffix}` : improvedSuffix;
+    onContextChange(updatedText.slice(0, MAX_CONTEXT_LENGTH));
   };
 
   const handleApplyContextImprovement = () => {
-    if (!selectedContextImproveStyle) return;
+    if (!selectedContextImproveStyle || isImprovementApplied) return;
     handleContextImproveStyle(selectedContextImproveStyle);
+    setIsImprovementApplied(true);
   };
 
   return (
@@ -137,8 +179,9 @@ export default function StepQuestionContext({
                 <button
                   key={chip.id}
                   type="button"
-                  className={`${styles.contextChip} ${isSelected ? styles.contextChipSelected : ""
-                    }`}
+                  className={`${styles.contextChip} ${
+                    isSelected ? styles.contextChipSelected : ""
+                  }`}
                   onClick={() => handleContextChipClick(chip)}
                   aria-pressed={isSelected}
                 >
@@ -148,18 +191,21 @@ export default function StepQuestionContext({
               );
             })}
           </div>
-          <textarea
-            id="booking-context"
-            className={styles.textarea}
-            placeholder="Eg. I've been in my current job for 3 years and feel stuck. I want to transition into product management but don't know where to start..."
-            value={context}
-            maxLength={MAX_CONTEXT_LENGTH}
-            onChange={(event) => onContextChange(event.target.value)}
-          />
+          <div className={styles.contextTextEditor}>
+            <textarea
+              ref={textareaRef}
+              id="booking-context"
+              className={styles.textarea}
+              placeholder="Eg. I've been in my current job for 3 years and feel stuck. I want to transition into product management but don't know where to start..."
+              value={context}
+              maxLength={MAX_CONTEXT_LENGTH}
+              onChange={handleTextareaChange}
+            />
+          </div>
           <span className={styles.charCounter}>
             {context.length} / {MAX_CONTEXT_LENGTH}
           </span>
-          {hasSelectedContextChip && !showContextImprovementPanel ? (
+          {canUseContextAiAssist && !showContextImprovementPanel ? (
             <button
               type="button"
               className={styles.aiAssistTextBtn}
@@ -167,7 +213,7 @@ export default function StepQuestionContext({
               disabled={!canUseContextAiAssist}
             >
               <ShinyText
-                text="Improve With AI"
+                text="Improve With Jatayu AI"
                 icon="sparkles"
                 iconSize={14}
                 speed={2.5}
@@ -191,9 +237,13 @@ export default function StepQuestionContext({
                 <button
                   key={style.id}
                   type="button"
-                  className={`${styles.improvementChip} ${isSelected ? styles.improvementChipSelected : ""
-                    }`}
-                  onClick={() => onSelectedContextImproveStyleChange(style.id)}
+                  className={`${styles.improvementChip} ${
+                    isSelected ? styles.improvementChipSelected : ""
+                  }`}
+                  onClick={() => {
+                    onSelectedContextImproveStyleChange(isSelected ? null : style.id);
+                    setIsImprovementApplied(false);
+                  }}
                   aria-pressed={isSelected}
                 >
                   {style.label}
@@ -202,20 +252,24 @@ export default function StepQuestionContext({
             })}
           </div>
           <p className={styles.aiImproveHint}>
-            {getContextImprovementHint(selectedContextImproveStyle, context)}
+            {getContextImprovementHint(
+              selectedContextImproveStyle,
+              sourceTextForImprovement || context
+            )}
           </p>
           <button
             type="button"
             className={styles.aiApplyBtn}
             onClick={handleApplyContextImprovement}
-            disabled={!selectedContextImproveStyle}
+            disabled={!selectedContextImproveStyle || isImprovementApplied}
           >
             <ShinyText
-              text="Apply"
-              disabled={!selectedContextImproveStyle}
-              speed={2}
+              text={isImprovementApplied ? "Applied" : "Apply"}
+              speed={2.5}
               color="#E53B17"
               shineColor="#ffffff"
+              disabled={!selectedContextImproveStyle || isImprovementApplied}
+              className={styles.aiApplyShinyText}
             />
           </button>
         </div>
