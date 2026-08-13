@@ -16,6 +16,9 @@ import seekerAuthRoutes from './routes/seeker/seekerAuthRoutes.js';
 import seekerRoutes from './routes/seeker/seekerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import publicExpertRoutes from './routes/publicExpertRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import razorpayWebhookRoutes from './routes/razorpayWebhookRoutes.js';
+import { getRazorpayClient, validateRazorpayConfig } from './config/razorpay.js';
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 
 dotenv.config();
@@ -48,6 +51,8 @@ const corsOptions = {
 
 // Configure Middlewares
 app.use(cors(corsOptions));
+// Razorpay signs the exact request bytes, so this route must run before express.json().
+app.use('/api/payments/webhooks', razorpayWebhookRoutes);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -61,6 +66,7 @@ app.use('/api/seeker-auth', seekerAuthRoutes);
 app.use('/api/seeker', seekerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/public/experts', publicExpertRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -74,6 +80,9 @@ app.get('/health/ws', (req, res) => {
 // Database Sync and Server Startup
 const startServer = async () => {
   try {
+    validateRazorpayConfig();
+    getRazorpayClient();
+
     await connectAllDatabases();
 
     // Sync schema without ALTER on every dev restart to avoid MySQL deadlocks.

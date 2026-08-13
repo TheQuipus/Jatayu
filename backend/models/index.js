@@ -6,6 +6,7 @@ import Availability from './Availability.js';
 import Setting from './Setting.js';
 import Admin from './Admin.js';
 import SeekerCreditTransaction from './seeker/SeekerCreditTransaction.js';
+import RazorpayWebhookEvent from './seeker/RazorpayWebhookEvent.js';
 
 // Expert-module relationships (same database connection)
 Expert.hasMany(Credential, { foreignKey: 'expertId', as: 'credentials', onDelete: 'CASCADE' });
@@ -33,4 +34,5 @@ export {
   Setting,
   Admin,
   SeekerCreditTransaction,
+  RazorpayWebhookEvent,
 };

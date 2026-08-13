@@ -12,6 +12,9 @@
     { "key": "seekerId", "value": "" },
     { "key": "adminToken", "value": "" },
     { "key": "applicationId", "value": "" },
+    { "key": "razorpayKeyId", "value": "" },
+    { "key": "razorpayWebhookEventId", "value": "evt_postman_001" },
+    { "key": "razorpayWebhookSecret", "value": "" },
     { "key": "otp", "value": "123456" }
   ],
   "item": [
@@ -20,6 +23,35 @@
       "item": [
         { "name": "Health", "request": { "method": "GET", "url": "{{baseUrl}}/health" } },
         { "name": "WebSocket Health", "request": { "method": "GET", "url": "{{baseUrl}}/health/ws" } }
+      ]
+    },
+    {
+      "name": "Payments - Razorpay",
+      "item": [
+        {
+          "name": "Get Razorpay Config",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.keyId) pm.environment.set('razorpayKeyId', data.keyId);"] } }],
+          "request": {
+            "method": "GET",
+            "description": "Public configuration for future Razorpay Checkout initialization. Only the public key ID is returned.",
+            "url": "{{baseUrl}}/api/payments/razorpay/config"
+          }
+        },
+        {
+          "name": "Receive Razorpay Webhook",
+          "event": [{ "listen": "prerequest", "script": { "exec": ["const secret = pm.environment.get('razorpayWebhookSecret');", "if (!secret) { throw new Error('Set razorpayWebhookSecret in the local Postman environment'); }", "const signature = CryptoJS.HmacSHA256(pm.request.body.raw, secret).toString(CryptoJS.enc.Hex);", "pm.variables.set('razorpayWebhookSignature', signature);"] } }],
+          "request": {
+            "method": "POST",
+            "description": "Development webhook test. Set the local webhook secret; never commit a real secret into this collection.",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Razorpay-Signature", "value": "{{razorpayWebhookSignature}}" },
+              { "key": "X-Razorpay-Event-Id", "value": "{{razorpayWebhookEventId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"entity\": \"event\",\n  \"account_id\": \"acc_postman\",\n  \"event\": \"payment.captured\",\n  \"contains\": [\"payment\"],\n  \"payload\": {\n    \"payment\": {\n      \"entity\": {\n        \"id\": \"pay_postman_001\",\n        \"entity\": \"payment\",\n        \"amount\": 100,\n        \"currency\": \"INR\",\n        \"status\": \"captured\"\n      }\n    }\n  },\n  \"created_at\": 0\n}" },
+            "url": "{{baseUrl}}/api/payments/webhooks/razorpay"
+          }
+        }
       ]
     },
     {
