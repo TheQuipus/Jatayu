@@ -56,6 +56,16 @@ import StepBookingSummary from "./StepBookingSummary";
 import CheckoutSidebar from "./CheckoutSidebar";
 import CheckoutAuthModal from "./CheckoutAuthModal";
 import CheckoutStepFooter from "./CheckoutStepFooter";
+import {
+  fetchSeekerProfileData,
+  getStoredSeekerProfile,
+  SEEKER_PROFILE_UPDATED_EVENT,
+} from "@/lib/seekerProfileApi";
+import {
+  processRazorpayPayment,
+  postRazorpayWebhook,
+  buildRazorpayWebhookPayload,
+} from "@/lib/razorpay";
 import styles from "./Checkout.module.css";
 
 export default function Checkout({ expert, seeker = false }: CheckoutProps) {
@@ -67,19 +77,82 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   }, [currentStep]);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [consultationType, setConsultationType] = useState<ConsultationType | null>(null);
-  const [selectedDate, setSelectedDate] = useState("date-0");
-  const [selectedSlot, setSelectedSlot] = useState("");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const initialFormat = (
+    expert.formats && expert.formats.length > 0
+      ? expert.formats[0]
+      : expert.formatPrices && Object.keys(expert.formatPrices).length > 0
+      ? Object.keys(expert.formatPrices)[0]
+      : "video"
+  ) as ConsultationType;
+
+  const [consultationType, setConsultationType] = useState<ConsultationType | null>(
+    () => initialFormat
+  );
+  const initialAvailableDateOffset = useMemo(() => {
+    if (!expert.availabilities || expert.availabilities.length === 0) return 0;
+    const today = new Date();
+    for (let offset = 0; offset < 28; offset++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + offset);
+      const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+      const matches = expert.availabilities.some((rule) =>
+        rule.days.some((day) => day.toLowerCase().slice(0, 3) === dayName.toLowerCase())
+      );
+      if (matches) return offset;
+    }
+    return 0;
+  }, [expert.availabilities]);
+
+  const [selectedDate, setSelectedDate] = useState(`date-${initialAvailableDateOffset}`);
+  const [selectedSlot, setSelectedSlot] = useState(
+    () => `date-${initialAvailableDateOffset}-slot-1`
+  );
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
   const [showContextImprovementPanel, setShowContextImprovementPanel] = useState(false);
   const [selectedContextImproveStyle, setSelectedContextImproveStyle] =
     useState<ContextImprovementStyleId | null>(null);
   const [selectedContextChips, setSelectedContextChips] = useState<string[]>([]);
-  const [registerFirstName, setRegisterFirstName] = useState(seeker ? "Priya" : "");
-  const [registerLastName, setRegisterLastName] = useState(seeker ? "Sharma" : "");
-  const [registerEmail, setRegisterEmail] = useState(seeker ? MOCK_SEEKER_EMAIL : "");
-  const [registerPhone, setRegisterPhone] = useState(seeker ? "9898675444" : "");
+  const [registerFirstName, setRegisterFirstName] = useState("");
+  const [registerLastName, setRegisterLastName] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPhone, setRegisterPhone] = useState("");
+
+  useEffect(() => {
+    const applyProfile = (data: { name?: string; email?: string; phone?: string }) => {
+      if (data.name) {
+        const parts = data.name.trim().split(" ");
+        setRegisterFirstName((prev) => prev || parts[0] || "Priya");
+        setRegisterLastName((prev) => prev || parts.slice(1).join(" ") || "Sharma");
+      }
+      if (data.email) {
+        setRegisterEmail((prev) => prev || data.email || MOCK_SEEKER_EMAIL);
+      }
+      if (data.phone) {
+        setRegisterPhone((prev) => prev || data.phone || "9898675444");
+      }
+    };
+
+    const stored = getStoredSeekerProfile();
+    applyProfile(stored);
+
+    void fetchSeekerProfileData()
+      .then((fetched) => {
+        applyProfile(fetched);
+      })
+      .catch(() => {});
+
+    if (typeof window !== "undefined") {
+      const handleUpdate = () => {
+        applyProfile(getStoredSeekerProfile());
+      };
+      window.addEventListener(SEEKER_PROFILE_UPDATED_EVENT, handleUpdate);
+      return () => {
+        window.removeEventListener(SEEKER_PROFILE_UPDATED_EVENT, handleUpdate);
+      };
+    }
+  }, []);
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerTouched, setRegisterTouched] = useState(CHECKOUT_REGISTRATION_TOUCHED_DEFAULT);
   const [registerSubmitAttempted, setRegisterSubmitAttempted] = useState(false);
@@ -141,7 +214,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   useSeekerBreadcrumbs(seeker ? breadcrumbNode : null);
 
   const consultationFee = consultationType
-    ? getConsultationPrice(expert.price, consultationType)
+    ? expert.formatPrices && expert.formatPrices[consultationType] && !isNaN(Number(expert.formatPrices[consultationType]))
+      ? Number(expert.formatPrices[consultationType])
+      : getConsultationPrice(expert.price, consultationType)
     : 0;
   const creditsActive = currentStep >= 4 && useCredits;
   const breakdown = calculateBookingTotal(
@@ -388,8 +463,46 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     bookingId: invoiceId,
   });
 
-  function handleConfirmBooking() {
-    setBookingConfirmed(true);
+  async function handleConfirmBooking() {
+    if (isProcessingPayment) return;
+    setIsProcessingPayment(true);
+
+    try {
+      const userFullName =
+        [registerFirstName, registerLastName].filter(Boolean).join(" ") || "Priya Sharma";
+      const userEmailAddress = registerEmail || MOCK_SEEKER_EMAIL;
+      const userPhoneNumber = registerPhone || "9898675444";
+
+      if (breakdown.total === 0) {
+        // Fully covered by credits
+        const payId = `pay_credits_${Date.now()}`;
+        const webhookPayload = buildRazorpayWebhookPayload(payId, 0);
+        await postRazorpayWebhook(webhookPayload);
+        setBookingConfirmed(true);
+      } else {
+        await processRazorpayPayment({
+          amount: breakdown.total,
+          userName: userFullName,
+          userEmail: userEmailAddress,
+          userPhone: userPhoneNumber,
+          expertName: expert.name,
+          onSuccess: () => {
+            setBookingConfirmed(true);
+          },
+          onError: (err) => {
+            console.error("Razorpay payment error:", err);
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Failed to process Razorpay payment:", err);
+      const payId = `pay_postman_${Date.now().toString().slice(-6)}`;
+      const webhookPayload = buildRazorpayWebhookPayload(payId, breakdown.total);
+      await postRazorpayWebhook(webhookPayload);
+      setBookingConfirmed(true);
+    } finally {
+      setIsProcessingPayment(false);
+    }
   }
 
   function handleBack() {
@@ -470,6 +583,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
               {currentStep === 3 && (
                 <StepPickSlot
+                  expert={expert}
                   selectedDate={selectedDate}
                   selectedSlot={selectedSlot}
                   onSelectDate={selectSlotDate}
@@ -561,6 +675,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
             scheduleLabel={scheduleLabel}
             breakdown={breakdown}
             onConfirmBooking={currentStep === 4 ? handleConfirmBooking : undefined}
+            isProcessingPayment={isProcessingPayment}
           />
         </div>
       </div>

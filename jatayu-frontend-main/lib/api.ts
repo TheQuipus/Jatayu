@@ -4,7 +4,7 @@
  * Base URL is read from NEXT_PUBLIC_API_URL env variable.
  */
 
-import { type Expert, getTopMatchesByCategory, normalizeExpert } from "@/lib/experts";
+import { type Expert, expertSlug, getExpertById, getTopMatchesByCategory, normalizeExpert } from "@/lib/experts";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -721,4 +721,45 @@ export async function getFeaturedMatches(
     .catch(() => {
       return [];
     });
+}
+
+// ---------------------------------------------------------------------------
+// Public Expert API
+// ---------------------------------------------------------------------------
+
+export async function getPublicExpert(expertId: string): Promise<Expert | null> {
+  if (!expertId) return null;
+
+  const targetId =
+    expertSlug(expertId) === "aditya-kane"
+      ? "6ca14cb0-b79c-4628-9fe2-ec8a9bce67e4"
+      : expertId;
+
+  // 1. Try direct public expert endpoint by target UUID or ID
+  try {
+    const res = await apiFetch<unknown>(`/api/public/experts/${encodeURIComponent(targetId)}`, {
+      method: "GET",
+    });
+    if (res && typeof res === "object") {
+      return normalizeExpert(res as Record<string, unknown>);
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. Try direct public expert endpoint by raw expertId string
+  if (targetId !== expertId) {
+    try {
+      const res = await apiFetch<unknown>(`/api/public/experts/${encodeURIComponent(expertId)}`, {
+        method: "GET",
+      });
+      if (res && typeof res === "object") {
+        return normalizeExpert(res as Record<string, unknown>);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return getExpertById(expertId) ?? null;
 }

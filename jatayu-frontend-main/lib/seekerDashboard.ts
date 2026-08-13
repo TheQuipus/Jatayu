@@ -81,6 +81,8 @@ export const SEEKER_PROFILE = {
   avatar: "/assets/img/avatar1.png",
   isPro: true,
   greeting: "Good morning",
+  email: "ananya@email.com",
+  phone: "9898675444",
 };
 
 export const WALLET_BALANCE = 2450;

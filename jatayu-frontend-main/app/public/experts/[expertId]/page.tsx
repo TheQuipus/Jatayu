@@ -1,18 +1,14 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ExpertDetail from "@/components/expert/ExpertDetail";
 import RelatedExperts from "@/components/expert/RelatedExperts";
+import Contact from "@/components/ui/Contact";
+import Footer from "@/components/ui/Footer";
 import { getPublicExpert } from "@/lib/api";
-import {
-  expertSlug,
-  featuredExperts,
-  getExpertBySlug,
-} from "@/lib/experts";
+import { getExpertById } from "@/lib/experts";
 
 type SectionWithGridProps = {
   color: string;
-  bg?: string;
   children: ReactNode;
 };
 
@@ -29,19 +25,13 @@ function SectionWithGrid({ color, children }: SectionWithGridProps) {
   );
 }
 
-type SeekerExpertPageProps = {
-  params: Promise<{ slug: string }>;
+type PublicExpertPageProps = {
+  params: Promise<{ expertId: string }>;
 };
 
-export function generateStaticParams() {
-  return featuredExperts.map((expert) => ({
-    slug: expertSlug(expert.name),
-  }));
-}
-
-export async function generateMetadata({ params }: SeekerExpertPageProps) {
-  const { slug } = await params;
-  const expert = (await getPublicExpert(slug)) ?? getExpertBySlug(slug);
+export async function generateMetadata({ params }: PublicExpertPageProps) {
+  const { expertId } = await params;
+  const expert = (await getPublicExpert(expertId)) ?? getExpertById(expertId);
 
   if (!expert) {
     return {
@@ -50,26 +40,32 @@ export async function generateMetadata({ params }: SeekerExpertPageProps) {
   }
 
   return {
-    title: `${expert.name} — Jatayu`,
+    title: `${expert.name} — Jatayu Expert Profile`,
     description: expert.desc,
   };
 }
 
-export default async function SeekerExpertPage({ params }: SeekerExpertPageProps) {
-  const { slug } = await params;
-  const expert = (await getPublicExpert(slug)) ?? getExpertBySlug(slug);
+export default async function PublicExpertDetailPage({ params }: PublicExpertPageProps) {
+  const { expertId } = await params;
+  const expert = (await getPublicExpert(expertId)) ?? getExpertById(expertId);
 
   if (!expert) {
     notFound();
   }
 
   return (
-    <main id="expert-detail-seeker">
+    <main id="expert-detail">
       <SectionWithGrid color="#fff">
-        <ExpertDetail expert={expert} seeker />
+        <ExpertDetail expert={expert} />
       </SectionWithGrid>
       <SectionWithGrid color="#17191E">
-        <RelatedExperts expert={expert} seeker />
+        <RelatedExperts expert={expert} />
+      </SectionWithGrid>
+      <SectionWithGrid color="#FF551D">
+        <Contact />
+      </SectionWithGrid>
+      <SectionWithGrid color="#17191E">
+        <Footer />
       </SectionWithGrid>
     </main>
   );

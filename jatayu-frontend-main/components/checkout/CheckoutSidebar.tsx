@@ -7,7 +7,6 @@ import {
   formatCurrency,
   formatExperience,
   formatSessions,
-  shortTopicLabel,
 } from "./checkoutUtils";
 import styles from "./CheckoutSidebar.module.css";
 
@@ -18,6 +17,7 @@ export type CheckoutSidebarProps = {
   scheduleLabel: string;
   breakdown: BookingBreakdown;
   onConfirmBooking?: () => void;
+  isProcessingPayment?: boolean;
 };
 
 export default function CheckoutSidebar({
@@ -27,9 +27,10 @@ export default function CheckoutSidebar({
   scheduleLabel,
   breakdown,
   onConfirmBooking,
+  isProcessingPayment = false,
 }: CheckoutSidebarProps) {
   const expertSubtitle = expert.role.split("|")[0]?.trim() ?? expert.role;
-  const expertTags = expert.topics.slice(0, 3).map(shortTopicLabel);
+  const categoryLabel = expert.category || expert.topics[0] || "General";
 
   const renderExpertSummary = () => (
     <>
@@ -46,8 +47,8 @@ export default function CheckoutSidebar({
         <div className={styles.expertInfo}>
           <p className={styles.expertName}>{expert.name}</p>
           <p className={styles.expertRole}>{expertSubtitle}</p>
-          {expertTags[0] && (
-            <span className={styles.expertCategory}>{expertTags[0]}</span>
+          {categoryLabel && (
+            <span className={styles.expertCategory}>{categoryLabel}</span>
           )}
         </div>
       </div>
@@ -136,11 +137,13 @@ export default function CheckoutSidebar({
             {onConfirmBooking && (
               <ContinueButton
                 label={
-                  breakdown.walletApplied > 0 && breakdown.total === 0
+                  isProcessingPayment
+                    ? "Processing..."
+                    : breakdown.walletApplied > 0 && breakdown.total === 0
                     ? "Confirm Booking"
                     : `Confirm and Pay ${consultationFee > 0 ? formatCurrency(breakdown.total) : "—"}`
                 }
-                disabled={false}
+                disabled={isProcessingPayment}
                 className={styles.confirmPayBtn}
                 onClick={onConfirmBooking}
               />

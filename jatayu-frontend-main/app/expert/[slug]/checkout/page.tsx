@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Checkout from "@/components/checkout/Checkout";
 import Footer from "@/components/ui/Footer";
+import { getPublicExpert } from "@/lib/api";
 import {
   expertSlug,
   featuredExperts,
@@ -39,7 +40,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: CheckoutPageProps) {
   const { slug } = await params;
-  const expert = getExpertBySlug(slug);
+  const expert = (await getPublicExpert(slug)) ?? getExpertBySlug(slug);
 
   if (!expert) {
     return {
@@ -55,7 +56,7 @@ export async function generateMetadata({ params }: CheckoutPageProps) {
 
 export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const { slug } = await params;
-  const expert = getExpertBySlug(slug);
+  const expert = (await getPublicExpert(slug)) ?? getExpertBySlug(slug);
 
   if (!expert) {
     notFound();

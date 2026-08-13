@@ -30,7 +30,54 @@ type ExpertDetailProps = {
 };
 
 export default function ExpertDetail({ expert, seeker = false }: ExpertDetailProps) {
-  const [selectedOption, setSelectedOption] = useState<string>("text");
+  const availableFormats = useMemo(() => {
+    if (expert.formats && expert.formats.length > 0) {
+      return expert.formats;
+    }
+    if (expert.formatPrices && Object.keys(expert.formatPrices).length > 0) {
+      return Object.keys(expert.formatPrices);
+    }
+    return ["text", "video", "live"];
+  }, [expert.formats, expert.formatPrices]);
+
+  const allBookingOptions = useMemo(
+    () => [
+      {
+        id: "text",
+        title: "Text Answer",
+        icon: MessageSquare,
+        desc: "Ask a detailed question. Get a comprehensive text/voice response.",
+        sla: "24 Hours",
+        followUp: "1 Follow-up",
+      },
+      {
+        id: "video",
+        title: "Video Call",
+        icon: Video,
+        desc: "Ask a detailed question. Get a comprehensive text/voice response.",
+        sla: "24 Hours",
+        followUp: "1 Follow-up",
+      },
+      {
+        id: "live",
+        title: "Live Video Call",
+        icon: Phone,
+        desc: "Ask a detailed question. Get a comprehensive text/voice response.",
+        sla: "24 Hours",
+        followUp: "1 Follow-up",
+      },
+    ],
+    []
+  );
+
+  const bookingOptions = useMemo(
+    () => allBookingOptions.filter((opt) => availableFormats.includes(opt.id)),
+    [allBookingOptions, availableFormats]
+  );
+
+  const [selectedOption, setSelectedOption] = useState<string>(
+    () => bookingOptions[0]?.id || "video"
+  );
   const { bookmarkedExperts, toggleBookmark } = useBookmarks();
   const isBookmarked = bookmarkedExperts.has(expert.name);
   const relatedExperts = getRelatedExperts(expert);
@@ -60,33 +107,6 @@ export default function ExpertDetail({ expert, seeker = false }: ExpertDetailPro
   const nameParts = expert.name.split(" ");
   const firstName = nameParts[0] || "";
   const lastName = nameParts.slice(1).join(" ") || "";
-
-  const bookingOptions = [
-    {
-      id: "text",
-      title: "Text Answer",
-      icon: MessageSquare,
-      desc: "Ask a detailed question. Get a comprehensive text/voice response.",
-      sla: "24 Hours",
-      followUp: "1 Follow-up",
-    },
-    {
-      id: "video",
-      title: "Video Answer",
-      icon: Video,
-      desc: "Ask a detailed question. Get a comprehensive text/voice response.",
-      sla: "24 Hours",
-      followUp: "1 Follow-up",
-    },
-    {
-      id: "live",
-      title: "Live Video Call",
-      icon: Phone,
-      desc: "Ask a detailed question. Get a comprehensive text/voice response.",
-      sla: "24 Hours",
-      followUp: "1 Follow-up",
-    },
-  ];
 
   return (
     <>
@@ -171,13 +191,21 @@ export default function ExpertDetail({ expert, seeker = false }: ExpertDetailPro
                 <div className={styles.ratingItem}>
                   <Star size={16} fill="#EAB308" stroke="#EAB308" />
                   <span className={styles.ratingText}>
-                    <strong>{expert.rating}</strong> ({expert.reviewsCount || 120} reviews)
+                    <strong>{expert.rating ?? 0}</strong>
+                    {expert.reviewsCount !== undefined
+                      ? ` (${expert.reviewsCount} ${expert.reviewsCount === 1 ? "review" : "reviews"})`
+                      : " (New Expert)"}
                   </span>
                 </div>
                 <div className={styles.ratingItem}>
                   <Briefcase size={16} className={styles.statsIcon} />
                   <span className={styles.ratingText}>
-                    <strong>{expert.sessionsCompleted || "350+ Sessions Completed"}</strong>
+                    <strong>
+                      {expert.sessionsCompleted ||
+                        (expert.experienceLevel
+                          ? `${expert.experienceLevel.charAt(0).toUpperCase() + expert.experienceLevel.slice(1)} Expert`
+                          : "Verified Expert")}
+                    </strong>
                   </span>
                 </div>
               </div>
@@ -187,21 +215,29 @@ export default function ExpertDetail({ expert, seeker = false }: ExpertDetailPro
                   <div className={styles.metaIconBadge}>
                     <Languages size={13} />
                   </div>
-                  <span className={styles.metaVal}>{expert.languages.join(", ")}</span>
+                  <span className={styles.metaVal}>
+                    {expert.languages && expert.languages.length > 0
+                      ? expert.languages.join(", ")
+                      : "English"}
+                  </span>
                 </div>
                 <div className={styles.metaItem}>
                   <div className={styles.metaIconBadge}>
                     <MapPin size={13} />
                   </div>
-                  <span className={styles.metaVal}>{expert.location || "Mumbai, India"}</span>
+                  <span className={styles.metaVal}>{expert.location || "Remote"}</span>
                 </div>
-                <div className={`${styles.metaItem} ${styles.metaItemGreen}`}>
-                  <Zap size={14} fill="currentColor" />
-                  <span className={styles.metaVal}>Replies in {expert.replyTime}</span>
-                </div>
+                {expert.replyTime ? (
+                  <div className={`${styles.metaItem} ${styles.metaItemGreen}`}>
+                    <Zap size={14} fill="currentColor" />
+                    <span className={styles.metaVal}>Replies in {expert.replyTime}</span>
+                  </div>
+                ) : null}
               </div>
 
-              <p className={styles.bioText}>{expert.bio || expert.desc}</p>
+              {(expert.bio || expert.desc) && (
+                <p className={styles.bioText}>{expert.bio || expert.desc}</p>
+              )}
             </div>
 
             {/* COLUMN 4: Booking Panel and Book Now CTA */}
@@ -250,7 +286,15 @@ export default function ExpertDetail({ expert, seeker = false }: ExpertDetailPro
                               <span className={styles.optionTitle}>{opt.title}</span>
                             </div>
                             <span className={styles.optionPrice}>
-                              ₹{expert.price.toLocaleString("en-IN")}
+                              ₹{(() => {
+                                if (expert.formatPrices && expert.formatPrices[opt.id]) {
+                                  const p = Number(expert.formatPrices[opt.id]);
+                                  if (!isNaN(p) && p > 0) return p.toLocaleString("en-IN");
+                                }
+                                if (opt.id === "video") return Math.round(expert.price * 1.5).toLocaleString("en-IN");
+                                if (opt.id === "live") return Math.round(expert.price * 2.5).toLocaleString("en-IN");
+                                return expert.price.toLocaleString("en-IN");
+                              })()}
                             </span>
                           </div>
 
@@ -323,7 +367,9 @@ export default function ExpertDetail({ expert, seeker = false }: ExpertDetailPro
             {expert.reviews && expert.reviews.length > 0 && (
               <div className={styles.reviewsSection}>
                 <div className={styles.reviewsHeader}>
-                  <h2 className={styles.reviewsTitle}>Reviews ({expert.reviewsCount || 120})</h2>
+                  <h2 className={styles.reviewsTitle}>
+                    Reviews ({expert.reviewsCount ?? expert.reviews.length})
+                  </h2>
                   <div className={styles.reviewsRatingSummary}>
                     <Star size={20} fill="#EAB308" stroke="#EAB308" />
                     <span className={styles.reviewsRatingSummaryText}>{expert.rating}</span>

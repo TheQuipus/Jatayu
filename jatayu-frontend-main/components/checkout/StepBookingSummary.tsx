@@ -42,8 +42,12 @@ export default function StepBookingSummary({
   invoiceId,
   breakdown,
 }: StepBookingSummaryProps) {
-  const fullName = [registerFirstName, registerLastName].filter(Boolean).join(" ") || "User";
-  const userPhone = registerPhone ? `+91 ${registerPhone}` : "—";
+  const fullName = [registerFirstName, registerLastName].filter(Boolean).join(" ") || "Priya Sharma";
+  const userPhone = registerPhone
+    ? registerPhone.trim().startsWith("+91")
+      ? registerPhone.trim()
+      : `+91 ${registerPhone.trim()}`
+    : "+91 9898675444";
   const userEmail = registerEmail || MOCK_SEEKER_EMAIL;
 
   return (

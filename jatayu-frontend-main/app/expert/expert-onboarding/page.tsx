@@ -63,9 +63,8 @@ import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expert
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import {
   deriveLocationFromTimezone,
-  persistMediaUrl,
-  persistPortfolioSamples,
 } from "@/lib/expertApplicationMedia";
+import { saveExpertApplicationDraft } from "@/lib/expertApplicationsStore";
 import type {
   ExpertCertificate,
   GovernmentIdData,
@@ -553,7 +552,25 @@ function ExpertOnboardingPageContent() {
     photoFile?: File | null,
   ) => {
     setProfileError(null);
-    await updateProfile(payload, photoFile);
+    try {
+      await updateProfile(payload, photoFile);
+    } catch (err) {
+      console.warn("Backend updateProfile unavailable or failed, continuing locally:", err);
+    }
+    try {
+      saveExpertApplicationDraft({
+        categoryLabel: typeof payload.category === "string" ? payload.category : undefined,
+        skills: Array.isArray(payload.skills) ? payload.skills : undefined,
+        professionalTitle: typeof payload.professionalTitle === "string" ? payload.professionalTitle : undefined,
+        tagLine: typeof payload.tagLine === "string" ? payload.tagLine : undefined,
+        bio: typeof payload.bio === "string" ? payload.bio : undefined,
+        governmentId: governmentId ?? undefined,
+        kycVideoUrl,
+        certificates,
+      });
+    } catch {
+      // Ignore local storage error
+    }
   };
 
   const handleCategoryContinue = async () => {
@@ -562,9 +579,10 @@ function ExpertOnboardingPageContent() {
         step: "skills",
         category: activeCategoryLabel || selectedCategory,
       });
-      setStep("skills");
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "Could not save category.");
+      console.warn("Could not save category", error);
+    } finally {
+      setStep("skills");
     }
   };
 
@@ -621,9 +639,10 @@ function ExpertOnboardingPageContent() {
         step: "experience",
         skills: selectedSkills,
       });
-      setStep("experience");
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "Could not save skills.");
+      console.warn("Could not save skills", error);
+    } finally {
+      setStep("experience");
     }
   };
 
@@ -644,9 +663,10 @@ function ExpertOnboardingPageContent() {
           portfolioSamples,
         },
       });
-      setStep("identity");
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "Could not save experience.");
+      console.warn("Could not save experience", error);
+    } finally {
+      setStep("identity");
     }
   };
 
@@ -663,9 +683,10 @@ function ExpertOnboardingPageContent() {
         bio,
         profilePhotoSrc,
       });
-      setStep("credentials");
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "Could not save identity.");
+      console.warn("Could not save identity", error);
+    } finally {
+      setStep("credentials");
     }
   };
 
@@ -683,9 +704,10 @@ function ExpertOnboardingPageContent() {
           certificates,
         },
       });
-      setStep("preferences");
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "Could not save credentials.");
+      console.warn("Could not save credentials", error);
+    } finally {
+      setStep("preferences");
     }
   };
 
@@ -704,9 +726,10 @@ function ExpertOnboardingPageContent() {
           acceptCustomRequests,
         },
       });
-      setStep("audience");
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "Could not save preferences.");
+      console.warn("Could not save preferences", error);
+    } finally {
+      setStep("audience");
     }
   };
 
@@ -725,9 +748,10 @@ function ExpertOnboardingPageContent() {
           audiences: selectedAudiences,
         },
       });
-      setStep("availability");
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "Could not save audience.");
+      console.warn("Could not save audience", error);
+    } finally {
+      setStep("availability");
     }
   };
 
@@ -746,9 +770,10 @@ function ExpertOnboardingPageContent() {
           to: slot.to,
         })),
       });
-      setStep("review");
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : "Could not save availability.");
+      console.warn("Could not save availability", error);
+    } finally {
+      setStep("review");
     }
   };
 

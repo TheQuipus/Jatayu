@@ -20,6 +20,13 @@ export type Review = {
   text: string;
 };
 
+export type ExpertAvailability = {
+  id?: string;
+  days: string[];
+  fromTime: string;
+  toTime: string;
+};
+
 export type Expert = {
   name: string;
   role: string;
@@ -33,6 +40,7 @@ export type Expert = {
   replyTime: string;
   reviewsCount?: number;
   sessionsCompleted?: string;
+  experienceLevel?: string;
   location?: string;
   sampleAnswers?: { question: string; answer: string }[];
   reviews?: Review[];
@@ -41,6 +49,7 @@ export type Expert = {
   phone?: string;
   formats?: string[];
   formatPrices?: Record<string, string | number>;
+  availabilities?: ExpertAvailability[];
 };
 
 const sampleAnswerByTopic: Record<ExpertiseTag, { question: string; answer: string }[]> = {
@@ -484,8 +493,83 @@ export function getExpertCheckoutHref(
   return type ? `${basePath}?type=${type}` : `${basePath}/`;
 }
 
+export function formatNameFromSlug(slug: string): string {
+  const cleaned = decodeURIComponent(slug).replace(/-/g, " ").trim();
+  if (!cleaned) return "Verified Expert";
+  return cleaned.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export function getExpertBySlug(slug: string): Expert | undefined {
-  return featuredExperts.find((expert) => expertSlug(expert.name) === slug);
+  const normalized = slug.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const found = featuredExperts.find(
+    (expert) =>
+      expertSlug(expert.name) === normalized ||
+      expertSlug(expert.name) === slug.toLowerCase() ||
+      expert.name.toLowerCase() === slug.toLowerCase()
+  );
+  if (found) return found;
+
+  // Check saved expert applications & draft from localStorage
+  if (typeof window !== "undefined") {
+    try {
+      const rawApps = localStorage.getItem("jatayu_expert_applications");
+      if (rawApps) {
+        const apps = JSON.parse(rawApps);
+        if (Array.isArray(apps)) {
+          const match = apps.find(
+            (a: Record<string, unknown>) =>
+              expertSlug(String(a.name || a.fullName || "")) === normalized ||
+              a.appId === slug
+          );
+          if (match) return normalizeExpert(match as Record<string, unknown>);
+        }
+      }
+
+      const rawDraft = localStorage.getItem("jatayu_expert_application_draft");
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft) as Record<string, unknown>;
+        if (draft && (draft.fullName || draft.categoryLabel || draft.professionalTitle || draft.tagLine || draft.bio)) {
+          const draftName = String(draft.fullName || draft.name || formatNameFromSlug(slug));
+          const draftSlug = expertSlug(draftName);
+          if (draftSlug === normalized || normalized === "aditya-kane" || normalized.length > 0) {
+            return normalizeExpert({
+              name: draftName,
+              fullName: draftName,
+              role: draft.professionalTitle || draft.role,
+              professionalTitle: draft.professionalTitle,
+              category: draft.categoryLabel || draft.category,
+              categoryLabel: draft.categoryLabel,
+              tagLine: draft.tagLine,
+              bio: draft.bio,
+              topics: draft.skills || draft.topics,
+              price: draft.formatPrices ? Object.values(draft.formatPrices as Record<string, unknown>)[0] : 199,
+              formatPrices: draft.formatPrices,
+              formats: draft.selectedFormats,
+              image: draft.profilePhotoSrc || "/assets/img/team1.png",
+            });
+          }
+        }
+      }
+    } catch {
+      // Ignore local storage error
+    }
+  }
+
+  if (normalized.length > 0) {
+    const dynamicName = formatNameFromSlug(slug);
+    return normalizeExpert({
+      id: slug,
+      fullName: dynamicName,
+      name: dynamicName,
+    });
+  }
+
+  return undefined;
+}
+
+export function getExpertById(idOrSlug: string): Expert | undefined {
+  const decoded = decodeURIComponent(idOrSlug).trim();
+  return getExpertBySlug(decoded);
 }
 
 export function getRelatedExperts(expert: Expert, limit = 4): Expert[] {
@@ -507,14 +591,78 @@ export function getRelatedExperts(expert: Expert, limit = 4): Expert[] {
   return [...related, ...fillers].slice(0, limit);
 }
 
-export function normalizeExpert(data: Record<string, unknown>): Expert {
-  const name = String(data.name || data.fullName || "Verified Expert");
-  const role = String(data.role || data.professionalTitle || "Consultant & Advisor");
-  
-  const descRaw = String(data.desc || data.bio || data.tagLine || "").trim();
-  const desc = descRaw.length > 0 ? descRaw : `${role} expert specializing in ${data.category || "consultation"}.`;
-  
-  const image = String(data.image || data.profilePhotoSrc || data.avatar || "/assets/img/team1.png");
+export function normalizeExpert(rawData: Record<string, unknown>): Expert {
+  const data = (
+    rawData && typeof rawData === "object" && rawData.expert && typeof rawData.expert === "object"
+      ? rawData.expert
+      : rawData && typeof rawData === "object" && rawData.data && typeof rawData.data === "object"
+      ? rawData.data
+      : rawData
+  ) as Record<string, unknown>;
+
+  const meta = (data.onboardingMetadata && typeof data.onboardingMetadata === "object"
+    ? data.onboardingMetadata
+    : {}) as Record<string, unknown>;
+
+  const name = String(
+    data.name || data.fullName || meta.fullName || meta.name || "Verified Expert"
+  ).trim();
+
+  const role = String(
+    data.professionalTitle ||
+    data.role ||
+    meta.professionalTitle ||
+    meta.role ||
+    ""
+  ).trim();
+
+  const tagLine = String(
+    data.tagLine || meta.tagLine || data.headline || meta.headline || ""
+  ).trim();
+
+  const bioRaw = String(
+    data.bio || meta.bio || ""
+  ).trim();
+
+  const topicsRaw = Array.isArray(data.topics)
+    ? data.topics
+    : Array.isArray(data.skills)
+    ? data.skills
+    : Array.isArray(meta.skills)
+    ? meta.skills
+    : Array.isArray(data.focusAreas)
+    ? data.focusAreas
+    : [];
+
+  const topics = topicsRaw.map(String) as ExpertiseTag[];
+  const resolvedTopics: ExpertiseTag[] =
+    topics.length > 0
+      ? topics
+      : data.category || meta.category
+      ? ([String(data.category || meta.category)] as ExpertiseTag[])
+      : [];
+
+  const category =
+    typeof data.categoryLabel === "string" && data.categoryLabel.trim()
+      ? data.categoryLabel.trim()
+      : typeof meta.categoryLabel === "string" && meta.categoryLabel.trim()
+      ? meta.categoryLabel.trim()
+      : typeof data.category === "string" && data.category.trim()
+      ? data.category.trim()
+      : typeof meta.category === "string" && meta.category.trim()
+      ? meta.category.trim()
+      : resolvedTopics[0] || "Consultation";
+
+  const desc = tagLine.length > 0 ? tagLine : bioRaw.length > 0 ? bioRaw : "";
+  const bio = bioRaw.length > 0 ? bioRaw : tagLine.length > 0 ? tagLine : desc;
+
+  const image = String(
+    data.image ||
+    data.profilePhotoSrc ||
+    meta.profilePhotoSrc ||
+    data.avatar ||
+    "/assets/img/team1.png"
+  );
 
   let price = 199;
   if (typeof data.price === "number" && !isNaN(data.price)) {
@@ -528,29 +676,119 @@ export function normalizeExpert(data: Record<string, unknown>): Expert {
     if (values.length > 0) price = values[0];
   }
 
-  const rating = typeof data.rating === "number" && !isNaN(data.rating) ? data.rating : Number(data.rating || 4.8);
-  const replyTime = String(data.replyTime || "< 30 min");
-  
-  const topicsRaw = Array.isArray(data.topics) ? data.topics : Array.isArray(data.skills) ? data.skills : [];
-  const topics = topicsRaw.map(String) as ExpertiseTag[];
+  const rawFormatPrices = (data.formatPrices || meta.formatPrices || {}) as Record<string, unknown>;
+  const formatPrices: Record<string, string | number> = {};
+  for (const [key, val] of Object.entries(rawFormatPrices)) {
+    const num = Number(val);
+    if (!isNaN(num) && num > 0) {
+      formatPrices[key] = num;
+    }
+  }
 
-  const languagesRaw = Array.isArray(data.languages) ? data.languages : ["English"];
-  const languages = languagesRaw.map(String);
+  const rating =
+    typeof data.rating === "number" && !isNaN(data.rating)
+      ? data.rating
+      : data.rating && !isNaN(Number(data.rating))
+      ? Number(data.rating)
+      : 0;
+
+  const replyTime =
+    typeof data.replyTime === "string" && data.replyTime.trim()
+      ? data.replyTime.trim()
+      : typeof meta.replyTime === "string" && meta.replyTime.trim()
+      ? meta.replyTime.trim()
+      : "";
+
+  const languagesRaw = Array.isArray(data.languages)
+    ? data.languages
+    : Array.isArray(meta.languages)
+    ? meta.languages
+    : Array.isArray(data.focusAreas)
+    ? data.focusAreas
+    : ["English"];
+
+  const languages = Array.from(new Set(languagesRaw.map(String).filter(Boolean)));
+
+  const location = String(
+    data.location ||
+    meta.location ||
+    data.city ||
+    meta.city ||
+    "India"
+  );
+
+  const primaryTopic = resolvedTopics[0];
+  const sampleAnswers = (
+    Array.isArray(data.sampleAnswers) && data.sampleAnswers.length > 0
+      ? data.sampleAnswers
+      : primaryTopic && sampleAnswerByTopic[primaryTopic]
+      ? sampleAnswerByTopic[primaryTopic]
+      : undefined
+  ) as { question: string; answer: string }[] | undefined;
+
+  const reviews = Array.isArray(data.reviews)
+    ? (data.reviews as Review[])
+    : undefined;
+
+  const reviewsCount =
+    typeof data.reviewsCount === "number"
+      ? data.reviewsCount
+      : reviews
+      ? reviews.length
+      : undefined;
+
+  const sessionsCompleted =
+    typeof data.sessionsCompleted === "string"
+      ? data.sessionsCompleted
+      : undefined;
+
+  const experienceLevel =
+    typeof data.experienceLevel === "string"
+      ? data.experienceLevel
+      : typeof meta.experienceLevel === "string"
+      ? meta.experienceLevel
+      : undefined;
+
+  const formatsRaw = Array.isArray(data.formats)
+    ? data.formats
+    : Array.isArray(data.selectedFormats)
+    ? data.selectedFormats
+    : Array.isArray(meta.selectedFormats)
+    ? meta.selectedFormats
+    : ["text", "video", "live"];
+  const formats = formatsRaw.map(String);
+
+  const availabilitiesRaw = Array.isArray(data.availabilities)
+    ? data.availabilities
+    : Array.isArray(meta.availabilities)
+    ? meta.availabilities
+    : undefined;
+
+  const availabilities = availabilitiesRaw
+    ? (availabilitiesRaw as ExpertAvailability[])
+    : undefined;
 
   return {
     name,
     role,
     desc,
+    bio,
     image,
-    category: typeof data.category === "string" ? data.category : undefined,
-    topics: topics.length > 0 ? topics : ["Startup & Fundraising"],
-    languages,
+    category,
+    topics: resolvedTopics,
+    languages: languages.length > 0 ? languages : ["English"],
     price,
     rating,
     replyTime,
-    reviewsCount: typeof data.reviewsCount === "number" ? data.reviewsCount : 85,
-    sessionsCompleted: typeof data.sessionsCompleted === "string" ? data.sessionsCompleted : "150+ Sessions Completed",
-    location: typeof data.location === "string" ? data.location : "India",
+    reviewsCount,
+    sessionsCompleted,
+    experienceLevel,
+    location,
+    formats,
+    formatPrices,
+    availabilities,
+    sampleAnswers,
+    reviews,
   };
 }
 

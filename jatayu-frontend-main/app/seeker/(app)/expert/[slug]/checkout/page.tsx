@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Checkout from "@/components/checkout/Checkout";
+import { getPublicExpert } from "@/lib/api";
 import {
   expertSlug,
   featuredExperts,
@@ -19,7 +20,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: SeekerCheckoutPageProps) {
   const { slug } = await params;
-  const expert = getExpertBySlug(slug);
+  const expert = (await getPublicExpert(slug)) ?? getExpertBySlug(slug);
 
   if (!expert) {
     return {
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: SeekerCheckoutPageProps) {
 
 export default async function SeekerCheckoutPage({ params }: SeekerCheckoutPageProps) {
   const { slug } = await params;
-  const expert = getExpertBySlug(slug);
+  const expert = (await getPublicExpert(slug)) ?? getExpertBySlug(slug);
 
   if (!expert) {
     notFound();

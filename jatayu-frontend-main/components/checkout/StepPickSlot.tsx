@@ -1,8 +1,10 @@
+import type { Expert } from "@/lib/experts";
 import SlotCalendarView from "./SlotCalendarView";
 import StepHeader from "./StepHeader";
 import styles from "./StepPickSlot.module.css";
 
 export type StepPickSlotProps = {
+  expert: Expert;
   selectedDate: string;
   selectedSlot: string;
   onSelectDate: (dateId: string) => void;
@@ -10,6 +12,7 @@ export type StepPickSlotProps = {
 };
 
 export default function StepPickSlot({
+  expert,
   selectedDate,
   selectedSlot,
   onSelectDate,
@@ -24,6 +27,7 @@ export default function StepPickSlot({
 
       <div className={styles.slotStep}>
         <SlotCalendarView
+          availabilities={expert.availabilities}
           selectedDate={selectedDate}
           selectedSlot={selectedSlot}
           onSelectDate={onSelectDate}

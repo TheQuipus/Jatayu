@@ -64,6 +64,8 @@ export function getStoredSeekerProfile(): SeekerProfileData {
       avatar: SEEKER_PROFILE.avatar,
       category: "",
       isPro: SEEKER_PROFILE.isPro,
+      email: SEEKER_PROFILE.email,
+      phone: SEEKER_PROFILE.phone,
     };
   }
 
@@ -76,8 +78,8 @@ export function getStoredSeekerProfile(): SeekerProfileData {
         avatar: parsed.avatar || SEEKER_PROFILE.avatar,
         category: parsed.category || sessionStorage.getItem("jatayu_seeker_category") || "",
         isPro: parsed.isPro ?? SEEKER_PROFILE.isPro,
-        email: parsed.email,
-        phone: parsed.phone,
+        email: parsed.email || SEEKER_PROFILE.email,
+        phone: parsed.phone || SEEKER_PROFILE.phone,
       };
     }
   } catch {
@@ -89,6 +91,8 @@ export function getStoredSeekerProfile(): SeekerProfileData {
     avatar: SEEKER_PROFILE.avatar,
     category: sessionStorage.getItem("jatayu_seeker_category") || "",
     isPro: SEEKER_PROFILE.isPro,
+    email: SEEKER_PROFILE.email,
+    phone: SEEKER_PROFILE.phone,
   };
 }
 
@@ -114,8 +118,8 @@ export function mapBackendSeekerToProfile(
     avatar: data.profilePhotoSrc || data.avatarUrl || data.avatar || SEEKER_PROFILE.avatar,
     category: data.category || data.selectedCategory || data.categoryName || "",
     isPro: data.isPro ?? SEEKER_PROFILE.isPro,
-    email: data.email,
-    phone: data.phone,
+    email: data.email || SEEKER_PROFILE.email,
+    phone: data.phone || SEEKER_PROFILE.phone,
   };
 }
 

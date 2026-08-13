@@ -19,6 +19,19 @@ export default function StepConsultationType({
   consultationType,
   onSelectConsultationType,
 }: StepConsultationTypeProps) {
+  const availableFormats =
+    expert.formats && expert.formats.length > 0
+      ? expert.formats
+      : expert.formatPrices
+      ? Object.keys(expert.formatPrices)
+      : ["text", "video", "shoutout", "group"];
+
+  const filteredTypes = checkoutConsultationTypes.filter((opt) =>
+    availableFormats.includes(opt.id)
+  );
+
+  const displayTypes = filteredTypes.length > 0 ? filteredTypes : checkoutConsultationTypes;
+
   return (
     <div className={styles.stepContent}>
       <StepHeader
@@ -27,8 +40,14 @@ export default function StepConsultationType({
       />
 
       <div className={styles.consultationGrid}>
-        {checkoutConsultationTypes.map((option) => {
-          const price = getConsultationPrice(expert.price, option.id);
+        {displayTypes.map((option) => {
+          let price = expert.price;
+          if (expert.formatPrices && expert.formatPrices[option.id]) {
+            const p = Number(expert.formatPrices[option.id]);
+            if (!isNaN(p) && p > 0) price = p;
+          } else {
+            price = getConsultationPrice(expert.price, option.id);
+          }
           const isActive = consultationType === option.id;
 
           return (

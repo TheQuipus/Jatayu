@@ -153,9 +153,16 @@ export default function CredentialsStep({
   const [certificateEntries, setCertificateEntries] = useState<CertificateEntry[]>(() =>
     certificatesToEntries(certificates),
   );
+  const [validationError, setValidationError] = useState<string | null>(null);
   const hasKycVideo = Boolean(kycVideoSrc);
   const hasGovernmentId = Boolean(selectedIdType) && Boolean(idFront);
-  const canContinue = hasKycVideo && hasGovernmentId;
+  const canContinue = hasGovernmentId || hasKycVideo;
+
+  useEffect(() => {
+    if (canContinue) {
+      setValidationError(null);
+    }
+  }, [canContinue]);
 
   useEffect(() => {
     onStepCompleteChange?.(5, canContinue);
@@ -308,6 +315,22 @@ export default function CredentialsStep({
   };
 
   const handleContinue = () => {
+    if (!canContinue) {
+      if (!selectedIdType) {
+        setValidationError("Please select a Government ID type (Aadhaar, PAN, Passport, etc.).");
+      } else if (!idFront) {
+        setValidationError("Please upload the front photo of your Government ID document.");
+      } else {
+        setValidationError("Please upload your Government ID front photo or complete video verification.");
+      }
+      return;
+    }
+    setValidationError(null);
+    onContinue();
+  };
+
+  const handleSkip = () => {
+    setValidationError(null);
     onContinue();
   };
 
@@ -579,6 +602,12 @@ export default function CredentialsStep({
         </div>
       </div>
 
+      {validationError && (
+        <p role="alert" style={{ color: "#ff6b6b", textAlign: "center", margin: "12px 24px 0 24px", fontSize: "14px", fontWeight: 500 }}>
+          {validationError}
+        </p>
+      )}
+
       <div className={shared.onboardingFooter}>
         <div className={shared.footerLeft}>
           <div className={shared.avatarMiniWrap}>
@@ -600,10 +629,10 @@ export default function CredentialsStep({
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
           </button>
-          <button type="button" className={shared.textBtn} onClick={handleContinue}>
+          <button type="button" className={shared.textBtn} onClick={handleSkip}>
             Skip
           </button>
-          <ContinueButton onClick={handleContinue} disabled={!canContinue} />
+          <ContinueButton onClick={handleContinue} />
         </div>
       </div>
     </section>

@@ -4,6 +4,7 @@ import ExpertDetail from "@/components/expert/ExpertDetail";
 import RelatedExperts from "@/components/expert/RelatedExperts";
 import Contact from "@/components/ui/Contact";
 import Footer from "@/components/ui/Footer";
+import { getPublicExpert } from "@/lib/api";
 import {
   expertSlug,
   featuredExperts,
@@ -40,7 +41,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: ExpertDetailPageProps) {
   const { slug } = await params;
-  const expert = getExpertBySlug(slug);
+  const expert = (await getPublicExpert(slug)) ?? getExpertBySlug(slug);
 
   if (!expert) {
     return {
@@ -56,7 +57,7 @@ export async function generateMetadata({ params }: ExpertDetailPageProps) {
 
 export default async function ExpertDetailPage({ params }: ExpertDetailPageProps) {
   const { slug } = await params;
-  const expert = getExpertBySlug(slug);
+  const expert = (await getPublicExpert(slug)) ?? getExpertBySlug(slug);
 
   if (!expert) {
     notFound();
