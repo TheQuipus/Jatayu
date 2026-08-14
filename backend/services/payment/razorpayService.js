@@ -58,3 +58,8 @@ export async function storeRazorpayWebhookEvent({ eventId, eventType, payload })
     throw error;
   }
 }
+
+export async function updateRazorpayWebhookEvent(event, changes) {
+  await event.update(changes);
+  return event;
+}

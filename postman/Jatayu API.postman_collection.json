@@ -15,6 +15,12 @@
     { "key": "razorpayKeyId", "value": "" },
     { "key": "razorpayWebhookEventId", "value": "evt_postman_001" },
     { "key": "razorpayWebhookSecret", "value": "" },
+    { "key": "bookingId", "value": "" },
+    { "key": "razorpayOrderId", "value": "" },
+    { "key": "razorpayPaymentId", "value": "" },
+    { "key": "razorpayPaymentSignature", "value": "" },
+    { "key": "bookingStartAt", "value": "" },
+    { "key": "bookingIdempotencyKey", "value": "" },
     { "key": "otp", "value": "123456" }
   ],
   "item": [
@@ -68,6 +74,46 @@
       ]
     },
     {
+      "name": "Seeker Expert Booking",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{seekerToken}}", "type": "string" }] },
+      "item": [
+        {
+          "name": "Get Expert Booking Options",
+          "request": {
+            "method": "GET",
+            "description": "Returns authoritative formats, prices, weekly availability, timezone, and occupied slots. expertId may also be the expert name slug.",
+            "url": "{{baseUrl}}/api/seeker/experts/{{expertId}}/booking-options?days=28"
+          }
+        },
+        {
+          "name": "Create Booking and Razorpay Order",
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["const bookingStartAt = pm.environment.get('bookingStartAt') || pm.collectionVariables.get('bookingStartAt');", "if (!bookingStartAt) {", "  throw new Error('Set bookingStartAt to an available ISO timestamp, for example 2026-08-17T03:00:00+05:30');", "}", "pm.variables.set('bookingStartAt', bookingStartAt);", "let idempotencyKey = pm.environment.get('bookingIdempotencyKey') || pm.collectionVariables.get('bookingIdempotencyKey');", "if (!idempotencyKey) {", "  idempotencyKey = `booking-${pm.variables.replaceIn('{{$guid}}')}`;", "  pm.collectionVariables.set('bookingIdempotencyKey', idempotencyKey);", "  if (pm.environment.name) pm.environment.set('bookingIdempotencyKey', idempotencyKey);", "}", "pm.variables.set('bookingIdempotencyKey', idempotencyKey);", "console.log('bookingStartAt:', bookingStartAt);", "console.log('bookingIdempotencyKey:', idempotencyKey);"] } },
+            { "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.booking?.id) {", "  pm.collectionVariables.set('bookingId', data.booking.id);", "  if (pm.environment.name) pm.environment.set('bookingId', data.booking.id);", "}", "if (data.razorpayOrder?.id) {", "  pm.collectionVariables.set('razorpayOrderId', data.razorpayOrder.id);", "  if (pm.environment.name) pm.environment.set('razorpayOrderId', data.razorpayOrder.id);", "}"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "description": "Amount is calculated by the backend from the approved expert's format price. scheduledStartAt must fall inside the expert's configured availability.",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"expertId\": \"{{expertId}}\",\n  \"consultationType\": \"video\",\n  \"subject\": \"Career planning consultation\",\n  \"context\": \"I want guidance on the next steps in my career.\",\n  \"scheduledStartAt\": \"{{bookingStartAt}}\",\n  \"useCredits\": false,\n  \"idempotencyKey\": \"{{bookingIdempotencyKey}}\"\n}" },
+            "url": "{{baseUrl}}/api/seeker/bookings/orders"
+          }
+        },
+        {
+          "name": "Verify Razorpay Payment",
+          "request": {
+            "method": "POST",
+            "description": "Call after Razorpay Checkout succeeds, using the three values returned to the browser by Razorpay.",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"razorpayOrderId\": \"{{razorpayOrderId}}\",\n  \"razorpayPaymentId\": \"{{razorpayPaymentId}}\",\n  \"razorpaySignature\": \"{{razorpayPaymentSignature}}\"\n}" },
+            "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}/verify-payment"
+          }
+        },
+        { "name": "List My Bookings", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/bookings" } },
+        { "name": "Get My Booking", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}" } }
+      ]
+    },
+    {
       "name": "Expert Auth",
       "item": [
         {
@@ -105,22 +151,22 @@
       "item": [
         {
           "name": "Register",
-          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.seekerId) pm.collectionVariables.set('seekerId', data.seekerId);"] } }],
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.seekerId) {", "  pm.collectionVariables.set('seekerId', data.seekerId);", "  if (pm.environment.name) pm.environment.set('seekerId', data.seekerId);", "}"] } }],
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Postman Seeker\",\n  \"email\": \"postman.seeker@example.com\",\n  \"password\": \"Password@123\",\n  \"phone\": \"+919999999902\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/register" }
         },
         {
           "name": "Verify OTP",
-          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) pm.collectionVariables.set('seekerToken', data.token);", "if (data.user?.id) pm.collectionVariables.set('seekerId', data.user.id);"] } }],
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) {", "  pm.collectionVariables.set('seekerToken', data.token);", "  if (pm.environment.name) pm.environment.set('seekerToken', data.token);", "}", "if (data.user?.id) {", "  pm.collectionVariables.set('seekerId', data.user.id);", "  if (pm.environment.name) pm.environment.set('seekerId', data.user.id);", "}"] } }],
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"seekerId\": \"{{seekerId}}\",\n  \"code\": \"{{otp}}\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/verify-otp" }
         },
         { "name": "Resend OTP", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"seekerId\": \"{{seekerId}}\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/resend-otp" } },
         {
           "name": "Login",
-          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) pm.collectionVariables.set('seekerToken', data.token);", "if (data.user?.id) pm.collectionVariables.set('seekerId', data.user.id);"] } }],
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) {", "  pm.collectionVariables.set('seekerToken', data.token);", "  if (pm.environment.name) pm.environment.set('seekerToken', data.token);", "}", "if (data.user?.id) {", "  pm.collectionVariables.set('seekerId', data.user.id);", "  if (pm.environment.name) pm.environment.set('seekerId', data.user.id);", "}"] } }],
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"postman.seeker@example.com\",\n  \"password\": \"Password@123\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/login" }
         },
-        { "name": "Google Login (Development Mock)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"mock-google-token\",\n  \"email\": \"google.seeker@example.com\",\n  \"fullName\": \"Google Seeker\",\n  \"googleId\": \"postman-google-seeker\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/google" } },
-        { "name": "LinkedIn Login (Development Mock)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"authCode\": \"mock-linkedin-code\",\n  \"email\": \"linkedin.seeker@example.com\",\n  \"fullName\": \"LinkedIn Seeker\",\n  \"linkedinId\": \"postman-linkedin-seeker\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/linkedin" } },
+        { "name": "Google Login (Development Mock)", "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) { pm.collectionVariables.set('seekerToken', data.token); if (pm.environment.name) pm.environment.set('seekerToken', data.token); }", "if (data.user?.id) { pm.collectionVariables.set('seekerId', data.user.id); if (pm.environment.name) pm.environment.set('seekerId', data.user.id); }"] } }], "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"mock-google-token\",\n  \"email\": \"google.seeker@example.com\",\n  \"fullName\": \"Google Seeker\",\n  \"googleId\": \"postman-google-seeker\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/google" } },
+        { "name": "LinkedIn Login (Development Mock)", "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) { pm.collectionVariables.set('seekerToken', data.token); if (pm.environment.name) pm.environment.set('seekerToken', data.token); }", "if (data.user?.id) { pm.collectionVariables.set('seekerId', data.user.id); if (pm.environment.name) pm.environment.set('seekerId', data.user.id); }"] } }], "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"authCode\": \"mock-linkedin-code\",\n  \"email\": \"linkedin.seeker@example.com\",\n  \"fullName\": \"LinkedIn Seeker\",\n  \"linkedinId\": \"postman-linkedin-seeker\"\n}" }, "url": "{{baseUrl}}/api/seeker-auth/linkedin" } },
         { "name": "Public Config", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker-auth/config" } }
       ]
     },

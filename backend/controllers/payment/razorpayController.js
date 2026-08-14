@@ -1,8 +1,10 @@
 import { getRazorpayPublicConfig } from '../../config/razorpay.js';
 import {
   storeRazorpayWebhookEvent,
+  updateRazorpayWebhookEvent,
   verifyRazorpayWebhookSignature,
 } from '../../services/payment/razorpayService.js';
+import { processBookingWebhook } from '../../services/seeker/bookingService.js';
 
 export function getRazorpayConfig(req, res) {
   return res.status(200).json(getRazorpayPublicConfig());
@@ -32,11 +34,30 @@ export async function receiveRazorpayWebhook(req, res) {
   }
 
   try {
-    const { created } = await storeRazorpayWebhookEvent({
+    const { event, created } = await storeRazorpayWebhookEvent({
       eventId,
       eventType: payload.event,
       payload,
     });
+
+    if (created || event.status === 'failed') {
+      try {
+        const result = await processBookingWebhook(payload);
+        await updateRazorpayWebhookEvent(event, {
+          status: result.processed ? 'processed' : 'ignored',
+          processedAt: new Date(),
+          failureReason: result.reason || null,
+        });
+      } catch (processingError) {
+        await updateRazorpayWebhookEvent(event, {
+          status: 'failed',
+          processedAt: new Date(),
+          failureReason: processingError.message,
+        });
+        console.error('Process Razorpay Booking Webhook Error:', processingError);
+        return res.status(500).json({ message: 'Unable to process Razorpay webhook event' });
+      }
+    }
 
     return res.status(200).json({
       received: true,

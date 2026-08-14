@@ -7,6 +7,8 @@ import Setting from './Setting.js';
 import Admin from './Admin.js';
 import SeekerCreditTransaction from './seeker/SeekerCreditTransaction.js';
 import RazorpayWebhookEvent from './seeker/RazorpayWebhookEvent.js';
+import Booking from './seeker/Booking.js';
+import BookingPayment from './seeker/BookingPayment.js';
 
 // Expert-module relationships (same database connection)
 Expert.hasMany(Credential, { foreignKey: 'expertId', as: 'credentials', onDelete: 'CASCADE' });
@@ -22,6 +24,11 @@ Seeker.hasMany(SeekerCreditTransaction, {
 });
 SeekerCreditTransaction.belongsTo(Seeker, { foreignKey: 'seekerId', as: 'seeker' });
 
+Seeker.hasMany(Booking, { foreignKey: 'seekerId', as: 'bookings', onDelete: 'CASCADE' });
+Booking.belongsTo(Seeker, { foreignKey: 'seekerId', as: 'seeker' });
+Booking.hasMany(BookingPayment, { foreignKey: 'bookingId', as: 'payments', onDelete: 'CASCADE' });
+BookingPayment.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
+
 export {
   expertDb,
   seekerDb,
@@ -35,4 +42,6 @@ export {
   Admin,
   SeekerCreditTransaction,
   RazorpayWebhookEvent,
+  Booking,
+  BookingPayment,
 };
