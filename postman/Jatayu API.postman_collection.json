@@ -64,6 +64,30 @@
       "name": "Public Experts",
       "item": [
         {
+          "name": "List All Approved Experts",
+          "request": {
+            "method": "GET",
+            "description": "Open endpoint. Returns approved experts with pagination and available category, language, price, and response-time filter metadata.",
+            "url": "{{baseUrl}}/api/public/experts?page=1&limit=12"
+          }
+        },
+        {
+          "name": "Search and Filter Approved Experts",
+          "request": {
+            "method": "GET",
+            "description": "Open endpoint filter example. Supported query parameters: search, category, language, minPrice, maxPrice, availability (15, 30, or 120), sort, page, and limit. Category, language, and availability accept comma-separated values.",
+            "url": "{{baseUrl}}/api/public/experts?search=Postman&category=software&minPrice=0&maxPrice=3000&sort=price-asc&page=1&limit=12"
+          }
+        },
+        {
+          "name": "Filter Experts by Language and Availability",
+          "request": {
+            "method": "GET",
+            "description": "Filters experts who speak English and have a stored response time of 30 minutes or less. Experts missing language or response-time metadata are not included.",
+            "url": "{{baseUrl}}/api/public/experts?language=English&availability=30&page=1&limit=12"
+          }
+        },
+        {
           "name": "Get Approved Expert Details",
           "request": {
             "method": "GET",
