@@ -28,6 +28,7 @@ export type ExpertAvailability = {
 };
 
 export type Expert = {
+  id?: string;
   name: string;
   role: string;
   desc: string;
@@ -50,6 +51,7 @@ export type Expert = {
   formats?: string[];
   formatPrices?: Record<string, string | number>;
   availabilities?: ExpertAvailability[];
+  timezone?: string;
 };
 
 const sampleAnswerByTopic: Record<ExpertiseTag, { question: string; answer: string }[]> = {
@@ -769,6 +771,7 @@ export function normalizeExpert(rawData: Record<string, unknown>): Expert {
     : undefined;
 
   return {
+    id: typeof data.id === "string" ? data.id : undefined,
     name,
     role,
     desc,
@@ -787,6 +790,7 @@ export function normalizeExpert(rawData: Record<string, unknown>): Expert {
     formats,
     formatPrices,
     availabilities,
+    timezone: typeof data.timezone === "string" ? data.timezone : undefined,
     sampleAnswers,
     reviews,
   };

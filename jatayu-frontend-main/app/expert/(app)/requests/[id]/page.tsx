@@ -13,7 +13,7 @@ export function generateStaticParams() {
 export default async function RequestDynamicDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }> | { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const resolvedParams = await params;
   return <ExpertRequestDetail requestId={resolvedParams.id} />;

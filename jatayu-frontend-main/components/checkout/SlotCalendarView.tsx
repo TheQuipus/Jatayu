@@ -14,6 +14,7 @@ import {
 import styles from "./SlotCalendarView.module.css";
 
 import type { ExpertAvailability } from "@/lib/experts";
+import { buildScheduledStartAt } from "@/lib/seekerBookingApi";
 
 type CalendarViewMode = "week" | "month";
 
@@ -23,6 +24,10 @@ type SlotCalendarViewProps = {
   selectedSlot: string;
   onSelectDate: (dateId: string) => void;
   onSelectSlot: (slotId: string) => void;
+  onSelectSlotTime: (time: string) => void;
+  occupiedSlots?: { startAt: string; endAt: string }[];
+  timezone?: string;
+  slotDurationMinutes?: number;
 };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -91,7 +96,10 @@ function isDayMatchingAvailabilities(date: Date, availabilities?: ExpertAvailabi
 function getSlotsForDateAndAvailabilities(
   date: Date,
   dateId: string,
-  availabilities?: ExpertAvailability[]
+  availabilities?: ExpertAvailability[],
+  occupiedSlots: { startAt: string; endAt: string }[] = [],
+  timezone = "Asia/Kolkata",
+  slotDurationMinutes = 30,
 ): TimeSlot[] {
   const isMatch = isDayMatchingAvailabilities(date, availabilities);
   if (!isMatch) return [];
@@ -101,24 +109,50 @@ function getSlotsForDateAndAvailabilities(
   }
 
   const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()];
-  const matchingRule = availabilities.find((rule) =>
+  const matchingRules = availabilities.filter((rule) =>
     rule.days.some((d) => d.toLowerCase().slice(0, 3) === dayName.toLowerCase())
   );
-
-  const fromTime = matchingRule?.fromTime || "12:00 AM";
-
-  return [
-    { id: `${dateId}-slot-1`, time: fromTime, status: "available" },
-    { id: `${dateId}-slot-2`, time: "12:15 AM", status: "available" },
-    { id: `${dateId}-slot-3`, time: "12:30 AM", status: "available" },
-    { id: `${dateId}-slot-4`, time: "12:45 AM", status: "available" },
-  ];
+  const parseMinutes = (value: string) => {
+    const match = value.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return null;
+    let hour = Number(match[1]);
+    if (match[3].toUpperCase() === "PM" && hour !== 12) hour += 12;
+    if (match[3].toUpperCase() === "AM" && hour === 12) hour = 0;
+    return hour * 60 + Number(match[2]);
+  };
+  const formatMinutes = (minutes: number) => {
+    const hour24 = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    const period = hour24 >= 12 ? "PM" : "AM";
+    const hour12 = hour24 % 12 || 12;
+    return `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${period}`;
+  };
+  const occupied = new Set(occupiedSlots.map((slot) => new Date(slot.startAt).getTime()));
+  const slots: TimeSlot[] = [];
+  matchingRules.forEach((rule) => {
+    const from = parseMinutes(rule.fromTime);
+    const to = parseMinutes(rule.toTime);
+    if (from === null || to === null) return;
+    for (let minute = from; minute + slotDurationMinutes <= to; minute += slotDurationMinutes) {
+      const time = formatMinutes(minute);
+      const instant = new Date(buildScheduledStartAt(date, time, timezone)).getTime();
+      slots.push({
+        id: `${dateId}-slot-${minute}`,
+        time,
+        status: occupied.has(instant) ? "booked" : "available",
+      });
+    }
+  });
+  return slots;
 }
 
 function buildWeekDays(
   weekStartOffset: number,
   today: Date,
-  availabilities?: ExpertAvailability[]
+  availabilities?: ExpertAvailability[],
+  occupiedSlots?: { startAt: string; endAt: string }[],
+  timezone?: string,
+  slotDurationMinutes?: number,
 ): DayColumn[] {
   return Array.from({ length: 7 }, (_, index) => {
     const offset = weekStartOffset + index;
@@ -133,7 +167,9 @@ function buildWeekDays(
       dateId,
       selectable,
       isToday: isSameDay(date, today),
-      slots: selectable ? getSlotsForDateAndAvailabilities(date, dateId, availabilities) : [],
+      slots: selectable ? getSlotsForDateAndAvailabilities(
+        date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+      ) : [],
     };
   });
 }
@@ -141,7 +177,10 @@ function buildWeekDays(
 function buildMonthCells(
   viewMonth: Date,
   today: Date,
-  availabilities?: ExpertAvailability[]
+  availabilities?: ExpertAvailability[],
+  occupiedSlots?: { startAt: string; endAt: string }[],
+  timezone?: string,
+  slotDurationMinutes?: number,
 ): MonthCell[] {
   const firstOfMonth = startOfMonth(viewMonth);
   const gridStart = new Date(firstOfMonth);
@@ -155,7 +194,9 @@ function buildMonthCells(
     const dayMatches = isDayMatchingAvailabilities(date, availabilities);
     const selectable = isSlotDateOffsetSelectable(offset) && dayMatches;
     const availableCount = selectable
-      ? getSlotsForDateAndAvailabilities(date, dateId, availabilities).filter(
+      ? getSlotsForDateAndAvailabilities(
+          date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+        ).filter(
           (slot) => slot.status === "available"
         ).length
       : 0;
@@ -195,6 +236,10 @@ export default function SlotCalendarView({
   selectedSlot,
   onSelectDate,
   onSelectSlot,
+  onSelectSlotTime,
+  occupiedSlots,
+  timezone,
+  slotDurationMinutes,
 }: SlotCalendarViewProps) {
   const today = useMemo(() => startOfDay(new Date()), []);
   const selectedOffset = parseSlotDateOffset(selectedDate);
@@ -221,12 +266,16 @@ export default function SlotCalendarView({
   }, [isMonthSelectOpen]);
 
   const weekDays = useMemo(
-    () => buildWeekDays(weekStartOffset, today, availabilities),
-    [weekStartOffset, today, availabilities],
+    () => buildWeekDays(
+      weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+    ),
+    [weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes],
   );
   const monthCells = useMemo(
-    () => buildMonthCells(viewMonth, today, availabilities),
-    [viewMonth, today, availabilities],
+    () => buildMonthCells(
+      viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+    ),
+    [viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes],
   );
 
   const availableMonths = useMemo(() => {
@@ -302,10 +351,14 @@ export default function SlotCalendarView({
     if (slot.status === "booked") return;
     onSelectDate(dateId);
     onSelectSlot(slot.id);
+    onSelectSlotTime(slot.time);
   };
 
   const selectedDateMeta = getSlotDateById(selectedDate);
-  const selectedDaySlots = getTimeSlotsForDate(selectedDate);
+  const selectedDaySlots = getSlotsForDateAndAvailabilities(
+    dateFromOffset(selectedOffset), selectedDate, availabilities,
+    occupiedSlots, timezone, slotDurationMinutes,
+  );
 
 
 

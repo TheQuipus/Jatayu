@@ -9,6 +9,10 @@ export type StepPickSlotProps = {
   selectedSlot: string;
   onSelectDate: (dateId: string) => void;
   onSelectSlot: (slot: string) => void;
+  onSelectSlotTime: (time: string) => void;
+  occupiedSlots?: { startAt: string; endAt: string }[];
+  timezone?: string;
+  slotDurationMinutes?: number;
 };
 
 export default function StepPickSlot({
@@ -17,6 +21,10 @@ export default function StepPickSlot({
   selectedSlot,
   onSelectDate,
   onSelectSlot,
+  onSelectSlotTime,
+  occupiedSlots,
+  timezone,
+  slotDurationMinutes,
 }: StepPickSlotProps) {
   return (
     <div className={styles.stepContent}>
@@ -32,6 +40,10 @@ export default function StepPickSlot({
           selectedSlot={selectedSlot}
           onSelectDate={onSelectDate}
           onSelectSlot={onSelectSlot}
+          onSelectSlotTime={onSelectSlotTime}
+          occupiedSlots={occupiedSlots}
+          timezone={timezone}
+          slotDurationMinutes={slotDurationMinutes}
         />
       </div>
     </div>

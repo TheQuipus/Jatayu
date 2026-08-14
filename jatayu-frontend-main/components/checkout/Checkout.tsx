@@ -25,7 +25,7 @@ import {
   formatConfirmationSchedule,
   getConsultationPrice,
   getSlotDateById,
-  findTimeSlot,
+  parseSlotDateOffset,
   type ConsultationType,
 } from "@/lib/booking";
 import { type Expert, expertSlug } from "@/lib/experts";
@@ -61,11 +61,17 @@ import {
   getStoredSeekerProfile,
   SEEKER_PROFILE_UPDATED_EVENT,
 } from "@/lib/seekerProfileApi";
+import { openRazorpayCheckout } from "@/lib/razorpay";
 import {
-  processRazorpayPayment,
-  postRazorpayWebhook,
-  buildRazorpayWebhookPayload,
-} from "@/lib/razorpay";
+  buildScheduledStartAt,
+  clearBookingIdempotencyKey,
+  createBookingOrder,
+  fetchBooking,
+  fetchBookingOptions,
+  getBookingIdempotencyKey,
+  verifyBookingPayment,
+  type BookingOptions,
+} from "@/lib/seekerBookingApi";
 import styles from "./Checkout.module.css";
 
 export default function Checkout({ expert, seeker = false }: CheckoutProps) {
@@ -78,6 +84,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [bookingOptions, setBookingOptions] = useState<BookingOptions | null>(null);
+  const [bookingError, setBookingError] = useState("");
+  const [confirmedBookingId, setConfirmedBookingId] = useState("");
   const initialFormat = (
     expert.formats && expert.formats.length > 0
       ? expert.formats[0]
@@ -107,6 +116,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const [selectedDate, setSelectedDate] = useState(`date-${initialAvailableDateOffset}`);
   const [selectedSlot, setSelectedSlot] = useState(
     () => `date-${initialAvailableDateOffset}-slot-1`
+  );
+  const [selectedSlotTime, setSelectedSlotTime] = useState(
+    () => expert.availabilities?.[0]?.fromTime || ""
   );
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
@@ -153,6 +165,39 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       };
     }
   }, []);
+
+  const expertIdentifier = expert.id || expertSlug(expert.name);
+
+  useEffect(() => {
+    if (!seeker) return;
+    let active = true;
+    void fetchBookingOptions(expertIdentifier)
+      .then((options) => {
+        if (!active) return;
+        setBookingOptions(options);
+        if (options.formats.length > 0) {
+          setConsultationType((current) =>
+            current && options.formats.includes(current) ? current : options.formats[0] as ConsultationType,
+          );
+        }
+        const firstAvailability = options.availabilities[0];
+        if (firstAvailability) setSelectedSlotTime(firstAvailability.fromTime);
+        setSelectedSlot("");
+      })
+      .catch((error) => {
+        if (active) setBookingError(error instanceof Error ? error.message : "Unable to load booking options");
+      });
+    return () => { active = false; };
+  }, [expertIdentifier, seeker]);
+
+  const bookingExpert = useMemo<Expert>(() => ({
+    ...expert,
+    id: bookingOptions?.expertId || expert.id,
+    timezone: bookingOptions?.timezone || expert.timezone,
+    formats: bookingOptions?.formats || expert.formats,
+    formatPrices: bookingOptions?.formatPrices || expert.formatPrices,
+    availabilities: bookingOptions?.availabilities || expert.availabilities,
+  }), [bookingOptions, expert]);
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerTouched, setRegisterTouched] = useState(CHECKOUT_REGISTRATION_TOUCHED_DEFAULT);
   const [registerSubmitAttempted, setRegisterSubmitAttempted] = useState(false);
@@ -214,9 +259,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   useSeekerBreadcrumbs(seeker ? breadcrumbNode : null);
 
   const consultationFee = consultationType
-    ? expert.formatPrices && expert.formatPrices[consultationType] && !isNaN(Number(expert.formatPrices[consultationType]))
-      ? Number(expert.formatPrices[consultationType])
-      : getConsultationPrice(expert.price, consultationType)
+    ? bookingExpert.formatPrices && bookingExpert.formatPrices[consultationType] && !isNaN(Number(bookingExpert.formatPrices[consultationType]))
+      ? Number(bookingExpert.formatPrices[consultationType])
+      : getConsultationPrice(bookingExpert.price, consultationType)
     : 0;
   const creditsActive = currentStep >= 4 && useCredits;
   const breakdown = calculateBookingTotal(
@@ -226,11 +271,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   );
 
   const selectedDateLabel = getSlotDateById(selectedDate);
-  const selectedSlotLabel = findTimeSlot(selectedDate, selectedSlot);
-
   const scheduleLabel =
-    selectedDateLabel && selectedSlotLabel
-      ? `${selectedDateLabel.headerDate}, ${selectedSlotLabel.time}`
+    selectedDateLabel && selectedSlotTime
+      ? `${selectedDateLabel.headerDate}, ${selectedSlotTime}`
       : "—";
 
   const canContinueStep1 = Boolean(consultationType);
@@ -452,54 +495,78 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const confirmationSchedule = formatConfirmationSchedule(
     selectedDate,
-    selectedSlotLabel?.time,
+    selectedSlotTime,
     false
   );
 
   const calendarUrl = buildGoogleCalendarUrl({
-    expertName: expert.name,
+    expertName: bookingExpert.name,
     dateId: selectedDate,
-    slotTime: selectedSlotLabel?.time,
-    bookingId: invoiceId,
+    slotTime: selectedSlotTime,
+    bookingId: confirmedBookingId || invoiceId,
   });
 
   async function handleConfirmBooking() {
     if (isProcessingPayment) return;
     setIsProcessingPayment(true);
+    setBookingError("");
 
     try {
+      if (!consultationType || !selectedSlotTime) throw new Error("Select a consultation type and available slot");
+      const selectedDateValue = new Date();
+      selectedDateValue.setHours(0, 0, 0, 0);
+      selectedDateValue.setDate(selectedDateValue.getDate() + parseSlotDateOffset(selectedDate));
+      const scheduledStartAt = buildScheduledStartAt(
+        selectedDateValue,
+        selectedSlotTime,
+        bookingOptions?.timezone || bookingExpert.timezone || "Asia/Kolkata",
+      );
+      const fingerprint = [expertIdentifier, consultationType, scheduledStartAt].join(":");
+      const idempotencyKey = getBookingIdempotencyKey(fingerprint);
       const userFullName =
         [registerFirstName, registerLastName].filter(Boolean).join(" ") || "Priya Sharma";
       const userEmailAddress = registerEmail || MOCK_SEEKER_EMAIL;
       const userPhoneNumber = registerPhone || "9898675444";
 
-      if (breakdown.total === 0) {
-        // Fully covered by credits
-        const payId = `pay_credits_${Date.now()}`;
-        const webhookPayload = buildRazorpayWebhookPayload(payId, 0);
-        await postRazorpayWebhook(webhookPayload);
+      const created = await createBookingOrder({
+        expertId: bookingOptions?.expertId || expertIdentifier,
+        consultationType,
+        subject,
+        context,
+        scheduledStartAt,
+        useCredits,
+        idempotencyKey,
+      });
+      if (created.booking.status === "confirmed") {
+        setConfirmedBookingId(created.booking.id);
         setBookingConfirmed(true);
-      } else {
-        await processRazorpayPayment({
-          amount: breakdown.total,
-          userName: userFullName,
-          userEmail: userEmailAddress,
-          userPhone: userPhoneNumber,
-          expertName: expert.name,
-          onSuccess: () => {
-            setBookingConfirmed(true);
-          },
-          onError: (err) => {
-            console.error("Razorpay payment error:", err);
-          },
-        });
+        clearBookingIdempotencyKey(fingerprint);
+        return;
       }
+      if (["expired", "payment_failed"].includes(created.booking.status)) {
+        clearBookingIdempotencyKey(fingerprint);
+        throw new Error("The previous payment reservation expired. Click Confirm again to create a new booking.");
+      }
+      if (!created.razorpayOrder) throw new Error("Payment order was not returned by the server");
+      const checkoutResult = await openRazorpayCheckout({
+        order: created.razorpayOrder,
+        expertName: bookingExpert.name,
+        userName: userFullName,
+        userEmail: userEmailAddress,
+        userPhone: userPhoneNumber,
+      });
+      let verified = await verifyBookingPayment(created.booking.id, checkoutResult);
+      for (let attempt = 0; verified.status === "payment_verified" && attempt < 10; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        verified = await fetchBooking(created.booking.id);
+      }
+      if (verified.status !== "confirmed") throw new Error("Payment is being confirmed. Please check My Bookings shortly.");
+      setConfirmedBookingId(verified.id);
+      setBookingConfirmed(true);
+      clearBookingIdempotencyKey(fingerprint);
     } catch (err) {
       console.error("Failed to process Razorpay payment:", err);
-      const payId = `pay_postman_${Date.now().toString().slice(-6)}`;
-      const webhookPayload = buildRazorpayWebhookPayload(payId, breakdown.total);
-      await postRazorpayWebhook(webhookPayload);
-      setBookingConfirmed(true);
+      setBookingError(err instanceof Error ? err.message : "Unable to complete booking");
     } finally {
       setIsProcessingPayment(false);
     }
@@ -526,9 +593,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         <div className={`container ${styles.inner} ${styles.innerConfirmed}`}>
           {!seeker ? inlineBreadcrumbNode : null}
           <BookingConfirmation
-            expertName={expert.name}
+            expertName={bookingExpert.name}
             scheduleLabel={confirmationSchedule}
-            bookingId={invoiceId}
+            bookingId={confirmedBookingId || invoiceId}
             email={registerEmail || MOCK_SEEKER_EMAIL}
             calendarUrl={calendarUrl}
           />
@@ -558,9 +625,10 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         <div className={styles.layout}>
           <div className={styles.layoutMain}>
             <div className={styles.stepViewport}>
+              {bookingError ? <p className={styles.bookingError} role="alert">{bookingError}</p> : null}
               {currentStep === 1 && (
                 <StepConsultationType
-                  expert={expert}
+                  expert={bookingExpert}
                   consultationType={consultationType}
                   onSelectConsultationType={setConsultationType}
                 />
@@ -583,17 +651,21 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
               {currentStep === 3 && (
                 <StepPickSlot
-                  expert={expert}
+                  expert={bookingExpert}
                   selectedDate={selectedDate}
                   selectedSlot={selectedSlot}
                   onSelectDate={selectSlotDate}
                   onSelectSlot={setSelectedSlot}
+                  onSelectSlotTime={setSelectedSlotTime}
+                  occupiedSlots={bookingOptions?.occupiedSlots}
+                  timezone={bookingOptions?.timezone}
+                  slotDurationMinutes={bookingOptions?.slotDurationMinutes}
                 />
               )}
 
               {currentStep === 4 && (
                 <StepBookingSummary
-                  expert={expert}
+                  expert={bookingExpert}
                   consultationType={consultationType}
                   scheduleLabel={scheduleLabel}
                   paymentMethod={paymentMethod}
@@ -669,7 +741,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
           </div>
 
           <CheckoutSidebar
-            expert={expert}
+            expert={bookingExpert}
             consultationType={consultationType}
             consultationFee={consultationFee}
             scheduleLabel={scheduleLabel}

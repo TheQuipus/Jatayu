@@ -97,7 +97,7 @@ export default function BookingConfirmation({
           <SecondaryCTA
             label="View Booking"
             showArrow={false}
-            onClick={() => router.push("/seeker/bookings/booking-1")}
+            onClick={() => router.push(`/seeker/bookings/${bookingId}`)}
             className={styles.secondaryCtaBtn}
           />
           <Link href="/seeker/discover" className={styles.primaryBtn}>
