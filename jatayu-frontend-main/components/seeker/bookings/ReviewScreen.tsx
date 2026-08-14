@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Star, CheckCircle2 } from "lucide-react";
+import { Star, CheckCircle2, X } from "lucide-react";
 import Lottie from "lottie-react";
 import starAnimation from "@/public/Lottie/Star.json";
 import ContinueButton from "@/components/ui/ContinueButton";
@@ -112,13 +112,18 @@ export default function ReviewScreen({
           <div className={styles.reviewCard}>
             <div className={styles.reviewHeader}>
               <span className={styles.reviewHeaderTitle}>Review Submitted</span>
-              <span className={styles.reviewHeaderDots} />
-              <div className={styles.soundwaveIcon} aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
+              {onCancel ? (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className={styles.headerCloseBtn}
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              ) : (
+                <X size={18} className={styles.headerCrossIcon} />
+              )}
             </div>
 
             <div className={styles.submittedBody}>
@@ -182,13 +187,18 @@ export default function ReviewScreen({
         <div className={styles.reviewCard}>
           <div className={styles.reviewHeader}>
             <span className={styles.reviewHeaderTitle}>Session Feedback</span>
-            <span className={styles.reviewHeaderDots} />
-            <div className={styles.soundwaveIcon} aria-hidden="true">
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
+            {onCancel ? (
+              <button
+                type="button"
+                onClick={onCancel}
+                className={styles.headerCloseBtn}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            ) : (
+              <X size={18} className={styles.headerCrossIcon} />
+            )}
           </div>
 
           <div className={styles.reviewBody}>

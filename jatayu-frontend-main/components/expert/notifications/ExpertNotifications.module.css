@@ -1,16 +1,16 @@
 .page {
-  min-height: 100vh;
-  padding: 24px 0 72px;
-  background: var(--gallery);
-  color: var(--ink);
+  padding: 25px 0 80px;
 }
 
 .inner {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
+/* ----------------------------------------------------
+   1. HEADER AREA
+---------------------------------------------------- */
 .header {
   display: flex;
   align-items: flex-end;
@@ -18,219 +18,313 @@
   gap: 20px;
 }
 
-.header h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(28px, 3vw, 36px);
-  line-height: 1.05;
-  font-weight: 700;
-  letter-spacing: -0.035em;
+.headerText {
+  flex: 1;
+  min-width: 0;
 }
 
-.header p {
-  margin: 7px 0 0;
+.pageSubtitle {
+  margin: 0 0 6px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
   color: var(--dove-gray);
-  font-size: 14px;
-  line-height: 1.5;
+}
+
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(28px, 4vw, 36px);
+  line-height: 1.2;
+  letter-spacing: -1.2px;
+  color: var(--scorpion);
+}
+
+.accentWord {
+  color: var(--pomegranate);
+  text-transform: uppercase;
 }
 
 .headerActions {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.headerActions > * {
-  min-height: 38px;
+.markButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 0 14px;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
   border: 1px solid var(--mercury);
-  border-radius: 9px;
   background: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ink);
-  font: 600 12px/1 var(--font-body);
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.headerActions > *:hover {
+.markButton:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ink) 18%, var(--mercury));
   background: var(--seashell);
-  border-color: var(--silver-chalice);
 }
 
-.headerActions > *:disabled {
+.markButton:disabled {
   opacity: 0.45;
-  cursor: default;
+  cursor: not-allowed;
 }
 
-.summary {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
+.settingsButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.settingsButton:hover {
+  border-color: color-mix(in srgb, var(--ink) 18%, var(--mercury));
+  background: var(--seashell);
+}
+
+/* ----------------------------------------------------
+   JATAYU SECTION HEADER
+---------------------------------------------------- */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sectionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pomegranate);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--scorpion);
+}
+
+/* ----------------------------------------------------
+   2. KPI SUMMARY CARDS
+---------------------------------------------------- */
+.summaryGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
 }
 
 .stat {
-  min-height: 96px;
+  appearance: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border: 1px solid var(--mercury);
-  border-radius: 13px;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 150px;
+  min-height: 130px;
+  padding: 18px 20px;
   background: var(--white);
-  box-shadow: 0 1px 2px rgba(11, 13, 20, 0.03);
+  border: 1px solid var(--mercury);
+  clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
+  -webkit-clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.statIcon,
-.notificationIcon {
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: color-mix(in srgb, currentColor 10%, var(--white));
-  color: var(--notification-tone, var(--pomegranate));
+.statHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.statLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dove-gray);
 }
 
 .statIcon {
-  width: 28px;
-  height: 28px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--notification-tone, var(--pomegranate)) 12%, var(--white));
+  color: var(--notification-tone, var(--pomegranate));
 }
 
-.stat strong {
+.statVal {
+  margin-top: auto;
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 38px;
+  font-weight: 600;
   line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
 }
 
-.stat > span:last-child {
-  color: var(--dove-gray);
-  font-size: 10px;
-  font-weight: 600;
+.statActive {
+  background: var(--bunker) !important;
+  border-color: var(--bunker) !important;
+}
+
+.statActive .statLabel {
+  color: color-mix(in srgb, var(--white) 70%, transparent) !important;
+}
+
+.statActive .statVal {
+  color: var(--white) !important;
 }
 
 .request { --notification-tone: #e9681e; }
-.message { --notification-tone: #377dca; }
-.session { --notification-tone: #d63614; }
-.payment { --notification-tone: #b98a00; }
+.message { --notification-tone: #2563eb; }
+.session { --notification-tone: var(--pomegranate); }
+.payment { --notification-tone: var(--green); }
 .review { --notification-tone: #7357c9; }
-.system { --notification-tone: #218a62; }
+.system { --notification-tone: #0284c7; }
 
+/* ----------------------------------------------------
+   3. LAYOUT GRID: FEED & RIGHT RAIL
+---------------------------------------------------- */
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   align-items: start;
-  gap: 16px;
+  gap: 24px;
 }
 
 .feed {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 13px;
+  gap: 20px;
 }
 
 .filters {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px;
+}
+
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  padding: 7px;
+  padding: 8px 16px;
   border: 1px solid var(--mercury);
-  border-radius: 11px;
+  border-radius: 999px;
   background: var(--white);
-  overflow-x: auto;
-}
-
-.filters button {
-  flex: 0 0 auto;
-  min-height: 30px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--dove-gray);
-  font: 600 11px/1 var(--font-body);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--scorpion);
   cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
-.filters button:hover {
-  background: var(--seashell);
+.filterBtn:hover:not(.filterActive) {
+  border-color: color-mix(in srgb, var(--ink) 14%, var(--white));
   color: var(--ink);
 }
 
-.filters button.active {
-  background: var(--ink);
-  color: var(--white);
+.filterActive {
+  background: color-mix(in srgb, var(--pomegranate) 8%, var(--white));
+  border-color: var(--pomegranate);
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
-.groupTitle {
+.groupTitleRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 3px;
 }
 
-.groupTitle h2 {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--scorpion);
-}
-
-.groupTitle span {
-  padding: 3px 8px;
+.unreadBadge {
+  padding: 2px 8px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--pomegranate) 10%, var(--white));
   color: var(--pomegranate);
-  font-size: 9px;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 12px;
 }
 
 .notificationCard {
   position: relative;
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) 8px;
+  grid-template-columns: 42px minmax(0, 1fr) 10px;
   align-items: start;
-  gap: 12px;
-  padding: 14px;
+  gap: 14px;
+  padding: 18px 20px;
   border: 1px solid var(--mercury);
   border-radius: 12px;
   background: var(--white);
   cursor: pointer;
-  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .notificationCard:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--notification-tone) 30%, var(--mercury));
-  box-shadow: 0 4px 15px rgba(11, 13, 20, 0.05);
+  border-color: color-mix(in srgb, var(--pomegranate) 35%, var(--mercury));
 }
 
 .notificationCard.unread {
-  background: color-mix(in srgb, var(--notification-tone) 3.5%, var(--white));
-  border-color: color-mix(in srgb, var(--notification-tone) 18%, var(--mercury));
+  border-color: color-mix(in srgb, var(--pomegranate) 40%, var(--mercury));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--pomegranate) 6%, transparent);
 }
 
 .notificationIcon {
-  width: 36px;
-  height: 36px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--notification-tone, var(--pomegranate)) 12%, var(--white));
+  color: var(--notification-tone, var(--pomegranate));
 }
 
 .notificationCopy {
@@ -247,50 +341,57 @@
 .notificationTitleRow h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 13px;
+  font-family: var(--font-body);
+  font-size: 15px;
   line-height: 1.35;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .notificationTitleRow time {
   flex: 0 0 auto;
   color: var(--silver-chalice);
   font-family: var(--font-mono);
-  font-size: 9px;
-  line-height: 1.5;
+  font-size: 11px;
 }
 
 .notificationCopy > p {
-  max-width: 800px;
-  margin: 3px 0 0;
+  margin: 4px 0 0;
   color: var(--dove-gray);
-  font-size: 11px;
+  font-family: var(--font-body);
+  font-size: 13px;
   line-height: 1.55;
 }
 
 .unreadDot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   margin-top: 6px;
   border-radius: 50%;
-  background: var(--notification-tone);
+  background: var(--pomegranate);
 }
 
 .notificationActions {
   display: flex;
-  gap: 7px;
-  margin-top: 9px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .notificationActions button {
-  min-height: 26px;
-  padding: 0 10px;
+  min-height: 32px;
+  padding: 0 14px;
   border: 1px solid var(--pomegranate);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--pomegranate);
   color: var(--white);
-  font: 700 10px/1 var(--font-body);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.notificationActions button:hover {
+  opacity: 0.92;
 }
 
 .notificationActions button.secondary {
@@ -299,88 +400,104 @@
   color: var(--scorpion);
 }
 
+.notificationActions button.secondary:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* ----------------------------------------------------
+   4. RIGHT RAIL
+---------------------------------------------------- */
 .rail {
   position: sticky;
   top: calc(var(--expert-sticky-top, 56px) + 16px);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .sideCard {
   overflow: hidden;
   border: 1px solid var(--mercury);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--white);
+  padding: 20px;
 }
 
 .sideHeading {
-  padding: 14px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--mercury);
 }
 
 .sideHeading h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .sideHeading span {
   display: block;
   margin-top: 3px;
   color: var(--silver-chalice);
-  font-size: 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
 }
 
-.sideCard > a:not(.manageLink) {
+.sideActionLink {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
-  min-height: 60px;
-  padding: 10px 13px;
+  gap: 12px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--mercury);
   color: var(--scorpion);
+  transition: color 0.2s ease;
 }
 
-.sideCard > a:not(.manageLink):hover {
-  background: var(--seashell);
+.sideActionLink:last-of-type {
+  border-bottom: none;
+}
+
+.sideActionLink:hover {
   color: var(--pomegranate);
 }
 
-.sideCard > a svg {
-  width: 30px;
-  height: 30px;
-  padding: 8px;
-  border-radius: 7px;
+.sideActionIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: var(--seashell);
+  color: var(--scorpion);
 }
 
-.sideCard > a span {
+.sideActionText {
   display: flex;
-  min-width: 0;
   flex-direction: column;
   gap: 2px;
 }
 
-.sideCard > a strong,
-.toggleRow strong {
+.sideActionText strong {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
   color: var(--ink);
+}
+
+.sideActionText small {
+  font-family: var(--font-body);
   font-size: 11px;
-  line-height: 1.3;
-}
-
-.sideCard > a small,
-.toggleRow small {
   color: var(--silver-chalice);
-  font-size: 9px;
-  line-height: 1.4;
 }
 
-.sideCard > a b {
-  font-size: 18px;
-  font-weight: 400;
+.sideActionArrow {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--silver-chalice);
 }
 
 .toggleRow {
@@ -388,16 +505,32 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 61px;
-  padding: 10px 14px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--mercury);
   cursor: pointer;
 }
 
-.toggleRow > span {
+.toggleRow:last-of-type {
+  border-bottom: none;
+}
+
+.toggleRowText {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.toggleRowText strong {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.toggleRowText small {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--silver-chalice);
 }
 
 .toggleRow input {
@@ -408,8 +541,8 @@
 
 .toggleRow i {
   position: relative;
-  width: 32px;
-  height: 18px;
+  width: 36px;
+  height: 20px;
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--silver);
@@ -421,8 +554,8 @@
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--white);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
@@ -434,27 +567,33 @@
 }
 
 .toggleRow input:checked + i::after {
-  transform: translateX(14px);
+  transform: translateX(16px);
 }
 
 .manageLink {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 11px 14px;
+  padding-top: 14px;
   color: var(--pomegranate);
-  font-size: 10px;
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  transition: opacity 0.2s ease;
+}
+
+.manageLink:hover {
+  opacity: 0.9;
 }
 
 .tip {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--pomegranate) 18%, var(--mercury));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--pomegranate) 4%, var(--white));
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 25%, var(--mercury));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--pomegranate) 5%, var(--white));
   color: var(--pomegranate);
 }
 
@@ -463,43 +602,48 @@
 }
 
 .tip strong {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
   color: var(--ink);
-  font-size: 11px;
 }
 
 .tip p {
-  margin: 3px 0 0;
-  color: var(--dove-gray);
-  font-size: 9px;
+  margin: 4px 0 0;
+  font-family: var(--font-body);
+  font-size: 12px;
   line-height: 1.5;
+  color: var(--dove-gray);
 }
 
 .empty {
-  min-height: 180px;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  border: 1px dashed var(--silver);
-  border-radius: 12px;
+  gap: 10px;
+  border: 1px dashed var(--mercury);
+  border-radius: 14px;
+  background: var(--white);
   color: var(--silver-chalice);
+  padding: 32px;
 }
 
 .empty strong {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
   color: var(--ink);
-  font-size: 13px;
 }
 
 .empty span {
-  font-size: 11px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--scorpion);
 }
 
 @media (max-width: 1100px) {
-  .summary {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
   .layout {
     grid-template-columns: 1fr;
   }
@@ -515,53 +659,32 @@
   }
 }
 
-@media (max-width: 700px) {
-  .page {
-    padding-top: 18px;
-  }
-
+@media (max-width: 640px) {
   .header {
-    align-items: flex-start;
     flex-direction: column;
+    align-items: flex-start;
   }
 
   .headerActions {
     width: 100%;
+    justify-content: space-between;
   }
 
-  .headerActions > * {
-    flex: 1;
-  }
-
-  .summary {
-    grid-template-columns: repeat(2, 1fr);
+  .summaryGrid {
+    flex-direction: column;
   }
 
   .stat {
-    min-height: 82px;
+    width: 100%;
   }
 
   .rail {
     grid-template-columns: 1fr;
   }
 
-  .tip {
-    grid-column: auto;
-  }
-
   .notificationCard {
-    grid-template-columns: 32px minmax(0, 1fr) 7px;
-    padding: 12px;
-    gap: 9px;
-  }
-
-  .notificationIcon {
-    width: 32px;
-    height: 32px;
-  }
-
-  .notificationTitleRow {
-    flex-direction: column;
-    gap: 2px;
+    grid-template-columns: 36px minmax(0, 1fr) 8px;
+    padding: 14px;
+    gap: 10px;
   }
 }

@@ -19,16 +19,14 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
   const action = searchParams.get("action");
   const from = searchParams.get("from");
 
-  // Session states: 'detail' | 'active' | 'review' | 'completed'
-  const [sessionState, setSessionState] = useState<'detail' | 'active' | 'review' | 'completed'>(
-    action === 'join' ? 'active' : (action === 'review' ? 'review' : (booking.status === 'completed' ? 'completed' : 'detail'))
+  // Session states: 'detail' | 'active' | 'completed'
+  const [sessionState, setSessionState] = useState<'detail' | 'active' | 'completed'>(
+    action === 'join' ? 'active' : (booking.status === 'completed' ? 'completed' : 'detail')
   );
 
   useEffect(() => {
     if (action === 'join') {
       setSessionState('active');
-    } else if (action === 'review') {
-      setSessionState('review');
     }
   }, [action]);
 
@@ -144,17 +142,6 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
     if (sessionState === "active") {
       return null;
     }
-    if (sessionState === "review") {
-      return (
-        <Breadcrumbs
-          items={[
-            { label: "Bookings", href: "/seeker/bookings" },
-            { label: booking.referenceId, href: `/seeker/bookings/${booking.id}` },
-            { label: "Session Review" },
-          ]}
-        />
-      );
-    }
     return (
       <Breadcrumbs
         items={[
@@ -163,7 +150,7 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
         ]}
       />
     );
-  }, [booking.id, booking.referenceId, sessionState]);
+  }, [booking.referenceId, sessionState]);
 
   useSeekerBreadcrumbs(breadcrumbNode);
 
@@ -187,21 +174,9 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
           }
         }}
         onFinishSession={() => {
-          setSessionState('review');
-          router.replace(`/seeker/bookings/${booking.id}`);
+          setSessionState('completed');
+          router.replace(`/seeker/bookings/${booking.id}/?action=review`);
         }}
-      />
-    );
-  }
-
-  if (sessionState === 'review') {
-    return (
-      <ReviewScreen
-        booking={booking}
-        onSubmit={(rating, comment) => {
-          handleSubmitReview(rating, comment);
-        }}
-        onCancel={() => router.push("/seeker/bookings")}
       />
     );
   }

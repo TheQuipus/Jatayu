@@ -64,12 +64,12 @@ const ICONS = {
 };
 
 const SUMMARY = [
-  { label: "Total", value: 12, type: "request" as NotificationType },
-  { label: "Requests", value: 3, type: "message" as NotificationType },
-  { label: "Messages", value: 5, type: "review" as NotificationType },
-  { label: "Sessions", value: 2, type: "payment" as NotificationType },
-  { label: "Payments", value: 1, type: "session" as NotificationType },
-  { label: "Reviews", value: 1, type: "system" as NotificationType },
+  { label: "Total Alerts", value: 12, filterId: "all" as const },
+  { label: "Requests", value: 3, filterId: "request" as const },
+  { label: "Messages", value: 5, filterId: "message" as const },
+  { label: "Sessions", value: 2, filterId: "session" as const },
+  { label: "Payments", value: 1, filterId: "payment" as const },
+  { label: "Reviews", value: 1, filterId: "review" as const },
 ];
 
 export default function ExpertNotifications() {
@@ -94,10 +94,15 @@ export default function ExpertNotifications() {
   return (
     <section className={styles.page}>
       <div className={`container ${styles.inner}`}>
+        {/* --------------------------------------------------
+            1. HEADER AREA
+        -------------------------------------------------- */}
         <header className={styles.header}>
-          <div>
-            <h1>Notification Center</h1>
-            <p>Stay informed about your sessions, clients, payments and account.</p>
+          <div className={styles.headerText}>
+            <p className={styles.pageSubtitle}>Stay informed about your sessions, clients, payments and account.</p>
+            <h1 className={styles.pageTitle}>
+              Notification <span className={styles.accentWord}>CENTER</span>
+            </h1>
           </div>
           <div className={styles.headerActions}>
             <button
@@ -118,24 +123,45 @@ export default function ExpertNotifications() {
           </div>
         </header>
 
-        <div className={styles.summary} aria-label="Notification summary">
+        {/* --------------------------------------------------
+            2. KPI SUMMARY CARDS ROW
+        -------------------------------------------------- */}
+        <div className={styles.summaryGrid} aria-label="Notification summary">
           {SUMMARY.map((item) => {
-            const Icon = ICONS[item.type];
+            const Icon = item.filterId === "all" ? Bell : ICONS[item.filterId];
+            const isActive = filter === item.filterId;
             return (
-              <article key={item.label} className={`${styles.stat} ${styles[item.type]}`}>
-                <span className={styles.statIcon}><Icon size={15} aria-hidden="true" /></span>
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
+              <article
+                key={item.label}
+                className={`${styles.stat} ${styles[item.filterId]} ${isActive ? styles.statActive : ""}`}
+                onClick={() => setFilter(item.filterId)}
+              >
+                <div className={styles.statHeader}>
+                  <span className={styles.statLabel}>{item.label}</span>
+                  <span className={styles.statIcon}>
+                    <Icon size={16} aria-hidden="true" />
+                  </span>
+                </div>
+                <div className={styles.statVal}>{item.value}</div>
               </article>
             );
           })}
         </div>
 
+        {/* --------------------------------------------------
+            3. MAIN FEED & RIGHT RAIL
+        -------------------------------------------------- */}
         <div className={styles.layout}>
           <main className={styles.feed}>
             <nav className={styles.filters} aria-label="Filter notifications">
               {FILTERS.map((item) => (
-                <button key={item.id} type="button" aria-pressed={filter === item.id} className={filter === item.id ? styles.active : ""} onClick={() => setFilter(item.id)}>
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={filter === item.id}
+                  className={`${styles.filterBtn} ${filter === item.id ? styles.filterActive : ""}`}
+                  onClick={() => setFilter(item.id)}
+                >
                   {item.label}
                 </button>
               ))}
@@ -146,16 +172,27 @@ export default function ExpertNotifications() {
               if (!grouped.length) return null;
               return (
                 <section key={group} className={styles.group}>
-                  <div className={styles.groupTitle}>
-                    <h2>{group}</h2>
-                    {group === "New" && unreadCount > 0 ? <span>{unreadCount} unread</span> : null}
+                  <div className={styles.groupTitleRow}>
+                    <div className={styles.sectionHeader}>
+                      <span className={styles.sectionDot} />
+                      <h2 className={styles.sectionTitle}>{group} Notifications</h2>
+                    </div>
+                    {group === "New" && unreadCount > 0 ? (
+                      <span className={styles.unreadBadge}>{unreadCount} unread</span>
+                    ) : null}
                   </div>
                   <div className={styles.list}>
                     {grouped.map((notification) => {
                       const Icon = ICONS[notification.type];
                       return (
-                        <article key={notification.id} className={`${styles.notificationCard} ${styles[notification.type]} ${notification.unread ? styles.unread : ""}`} onClick={() => markRead(notification.id)}>
-                          <span className={styles.notificationIcon}><Icon size={17} aria-hidden="true" /></span>
+                        <article
+                          key={notification.id}
+                          className={`${styles.notificationCard} ${styles[notification.type]} ${notification.unread ? styles.unread : ""}`}
+                          onClick={() => markRead(notification.id)}
+                        >
+                          <span className={styles.notificationIcon}>
+                            <Icon size={18} aria-hidden="true" />
+                          </span>
                           <div className={styles.notificationCopy}>
                             <div className={styles.notificationTitleRow}>
                               <h3>{notification.title}</h3>
@@ -164,8 +201,29 @@ export default function ExpertNotifications() {
                             <p>{notification.description}</p>
                             {(notification.action || notification.secondaryAction) && (
                               <div className={styles.notificationActions}>
-                                {notification.action ? <button type="button" onClick={(event) => { event.stopPropagation(); markRead(notification.id); }}>{notification.action}</button> : null}
-                                {notification.secondaryAction ? <button type="button" className={styles.secondary} onClick={(event) => { event.stopPropagation(); markRead(notification.id); }}>{notification.secondaryAction}</button> : null}
+                                {notification.action ? (
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      markRead(notification.id);
+                                    }}
+                                  >
+                                    {notification.action}
+                                  </button>
+                                ) : null}
+                                {notification.secondaryAction ? (
+                                  <button
+                                    type="button"
+                                    className={styles.secondary}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      markRead(notification.id);
+                                    }}
+                                  >
+                                    {notification.secondaryAction}
+                                  </button>
+                                ) : null}
                               </div>
                             )}
                           </div>
@@ -179,28 +237,94 @@ export default function ExpertNotifications() {
             })}
 
             {!visibleNotifications.length ? (
-              <div className={styles.empty}><CheckCircle2 size={24} /><strong>You’re all caught up</strong><span>No notifications match this filter.</span></div>
+              <div className={styles.empty}>
+                <CheckCircle2 size={28} />
+                <strong>You’re all caught up</strong>
+                <span>No notifications match this filter.</span>
+              </div>
             ) : null}
           </main>
 
           <aside className={styles.rail}>
             <section className={styles.sideCard}>
-              <div className={styles.sideHeading}><h2>Quick actions</h2><span>Useful shortcuts</span></div>
-              <Link href="/expert/messages/"><MessageSquare size={15} /><span><strong>Open messages</strong><small>5 recent conversations</small></span><b>›</b></Link>
-              <Link href="/expert/requests/"><UserRound size={15} /><span><strong>Review requests</strong><small>3 awaiting response</small></span><b>›</b></Link>
-              <Link href="/expert/availability/"><CalendarClock size={15} /><span><strong>Update availability</strong><small>Manage your calendar</small></span><b>›</b></Link>
+              <div className={styles.sideHeading}>
+                <div className={styles.sectionHeader} style={{ marginBottom: 4 }}>
+                  <span className={styles.sectionDot} />
+                  <h2 className={styles.sectionTitle}>Shortcuts</h2>
+                </div>
+                <h2>Quick actions</h2>
+                <span>Useful expert links</span>
+              </div>
+              <Link href="/expert/messages/" className={styles.sideActionLink}>
+                <span className={styles.sideActionIcon}><MessageSquare size={16} /></span>
+                <span className={styles.sideActionText}>
+                  <strong>Open messages</strong>
+                  <small>5 recent conversations</small>
+                </span>
+                <span className={styles.sideActionArrow}>›</span>
+              </Link>
+              <Link href="/expert/requests/" className={styles.sideActionLink}>
+                <span className={styles.sideActionIcon}><UserRound size={16} /></span>
+                <span className={styles.sideActionText}>
+                  <strong>Review requests</strong>
+                  <small>3 awaiting response</small>
+                </span>
+                <span className={styles.sideActionArrow}>›</span>
+              </Link>
+              <Link href="/expert/availability/" className={styles.sideActionLink}>
+                <span className={styles.sideActionIcon}><CalendarClock size={16} /></span>
+                <span className={styles.sideActionText}>
+                  <strong>Update availability</strong>
+                  <small>Manage your calendar</small>
+                </span>
+                <span className={styles.sideActionArrow}>›</span>
+              </Link>
             </section>
 
             <section className={styles.sideCard}>
-              <div className={styles.sideHeading}><h2>Notification settings</h2><span>Choose how you’re notified</span></div>
-              <label className={styles.toggleRow}><span><strong>Email updates</strong><small>Important activity summaries</small></span><input type="checkbox" checked={emailUpdates} onChange={(event) => setEmailUpdates(event.target.checked)} /><i /></label>
-              <label className={styles.toggleRow}><span><strong>Push notifications</strong><small>Real-time alerts</small></span><input type="checkbox" checked={pushUpdates} onChange={(event) => setPushUpdates(event.target.checked)} /><i /></label>
-              <Link href="/expert/dashboard/#settings" className={styles.manageLink}>Manage all settings <span>›</span></Link>
+              <div className={styles.sideHeading}>
+                <div className={styles.sectionHeader} style={{ marginBottom: 4 }}>
+                  <span className={styles.sectionDot} />
+                  <h2 className={styles.sectionTitle}>Preferences</h2>
+                </div>
+                <h2>Notification settings</h2>
+                <span>Choose how you’re notified</span>
+              </div>
+              <label className={styles.toggleRow}>
+                <span className={styles.toggleRowText}>
+                  <strong>Email updates</strong>
+                  <small>Important activity summaries</small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={emailUpdates}
+                  onChange={(event) => setEmailUpdates(event.target.checked)}
+                />
+                <i />
+              </label>
+              <label className={styles.toggleRow}>
+                <span className={styles.toggleRowText}>
+                  <strong>Push notifications</strong>
+                  <small>Real-time alerts</small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={pushUpdates}
+                  onChange={(event) => setPushUpdates(event.target.checked)}
+                />
+                <i />
+              </label>
+              <Link href="/expert/dashboard/#settings" className={styles.manageLink}>
+                Manage all settings <span>›</span>
+              </Link>
             </section>
 
             <section className={styles.tip}>
-              <Clock3 size={17} aria-hidden="true" />
-              <div><strong>Stay responsive</strong><p>Experts who reply within an hour are more likely to receive repeat bookings.</p></div>
+              <Clock3 size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
+              <div>
+                <strong>Stay responsive</strong>
+                <p>Experts who reply within an hour are more likely to receive repeat client bookings.</p>
+              </div>
             </section>
           </aside>
         </div>

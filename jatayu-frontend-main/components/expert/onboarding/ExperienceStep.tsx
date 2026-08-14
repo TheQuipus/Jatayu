@@ -190,7 +190,9 @@ export default function ExperienceStep({
   const updatePosition = (index: number, patch: Partial<EmploymentPosition>) => {
     onEmploymentPositionsChange(
       employmentPositions.map((position, positionIndex) => {
-        if (positionIndex !== index) return position;
+        if (positionIndex !== index) {
+          return patch.currentlyWorking ? { ...position, currentlyWorking: false } : position;
+        }
 
         const updated = { ...position, ...patch };
 
@@ -393,6 +395,7 @@ export default function ExperienceStep({
 
                 return (
                   <div key={position.id} className={styles.entryBlock}>
+                    {index > 0 ? <div className={styles.entrySeparator} /> : null}
                     <div className={styles.entryHeader}>
                       <span className={styles.entryLabel}>Position {index + 1}</span>
                       {index > 0 ? (
@@ -485,27 +488,29 @@ export default function ExperienceStep({
                           </div>
                         </div>
 
-                        <label className={styles.checkboxRow}>
-                          <input
-                            type="checkbox"
-                            className={styles.checkboxInput}
-                            checked={Boolean(position.currentlyWorking)}
-                            onChange={(event) => {
-                              const checked = event.target.checked;
-                              if (checked) {
-                                const { month, year } = getCurrentMonthYear();
-                                updatePosition(index, {
-                                  currentlyWorking: true,
-                                  endMonth: month,
-                                  endYear: year,
-                                });
-                                return;
-                              }
-                              updatePosition(index, { currentlyWorking: false });
-                            }}
-                          />
-                          <span className={styles.checkboxLabel}>Currently working here</span>
-                        </label>
+                        {!employmentPositions.some((p, pIdx) => pIdx !== index && p.currentlyWorking) && (
+                          <label className={styles.checkboxRow}>
+                            <input
+                              type="checkbox"
+                              className={styles.checkboxInput}
+                              checked={Boolean(position.currentlyWorking)}
+                              onChange={(event) => {
+                                const checked = event.target.checked;
+                                if (checked) {
+                                  const { month, year } = getCurrentMonthYear();
+                                  updatePosition(index, {
+                                    currentlyWorking: true,
+                                    endMonth: month,
+                                    endYear: year,
+                                  });
+                                  return;
+                                }
+                                updatePosition(index, { currentlyWorking: false });
+                              }}
+                            />
+                            <span className={styles.checkboxLabel}>Currently working here</span>
+                          </label>
+                        )}
 
                         <div className={styles.fieldGroup}>
                           <label htmlFor={`responsibilities-${position.id}`} className={styles.fieldLabel}>
@@ -552,6 +557,7 @@ export default function ExperienceStep({
             <div className={styles.entryList}>
               {educationDegrees.map((degree, index) => (
                 <div key={degree.id} className={styles.entryBlock}>
+                  {index > 0 ? <div className={styles.entrySeparator} /> : null}
                   <div className={styles.entryHeader}>
                     <span className={styles.entryLabel}>Degree {index + 1}</span>
                     {index > 0 ? (

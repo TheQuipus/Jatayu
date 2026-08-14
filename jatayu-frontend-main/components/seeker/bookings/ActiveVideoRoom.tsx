@@ -22,6 +22,7 @@ import {
   VideoOff,
 } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import ContinueButton from "@/components/ui/ContinueButton";
 import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
 import { formatCurrency, type BookingDetail } from "@/lib/seekerDashboard";
 import styles from "./ActiveRoom.module.css";
@@ -135,6 +136,12 @@ export default function ActiveVideoRoom({
     variant: "default",
     onConfirmAction: () => {},
   });
+
+  const [isNotesSaved, setIsNotesSaved] = useState(false);
+  const handleSaveNotes = () => {
+    setIsNotesSaved(true);
+    setTimeout(() => setIsNotesSaved(false), 2500);
+  };
 
   const handleLeaveClick = () => {
     setConfirmModalConfig({
@@ -266,15 +273,6 @@ export default function ActiveVideoRoom({
                   title={isVideoOff ? "Turn Video On" : "Turn Video Off"}
                 >
                   {isVideoOff ? <VideoOff size={16} /> : <Video size={16} />}
-                </button>
-
-                <button
-                  type="button"
-                  className={`${styles.controlBtn} ${isScreenSharing ? styles.controlBtnActive : ""}`}
-                  onClick={() => setIsScreenSharing(!isScreenSharing)}
-                  title={isScreenSharing ? "Stop Presenting" : "Present Screen"}
-                >
-                  <ScreenShare size={16} />
                 </button>
 
                 <button
@@ -438,6 +436,12 @@ export default function ActiveVideoRoom({
                     />
                     <div className={styles.notepadFooter}>
                       <span>Your notes are private and auto-saved.</span>
+                      <ContinueButton
+                        label="Save Notes"
+                        showArrow={false}
+                        onClick={handleSaveNotes}
+                        className={styles.saveNotesActiveBtn}
+                      />
                     </div>
                   </div>
                 </div>

@@ -6,17 +6,25 @@ import { useEffect, useState } from "react";
 import styles from "./TopNavbar.module.css";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 
+function isAdminLoginPage(pathname: string | null) {
+  if (!pathname) return false;
+  const normalized = pathname.replace(/\/$/, "");
+  return normalized === "/admin";
+}
+
 function isOnboardingPath(pathname: string | null) {
   return (
     pathname?.startsWith("/expert/expert-onboarding") ||
     pathname?.startsWith("/seeker/seeker-onboarding") ||
-    pathname?.startsWith("/login")
+    pathname?.startsWith("/login") ||
+    isAdminLoginPage(pathname)
   );
 }
 
 export default function TopNavbar() {
   const pathname = usePathname();
   const onboarding = isOnboardingPath(pathname);
+  const isAdminLogin = isAdminLoginPage(pathname);
   const [onDark, setOnDark] = useState(pathname === "/" || onboarding);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -90,7 +98,7 @@ export default function TopNavbar() {
 
   if (
     pathname?.startsWith("/serene-scene") ||
-    pathname?.startsWith("/admin") ||
+    (pathname?.startsWith("/admin") && !isAdminLogin) ||
     pathname?.includes("/report") ||
     isSeekerAppPath(pathname) ||
     isExpertPortalPath(pathname)
@@ -108,15 +116,17 @@ export default function TopNavbar() {
             JATAYU<sup className={styles.logoMark}>®</sup>
           </Link>
 
-          <button
-            className={`${styles.menuButton} ${isOpen ? styles.isOpen : ""}`}
-            onClick={() => setIsOpen(true)}
-            aria-label="Open menu"
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
+          {!isAdminLogin && (
+            <button
+              className={`${styles.menuButton} ${isOpen ? styles.isOpen : ""}`}
+              onClick={() => setIsOpen(true)}
+              aria-label="Open menu"
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          )}
         </div>
       </header>
 

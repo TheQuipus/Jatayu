@@ -10,6 +10,8 @@ import {
   LogOut,
   Settings,
   UserCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
 import { useExpertApplications } from "@/hooks/useExpertApplications";
@@ -56,7 +58,7 @@ function isNavActive(pathname: string, itemId: string, href: string): boolean {
   return path.startsWith(normalizedHref);
 }
 
-function NavLink({ item, pathname }: { item: AdminNavItem; pathname: string }) {
+function NavLink({ item, pathname, isCollapsed }: { item: AdminNavItem; pathname: string; isCollapsed?: boolean }) {
   const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? LayoutDashboard;
   const active = isNavActive(pathname, item.id, item.href);
   const badgeClass =
@@ -68,19 +70,20 @@ function NavLink({ item, pathname }: { item: AdminNavItem; pathname: string }) {
     <Link
       href={item.href}
       className={`${styles.navLink} ${active ? styles.navLinkActive : ""}`}
+      title={isCollapsed ? item.label : undefined}
     >
       <Icon size={16} aria-hidden="true" />
-      {item.label}
-      {item.badge ? (
+      {!isCollapsed && <span className={styles.navLabelText}>{item.label}</span>}
+      {!isCollapsed && (item.badge ? (
         <span className={`${styles.navBadge} ${badgeClass}`}>{item.badge}</span>
       ) : item.badgeLabel ? (
         <span className={`${styles.navBadge} ${badgeClass}`}>{item.badgeLabel}</span>
-      ) : null}
+      ) : null)}
     </Link>
   );
 }
 
-function SettingsNavGroup({ pathname }: { pathname: string }) {
+function SettingsNavGroup({ pathname, isCollapsed }: { pathname: string; isCollapsed?: boolean }) {
   const path = normalizeAdminPath(pathname);
   const settingsActive = path.startsWith(normalizeAdminPath(ADMIN_SETTINGS_HREF));
   const [expanded, setExpanded] = useState(settingsActive);
@@ -93,20 +96,22 @@ function SettingsNavGroup({ pathname }: { pathname: string }) {
     <div className={styles.navGroup}>
       <button
         type="button"
-        className={`${styles.navLink} ${styles.navLinkToggle} ${
-          settingsActive || expanded ? styles.navLinkParentActive : ""
-        }`}
+        className={`${styles.navLink} ${styles.navLinkToggle} ${settingsActive || expanded ? styles.navLinkParentActive : ""
+          }`}
         onClick={() => setExpanded((current) => !current)}
         aria-expanded={expanded}
         aria-controls="admin-settings-subnav"
+        title={isCollapsed ? "Settings" : undefined}
       >
         <Settings size={16} aria-hidden="true" />
-        Settings
-        <ChevronDown
-          size={16}
-          aria-hidden="true"
-          className={`${styles.navChevron} ${expanded ? styles.navChevronOpen : ""}`}
-        />
+        {!isCollapsed && <span className={styles.navLabelText}>Settings</span>}
+        {!isCollapsed && (
+          <ChevronDown
+            size={16}
+            aria-hidden="true"
+            className={`${styles.navChevron} ${expanded ? styles.navChevronOpen : ""}`}
+          />
+        )}
       </button>
       {expanded ? (
         <div
@@ -125,8 +130,9 @@ function SettingsNavGroup({ pathname }: { pathname: string }) {
                 href={href}
                 className={`${styles.navSubLink} ${subActive ? styles.navSubLinkActive : ""}`}
                 aria-current={subActive ? "page" : undefined}
+                title={isCollapsed ? section.label : undefined}
               >
-                {section.label}
+                {isCollapsed ? section.label.slice(0, 3) : section.label}
               </Link>
             );
           })}
@@ -140,6 +146,7 @@ export default function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
   const { ready, pendingCount } = useExpertApplications();
   const [mounted, setMounted] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [adminUser, setAdminUser] = useState<AdminAuthUser | null>(null);
 
   useEffect(() => {
@@ -169,23 +176,51 @@ export default function AdminShell({ children }: AdminShellProps) {
   );
 
   return (
-    <div className={styles.shell}>
-      <aside className={styles.sidebar} aria-label="Admin navigation">
-        <Link href={ADMIN_DASHBOARD_HREF} className={styles.brand}>
-          <span className={styles.brandMark} aria-hidden="true">
-            J
-          </span>
-          Jatayu
-        </Link>
+    <div className={`${styles.shell} ${isCollapsed ? styles.shellCollapsed : ""}`.trim()}>
+      <aside
+        className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`.trim()}
+        aria-label="Admin navigation"
+      >
+        <div className={styles.brandContainer}>
+          {!isCollapsed ? (
+            <>
+              <Link href={ADMIN_DASHBOARD_HREF} className={styles.brand}>
+                <span className={styles.brandMark} aria-hidden="true">
+                  J
+                </span>
+                <span className={styles.brandText}>Jatayu</span>
+              </Link>
+              <button
+                type="button"
+                className={styles.collapseBtn}
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                aria-label="Collapse sidebar"
+              >
+                <PanelLeftClose size={16} />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.collapseBtn} ${styles.collapseBtnCollapsed}`}
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              aria-label="Expand sidebar"
+            >
+              <PanelLeftOpen size={16} />
+            </button>
+          )}
+        </div>
 
         <nav className={styles.navSection} aria-label="Admin">
           {navItems.map((item) => (
-            <NavLink key={item.id} item={item} pathname={pathname} />
+            <NavLink key={item.id} item={item} pathname={pathname} isCollapsed={isCollapsed} />
           ))}
-          <SettingsNavGroup pathname={pathname} />
+          <SettingsNavGroup pathname={pathname} isCollapsed={isCollapsed} />
         </nav>
 
-        <div className={styles.userCard}>
+        <div
+          className={`${styles.userCard} ${isCollapsed ? styles.userCardCollapsed : ""}`.trim()}
+        >
           <Image
             src="/assets/img/manportrait.png"
             alt={adminUser?.fullName || "Admin"}
@@ -193,12 +228,14 @@ export default function AdminShell({ children }: AdminShellProps) {
             height={36}
             className={styles.userAvatar}
           />
-          <div className={styles.userMeta}>
-            <span className={styles.userName}>
-              {adminUser?.fullName?.split(" ")[0] || "Admin"}
-            </span>
-            <span className={styles.userRole}>{adminUser?.role || "Administrator"}</span>
-          </div>
+          {!isCollapsed && (
+            <div className={styles.userMeta}>
+              <span className={styles.userName}>
+                {adminUser?.fullName?.split(" ")[0] || "Admin"}
+              </span>
+              <span className={styles.userRole}>{adminUser?.role || "Administrator"}</span>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -209,7 +246,7 @@ export default function AdminShell({ children }: AdminShellProps) {
             aria-label="Logout"
             title="Logout"
           >
-            <LogOut size={14} aria-hidden="true" />
+            <LogOut size={isCollapsed ? 18 : 20} aria-hidden="true" />
           </button>
         </div>
       </aside>

@@ -97,9 +97,9 @@
 }
 
 .statusPending {
-  background: color-mix(in srgb, #3b82f6 12%, var(--white));
-  border: 1px solid #2563eb;
-  color: #2563eb;
+  background: color-mix(in srgb, #f59e0b 14%, var(--white));
+  border: 1px solid #d97706;
+  color: #b45309;
 }
 
 .statusOnHold {

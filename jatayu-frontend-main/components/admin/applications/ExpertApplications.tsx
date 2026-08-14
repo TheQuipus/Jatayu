@@ -71,8 +71,8 @@ const STATUS_BADGE_CLASS: Record<ApplicationStatus, string> = {
   pending: styles.statusPending,
   in_review: styles.statusInReview,
   on_hold: styles.statusOnHold,
-  approved: styles.statusPending,
-  rejected: styles.statusOnHold,
+  approved: styles.statusApproved,
+  rejected: styles.statusRejected,
 };
 
 const STATUS_LABEL: Record<ApplicationStatus, string> = {

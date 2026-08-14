@@ -355,27 +355,28 @@
   left: 16px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 4px;
-  background: rgba(8, 10, 16, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #f87171;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  color: #ff3b30;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 59, 48, 0.4);
   z-index: 5;
 }
 
 .recordingDot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #f87171;
+  background: #ff3b30;
+  box-shadow: 0 0 8px #ff3b30;
   animation: recDotPulse 1.2s infinite ease-in-out;
 }
 
@@ -474,9 +475,9 @@
 }
 
 .controlBtnRecording {
-  background: #ea4335 !important;
+  background: #2563eb !important;
   color: #ffffff !important;
-  border-color: #ea4335 !important;
+  border-color: #2563eb !important;
   animation: recBtnPulse 1.5s infinite;
 }
 
@@ -484,11 +485,11 @@
 
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.6);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6);
   }
 
   50% {
-    box-shadow: 0 0 0 8px rgba(234, 67, 53, 0);
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
   }
 }
 
@@ -671,7 +672,8 @@
 }
 
 .chatInterfaceFullHeight {
-  height: 750px;
+  height: calc(100vh - 120px);
+  min-height: 820px;
 }
 
 /* Chat Room Header */
@@ -872,6 +874,12 @@
   gap: 18px;
   background: radial-gradient(circle at 50% 50%, #ffffff 0%, #f9fafb 100%);
   position: relative;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chatLog::-webkit-scrollbar {
+  display: none;
 }
 
 .emptyChatState {
@@ -893,10 +901,43 @@
   cursor: pointer;
 }
 
-/* Message Wrapper & Hover Actions */
+.chatMessage {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.seekerMessage {
+  flex-direction: row-reverse;
+}
+
+.expertMessage {
+  flex-direction: row;
+}
+
+.msgAvatarWrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--mercury);
+  background: var(--gallery);
+  margin-top: 2px;
+}
+
+.msgAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .msgWrapper {
   position: relative;
-  max-width: 75%;
+  max-width: 78%;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -910,56 +951,190 @@
   align-items: flex-start;
 }
 
-.msgHoverToolbar {
-  position: absolute;
-  top: -14px;
+.msgHeaderLine {
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: var(--white);
-  border: 1px solid var(--mercury);
-  padding: 3px 6px;
-  border-radius: 20px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
-  z-index: 10;
+  gap: 8px;
+  margin-bottom: 2px;
 }
 
-.seekerMessage .msgHoverToolbar {
-  right: 0;
+.seekerMessage .msgHeaderLine {
+  justify-content: flex-end;
+}
+
+.expertMessage .msgHeaderLine {
+  justify-content: flex-start;
+}
+
+.msgSenderName {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.msgHeaderDot {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.msgHeaderTime {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #64748b;
+}
+
+.msgBubbleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.seekerMessage .msgBubbleRow {
+  flex-direction: row-reverse;
+}
+
+.expertMessage .msgBubbleRow {
+  flex-direction: row;
+}
+
+.msgBubble {
+  padding: 10px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.expertBubble {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-radius: 0px 14px 0px 14px !important;
+  border: 1px solid #e2e8f0;
+}
+
+.expertBubble .msgText {
+  color: #0f172a;
+}
+
+.seekerBubble {
+  background: var(--bunker);
+  color: var(--white);
+  border-radius: 14px 0px 14px 0px !important;
+  border: none;
+}
+
+.seekerBubble .msgText {
+  color: var(--white);
+}
+
+.msgText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.msgHoverActionsWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.msgReactionTriggerBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  opacity: 0.6;
+}
+
+.msgBubbleRow:hover .msgReactionTriggerBtn,
+.msgHoverActionsWrap:hover .msgReactionTriggerBtn {
+  opacity: 1;
+  color: #0f172a;
+  background: #e2e8f0;
+}
+
+.msgHoverToolbar {
+  position: absolute;
+  right: 28px;
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%) scale(0.92);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(8, 10, 16, 0.12);
+  padding: 5px 10px;
+  border-radius: 24px;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.18), 0 2px 6px -1px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 30;
+  white-space: nowrap;
 }
 
 .expertMessage .msgHoverToolbar {
-  left: 0;
+  right: 28px;
+  left: auto;
 }
 
-.msgWrapper:hover .msgHoverToolbar {
+.seekerMessage .msgHoverToolbar {
+  right: 28px;
+  left: auto;
+}
+
+.msgHoverActionsWrap:hover .msgHoverToolbar,
+.msgBubbleRow:hover .msgHoverToolbar {
   opacity: 1;
   visibility: visible;
+  transform: translateY(-50%) scale(1);
 }
 
 .quickEmojisBar {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding-right: 4px;
+  gap: 4px;
+  padding-right: 6px;
   border-right: 1px solid var(--mercury);
 }
 
 .quickEmojiBtn {
   background: none;
   border: none;
-  font-size: 13px;
+  font-size: 18px;
   cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
-  transition: transform 0.1s ease;
+  padding: 3px 5px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 0.15s ease;
 }
 
 .quickEmojiBtn:hover {
-  transform: scale(1.25);
+  transform: translateY(-4px) scale(1.35);
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.quickEmojiBtn:active {
+  transform: translateY(-1px) scale(1.1);
 }
 
 .toolbarActionBtn {
@@ -967,20 +1142,127 @@
   border: none;
   color: var(--scorpion);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 6px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              color 0.15s ease,
+              background-color 0.15s ease;
 }
 
 .toolbarActionBtn:hover {
   color: var(--ink);
   background: var(--gallery);
+  transform: translateY(-2px) scale(1.15);
+}
+
+.toolbarActionBtn:active {
+  transform: scale(0.95);
 }
 
 .toolbarActionBtnStarred {
   color: #eab308;
+}
+
+.toolbarDeleteBtn:hover {
+  color: #ef4444 !important;
+  background: #fee2e2 !important;
+}
+
+/* Blackish Deleted Message Pill with Undo */
+.deletedMsgPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bunker);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-family: var(--font-body);
+  font-size: 13px;
+  animation: popoverFade 0.2s ease-out;
+}
+
+.deletedMsgText {
+  font-style: italic;
+  opacity: 0.95;
+}
+
+.undoDeleteBtn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+  font-family: var(--font-body);
+  transition: opacity 0.15s ease;
+}
+
+.undoDeleteBtn:hover {
+  opacity: 0.8;
+}
+
+/* 3-Dots Dropdown Menu */
+.msgMoreMenuPopover {
+  position: absolute;
+  top: calc(100% + 4px);
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 4px 10px -2px rgba(0, 0, 0, 0.08);
+  z-index: 40;
+  min-width: 145px;
+  animation: popoverFade 0.15s ease-out;
+}
+
+.seekerMessage .msgMoreMenuPopover {
+  left: 0;
+  right: auto;
+}
+
+.expertMessage .msgMoreMenuPopover {
+  right: 0;
+  left: auto;
+}
+
+.msgMoreMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: #1e293b;
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.msgMoreMenuItem:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.msgMoreMenuItemDanger {
+  color: #ef4444;
+}
+
+.msgMoreMenuItemDanger:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* Quoted Snippet */
@@ -1018,8 +1300,8 @@
 /* Message Bubble */
 .msgBubble {
   width: 100%;
-  padding: 12px 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 14px 18px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1028,47 +1310,92 @@
 .seekerMessage .msgBubble {
   background: var(--bunker);
   color: var(--white);
-  border-radius: 14px 14px 2px 14px;
+  border-radius: 16px 16px 4px 16px;
 }
 
 .expertMessage .msgBubble {
   background: var(--white);
   color: var(--ink);
-  border-radius: 14px 14px 14px 2px;
+  border-radius: 16px 16px 16px 4px;
   border: 1px solid var(--mercury);
 }
 
 .msgText {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.msgBubbleEmojiOnly {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px 6px !important;
+}
+
+.msgTextEmojiOnly {
+  font-size: 52px;
+  line-height: 1.15;
+  letter-spacing: 4px;
+  display: inline-block;
+  animation: bigEmojiBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) ease-out;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+}
+
+@keyframes bigEmojiBounce {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-15deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.35) rotate(8deg);
+  }
+  75% {
+    transform: scale(0.92) rotate(-4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .msgMeta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  margin-top: 3px;
+  padding: 0 4px;
+}
+
+.seekerMessage .msgMeta {
   justify-content: flex-end;
-  margin-top: 2px;
+}
+
+.expertMessage .msgMeta {
+  justify-content: flex-start;
 }
 
 .starredIcon {
+  display: inline-flex;
+  align-items: center;
   margin-right: 2px;
 }
 
 .msgTime {
   font-family: var(--font-mono);
-  font-size: 10px;
-  opacity: 0.65;
+  font-size: 11px;
+  color: var(--scorpion);
+  opacity: 0.85;
 }
 
 .seekerMessage .msgTime {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--scorpion);
 }
 
 .readReceipt {
-  color: #38bdf8;
+  color: #0284c7;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -1078,43 +1405,95 @@
 .msgReactionsRow {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 2px;
+  gap: 6px;
+  margin-top: 4px;
   flex-wrap: wrap;
 }
 
 .reactionPill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 12px;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 14px;
   background: var(--white);
   border: 1px solid var(--mercury);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: all 0.15s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 0.15s ease,
+              border-color 0.15s ease,
+              box-shadow 0.15s ease;
+  animation: pillPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) ease-out;
+}
+
+@keyframes pillPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .reactionPill:hover {
   background: #f3f4f6;
   border-color: #d1d5db;
+  transform: translateY(-2px) scale(1.08);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.reactionPill:hover .reactionEmoji {
+  transform: scale(1.35) rotate(-8deg);
 }
 
 .reactionPillActive {
   background: #eff6ff;
   border-color: #3b82f6;
   color: #1d4ed8;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15), 0 2px 4px rgba(0, 0, 0, 0.04);
+  animation: activePillBounce 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes activePillBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.22); }
+  100% { transform: scale(1); }
 }
 
 .reactionEmoji {
-  font-size: 12px;
+  font-size: 14px;
+  display: inline-block;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .reactionCount {
   font-weight: 700;
+  font-size: 11px;
+}
+
+/* Google Noto Animated 3D Emoji Styles */
+.notoEmojiContainer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.notoAnimatedEmojiPic {
+  display: inline-block;
+  line-height: 0;
+}
+
+.notoAnimatedEmojiImg {
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+  animation: bigEmojiBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ease-out;
 }
 
 /* Typing Indicator Row */
@@ -1172,6 +1551,53 @@
 }
 
 /* Reply Preview Bar */
+/* Edit Preview Bar */
+.editPreviewBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #eff6ff;
+  border-top: 1px solid #bfdbfe;
+  border-left: 4px solid #3b82f6;
+}
+
+.editPreviewContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.editPreviewTitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.editPreviewText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.closeEditBtn {
+  background: none;
+  border: none;
+  color: #1d4ed8;
+  cursor: pointer;
+  padding: 4px;
+}
+
 .replyPreviewBar {
   display: flex;
   align-items: center;
@@ -1225,7 +1651,7 @@
   border-radius: 8px;
   padding: 8px;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(8, 1fr);
   gap: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   z-index: 20;
@@ -1300,19 +1726,18 @@
   display: flex;
   align-items: center;
   flex: 1;
-  height: 44px;
+  height: 48px;
   border: 1px solid var(--mercury);
   background: var(--gallery);
-  border-radius: 6px;
-  padding: 0 4px 0 10px;
-  gap: 6px;
+  border-radius: 8px;
+  padding: 0 5px 0 12px;
+  gap: 8px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .chatInputContainer:focus-within {
-  border-color: var(--ink);
-  background: var(--white);
-  box-shadow: 0 0 0 3px rgba(8, 10, 16, 0.05);
+  border-color: var(--mercury);
+  box-shadow: none;
 }
 
 .inputToolBtn {
@@ -1336,6 +1761,38 @@
   color: var(--orange);
 }
 
+.formatBtnGroup {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-left: 1px solid var(--mercury);
+  padding-left: 6px;
+  margin-left: 2px;
+}
+
+.formatBtn {
+  background: transparent;
+  border: none;
+  color: var(--scorpion);
+  padding: 5px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.formatBtn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.formatBtn:active {
+  transform: translateY(0);
+}
+
 .chatInput {
   flex: 1;
   height: 100%;
@@ -1344,14 +1801,14 @@
   outline: none;
   padding: 0 6px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 15px;
   color: var(--ink);
 }
 
 .chatSendBtn {
-  width: 34px;
-  height: 34px;
-  border-radius: 4px;
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
   background: var(--pomegranate);
   color: var(--white);
   border: none;
@@ -1407,9 +1864,26 @@
 }
 
 .notepadFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--silver-chalice);
+  margin-top: 4px;
+}
+
+.saveNotesActiveBtn {
+  min-height: 32px !important;
+  padding: 0 14px !important;
+  font-size: 11px !important;
+  flex-shrink: 0;
+  box-shadow: none !important;
+}
+
+.saveNotesActiveBtnSaved {
+  background: #16a34a !important;
 }
 
 .saveStatus {
@@ -1594,5 +2068,469 @@
 
 .chatLog::-webkit-scrollbar-thumb:hover,
 .notepadArea::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(8, 10, 16, 0.35);
+  background-color: rgba(8, 10, 16, 0.3);
+}
+
+/* ==========================================================================
+   Astrotalk-Style Continue Chat Modal & Timer Extensions (Jatayu System)
+   ========================================================================== */
+
+.timerBadgeHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--gallery) 80%, var(--white));
+  border: 1px solid var(--mercury);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.timerClockIcon {
+  color: var(--thunderbird);
+}
+
+.timerPulseWarning {
+  background: color-mix(in srgb, var(--thunderbird) 10%, var(--white));
+  border-color: color-mix(in srgb, var(--thunderbird) 35%, var(--mercury));
+  color: var(--thunderbird);
+  animation: timerWarningPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes timerWarningPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.chatHeaderExtendBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--thunderbird) 40%, var(--mercury));
+  background: color-mix(in srgb, var(--thunderbird) 8%, var(--white));
+  color: var(--thunderbird);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chatHeaderExtendBtn:hover {
+  background: var(--thunderbird);
+  color: var(--white);
+  border-color: var(--thunderbird);
+}
+
+.astrotalkExpiredBanner {
+  background: color-mix(in srgb, var(--thunderbird) 6%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--thunderbird) 20%, var(--mercury));
+  clip-path: polygon(0% 0%, 100% 0%, 100% 90%, 98% 100%, 0% 100%);
+  margin: 12px 16px 0;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.astrotalkExpiredInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sora);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--thunderbird);
+}
+
+.astrotalkContinueInlineBtn {
+  min-height: 32px !important;
+  padding: 0 16px !important;
+  font-size: 11px !important;
+  box-shadow: none !important;
+}
+
+/* Modal Overlay & Container */
+.astrotalkModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 16, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeInOverlay 0.2s ease;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.astrotalkModalCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 97%, 95% 100%, 0% 100%);
+  animation: astrotalkSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes astrotalkSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.astrotalkCloseBtn {
+  background: none;
+  border: none;
+  color: var(--silver-chalice);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.astrotalkCloseBtn:hover {
+  color: var(--ink);
+}
+
+.astrotalkModalBody {
+  padding: 20px 24px 24px;
+}
+
+.astrotalkPacksHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--scorpion);
+  margin-bottom: 12px;
+}
+
+.astrotalkFastTag {
+  color: var(--thunderbird);
+  font-size: 11px;
+}
+
+.astrotalkPacksGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.astrotalkPackItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid var(--mercury);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 88%, 97% 100%, 0% 100%);
+  cursor: pointer;
+  background: var(--white);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.astrotalkPackItem:hover {
+  border-color: color-mix(in srgb, var(--thunderbird) 50%, var(--mercury));
+  background: color-mix(in srgb, var(--gallery) 50%, var(--white));
+}
+
+.astrotalkPackItemActive {
+  border-color: var(--thunderbird) !important;
+  background: color-mix(in srgb, var(--thunderbird) 4%, var(--white)) !important;
+  box-shadow: 0 4px 14px rgba(217, 48, 37, 0.1);
+}
+
+.astrotalkPackLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.astrotalkRadioSquare {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--silver-chalice);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.astrotalkRadioSquareSelected {
+  border-color: var(--thunderbird);
+  background: color-mix(in srgb, var(--thunderbird) 10%, var(--white));
+}
+
+.astrotalkRadioInner {
+  width: 8px;
+  height: 8px;
+  background: var(--thunderbird);
+}
+
+.astrotalkPackMins {
+  font-family: var(--font-sora);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.astrotalkDiscountTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #16a34a;
+  background: #dcfce7;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+
+.astrotalkRateText {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--dove-gray);
+}
+
+.astrotalkPackRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.astrotalkBadgeTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--thunderbird);
+  color: var(--white);
+  padding: 3px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.astrotalkPackPrice {
+  font-family: var(--font-sora);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.astrotalkWalletRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--gallery) 80%, var(--white));
+  border: 1px solid var(--mercury);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 90%, 98% 100%, 0% 100%);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink);
+  margin-bottom: 20px;
+}
+
+.astrotalkWalletLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--scorpion);
+}
+
+.astrotalkPayableVal strong {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--thunderbird);
+}
+
+.astrotalkModalFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.astrotalkPayBtn {
+  width: 100% !important;
+}
+
+.astrotalkCancelBtn {
+  background: none;
+  border: none;
+  color: var(--dove-gray);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px;
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.astrotalkCancelBtn:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Bottom Continue Chat Bar (In-Chat Input Bar Replacement) */
+.bottomContinueChatBar {
+  background: color-mix(in srgb, var(--gallery) 85%, var(--white));
+  border-top: 1px solid var(--mercury);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeInBottomBar 0.25s ease;
+}
+
+@keyframes fadeInBottomBar {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bottomContinueHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bottomContinueTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bottomContinueClockIcon {
+  color: var(--thunderbird);
+}
+
+.bottomContinueTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--thunderbird);
+}
+
+.bottomContinueSub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--dove-gray);
+}
+
+.bottomPacksRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bottomPackChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bottomPackChip:hover {
+  border-color: color-mix(in srgb, var(--thunderbird) 50%, var(--mercury));
+  background: color-mix(in srgb, var(--gallery) 50%, var(--white));
+}
+
+.bottomPackChipActive {
+  border-color: var(--thunderbird) !important;
+  background: color-mix(in srgb, var(--thunderbird) 6%, var(--white)) !important;
+  box-shadow: 0 2px 8px rgba(217, 48, 37, 0.12);
+}
+
+.bottomPackMins {
+  font-family: var(--font-sora);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.bottomPackPrice {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--thunderbird);
+}
+
+.bottomPackTag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #16a34a;
+  background: #dcfce7;
+  padding: 2px 5px;
+  text-transform: uppercase;
+}
+
+.bottomContinueActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.bottomWalletInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion);
+}
+
+.bottomWalletInfo strong {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+.bottomContinuePayBtn {
+  min-height: 38px !important;
+  font-size: 12px !important;
 }

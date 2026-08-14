@@ -17,6 +17,9 @@ import {
   Shield,
   Star,
   Zap,
+  TrendingUp,
+  ThumbsUp,
+  MessageCircle,
 } from "lucide-react";
 import {
   REVIEWS_SUMMARY,
@@ -108,8 +111,10 @@ export default function ExpertReviews() {
         -------------------------------------------------- */}
         <div className={styles.headerRow}>
           <div className={styles.headerText}>
-            <h1 className={styles.pageTitle}>Reviews & Reputation</h1>
             <p className={styles.pageSubtitle}>Client feedback, ratings & performance insights</p>
+            <h1 className={styles.pageTitle}>
+              Reviews & <span className={styles.accentWord}>REPUTATION</span>
+            </h1>
           </div>
           <div className={styles.headerActions}>
             <select className={styles.selectDropdown} defaultValue="all-time">
@@ -128,12 +133,61 @@ export default function ExpertReviews() {
         </div>
 
         {/* --------------------------------------------------
-            2. TOP ROW: RATING OVERVIEW & PERFORMANCE INSIGHTS
+            2. KPI OVERVIEW METRICS ROW
+        -------------------------------------------------- */}
+        <div className={styles.summaryGrid}>
+          <div className={`${styles.kpiCard} ${styles.kpiCardActive}`}>
+            <div className={styles.kpiHeader}>
+              <span className={styles.kpiLabel}>Overall Rating</span>
+              <span className={styles.kpiIconBox}>
+                <Star size={18} fill="currentColor" />
+              </span>
+            </div>
+            <div className={styles.kpiValue}>{REVIEWS_SUMMARY.overallRating}</div>
+          </div>
+
+          <div className={styles.kpiCard}>
+            <div className={styles.kpiHeader}>
+              <span className={styles.kpiLabel}>Total Reviews</span>
+              <span className={styles.kpiIconBox}>
+                <MessageCircle size={18} />
+              </span>
+            </div>
+            <div className={styles.kpiValue}>{REVIEWS_SUMMARY.totalReviews}</div>
+          </div>
+
+          <div className={styles.kpiCard}>
+            <div className={styles.kpiHeader}>
+              <span className={styles.kpiLabel}>Recommendation</span>
+              <span className={styles.kpiIconBox}>
+                <ThumbsUp size={18} />
+              </span>
+            </div>
+            <div className={styles.kpiValue}>{REVIEWS_SUMMARY.recommendationPercent}%</div>
+          </div>
+
+          <div className={styles.kpiCard}>
+            <div className={styles.kpiHeader}>
+              <span className={styles.kpiLabel}>Response Rate</span>
+              <span className={styles.kpiIconBox}>
+                <TrendingUp size={18} />
+              </span>
+            </div>
+            <div className={styles.kpiValue}>{REVIEWS_SUMMARY.responseRatePercent}%</div>
+          </div>
+        </div>
+
+        {/* --------------------------------------------------
+            3. TOP ROW: RATING OVERVIEW & PERFORMANCE INSIGHTS
         -------------------------------------------------- */}
         <div className={styles.topRowGrid}>
           {/* Rating Summary Card */}
           <div className={`${styles.card} ${styles.ratingSummaryCard}`}>
             <div>
+              <div className={styles.sectionHeader} style={{ marginBottom: 12 }}>
+                <span className={styles.sectionDot} />
+                <h2 className={styles.sectionTitle}>Rating Breakdown</h2>
+              </div>
               <div className={styles.giantRatingRow}>
                 <span className={styles.giantRatingNumber}>
                   {REVIEWS_SUMMARY.overallRating}
@@ -145,7 +199,7 @@ export default function ExpertReviews() {
                     ))}
                   </div>
                   <span className={styles.totalReviewsCount}>
-                    {REVIEWS_SUMMARY.totalReviews} client reviews
+                    Based on {REVIEWS_SUMMARY.totalReviews} verified client reviews
                   </span>
                 </div>
               </div>
@@ -154,7 +208,7 @@ export default function ExpertReviews() {
               <div className={styles.starBreakdownList}>
                 {REVIEWS_SUMMARY.starDistribution.map((item) => (
                   <div key={item.stars} className={styles.starBreakdownRow}>
-                    <span className={styles.starLabel}>{item.stars}</span>
+                    <span className={styles.starLabel}>{item.stars}★</span>
                     <div className={styles.starBarBg}>
                       <div
                         className={styles.starBarFill}
@@ -194,8 +248,11 @@ export default function ExpertReviews() {
           <div className={styles.card}>
             <div className={styles.cardHeaderRow}>
               <div>
+                <div className={styles.sectionHeader} style={{ marginBottom: 4 }}>
+                  <span className={styles.sectionDot} />
+                  <h2 className={styles.sectionTitle}>Category Feedback</h2>
+                </div>
                 <h2 className={styles.cardTitle}>Performance Insights</h2>
-                <span className={styles.cardSubtext}>Category scores based on client feedback</span>
               </div>
               <span className={styles.topExpertBadge}>
                 <Award size={12} /> {REVIEWS_SUMMARY.badgeLabel}
@@ -236,15 +293,18 @@ export default function ExpertReviews() {
         </div>
 
         {/* --------------------------------------------------
-            3. MIDDLE ROW: RATING TREND & ACHIEVEMENTS
+            4. MIDDLE ROW: RATING TREND & ACHIEVEMENTS
         -------------------------------------------------- */}
         <div className={styles.middleGridRow}>
           {/* Rating Trend Card */}
           <div className={styles.card}>
             <div className={styles.cardHeaderRow}>
               <div>
+                <div className={styles.sectionHeader} style={{ marginBottom: 4 }}>
+                  <span className={styles.sectionDot} />
+                  <h2 className={styles.sectionTitle}>Performance Analytics</h2>
+                </div>
                 <h2 className={styles.cardTitle}>Rating Trend</h2>
-                <span className={styles.cardSubtext}>Average monthly rating over time</span>
               </div>
               <div className={styles.chartToggleGroup}>
                 <button
@@ -277,7 +337,7 @@ export default function ExpertReviews() {
               >
                 <defs>
                   <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--pomegranate, #e53b17)" stopOpacity="0.2" />
+                    <stop offset="0%" stopColor="var(--pomegranate, #e53b17)" stopOpacity="0.25" />
                     <stop offset="100%" stopColor="var(--pomegranate, #e53b17)" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
@@ -319,8 +379,11 @@ export default function ExpertReviews() {
           <div className={styles.card}>
             <div className={styles.cardHeaderRow}>
               <div>
+                <div className={styles.sectionHeader} style={{ marginBottom: 4 }}>
+                  <span className={styles.sectionDot} />
+                  <h2 className={styles.sectionTitle}>Reputation Badges</h2>
+                </div>
                 <h2 className={styles.cardTitle}>Achievements</h2>
-                <span className={styles.cardSubtext}>Earned reputation badges</span>
               </div>
               <span className={styles.statBadgeGreen}>Top Rated</span>
             </div>
@@ -356,9 +419,14 @@ export default function ExpertReviews() {
         </div>
 
         {/* --------------------------------------------------
-            4. BOTTOM SECTION: CLIENT REVIEWS FEED
+            5. BOTTOM SECTION: CLIENT REVIEWS FEED
         -------------------------------------------------- */}
         <div className={styles.reviewsCard}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionDot} />
+            <h2 className={styles.sectionTitle}>Client Testimonials</h2>
+          </div>
+
           <div className={styles.filterTabsRow}>
             <div className={styles.tabsGroup}>
               <button
@@ -368,7 +436,7 @@ export default function ExpertReviews() {
                   activeTab === "all" ? styles.tabBtnActive : ""
                 }`}
               >
-                All Reviews ({reviews.length})
+                All Reviews <span className={styles.tabBadge}>({reviews.length})</span>
               </button>
               <button
                 type="button"
@@ -379,7 +447,7 @@ export default function ExpertReviews() {
               >
                 Needs Reply{" "}
                 <span className={styles.tabBadge}>
-                  {reviews.filter((r) => r.status === "Needs Reply").length}
+                  ({reviews.filter((r) => r.status === "Needs Reply").length})
                 </span>
               </button>
               <button
@@ -406,11 +474,13 @@ export default function ExpertReviews() {
               <div key={rev.id} className={styles.reviewItemCard}>
                 <div className={styles.reviewHeader}>
                   <div className={styles.reviewClientLeft}>
-                    <img
-                      src={rev.avatar}
-                      alt={rev.clientName}
-                      className={styles.reviewAvatar}
-                    />
+                    <div className={styles.avatarWrapper}>
+                      <img
+                        src={rev.avatar}
+                        alt={rev.clientName}
+                        className={styles.reviewAvatar}
+                      />
+                    </div>
                     <div className={styles.reviewClientMeta}>
                       <div className={styles.reviewClientNameRow}>
                         <span className={styles.reviewClientName}>{rev.clientName}</span>

@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { expertSlug, getExpertById, normalizeExpert } from "@/lib/experts";
+import { expertSlug, featuredExperts, getExpertById, normalizeExpert } from "@/lib/experts";
+
+export const dynamic = "force-static";
+
+export async function generateStaticParams() {
+  return featuredExperts.map((expert) => ({
+    expertId: expertSlug(expert.name),
+  }));
+}
 
 export async function GET(
   request: NextRequest,

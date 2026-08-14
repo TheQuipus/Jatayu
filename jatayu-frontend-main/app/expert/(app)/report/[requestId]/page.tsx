@@ -9,6 +9,16 @@ type ExpertReportPageProps = {
   params: Promise<{ requestId: string }>;
 };
 
+export function generateStaticParams() {
+  return [
+    { requestId: "req-1" },
+    { requestId: "req-2" },
+    { requestId: "req-3" },
+    { requestId: "req-4" },
+    { requestId: "req-5" },
+  ];
+}
+
 export async function generateMetadata({ params }: ExpertReportPageProps): Promise<Metadata> {
   const { requestId } = await params;
   const request = getRequestDetailById(requestId);

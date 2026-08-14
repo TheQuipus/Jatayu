@@ -50,6 +50,7 @@ export type BookingDetail = CalendarBooking & {
   context: string;
   attachments: BookingAttachment[];
   placedDaysAgo: number;
+  cancellationReason?: string;
 };
 
 export type UpcomingBooking = CalendarBooking;

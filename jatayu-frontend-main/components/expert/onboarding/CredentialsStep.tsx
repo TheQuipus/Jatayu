@@ -368,7 +368,7 @@ export default function CredentialsStep({
             <header className={styles.sectionCardHeader}>
               <div className={styles.sectionCardTitleWrap}>
                 <h2 className={styles.sectionCardTitle}>
-                  Government ID <span className={styles.requiredMark}>*</span>
+                  Government ID <span className={styles.requiredMark}></span>
                 </h2>
               </div>
             </header>
@@ -378,9 +378,8 @@ export default function CredentialsStep({
                 <button
                   key={id}
                   type="button"
-                  className={`${styles.idTypeBtn} ${
-                    selectedIdType === id ? styles.idTypeBtnSelected : ""
-                  }`}
+                  className={`${styles.idTypeBtn} ${selectedIdType === id ? styles.idTypeBtnSelected : ""
+                    }`}
                   onClick={() => handleIdTypeSelect(id)}
                 >
                   <Icon size={14} aria-hidden="true" />
@@ -404,9 +403,8 @@ export default function CredentialsStep({
                         Front Side <span className={styles.requiredMark}>*</span>
                       </span>
                       <div
-                        className={`${styles.idUploadZone} ${
-                          idFront ? styles.idUploadZoneDone : ""
-                        }`}
+                        className={`${styles.idUploadZone} ${idFront ? styles.idUploadZoneDone : ""
+                          }`}
                       >
                         {idFront ? (
                           renderDocPreview(
@@ -432,9 +430,8 @@ export default function CredentialsStep({
                     <div className={styles.idUploadCol}>
                       <span className={styles.idUploadLabel}>Back Side</span>
                       <div
-                        className={`${styles.idUploadZone} ${
-                          idBack ? styles.idUploadZoneDone : ""
-                        }`}
+                        className={`${styles.idUploadZone} ${idBack ? styles.idUploadZoneDone : ""
+                          }`}
                       >
                         {idBack ? (
                           renderDocPreview(
@@ -503,96 +500,95 @@ export default function CredentialsStep({
             </header>
 
             <div className={styles.certificateGrid}>
-            {certificateEntries.map((entry, index) => (
-              <div key={entry.id} className={styles.certificateCardWrap}>
-                <div className={styles.certificateCardHeader}>
-                  <span className={styles.certificateCardIndex}>
-                    Certificate {index + 1}
-                  </span>
-                  {certificateEntries.length > 1 ? (
-                    <button
-                      type="button"
-                      className={styles.certificateRemoveBtn}
-                      onClick={() => handleRemoveCertificate(entry.id)}
-                    >
-                      Remove
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className={styles.certificateCard}>
-                  <input
-                    id={`cert-name-${entry.id}`}
-                    type="text"
-                    className={styles.certificateField}
-                    placeholder="Certificate name"
-                    value={entry.name}
-                    onChange={(e) =>
-                      updateCertificateEntry(entry.id, { name: e.target.value })
-                    }
-                    aria-label={`Certificate ${index + 1} name`}
-                  />
-                  <input
-                    id={`cert-issuer-${entry.id}`}
-                    type="text"
-                    className={styles.certificateField}
-                    placeholder="Issuing authority"
-                    value={entry.issuer}
-                    onChange={(e) =>
-                      updateCertificateEntry(entry.id, { issuer: e.target.value })
-                    }
-                    aria-label={`Certificate ${index + 1} issuing authority`}
-                  />
-
-                  <div
-                    className={`${styles.certUploadZone} ${
-                      entry.fileUrl ? styles.certUploadZoneDone : ""
-                    }`}
-                  >
-                    {entry.fileUrl ? (
-                      renderDocPreview(
-                        entry.fileUrl,
-                        entry.fileName || "",
-                        entry.fileName || "Certificate preview",
-                        () => handleRemoveCertificateFile(entry.id),
-                      )
-                    ) : (
+              {certificateEntries.map((entry, index) => (
+                <div key={entry.id} className={styles.certificateCardWrap}>
+                  <div className={styles.certificateCardHeader}>
+                    <span className={styles.certificateCardIndex}>
+                      Certificate {index + 1}
+                    </span>
+                    {certificateEntries.length > 1 ? (
                       <button
                         type="button"
-                        className={styles.certUploadTrigger}
-                        onClick={() => certFileInputRefs.current[entry.id]?.click()}
+                        className={styles.certificateRemoveBtn}
+                        onClick={() => handleRemoveCertificate(entry.id)}
                       >
-                        <span className={styles.certUploadTitle}>Upload</span>
-                        <span className={styles.certUploadHint}>PDF, PNG max 2 mb</span>
+                        Remove
                       </button>
-                    )}
+                    ) : null}
                   </div>
 
-                  <input
-                    ref={(el) => {
-                      certFileInputRefs.current[entry.id] = el;
-                    }}
-                    type="file"
-                    accept="image/jpeg,image/png,application/pdf"
-                    className={styles.hiddenFileInput}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void handleCertificateFile(entry.id, file);
-                      e.target.value = "";
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+                  <div className={styles.certificateCard}>
+                    <input
+                      id={`cert-name-${entry.id}`}
+                      type="text"
+                      className={styles.certificateField}
+                      placeholder="Certificate name"
+                      value={entry.name}
+                      onChange={(e) =>
+                        updateCertificateEntry(entry.id, { name: e.target.value })
+                      }
+                      aria-label={`Certificate ${index + 1} name`}
+                    />
+                    <input
+                      id={`cert-issuer-${entry.id}`}
+                      type="text"
+                      className={styles.certificateField}
+                      placeholder="Issuing authority"
+                      value={entry.issuer}
+                      onChange={(e) =>
+                        updateCertificateEntry(entry.id, { issuer: e.target.value })
+                      }
+                      aria-label={`Certificate ${index + 1} issuing authority`}
+                    />
 
-            <button
-              type="button"
-              className={styles.addCertificateCard}
-              onClick={handleAddCertificate}
-            >
-              Add another
-            </button>
-          </div>
+                    <div
+                      className={`${styles.certUploadZone} ${entry.fileUrl ? styles.certUploadZoneDone : ""
+                        }`}
+                    >
+                      {entry.fileUrl ? (
+                        renderDocPreview(
+                          entry.fileUrl,
+                          entry.fileName || "",
+                          entry.fileName || "Certificate preview",
+                          () => handleRemoveCertificateFile(entry.id),
+                        )
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.certUploadTrigger}
+                          onClick={() => certFileInputRefs.current[entry.id]?.click()}
+                        >
+                          <span className={styles.certUploadTitle}>Upload</span>
+                          <span className={styles.certUploadHint}>PDF, PNG max 2 mb</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      ref={(el) => {
+                        certFileInputRefs.current[entry.id] = el;
+                      }}
+                      type="file"
+                      accept="image/jpeg,image/png,application/pdf"
+                      className={styles.hiddenFileInput}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleCertificateFile(entry.id, file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className={styles.addCertificateCard}
+                onClick={handleAddCertificate}
+              >
+                Add another
+              </button>
+            </div>
 
             <p className={styles.idPrivacyNote}>
               Verified certificates unlock the &apos;Credentials Verified&apos; badge on your profile
@@ -632,7 +628,7 @@ export default function CredentialsStep({
           <button type="button" className={shared.textBtn} onClick={handleSkip}>
             Skip
           </button>
-          <ContinueButton onClick={handleContinue} />
+          <ContinueButton onClick={handleContinue} disabled={!canContinue} />
         </div>
       </div>
     </section>

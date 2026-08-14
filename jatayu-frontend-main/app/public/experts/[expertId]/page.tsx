@@ -5,7 +5,13 @@ import RelatedExperts from "@/components/expert/RelatedExperts";
 import Contact from "@/components/ui/Contact";
 import Footer from "@/components/ui/Footer";
 import { getPublicExpert } from "@/lib/api";
-import { getExpertById } from "@/lib/experts";
+import { expertSlug, featuredExperts, getExpertById } from "@/lib/experts";
+
+export function generateStaticParams() {
+  return featuredExperts.map((expert) => ({
+    expertId: expertSlug(expert.name),
+  }));
+}
 
 type SectionWithGridProps = {
   color: string;

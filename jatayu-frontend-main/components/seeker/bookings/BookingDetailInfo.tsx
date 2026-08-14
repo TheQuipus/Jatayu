@@ -1,23 +1,29 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   ArrowLeft,
   BadgeCheck,
   Briefcase,
   CalendarClock,
+  Check,
+  ChevronDown,
   Clapperboard,
   ClipboardList,
   Download,
+  FileText,
   Flag,
   Headphones,
   Info,
   Languages,
   MapPin,
   MessageSquare,
+  Play,
+  Save,
   Shield,
   Star,
   Users,
@@ -28,6 +34,7 @@ import {
 } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
 import SecondaryCTA from "@/components/ui/SecondaryCTA";
+import ReviewScreen from "./ReviewScreen";
 import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
 import { formatCurrency, getPokeState, savePokeState, type BookingDetail } from "@/lib/seekerDashboard";
 import type { ConsultationType } from "@/lib/booking";
@@ -94,6 +101,15 @@ export default function BookingDetailInfo({
   notes,
 }: BookingDetailInfoProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isReviewModalOpen = searchParams?.get("action") === "review";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const [openAccIndex, setOpenAccIndex] = useState<number | null>(0);
   const [pokeState, setPokeState] = useState<{
     count: number;
     lastPokedAt: number | null;
@@ -101,6 +117,196 @@ export default function BookingDetailInfo({
     count: 0,
     lastPokedAt: null,
   });
+
+  const handleCloseReviewModal = () => {
+    router.push(pathname);
+  };
+
+  const isVideoCall =
+    booking.consultationType === "video" ||
+    booking.consultationType === "shoutout" ||
+    booking.consultationType === "group";
+
+  const accordionItems = useMemo(() => {
+    if (isVideoCall) {
+      return [
+        {
+          id: "transcript",
+          title: "Session Transcript",
+          content: (
+            <div className={styles.accContentInner}>
+              <div className={styles.transcriptBox}>
+                <div className={styles.transcriptLine}>
+                  <span className={styles.transcriptTime}>00:01</span>
+                  <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
+                  <span>Hello! Thanks for joining today's session. I've reviewed your context on "{booking.subject || 'your question'}". Let me share my screen and walk through the details.</span>
+                </div>
+                <div className={styles.transcriptLine}>
+                  <span className={styles.transcriptTime}>00:03</span>
+                  <strong className={styles.transcriptSpeaker}>You:</strong>
+                  <span>Hi! Yes, I'm excited. I specifically want to focus on cap table structure and valuation benchmarks.</span>
+                </div>
+                <div className={styles.transcriptLine}>
+                  <span className={styles.transcriptTime}>00:07</span>
+                  <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
+                  <span>Great question. For early-stage funding rounds, your primary focus should be keeping dilution bounded to 15-20% rather than optimizing solely for valuation.</span>
+                </div>
+              </div>
+            </div>
+          ),
+        },
+        {
+          id: "recordings",
+          title: "Recorded Videos",
+          content: (
+            <div className={styles.accContentInner}>
+              <p className={styles.accContentDesc}>
+                Cloud recordings of your video session. Watch online or download for offline viewing.
+              </p>
+              <div className={styles.videoGrid}>
+                <div className={styles.videoCard}>
+                  <div className={styles.videoThumbWrap}>
+                    <Image
+                      src={booking.expert.image}
+                      alt="Session Video Recording"
+                      fill
+                      className={styles.videoThumbImg}
+                    />
+                    <div
+                      className={styles.videoPlayOverlay}
+                      onClick={() => alert("Playing session recording video...")}
+                    >
+                      <Play size={28} color="#ffffff" fill="#ffffff" />
+                    </div>
+                    <span className={styles.videoDurationTag}>45:12</span>
+                  </div>
+                  <div className={styles.videoInfo}>
+                    <strong className={styles.videoTitle}>Full Session Recording</strong>
+                    <span className={styles.videoMeta}>1080p MP4 • 320 MB</span>
+                    <SecondaryCTA
+                      label="Download Video"
+                      showArrow={false}
+                      leadingIcon={<Download size={13} />}
+                      onClick={() => {
+                        alert("Downloading full session video MP4...");
+                      }}
+                      className={styles.videoDownloadBtn}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.videoCard}>
+                  <div className={styles.videoThumbWrap}>
+                    <Image
+                      src={booking.expert.image}
+                      alt="Session Highlight Clip"
+                      fill
+                      className={styles.videoThumbImg}
+                    />
+                    <div
+                      className={styles.videoPlayOverlay}
+                      onClick={() => alert("Playing highlight clip...")}
+                    >
+                      <Play size={28} color="#ffffff" fill="#ffffff" />
+                    </div>
+                    <span className={styles.videoDurationTag}>05:15</span>
+                  </div>
+                  <div className={styles.videoInfo}>
+                    <strong className={styles.videoTitle}>Session Highlight Clip</strong>
+                    <span className={styles.videoMeta}>MP4 Video • 42 MB</span>
+                    <SecondaryCTA
+                      label="Download Clip"
+                      showArrow={false}
+                      leadingIcon={<Download size={13} />}
+                      onClick={() => {
+                        alert("Downloading highlight clip MP4...");
+                      }}
+                      className={styles.videoDownloadBtn}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ),
+        },
+        {
+          id: "notes",
+          title: "Session Notes",
+          content: (
+            <div className={styles.accContentInner}>
+              <p className={styles.accContentDesc}>
+                Notes taken during your consultation session.
+              </p>
+              <div className={styles.notesBox}>
+                <pre className={styles.notesText}>
+                  {notes ||
+                    `1. Valuation & Cap Table:\n   - Dilution target: 15-20% max for seed round.\n   - Ensure clean anti-dilution terms.\n2. Action Items:\n   - Refine financial projections slide.\n   - Prepare target investor list for warm intros.`}
+                </pre>
+              </div>
+            </div>
+          ),
+        },
+      ];
+    }
+
+    // For Chat / Text consultation
+    return [
+      {
+        id: "download-chat",
+        title: "Download Chat",
+        content: (
+          <div className={styles.accContentInner}>
+            <p className={styles.accContentDesc}>
+              Export and download the full chat history of this consultation.
+            </p>
+            <div className={styles.chatExportCard}>
+              <div className={styles.chatExportHeader}>
+                <MessageSquare size={18} className={styles.chatExportIcon} />
+                <div>
+                  <strong className={styles.chatExportTitle}>Complete Chat Log</strong>
+                  <span className={styles.chatExportSub}>Exported in UTF-8 text format</span>
+                </div>
+              </div>
+              <div className={styles.accActionRow} style={{ marginTop: 12 }}>
+                <SecondaryCTA
+                  label="Download Chat Log (.txt)"
+                  showArrow={false}
+                  leadingIcon={<Download size={13} />}
+                  onClick={() => {
+                    const text = `CHAT LOG - ${booking.referenceId}\nExpert: ${booking.expert.name}\nDate: ${booking.scheduledDateLabel}\n\n[12:00 PM] ${booking.expert.name}: Hello! Thanks for scheduling our session.\n[12:01 PM] You: Hi, yes! I want to dive into the specifics.\n[12:02 PM] ${booking.expert.name}: Sure thing, let's review your question: "${booking.subject}".`;
+                    const blob = new Blob([text], { type: "text/plain" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `Chat_Log_${booking.referenceId}.txt`;
+                    a.click();
+                  }}
+                  className={styles.accDownloadBtn}
+                />
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "notes",
+        title: "Session Notes",
+        content: (
+          <div className={styles.accContentInner}>
+            <p className={styles.accContentDesc}>
+              Notes taken during your consultation session.
+            </p>
+            <div className={styles.notesBox}>
+              <pre className={styles.notesText}>
+                {notes ||
+                  `1. Key Points Addressed:\n   - Strategy for creator GST & income filing.\n   - Mixing personal & business expenses guidance.\n2. Recommended Next Steps:\n   - Consult CA before quarterly filing deadline.`}
+              </pre>
+            </div>
+          </div>
+        ),
+      },
+    ];
+  }, [booking, isVideoCall, notes]);
 
   useEffect(() => {
     setPokeState(getPokeState(booking.id));
@@ -384,6 +590,7 @@ export default function BookingDetailInfo({
   const handleCompletedReviewSubmit = () => {
     if (completedRating === 0) return;
     onSubmitReview(completedRating, completedComment.trim());
+    handleCloseReviewModal();
   };
 
   const renderCompletedFeedbackForm = () => {
@@ -568,12 +775,132 @@ export default function BookingDetailInfo({
                   <span className={styles.completedBadge}>
                     Session Completed
                   </span>
+                  {!submittedReview ? (
+                    <ContinueButton
+                      showArrow={false}
+                      label="Give Review"
+                      onClick={() => {
+                        router.push(`${pathname}?action=review`);
+                      }}
+                      className={styles.giveReviewBtn}
+                    />
+                  ) : (
+                    <span className={styles.submittedReviewBadge}>
+                      ✦ Review Submitted
+                    </span>
+                  )}
                 </div>
               ) : booking.status === "cancelled" ? (
-                <div className={styles.cancelledBadgeWrap}>
+                <div className={styles.cancelledBadgeWrapCol1}>
                   <span className={styles.cancelledBadge}>
                     Session Cancelled
                   </span>
+                  <p className={styles.cancellationReasonCol1}>
+                    Reason: {booking.cancellationReason || "Cancelled due to an unforeseen schedule conflict by the expert."}
+                  </p>
+                </div>
+              ) : timeStatus === "active" ? (
+                <div className={styles.activeBadgeWrap}>
+                  <ContinueButton
+                    label="Join Session"
+                    onClick={onJoinSession}
+                    className={styles.joinSessionBtn}
+                  />
+                </div>
+              ) : timeStatus === "upcoming" && countdownText ? (
+                <div className={styles.upcomingBadgeWrap}>
+                  <div className={styles.countdownValueDisplay}>{countdownText}</div>
+                  <span className={styles.statusSubText}>Join room activates 5m prior</span>
+                </div>
+              ) : booking.status === "pending" ? (
+                <div className={styles.pendingBadgeWrap}>
+                  {!isOneHourPassed ? (
+                    <ContinueButton
+                      showArrow={false}
+                      leadingIcon={
+                        <Image
+                          src="/pointright.svg"
+                          alt=""
+                          width={16}
+                          height={16}
+                          className={styles.pokeIconSvg}
+                          aria-hidden="true"
+                        />
+                      }
+                      label={`Poke ${pokeState.count}/2`}
+                      disabled
+                      title="Poke option will be active 1 hour after booking placement."
+                      className={styles.sessionPokeBtn}
+                    />
+                  ) : pokeState.count === 0 ? (
+                    <ContinueButton
+                      showArrow={false}
+                      leadingIcon={
+                        <Image
+                          src="/pointright.svg"
+                          alt=""
+                          width={16}
+                          height={16}
+                          className={styles.pokeIconSvg}
+                          aria-hidden="true"
+                        />
+                      }
+                      label={`Poke ${pokeState.count}/2`}
+                      onClick={handlePoke}
+                      className={styles.sessionPokeBtn}
+                    />
+                  ) : pokeState.count === 1 && cooldownSeconds > 0 ? (
+                    <ContinueButton
+                      showArrow={false}
+                      leadingIcon={
+                        <Image
+                          src="/pointright.svg"
+                          alt=""
+                          width={16}
+                          height={16}
+                          className={styles.pokeIconSvg}
+                          aria-hidden="true"
+                        />
+                      }
+                      label={`Next poke: ${formatCooldown(cooldownSeconds)}`}
+                      disabled
+                      className={styles.sessionPokeBtn}
+                    />
+                  ) : pokeState.count === 1 && cooldownSeconds === 0 ? (
+                    <ContinueButton
+                      showArrow={false}
+                      leadingIcon={
+                        <Image
+                          src="/pointright.svg"
+                          alt=""
+                          width={16}
+                          height={16}
+                          className={styles.pokeIconSvg}
+                          aria-hidden="true"
+                        />
+                      }
+                      label={`Poke ${pokeState.count}/2`}
+                      onClick={handlePoke}
+                      className={styles.sessionPokeBtn}
+                    />
+                  ) : (
+                    <ContinueButton
+                      showArrow={false}
+                      leadingIcon={
+                        <Image
+                          src="/pointright.svg"
+                          alt=""
+                          width={16}
+                          height={16}
+                          className={styles.pokeIconSvg}
+                          aria-hidden="true"
+                        />
+                      }
+                      label="Max pokes reached"
+                      disabled
+                      className={styles.sessionPokeBtn}
+                    />
+                  )}
                 </div>
               ) : null}
             </div>
@@ -596,119 +923,17 @@ export default function BookingDetailInfo({
                     </p>
                   </div>
                 </div>
-
-                {booking.status === "pending" ? (
-                  <div className={styles.sessionSummaryAction}>
-                    {!isOneHourPassed ? (
-                      <ContinueButton
-                        leadingIcon={
-                          <Image
-                            src="/pointright.svg"
-                            alt=""
-                            width={16}
-                            height={16}
-                            className={styles.pokeIconSvg}
-                            aria-hidden="true"
-                          />
-                        }
-                        label="Poke Expert (Locked 1h)"
-                        disabled
-                        className={styles.sessionPokeBtn}
-                      />
-                    ) : pokeState.count === 0 ? (
-                      <ContinueButton
-                        leadingIcon={
-                          <Image
-                            src="/pointright.svg"
-                            alt=""
-                            width={16}
-                            height={16}
-                            className={styles.pokeIconSvg}
-                            aria-hidden="true"
-                          />
-                        }
-                        label="Poke Expert"
-                        onClick={handlePoke}
-                        className={styles.sessionPokeBtn}
-                      />
-                    ) : pokeState.count === 1 && cooldownSeconds > 0 ? (
-                      <ContinueButton
-                        leadingIcon={
-                          <Image
-                            src="/pointright.svg"
-                            alt=""
-                            width={16}
-                            height={16}
-                            className={styles.pokeIconSvg}
-                            aria-hidden="true"
-                          />
-                        }
-                        label={`Poke Cooldown (${formatCooldown(cooldownSeconds)})`}
-                        disabled
-                        className={styles.sessionPokeBtn}
-                      />
-                    ) : pokeState.count === 1 && cooldownSeconds === 0 ? (
-                      <ContinueButton
-                        leadingIcon={
-                          <Image
-                            src="/pointright.svg"
-                            alt=""
-                            width={16}
-                            height={16}
-                            className={styles.pokeIconSvg}
-                            aria-hidden="true"
-                          />
-                        }
-                        label="Poke Expert Again"
-                        onClick={handlePoke}
-                        className={styles.sessionPokeBtn}
-                      />
-                    ) : (
-                      <ContinueButton
-                        leadingIcon={
-                          <Image
-                            src="/pointright.svg"
-                            alt=""
-                            width={16}
-                            height={16}
-                            className={styles.pokeIconSvg}
-                            aria-hidden="true"
-                          />
-                        }
-                        label="No Pokes Remaining"
-                        disabled
-                        className={styles.sessionPokeBtn}
-                      />
-                    )}
-                  </div>
-                ) : timeStatus === "active" ? (
-                  <div className={styles.sessionSummaryAction}>
-                    <ContinueButton
-                      label="Join Session"
-                      onClick={onJoinSession}
-                      className={styles.joinSessionBtn}
-                    />
-                  </div>
-                ) : timeStatus === "upcoming" && countdownText ? (
-                  <div className={styles.sessionSummaryAction}>
-                    <div className={styles.countdownActionWrapper}>
-                      <div className={styles.countdownActionText}>
-                        {countdownText}
-                      </div>
-                      <span className={styles.countdownActionHint}>
-                        Join room activates 5m prior
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
               <div className={styles.sessionGrid}>
+                {/* Column 1: Scheduled For */}
                 <div className={styles.sessionInset}>
                   <span className={styles.sessionLabel}>Scheduled For</span>
                   <strong className={styles.sessionValue}>{booking.scheduledDateLabel}</strong>
                   <span className={styles.sessionHint}>{booking.scheduledTimeLabel}</span>
                 </div>
+
+                {/* Column 2: Duration */}
                 <div className={styles.sessionInset}>
                   <span className={styles.sessionLabel}>Duration</span>
                   <strong className={styles.sessionValue}>{booking.durationLabel}</strong>
@@ -724,6 +949,45 @@ export default function BookingDetailInfo({
                 <p className={styles.contextText}>{booking.context}</p>
               </div>
             </article>
+
+            {/* Session Resources & Artifacts Section (Shown only after session is completed) */}
+            {(isCompletedSession || submittedReview) && (
+              <>
+                <div className={styles.resourceSectionHead}>
+                  <FileText size={16} aria-hidden="true" />
+                  <h2 className={styles.sectionTitle}>Session Resources & Artifacts</h2>
+                </div>
+
+                <div className={styles.accContainer}>
+                  {accordionItems.map((item, idx) => {
+                    const isOpen = openAccIndex === idx;
+                    return (
+                      <article key={item.id} className={`${styles.accCardItem} ${isOpen ? styles.isOpen : ""}`}>
+                        <button
+                          type="button"
+                          className={styles.accBtn}
+                          onClick={() => setOpenAccIndex(isOpen ? null : idx)}
+                          aria-expanded={isOpen}
+                        >
+                          <span className={styles.accTitle}>{item.title}</span>
+                          <span className={styles.accPlus}>
+                            <Image
+                              src="/assets/plusicon.svg"
+                              alt=""
+                              width={34}
+                              height={34}
+                            />
+                          </span>
+                        </button>
+                        <div className={styles.accPanel}>
+                          {item.content}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
           </div>
 
@@ -908,6 +1172,27 @@ export default function BookingDetailInfo({
           booking={booking}
           onClose={() => setIsReportModalOpen(false)}
         />
+      )}
+
+      {isReviewModalOpen && !submittedReview && mounted && createPortal(
+        <div className={styles.reviewModalOverlay} onClick={handleCloseReviewModal}>
+          <div
+            className={styles.reviewModalWrapper}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <ReviewScreen
+              booking={booking}
+              onSubmit={(rating, comment) => {
+                onSubmitReview(rating, comment);
+                handleCloseReviewModal();
+              }}
+              onCancel={handleCloseReviewModal}
+            />
+          </div>
+        </div>,
+        document.body
       )}
     </section>
   );

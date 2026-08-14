@@ -5,26 +5,38 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import {
   BadgeCheck,
+  Bold,
   CheckCheck,
+  Clock,
   Copy,
   FileText,
   Flag,
   Headphones,
   Image as ImageIcon,
+  Italic,
+  MoreVertical,
   Paperclip,
+  Pencil,
   PhoneOff,
   Plus,
+  PlusCircle,
   Reply,
   Search,
   Send,
   Shield,
   Smile,
+  Sparkles,
   Star,
+  Trash2,
+  Underline,
+  Wallet,
   X,
+  Zap,
 } from "lucide-react";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import ContinueButton from "@/components/ui/ContinueButton";
 import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
-import { formatCurrency, type BookingDetail } from "@/lib/seekerDashboard";
+import { formatCurrency, SEEKER_PROFILE, type BookingDetail } from "@/lib/seekerDashboard";
 import styles from "./ActiveRoom.module.css";
 
 export type ChatMessage = {
@@ -56,7 +68,89 @@ export type ActiveChatRoomProps = {
   onFinishSession: () => void;
 };
 
-const QUICK_EMOJIS = ["👍", "❤️", "💡", "🔥", "🙏", "🎉"];
+function getEmojiCodepoint(emojiChar: string): string {
+  const codePoints = Array.from(emojiChar).map((c) =>
+    c.codePointAt(0)!.toString(16)
+  );
+  return codePoints.join("_");
+}
+
+function NotoAnimatedEmojiItem({ emoji, size = 76 }: { emoji: string; size?: number }) {
+  const [hasError, setHasError] = useState(false);
+  const codepoint = getEmojiCodepoint(emoji);
+  const webpUrl = `https://fonts.gstatic.com/s/e/notoemoji/latest/${codepoint}/512.webp`;
+  const gifUrl = `https://fonts.gstatic.com/s/e/notoemoji/latest/${codepoint}/512.gif`;
+
+  if (hasError) {
+    return <span className={styles.msgTextEmojiOnly}>{emoji}</span>;
+  }
+
+  return (
+    <picture className={styles.notoAnimatedEmojiPic}>
+      <source srcSet={webpUrl} type="image/webp" />
+      <img
+        src={gifUrl}
+        alt={emoji}
+        width={size}
+        height={size}
+        className={styles.notoAnimatedEmojiImg}
+        onError={() => setHasError(true)}
+      />
+    </picture>
+  );
+}
+
+function NotoAnimatedEmojiMessage({ text, size = 76 }: { text: string; size?: number }) {
+  let emojis: string[] = [];
+  if (typeof Intl !== "undefined" && (Intl as unknown as { Segmenter?: new (loc: string, opt: { granularity: string }) => { segment: (s: string) => Iterable<{ segment: string }> } }).Segmenter) {
+    const SegmenterClass = (Intl as unknown as { Segmenter: new (loc: string, opt: { granularity: string }) => { segment: (s: string) => Iterable<{ segment: string }> } }).Segmenter;
+    const segmenter = new SegmenterClass("en", { granularity: "grapheme" });
+    emojis = Array.from(segmenter.segment(text.trim())).map((s) => s.segment);
+  } else {
+    emojis = Array.from(text.trim());
+  }
+
+  return (
+    <div className={styles.notoEmojiContainer}>
+      {emojis.map((emojiChar, idx) => (
+        <NotoAnimatedEmojiItem key={`${emojiChar}-${idx}`} emoji={emojiChar} size={size} />
+      ))}
+    </div>
+  );
+}
+
+function FormattedMessageText({ text }: { text: string }) {
+  const parseFormattedText = (str: string): React.ReactNode[] => {
+    const regex = /(<u>.*?<\/u>|\*\*.*?\*\*|\*.*?\*)/g;
+    const parts = str.split(regex);
+
+    return parts.map((part, index) => {
+      if (part.startsWith("<u>") && part.endsWith("</u>")) {
+        const inner = part.slice(3, -4);
+        return <u key={index}>{inner}</u>;
+      }
+      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+        const inner = part.slice(2, -2);
+        return <strong key={index}>{inner}</strong>;
+      }
+      if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+        const inner = part.slice(1, -1);
+        return <em key={index}>{inner}</em>;
+      }
+      return part;
+    });
+  };
+
+  return <p className={styles.msgText}>{parseFormattedText(text)}</p>;
+}
+
+const QUICK_EMOJIS = ["💖", "👍", "🎉", "👏", "😂", "😮", "😢", "🤔"];
+
+const EXTENSION_PACKS = [
+  { id: "5m", mins: 5, price: 150, tag: "", discount: "" },
+  { id: "10m", mins: 10, price: 280, tag: "POPULAR", discount: "Save 7%" },
+  { id: "15m", mins: 15, price: 400, tag: "BEST VALUE", discount: "Save 12%" },
+];
 
 export default function ActiveChatRoom({
   booking,
@@ -72,11 +166,82 @@ export default function ActiveChatRoom({
 }: ActiveChatRoomProps) {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatLogRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleApplyFormat = (format: "bold" | "italic" | "underline") => {
+    if (!inputRef.current) return;
+    const input = inputRef.current;
+    const start = input.selectionStart ?? newMessage.length;
+    const end = input.selectionEnd ?? newMessage.length;
+    const selectedText = newMessage.substring(start, end);
+
+    let prefix = "";
+    let suffix = "";
+    if (format === "bold") {
+      prefix = "**";
+      suffix = "**";
+    } else if (format === "italic") {
+      prefix = "*";
+      suffix = "*";
+    } else if (format === "underline") {
+      prefix = "<u>";
+      suffix = "</u>";
+    }
+
+    const replacement = selectedText
+      ? `${prefix}${selectedText}${suffix}`
+      : `${prefix}text${suffix}`;
+
+    const updated = newMessage.substring(0, start) + replacement + newMessage.substring(end);
+    setNewMessage(updated);
+
+    setTimeout(() => {
+      input.focus();
+      if (selectedText) {
+        input.setSelectionRange(start + prefix.length, end + prefix.length);
+      } else {
+        input.setSelectionRange(start + prefix.length, start + prefix.length + 4);
+      }
+    }, 0);
+  };
+
+  // Astrotalk Extend Session & Timer states
+  const [secondsRemaining, setSecondsRemaining] = useState(900); // 15 mins
+  const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
+  const [selectedPackId, setSelectedPackId] = useState("10m");
+  const [walletBalance, setWalletBalance] = useState(1250);
+
+  useEffect(() => {
+    if (secondsRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [secondsRemaining]);
+
+  const formatTimer = (totalSecs: number) => {
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const handleConfirmExtend = () => {
+    const pack = EXTENSION_PACKS.find((p) => p.id === selectedPackId) || EXTENSION_PACKS[1];
+    if (walletBalance < pack.price) {
+      showToast("Insufficient balance! Please add funds to your wallet.");
+      return;
+    }
+    setWalletBalance((prev) => prev - pack.price);
+    setSecondsRemaining((prev) => prev + pack.mins * 60);
+    setIsExtendModalOpen(false);
+    showToast(`Session extended by ${pack.mins} mins! Chat active 🎉`);
+  };
 
   // Reaction state per message: { msgId: { "👍": count } }
   const [msgReactions, setMsgReactions] = useState<Record<string, Record<string, number>>>({
-    "1": { "👍": 1, "💡": 1 },
-    "2": { "❤️": 1 },
+    "1": { "👍": 1, "🎉": 1 },
+    "2": { "💖": 1 },
   });
 
   // User's own reactions per message: { msgId: ["👍"] }
@@ -93,6 +258,28 @@ export default function ActiveChatRoom({
   // Replying state
   const [replyingMsg, setReplyingMsg] = useState<ChatMessage | null>(null);
 
+  // Editing state
+  const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
+
+  // Active 3-dots dropdown menu msg ID
+  const [activeMenuMsgId, setActiveMenuMsgId] = useState<string | null>(null);
+
+  // Deleted message IDs set
+  const [deletedMsgIds, setDeletedMsgIds] = useState<Set<string>>(new Set());
+
+  // Close 3-dots dropdown menu when clicking anywhere outside
+  useEffect(() => {
+    if (!activeMenuMsgId) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(`.${styles.msgHoverActionsWrap}`)) {
+        setActiveMenuMsgId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeMenuMsgId]);
+
   // Emoji picker & attachment drawer
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
@@ -100,9 +287,32 @@ export default function ActiveChatRoom({
   // Toast feedback state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Auto-scroll chat log
+  // Notes save status state
+  const [isNotesSaved, setIsNotesSaved] = useState(false);
+  const handleSaveNotes = () => {
+    setIsNotesSaved(true);
+    setTimeout(() => setIsNotesSaved(false), 2500);
+  };
+
+  const scrollToBottom = (instant = false) => {
+    if (chatLogRef.current) {
+      chatLogRef.current.scrollTo({
+        top: chatLogRef.current.scrollHeight,
+        behavior: instant ? "auto" : "smooth",
+      });
+    }
+  };
+
+  // Auto-scroll to bottom immediately when joining chat session & after layout settles
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom(true);
+    const timer = setTimeout(() => scrollToBottom(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-scroll when new messages update
+  useEffect(() => {
+    scrollToBottom(false);
   }, [chatMessages]);
 
   const showToast = (msg: string) => {
@@ -151,6 +361,12 @@ export default function ActiveChatRoom({
     });
   };
 
+  const isEmojiOnlyText = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+    return /^[\s\p{Extended_Pictographic}\u200d\ufe0f]+$/u.test(trimmed);
+  };
+
   const handleCopyText = (text: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
@@ -161,8 +377,20 @@ export default function ActiveChatRoom({
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    onSendMessage(e);
-    setReplyingMsg(null);
+
+    if (editingMsg) {
+      setLocalMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === editingMsg.id ? { ...msg, text: newMessage.trim() } : msg
+        )
+      );
+      setEditingMsg(null);
+      setNewMessage("");
+      showToast("Message updated! ✨");
+    } else {
+      onSendMessage(e);
+      setReplyingMsg(null);
+    }
     setShowEmojiPicker(false);
     setShowAttachmentMenu(false);
   };
@@ -172,8 +400,28 @@ export default function ActiveChatRoom({
     setShowEmojiPicker(false);
   };
 
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>(chatMessages);
+
+  useEffect(() => {
+    setLocalMessages(chatMessages);
+  }, [chatMessages]);
+
+  const handleDeleteMessage = (msgId: string) => {
+    setDeletedMsgIds((prev) => new Set(prev).add(msgId));
+    showToast("Message deleted");
+  };
+
+  const handleUndoDelete = (msgId: string) => {
+    setDeletedMsgIds((prev) => {
+      const next = new Set(prev);
+      next.delete(msgId);
+      return next;
+    });
+    showToast("Message restored! 🪄");
+  };
+
   // Filter messages based on search and starred toggle
-  const filteredMessages = chatMessages.filter((msg) => {
+  const filteredMessages = localMessages.filter((msg) => {
     if (showOnlyStarred && !starredIds.has(msg.id)) return false;
     if (searchQuery.trim() && !msg.text.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
@@ -243,6 +491,11 @@ export default function ActiveChatRoom({
                 </div>
 
                 <div className={styles.chatHeaderActions}>
+                  <div className={`${styles.timerBadgeHeader} ${secondsRemaining <= 120 ? styles.timerPulseWarning : ""}`}>
+                    <Clock size={13} className={styles.timerClockIcon} />
+                    <span>{formatTimer(secondsRemaining)}</span>
+                  </div>
+
                   <button
                     type="button"
                     className={`${styles.chatHeaderBtn} ${showOnlyStarred ? styles.chatHeaderBtnActive : ""}`}
@@ -256,51 +509,8 @@ export default function ActiveChatRoom({
                     />
                     <span>Starred ({starredIds.size})</span>
                   </button>
-
-                  <button
-                    type="button"
-                    className={`${styles.chatHeaderBtn} ${showSearch ? styles.chatHeaderBtnActive : ""}`}
-                    onClick={() => setShowSearch(!showSearch)}
-                    title="Search Messages"
-                  >
-                    <Search size={14} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className={styles.chatHeaderEndBtn}
-                    onClick={handleFinishClick}
-                    title="End Session"
-                  >
-                    <PhoneOff size={13} />
-                    <span>End Session</span>
-                  </button>
                 </div>
               </div>
-
-              {/* Search Bar Drawer */}
-              {showSearch && (
-                <div className={styles.chatSearchBar}>
-                  <Search size={14} className={styles.searchIcon} />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search in conversation..."
-                    className={styles.chatSearchInput}
-                    autoFocus
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className={styles.clearSearchBtn}
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              )}
 
               {/* Toast Feedback Banner */}
               {toastMessage && (
@@ -310,7 +520,7 @@ export default function ActiveChatRoom({
               )}
 
               {/* Chat Log */}
-              <div className={styles.chatLog}>
+              <div className={styles.chatLog} ref={chatLogRef}>
                 {filteredMessages.length === 0 ? (
                   <div className={styles.emptyChatState}>
                     <p>No messages match your search or star filter.</p>
@@ -327,67 +537,83 @@ export default function ActiveChatRoom({
                 ) : (
                   filteredMessages.map((msg) => {
                     const isStarred = starredIds.has(msg.id);
+                    const isDeleted = deletedMsgIds.has(msg.id);
                     const reactionsMap = msgReactions[msg.id] || {};
                     const hasReactions = Object.keys(reactionsMap).length > 0;
+                    const isEmojiOnly = isEmojiOnlyText(msg.text);
+
+                    if (isDeleted) {
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`${styles.chatMessage} ${
+                            msg.sender === "seeker" ? styles.seekerMessage : styles.expertMessage
+                          }`}
+                        >
+                          <div className={styles.msgAvatarWrap}>
+                            <Image
+                              src={
+                                msg.sender === "seeker"
+                                  ? SEEKER_PROFILE.avatar || "/assets/img/avatar1.png"
+                                  : booking.expert.image
+                              }
+                              alt=""
+                              width={36}
+                              height={36}
+                              className={styles.msgAvatarImg}
+                            />
+                          </div>
+
+                          <div className={styles.msgWrapper}>
+                            <div className={styles.deletedMsgPill}>
+                              <span className={styles.deletedMsgText}>This message has been deleted.</span>
+                              <button
+                                type="button"
+                                className={styles.undoDeleteBtn}
+                                onClick={() => handleUndoDelete(msg.id)}
+                              >
+                                Undo
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div
                         key={msg.id}
                         className={`${styles.chatMessage} ${
-                          msg.sender === "seeker"
-                            ? styles.seekerMessage
-                            : styles.expertMessage
+                          msg.sender === "seeker" ? styles.seekerMessage : styles.expertMessage
                         }`}
                       >
+                        <div className={styles.msgAvatarWrap}>
+                          <Image
+                            src={
+                              msg.sender === "seeker"
+                                ? SEEKER_PROFILE.avatar || "/assets/img/avatar1.png"
+                                : booking.expert.image
+                            }
+                            alt=""
+                            width={36}
+                            height={36}
+                            className={styles.msgAvatarImg}
+                          />
+                        </div>
+
                         <div className={styles.msgWrapper}>
-                          {/* Floating Actions Toolbar on Hover */}
-                          <div className={styles.msgHoverToolbar}>
-                            <div className={styles.quickEmojisBar}>
-                              {QUICK_EMOJIS.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  className={styles.quickEmojiBtn}
-                                  onClick={() => handleToggleReaction(msg.id, emoji)}
-                                  title={`React with ${emoji}`}
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-
-                            <button
-                              type="button"
-                              className={`${styles.toolbarActionBtn} ${
-                                isStarred ? styles.toolbarActionBtnStarred : ""
-                              }`}
-                              onClick={() => handleToggleStar(msg.id)}
-                              title={isStarred ? "Unstar message" : "Star message"}
-                            >
-                              <Star
-                                size={13}
-                                fill={isStarred ? "#EAB308" : "none"}
-                                stroke={isStarred ? "#EAB308" : "currentColor"}
-                              />
-                            </button>
-
-                            <button
-                              type="button"
-                              className={styles.toolbarActionBtn}
-                              onClick={() => setReplyingMsg(msg)}
-                              title="Reply to message"
-                            >
-                              <Reply size={13} />
-                            </button>
-
-                            <button
-                              type="button"
-                              className={styles.toolbarActionBtn}
-                              onClick={() => handleCopyText(msg.text)}
-                              title="Copy text"
-                            >
-                              <Copy size={13} />
-                            </button>
+                          {/* Sender Info Line: Name • Time */}
+                          <div className={styles.msgHeaderLine}>
+                            <span className={styles.msgSenderName}>
+                              {msg.sender === "seeker" ? "You" : booking.expert.name}
+                            </span>
+                            <span className={styles.msgHeaderDot}>•</span>
+                            <span className={styles.msgHeaderTime}>{msg.timestamp}</span>
+                            {isStarred && (
+                              <span title="Starred message" className={styles.starredIcon}>
+                                <Star size={12} fill="#EAB308" stroke="#EAB308" />
+                              </span>
+                            )}
                           </div>
 
                           {/* Quoted Message if Replying */}
@@ -400,25 +626,136 @@ export default function ActiveChatRoom({
                             </div>
                           )}
 
-                          {/* Message Bubble */}
-                          <div className={styles.msgBubble}>
-                            <p className={styles.msgText}>{msg.text}</p>
-                            <div className={styles.msgMeta}>
-                              {isStarred && (
-                                <span title="Starred message" className={styles.starredIcon}>
-                                  <Star
-                                    size={11}
-                                    fill="#EAB308"
-                                    stroke="#EAB308"
-                                  />
-                                </span>
+                          {/* Message Bubble + Hover Trigger */}
+                          <div className={styles.msgBubbleRow}>
+                            <div
+                              className={`${styles.msgBubble} ${
+                                msg.sender === "seeker" ? styles.seekerBubble : styles.expertBubble
+                              } ${isEmojiOnly ? styles.msgBubbleEmojiOnly : ""}`}
+                            >
+                              {isEmojiOnly ? (
+                                <NotoAnimatedEmojiMessage text={msg.text} size={76} />
+                              ) : (
+                                <FormattedMessageText text={msg.text} />
                               )}
-                              <span className={styles.msgTime}>{msg.timestamp}</span>
-                              {msg.sender === "seeker" && (
-                                <CheckCheck size={14} className={styles.readReceipt} />
+                            </div>
+
+                            {/* Hover Reaction Toolbar & 3-Dots Trigger */}
+                            <div className={styles.msgHoverActionsWrap}>
+                              <div className={styles.msgHoverToolbar}>
+                                <div className={styles.quickEmojisBar}>
+                                  {QUICK_EMOJIS.map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      className={styles.quickEmojiBtn}
+                                      onClick={() => handleToggleReaction(msg.id, emoji)}
+                                      title={`React with ${emoji}`}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  className={`${styles.toolbarActionBtn} ${
+                                    activeMenuMsgId === msg.id ? styles.toolbarActionBtnActive : ""
+                                  }`}
+                                  onClick={() =>
+                                    setActiveMenuMsgId(activeMenuMsgId === msg.id ? null : msg.id)
+                                  }
+                                  title="More options"
+                                >
+                                  <MoreVertical size={15} />
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                className={styles.msgReactionTriggerBtn}
+                                title="Add reaction"
+                              >
+                                <Smile size={18} />
+                              </button>
+
+                              {/* 3-Dots Dropdown Menu Popover */}
+                              {activeMenuMsgId === msg.id && (
+                                <div className={styles.msgMoreMenuPopover}>
+                                  {msg.sender === "seeker" && (
+                                    <button
+                                      type="button"
+                                      className={styles.msgMoreMenuItem}
+                                      onClick={() => {
+                                        setEditingMsg(msg);
+                                        setNewMessage(msg.text);
+                                        setReplyingMsg(null);
+                                        setActiveMenuMsgId(null);
+                                      }}
+                                    >
+                                      <Pencil size={14} />
+                                      <span>Edit Message</span>
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    className={styles.msgMoreMenuItem}
+                                    onClick={() => {
+                                      handleToggleStar(msg.id);
+                                      setActiveMenuMsgId(null);
+                                    }}
+                                  >
+                                    <Star
+                                      size={14}
+                                      fill={isStarred ? "#EAB308" : "none"}
+                                      stroke={isStarred ? "#EAB308" : "currentColor"}
+                                    />
+                                    <span>{isStarred ? "Unstar Message" : "Star Message"}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={styles.msgMoreMenuItem}
+                                    onClick={() => {
+                                      setReplyingMsg(msg);
+                                      setEditingMsg(null);
+                                      setActiveMenuMsgId(null);
+                                    }}
+                                  >
+                                    <Reply size={14} />
+                                    <span>Reply</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={styles.msgMoreMenuItem}
+                                    onClick={() => {
+                                      handleCopyText(msg.text);
+                                      setActiveMenuMsgId(null);
+                                    }}
+                                  >
+                                    <Copy size={14} />
+                                    <span>Copy Text</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={`${styles.msgMoreMenuItem} ${styles.msgMoreMenuItemDanger}`}
+                                    onClick={() => {
+                                      handleDeleteMessage(msg.id);
+                                      setActiveMenuMsgId(null);
+                                    }}
+                                  >
+                                    <Trash2 size={14} />
+                                    <span>Delete</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
+
+
 
                           {/* Reaction Pills Row */}
                           {hasReactions && (
@@ -470,6 +807,28 @@ export default function ActiveChatRoom({
                 <div ref={chatEndRef} />
               </div>
 
+              {/* Edit Preview Bar */}
+              {editingMsg && (
+                <div className={styles.editPreviewBar}>
+                  <div className={styles.editPreviewContent}>
+                    <span className={styles.editPreviewTitle}>
+                      <Pencil size={12} /> Editing Message
+                    </span>
+                    <p className={styles.editPreviewText}>{editingMsg.text}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingMsg(null);
+                      setNewMessage("");
+                    }}
+                    className={styles.closeEditBtn}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
               {/* Reply Preview Bar */}
               {replyingMsg && (
                 <div className={styles.replyPreviewBar}>
@@ -492,7 +851,7 @@ export default function ActiveChatRoom({
               {/* Attachment / Emoji Drawer Popovers */}
               {showEmojiPicker && (
                 <div className={styles.emojiPickerPopover}>
-                  {["😊", "👍", "🙏", "💡", "🔥", "🎉", "❤️", "👏", "🚀", "💯", "🎯", "✨"].map((emoji) => (
+                  {["💖", "👍", "🎉", "👏", "😂", "😮", "😢", "🤔"].map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
@@ -532,51 +891,123 @@ export default function ActiveChatRoom({
                 </div>
               )}
 
-              {/* Chat Input Form */}
-              <form onSubmit={handleSubmitForm} className={styles.chatForm}>
-                <div className={styles.chatInputContainer}>
-                  <button
-                    type="button"
-                    className={`${styles.inputToolBtn} ${showAttachmentMenu ? styles.inputToolBtnActive : ""}`}
-                    onClick={() => {
-                      setShowAttachmentMenu(!showAttachmentMenu);
-                      setShowEmojiPicker(false);
-                    }}
-                    title="Add attachment"
-                  >
-                    <Paperclip size={16} />
-                  </button>
+              {/* Bottom Chat Bar: Morphs to Continue Chat Bar when time runs out */}
+              {secondsRemaining <= 0 ? (
+                <div className={styles.bottomContinueChatBar}>
+                  <div className={styles.bottomContinueHeader}>
+                    <div className={styles.bottomContinueTitleRow}>
+                      <Clock size={16} className={styles.bottomContinueClockIcon} />
+                      <span className={styles.bottomContinueTitle}>
+                        SESSION EXPIRED • CONTINUE CHATTING
+                      </span>
+                    </div>
+                    <span className={styles.bottomContinueSub}>
+                      Select duration to reactivate live chat with {booking.expert.name}
+                    </span>
+                  </div>
 
-                  <button
-                    type="button"
-                    className={`${styles.inputToolBtn} ${showEmojiPicker ? styles.inputToolBtnActive : ""}`}
-                    onClick={() => {
-                      setShowEmojiPicker(!showEmojiPicker);
-                      setShowAttachmentMenu(false);
-                    }}
-                    title="Insert emoji"
-                  >
-                    <Smile size={16} />
-                  </button>
+                  <div className={styles.bottomPacksRow}>
+                    {EXTENSION_PACKS.map((pack) => {
+                      const isSelected = pack.id === selectedPackId;
+                      return (
+                        <button
+                          key={pack.id}
+                          type="button"
+                          className={`${styles.bottomPackChip} ${
+                            isSelected ? styles.bottomPackChipActive : ""
+                          }`}
+                          onClick={() => setSelectedPackId(pack.id)}
+                        >
+                          <span className={styles.bottomPackMins}>+{pack.mins} Mins</span>
+                          <span className={styles.bottomPackPrice}>{formatCurrency(pack.price)}</span>
+                          {pack.discount && (
+                            <span className={styles.bottomPackTag}>{pack.discount}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type your message here..."
-                    className={styles.chatInput}
-                  />
+                  <div className={styles.bottomContinueActionRow}>
+                    <div className={styles.bottomWalletInfo}>
+                      <Wallet size={14} />
+                      <span>
+                        Wallet: <strong>{formatCurrency(walletBalance)}</strong>
+                      </span>
+                    </div>
 
-                  <button
-                    type="submit"
-                    className={styles.chatSendBtn}
-                    title="Send Message"
-                    disabled={!newMessage.trim()}
-                  >
-                    <Send size={14} />
-                  </button>
+                    <ContinueButton
+                      label={`Continue Chat • Pay ${formatCurrency(
+                        EXTENSION_PACKS.find((p) => p.id === selectedPackId)?.price || 280
+                      )}`}
+                      showArrow={false}
+                      onClick={handleConfirmExtend}
+                      className={styles.bottomContinuePayBtn}
+                    />
+                  </div>
                 </div>
-              </form>
+              ) : (
+                <form onSubmit={handleSubmitForm} className={styles.chatForm}>
+                  <div className={styles.chatInputContainer}>
+                    <button
+                      type="button"
+                      className={`${styles.inputToolBtn} ${showEmojiPicker ? styles.inputToolBtnActive : ""}`}
+                      onClick={() => {
+                        setShowEmojiPicker(!showEmojiPicker);
+                        setShowAttachmentMenu(false);
+                      }}
+                      title="Insert emoji"
+                    >
+                      <Smile size={16} />
+                    </button>
+
+                    <div className={styles.formatBtnGroup}>
+                      <button
+                        type="button"
+                        className={styles.formatBtn}
+                        onClick={() => handleApplyFormat("bold")}
+                        title="Bold (**text**)"
+                      >
+                        <Bold size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.formatBtn}
+                        onClick={() => handleApplyFormat("italic")}
+                        title="Italic (*text*)"
+                      >
+                        <Italic size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.formatBtn}
+                        onClick={() => handleApplyFormat("underline")}
+                        title="Underline (<u>text</u>)"
+                      >
+                        <Underline size={15} />
+                      </button>
+                    </div>
+
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Type your message here..."
+                      className={styles.chatInput}
+                    />
+
+                    <button
+                      type="submit"
+                      className={styles.chatSendBtn}
+                      title="Send Message"
+                      disabled={!newMessage.trim()}
+                    >
+                      <Send size={14} />
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
 
@@ -662,6 +1093,12 @@ export default function ActiveChatRoom({
                     />
                     <div className={styles.notepadFooter}>
                       <span>Your notes are private and auto-saved.</span>
+                      <ContinueButton
+                        label="Save Notes"
+                        showArrow={false}
+                        onClick={handleSaveNotes}
+                        className={styles.saveNotesActiveBtn}
+                      />
                     </div>
                   </div>
                 </div>
@@ -734,6 +1171,145 @@ export default function ActiveChatRoom({
           booking={booking}
           onClose={() => setIsReportModalOpen(false)}
         />
+      )}
+
+      {/* Astrotalk Continue Chat Extension Modal */}
+      {isExtendModalOpen && (
+        <div className={styles.astrotalkModalOverlay} onClick={() => setIsExtendModalOpen(false)}>
+          <div className={styles.astrotalkModalCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.bookingHeader}>
+              <span className={styles.bookingHeaderTitle}>
+                {secondsRemaining <= 0 ? "SESSION EXPIRED • CONTINUE CHAT" : "EXTEND SESSION TIME"}
+              </span>
+              <div className={styles.soundwaveIcon} aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExtendModalOpen(false)}
+                className={styles.astrotalkCloseBtn}
+                title="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className={styles.astrotalkModalBody}>
+              <div className={styles.sessionInfoExpertRow} style={{ marginBottom: 18 }}>
+                <div className={styles.sessionInfoExpertAvatar}>
+                  <Image
+                    src={booking.expert.image}
+                    alt={booking.expert.name}
+                    fill
+                    className={styles.sessionInfoExpertImg}
+                    sizes="52px"
+                  />
+                </div>
+                <div className={styles.sessionInfoExpertText}>
+                  <h3 className={styles.sessionInfoExpertName}>
+                    {booking.expert.name}
+                    <BadgeCheck size={14} className={styles.verifiedIcon} />
+                  </h3>
+                  <p className={styles.sessionInfoExpertRole}>
+                    {secondsRemaining <= 0
+                      ? "15 min consultation ended. Choose duration to keep chatting:"
+                      : "Add more consultation time to keep chatting:"}
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.astrotalkPacksHeader}>
+                <span>Select Extension Duration</span>
+                <span className={styles.astrotalkFastTag}>⚡ Instant Chat Activation</span>
+              </div>
+
+              <div className={styles.astrotalkPacksGrid}>
+                {EXTENSION_PACKS.map((pack) => {
+                  const isSelected = pack.id === selectedPackId;
+                  return (
+                    <div
+                      key={pack.id}
+                      className={`${styles.astrotalkPackItem} ${
+                        isSelected ? styles.astrotalkPackItemActive : ""
+                      }`}
+                      onClick={() => setSelectedPackId(pack.id)}
+                    >
+                      <div className={styles.astrotalkPackLeft}>
+                        <div
+                          className={`${styles.astrotalkRadioSquare} ${
+                            isSelected ? styles.astrotalkRadioSquareSelected : ""
+                          }`}
+                        >
+                          {isSelected && <div className={styles.astrotalkRadioInner} />}
+                        </div>
+                        <div>
+                          <div className={styles.astrotalkPackMins}>
+                            +{pack.mins} Minutes
+                            {pack.discount && (
+                              <span className={styles.astrotalkDiscountTag}>
+                                {pack.discount}
+                              </span>
+                            )}
+                          </div>
+                          <span className={styles.astrotalkRateText}>
+                            ₹{Math.round(pack.price / pack.mins)}/min • Instant activation
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={styles.astrotalkPackRight}>
+                        {pack.tag && (
+                          <span className={styles.astrotalkBadgeTag}>{pack.tag}</span>
+                        )}
+                        <span className={styles.astrotalkPackPrice}>
+                          {formatCurrency(pack.price)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className={styles.astrotalkWalletRow}>
+                <div className={styles.astrotalkWalletLeft}>
+                  <Wallet size={15} />
+                  <span>
+                    Wallet Balance: <strong>{formatCurrency(walletBalance)}</strong>
+                  </span>
+                </div>
+                <div className={styles.astrotalkPayableVal}>
+                  Payable:{" "}
+                  <strong>
+                    {formatCurrency(
+                      EXTENSION_PACKS.find((p) => p.id === selectedPackId)?.price || 280
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <div className={styles.astrotalkModalFooter}>
+                <ContinueButton
+                  label={`Continue Chat • Pay ${formatCurrency(
+                    EXTENSION_PACKS.find((p) => p.id === selectedPackId)?.price || 280
+                  )}`}
+                  showArrow={false}
+                  onClick={handleConfirmExtend}
+                  className={styles.astrotalkPayBtn}
+                />
+                <button
+                  type="button"
+                  className={styles.astrotalkCancelBtn}
+                  onClick={() => setIsExtendModalOpen(false)}
+                >
+                  End & Exit Session
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
