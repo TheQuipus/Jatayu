@@ -103,11 +103,15 @@ export default function BookingDetailInfo({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isReviewModalOpen = searchParams?.get("action") === "review";
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (searchParams?.get("action") === "review") {
+      setIsReviewModalOpen(true);
+    }
+  }, [searchParams]);
 
   const [openAccIndex, setOpenAccIndex] = useState<number | null>(0);
   const [pokeState, setPokeState] = useState<{
@@ -119,7 +123,10 @@ export default function BookingDetailInfo({
   });
 
   const handleCloseReviewModal = () => {
-    router.push(pathname);
+    setIsReviewModalOpen(false);
+    if (searchParams?.get("action") === "review") {
+      router.replace(pathname);
+    }
   };
 
   const isVideoCall =
@@ -160,9 +167,6 @@ export default function BookingDetailInfo({
           title: "Recorded Videos",
           content: (
             <div className={styles.accContentInner}>
-              <p className={styles.accContentDesc}>
-                Cloud recordings of your video session. Watch online or download for offline viewing.
-              </p>
               <div className={styles.videoGrid}>
                 <div className={styles.videoCard}>
                   <div className={styles.videoThumbWrap}>
@@ -181,17 +185,21 @@ export default function BookingDetailInfo({
                     <span className={styles.videoDurationTag}>45:12</span>
                   </div>
                   <div className={styles.videoInfo}>
-                    <strong className={styles.videoTitle}>Full Session Recording</strong>
+                    <div className={styles.videoTitleRow}>
+                      <strong className={styles.videoTitle}>Full Session Recording</strong>
+                      <button
+                        type="button"
+                        className={styles.videoDownloadIconBtn}
+                        onClick={() => {
+                          alert("Downloading full session video MP4...");
+                        }}
+                        aria-label="Download Full Session Recording"
+                        title="Download Video"
+                      >
+                        <Download size={20} />
+                      </button>
+                    </div>
                     <span className={styles.videoMeta}>1080p MP4 • 320 MB</span>
-                    <SecondaryCTA
-                      label="Download Video"
-                      showArrow={false}
-                      leadingIcon={<Download size={13} />}
-                      onClick={() => {
-                        alert("Downloading full session video MP4...");
-                      }}
-                      className={styles.videoDownloadBtn}
-                    />
                   </div>
                 </div>
 
@@ -212,17 +220,21 @@ export default function BookingDetailInfo({
                     <span className={styles.videoDurationTag}>05:15</span>
                   </div>
                   <div className={styles.videoInfo}>
-                    <strong className={styles.videoTitle}>Session Highlight Clip</strong>
+                    <div className={styles.videoTitleRow}>
+                      <strong className={styles.videoTitle}>Session Highlight Clip</strong>
+                      <button
+                        type="button"
+                        className={styles.videoDownloadIconBtn}
+                        onClick={() => {
+                          alert("Downloading highlight clip MP4...");
+                        }}
+                        aria-label="Download Session Highlight Clip"
+                        title="Download Clip"
+                      >
+                        <Download size={20} />
+                      </button>
+                    </div>
                     <span className={styles.videoMeta}>MP4 Video • 42 MB</span>
-                    <SecondaryCTA
-                      label="Download Clip"
-                      showArrow={false}
-                      leadingIcon={<Download size={13} />}
-                      onClick={() => {
-                        alert("Downloading highlight clip MP4...");
-                      }}
-                      className={styles.videoDownloadBtn}
-                    />
                   </div>
                 </div>
               </div>
@@ -234,9 +246,6 @@ export default function BookingDetailInfo({
           title: "Session Notes",
           content: (
             <div className={styles.accContentInner}>
-              <p className={styles.accContentDesc}>
-                Notes taken during your consultation session.
-              </p>
               <div className={styles.notesBox}>
                 <pre className={styles.notesText}>
                   {notes ||
@@ -256,9 +265,6 @@ export default function BookingDetailInfo({
         title: "Download Chat",
         content: (
           <div className={styles.accContentInner}>
-            <p className={styles.accContentDesc}>
-              Export and download the full chat history of this consultation.
-            </p>
             <div className={styles.chatExportCard}>
               <div className={styles.chatExportHeader}>
                 <MessageSquare size={18} className={styles.chatExportIcon} />
@@ -293,9 +299,6 @@ export default function BookingDetailInfo({
         title: "Session Notes",
         content: (
           <div className={styles.accContentInner}>
-            <p className={styles.accContentDesc}>
-              Notes taken during your consultation session.
-            </p>
             <div className={styles.notesBox}>
               <pre className={styles.notesText}>
                 {notes ||
@@ -565,7 +568,7 @@ export default function BookingDetailInfo({
               </div>
             ) : (
               <div className={styles.detailPositiveFeedbackBox}>
-                <span className={styles.detailInputLabel}>Write a review (optional)</span>
+                <span className={styles.detailInputLabel}>Write a review</span>
                 <p className={styles.detailEarnCreditsHint}>Earn credits for sharing your review!</p>
                 <textarea
                   placeholder="Share details about your experience..."
@@ -678,11 +681,7 @@ export default function BookingDetailInfo({
           <button
             type="button"
             onClick={() => {
-              if (typeof window !== "undefined" && window.history.length > 1) {
-                router.back();
-              } else {
-                router.push("/seeker/bookings");
-              }
+              router.push("/seeker/bookings");
             }}
             className={styles.backLink}
           >
@@ -770,27 +769,7 @@ export default function BookingDetailInfo({
             </div>
 
             <div className={styles.badgeFloatAnchor}>
-              {(isCompletedSession || submittedReview) ? (
-                <div className={styles.completedBadgeWrap}>
-                  <span className={styles.completedBadge}>
-                    Session Completed
-                  </span>
-                  {!submittedReview ? (
-                    <ContinueButton
-                      showArrow={false}
-                      label="Give Review"
-                      onClick={() => {
-                        router.push(`${pathname}?action=review`);
-                      }}
-                      className={styles.giveReviewBtn}
-                    />
-                  ) : (
-                    <span className={styles.submittedReviewBadge}>
-                      ✦ Review Submitted
-                    </span>
-                  )}
-                </div>
-              ) : booking.status === "cancelled" ? (
+              {booking.status === "cancelled" ? (
                 <div className={styles.cancelledBadgeWrapCol1}>
                   <span className={styles.cancelledBadge}>
                     Session Cancelled
@@ -798,6 +777,32 @@ export default function BookingDetailInfo({
                   <p className={styles.cancellationReasonCol1}>
                     Reason: {booking.cancellationReason || "Cancelled due to an unforeseen schedule conflict by the expert."}
                   </p>
+                  {!submittedReview && (
+                    <ContinueButton
+                      showArrow={false}
+                      label="Give Review"
+                      onClick={() => {
+                        setIsReviewModalOpen(true);
+                      }}
+                      className={styles.giveReviewBtn}
+                    />
+                  )}
+                </div>
+              ) : (isCompletedSession || submittedReview) ? (
+                <div className={styles.completedBadgeWrap}>
+                  <span className={styles.completedBadge}>
+                    Session Completed
+                  </span>
+                  {!submittedReview && (
+                    <ContinueButton
+                      showArrow={false}
+                      label="Give Review"
+                      onClick={() => {
+                        setIsReviewModalOpen(true);
+                      }}
+                      className={styles.giveReviewBtn}
+                    />
+                  )}
                 </div>
               ) : timeStatus === "active" ? (
                 <div className={styles.activeBadgeWrap}>
@@ -1174,7 +1179,7 @@ export default function BookingDetailInfo({
         />
       )}
 
-      {isReviewModalOpen && !submittedReview && mounted && createPortal(
+      {isReviewModalOpen && mounted && createPortal(
         <div className={styles.reviewModalOverlay} onClick={handleCloseReviewModal}>
           <div
             className={styles.reviewModalWrapper}
@@ -1186,7 +1191,6 @@ export default function BookingDetailInfo({
               booking={booking}
               onSubmit={(rating, comment) => {
                 onSubmitReview(rating, comment);
-                handleCloseReviewModal();
               }}
               onCancel={handleCloseReviewModal}
             />

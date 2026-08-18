@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
@@ -218,9 +219,6 @@ export default function AdminLogin() {
                   autoComplete="current-password"
                   aria-invalid={Boolean(fieldError("password"))}
                 />
-                {fieldError("password") && (
-                  <span className={register.fieldErrorInline}>{fieldError("password")}</span>
-                )}
                 <button
                   type="button"
                   className={formStyles.passwordToggle}
@@ -233,6 +231,16 @@ export default function AdminLogin() {
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
+              </div>
+              <div className={formStyles.forgotPasswordRow}>
+                {fieldError("password") ? (
+                  <span className={register.fieldErrorStatic}>{fieldError("password")}</span>
+                ) : (
+                  <span />
+                )}
+                <Link href="/forgot-password?role=admin" className={formStyles.forgotPasswordLink}>
+                  Forgot Password?
+                </Link>
               </div>
             </div>
 

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { MessageSquare, Video, Clapperboard, Users, Calendar, Clock } from "lucide-react";
+import { MessageSquare, Video, Clapperboard, Users, Clock } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
 import {
   BOOKING_DETAILS,
@@ -33,7 +33,7 @@ export default function BookingHistory() {
 
   const groupedBookings = useMemo(() => {
     const filtered = BOOKING_DETAILS.filter(
-      (booking) => booking.status === "confirmed" || booking.status === "completed" || booking.status === "cancelled"
+      (booking) => booking.status === "completed" || booking.status === "cancelled"
     );
 
     const groupsMap = new Map<string, { dateKey: string; dateObj: Date; bookings: BookingDetail[] }>();
@@ -61,19 +61,12 @@ export default function BookingHistory() {
 
   return (
     <div className={styles.historyContainer}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>ALL BOOKINGS</h2>
-      </div>
-
       {groupedBookings.map((group) => (
         <div key={group.dateKey} className={styles.dateGroupSection}>
           <div className={styles.dateHeaderBanner}>
             <div className={styles.dateHeaderLeft}>
               <span className={styles.dateTitle}>{group.dateKey}</span>
             </div>
-            <span className={styles.dateBadge}>
-              {group.bookings.length} {group.bookings.length === 1 ? "Session" : "Sessions"}
-            </span>
           </div>
 
           <div className={styles.grid}>
@@ -117,10 +110,6 @@ export default function BookingHistory() {
                   <div className={styles.divider} />
 
                   <div className={styles.cardBody}>
-                    <div className={styles.metaItem}>
-                      <Calendar size={14} className={styles.metaIcon} />
-                      <span>{booking.scheduledDateLabel}</span>
-                    </div>
                     <div className={styles.metaItem}>
                       <Clock size={14} className={styles.metaIcon} />
                       <span>{booking.scheduledTimeLabel}</span>

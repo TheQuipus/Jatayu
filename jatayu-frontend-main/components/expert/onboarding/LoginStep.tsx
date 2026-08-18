@@ -187,6 +187,16 @@ export default function LoginStep({
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            <div className={styles.forgotPasswordRow}>
+              {fieldError("password") ? (
+                <span className={register.fieldErrorStatic}>{fieldError("password")}</span>
+              ) : (
+                <span />
+              )}
+              <Link href="/forgot-password?role=expert" className={styles.forgotPasswordLink}>
+                Forgot Password?
+              </Link>
+            </div>
           </div>
 
           {submitError ? (

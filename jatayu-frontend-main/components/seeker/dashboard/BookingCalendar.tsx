@@ -401,7 +401,7 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
               </div>
             ) : (
               <div className={styles.positiveFeedbackBox}>
-                <span className={styles.inputLabel}>Write a review (optional)</span>
+                <span className={styles.inputLabel}>Write a review</span>
                 <textarea
                   placeholder="Share details about your experience..."
                   value={feedback.comment}
@@ -562,9 +562,8 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
             <div className={styles.pickerContainer} ref={calendarPickerRef}>
               <button
                 type="button"
-                className={`${styles.teamsDateDropdownBtn} ${
-                  isCalendarPickerOpen ? styles.teamsDateDropdownBtnActive : ""
-                }`}
+                className={`${styles.teamsDateDropdownBtn} ${isCalendarPickerOpen ? styles.teamsDateDropdownBtnActive : ""
+                  }`}
                 onClick={() => {
                   setPickerMonth(visibleStart);
                   setIsCalendarPickerOpen((prev) => !prev);
@@ -576,9 +575,8 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
                 </span>
                 <ChevronDown
                   size={15}
-                  className={`${styles.teamsChevron} ${
-                    isCalendarPickerOpen ? styles.teamsChevronRotate : ""
-                  }`}
+                  className={`${styles.teamsChevron} ${isCalendarPickerOpen ? styles.teamsChevronRotate : ""
+                    }`}
                 />
               </button>
 
@@ -638,9 +636,8 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
                       return (
                         <div
                           key={rowIndex}
-                          className={`${styles.popoverWeekRow} ${
-                            isRowSelected ? styles.popoverWeekRowSelected : ""
-                          }`}
+                          className={`${styles.popoverWeekRow} ${isRowSelected ? styles.popoverWeekRowSelected : ""
+                            }`}
                         >
                           {row.map((dayDate) => {
                             const isCurrentMonth = dayDate.getMonth() === pickerMonth.getMonth();

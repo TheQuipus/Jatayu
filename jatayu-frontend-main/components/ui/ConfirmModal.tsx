@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, HelpCircle, X } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
+import SecondaryCTA from "@/components/ui/SecondaryCTA";
 import styles from "./ConfirmModal.module.css";
 
 export type ConfirmModalProps = {
@@ -96,15 +97,15 @@ export default function ConfirmModal({
           <div className={styles.messageText}>{message}</div>
 
           <div className={styles.modalActions}>
-            <button
-              type="button"
+            <SecondaryCTA
+              label={cancelText}
+              showArrow={false}
               onClick={onClose}
               className={styles.cancelBtn}
-            >
-              {cancelText}
-            </button>
+            />
             <ContinueButton
               label={confirmText}
+              showArrow={false}
               onClick={() => {
                 onConfirm();
                 onClose();

@@ -2,23 +2,6 @@
   padding: 10px 0;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--mercury) 60%, transparent);
-}
-
-.title {
-  font-family: var(--font-body);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ink);
-  text-transform: uppercase;
-}
-
 .dateGroupSection {
   margin-bottom: 36px;
 }
@@ -37,22 +20,14 @@
 }
 
 .dateTitle {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--font-body);
+  letter-spacing: .04em;
   color: var(--ink);
-  letter-spacing: 0.02em;
   text-transform: uppercase;
+  font-size: 20px;
+  font-weight: 700;
 }
 
-.dateBadge {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--dove-gray);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 
 .grid {
   display: grid;
@@ -101,7 +76,7 @@
 }
 
 .statusLine {
-  padding: 0px 20px 0 50px;
+  padding: 0px 20px 0 250px;
 }
 
 .statusText {
@@ -157,7 +132,7 @@
 
 .expertName {
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--ink);
   margin: 0;
@@ -169,7 +144,7 @@
 
 .specialty {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--dove-gray);
   margin: 2px 0 0 0;
   white-space: nowrap;
@@ -196,7 +171,7 @@
   align-items: center;
   gap: 10px;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 16px;
   color: var(--scorpion);
 }
 

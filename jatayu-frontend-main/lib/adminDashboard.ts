@@ -45,6 +45,9 @@ export type SessionTypeSlice = {
 
 export const ADMIN_DASHBOARD_HREF = "/admin/dashboard";
 export const ADMIN_EXPERT_HREF = "/admin/applications";
+export const ADMIN_USERS_HREF = "/admin/users/experts";
+export const ADMIN_USERS_EXPERTS_HREF = "/admin/users/experts";
+export const ADMIN_USERS_SEEKERS_HREF = "/admin/users/seekers";
 export const ADMIN_SETTINGS_HREF = "/admin/settings";
 export const ADMIN_LOGIN_HREF = "/admin";
 
@@ -54,6 +57,10 @@ export const ADMIN_EXPERT_PATH_PREFIXES = [
   "/admin/expert-profile",
   "/admin/approval",
   "/admin/rejection-hold",
+] as const;
+
+export const ADMIN_USERS_PATH_PREFIXES = [
+  "/admin/users",
 ] as const;
 
 export const ADMIN_PROFILE = {

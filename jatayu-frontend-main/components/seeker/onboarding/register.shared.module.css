@@ -103,6 +103,14 @@
   z-index: 1;
 }
 
+.fieldErrorStatic {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: #FF3B30;
+}
+
 .inputWithIconWrap {
   position: relative;
   display: flex;

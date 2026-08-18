@@ -10,6 +10,7 @@ import {
   LogOut,
   Settings,
   UserCheck,
+  Users,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -80,6 +81,63 @@ function NavLink({ item, pathname, isCollapsed }: { item: AdminNavItem; pathname
         <span className={`${styles.navBadge} ${badgeClass}`}>{item.badgeLabel}</span>
       ) : null)}
     </Link>
+  );
+}
+
+function UserManagementNavGroup({ pathname, isCollapsed }: { pathname: string; isCollapsed?: boolean }) {
+  const path = normalizeAdminPath(pathname);
+  const usersActive = path.startsWith("/admin/users");
+  const [expanded, setExpanded] = useState(usersActive);
+
+  useEffect(() => {
+    setExpanded(usersActive);
+  }, [usersActive]);
+
+  return (
+    <div className={styles.navGroup}>
+      <button
+        type="button"
+        className={`${styles.navLink} ${styles.navLinkToggle} ${usersActive || expanded ? styles.navLinkParentActive : ""
+          }`}
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+        aria-controls="admin-users-subnav"
+        title={isCollapsed ? "User Management" : undefined}
+      >
+        <Users size={16} aria-hidden="true" />
+        {!isCollapsed && <span className={styles.navLabelText}>User Management</span>}
+        {!isCollapsed && (
+          <ChevronDown
+            size={16}
+            aria-hidden="true"
+            className={`${styles.navChevron} ${expanded ? styles.navChevronOpen : ""}`}
+          />
+        )}
+      </button>
+      {expanded ? (
+        <div
+          id="admin-users-subnav"
+          className={styles.navSubList}
+          role="group"
+          aria-label="User Management sections"
+        >
+          <Link
+            href="/admin/users/experts"
+            className={`${styles.navSubLink} ${path === "/admin/users/experts" || path === "/admin/users/expert" ? styles.navSubLinkActive : ""}`}
+            title={isCollapsed ? "Expert" : undefined}
+          >
+            {isCollapsed ? "Exp" : "Expert"}
+          </Link>
+          <Link
+            href="/admin/users/seekers"
+            className={`${styles.navSubLink} ${path === "/admin/users/seekers" || path === "/admin/users/seeker" ? styles.navSubLinkActive : ""}`}
+            title={isCollapsed ? "Seeker" : undefined}
+          >
+            {isCollapsed ? "Skr" : "Seeker"}
+          </Link>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -215,6 +273,7 @@ export default function AdminShell({ children }: AdminShellProps) {
           {navItems.map((item) => (
             <NavLink key={item.id} item={item} pathname={pathname} isCollapsed={isCollapsed} />
           ))}
+          <UserManagementNavGroup pathname={pathname} isCollapsed={isCollapsed} />
           <SettingsNavGroup pathname={pathname} isCollapsed={isCollapsed} />
         </nav>
 

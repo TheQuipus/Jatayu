@@ -37,7 +37,6 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: start;
-  gap: 24px;
 }
 
 .mainCol {
@@ -100,7 +99,6 @@
 
 .sessionCard {
   background: var(--white);
-  border: 1px solid var(--mercury);
   margin-left: calc(var(--grid-col) + 0px);
   clip-path: polygon(0% 5.063%,
       1.727% 0%,
@@ -1475,8 +1473,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 32px;
-  margin-bottom: 16px;
   margin-left: calc(var(--grid-col) + 0px);
   color: var(--scorpion);
 }
@@ -1489,9 +1485,8 @@
 
 .accCardItem {
   background: var(--white);
-  border: 1px solid var(--mercury);
   margin-left: calc(var(--grid-col) + 0px);
-  padding: 18px 22px;
+  padding: 22px 22px;
   overflow: hidden;
   clip-path: polygon(0% 5.063%,
       1.727% 0%,
@@ -1530,16 +1525,17 @@
   justify-content: space-between;
   gap: 12px;
   padding: 0;
+  margin-top: 5px;
   text-align: left;
   color: var(--bunker);
 }
 
 .accTitle {
-  font-family: var(--font-body);
-  font-size: 16px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -.02em;
   color: var(--bunker);
-  letter-spacing: -0.01em;
 }
 
 .accPlus {
@@ -1568,18 +1564,9 @@
 }
 
 .accContentInner {
-  padding-top: 14px;
-  border-top: 1px solid color-mix(in srgb, var(--mercury) 60%, transparent);
   margin-top: 14px;
 }
 
-.accContentDesc {
-  font-family: var(--font-body);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--dove-gray);
-  margin: 0 0 12px;
-}
 
 .accActionRow {
   display: flex;
@@ -1598,6 +1585,7 @@
   gap: 12px;
   padding: 14px 0;
   max-height: 320px;
+  max-width: 600px;
   overflow-y: auto;
 }
 
@@ -1633,6 +1621,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 12px;
+  margin-bottom: 30px;
 }
 
 .videoCard {
@@ -1686,8 +1675,14 @@
 .videoInfo {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   padding: 12px 14px;
+}
+
+.videoTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .videoTitle {
@@ -1697,16 +1692,30 @@
   color: var(--ink);
 }
 
+.videoDownloadIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--bunker);
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.videoDownloadIconBtn:hover {
+  background: color-mix(in srgb, var(--bunker) 10%, transparent);
+  transform: translateY(-1px);
+}
+
 .videoMeta {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--dove-gray);
-  margin-bottom: 8px;
-}
-
-.videoDownloadBtn {
-  align-self: flex-start;
-  font-size: 11px;
+  margin-bottom: 0;
 }
 
 /* Session Notes styling */
@@ -1828,6 +1837,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1838,6 +1848,7 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
   }

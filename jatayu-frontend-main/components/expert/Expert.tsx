@@ -14,6 +14,7 @@ export type ExpertFilterKey =
   | "price"
   | "availability";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { getPublicExperts, type PublicExpertsQueryParams } from "@/lib/api";
 import {
   availabilityFilters,
   expertiseTags,
@@ -23,6 +24,7 @@ import {
   matchesRatingFilter,
   ratingFilters,
   type AvailabilityFilterId,
+  type Expert as ExpertType,
   type ExpertiseTag,
   type RatingFilterId,
 } from "@/lib/experts";
@@ -374,6 +376,126 @@ export default function Expert({
     sortBy,
   ]);
 
+  // API & Infinite Scroll state
+  const [apiExperts, setApiExperts] = useState<ExpertType[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [usingApi, setUsingApi] = useState(true);
+  const observerTargetRef = useRef<HTMLDivElement>(null);
+
+  // Reset page & list when filters or search change
+  useEffect(() => {
+    setPage(1);
+    setApiExperts([]);
+    setHasNextPage(true);
+  }, [
+    searchQuery,
+    selectedTopics,
+    selectedLanguages,
+    selectedRatings,
+    priceRange,
+    selectedAvailabilities,
+    sortBy,
+  ]);
+
+  // Fetch data from API (/api/public/experts)
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function fetchExpertsData() {
+      if (page === 1) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      try {
+        const queryParams: PublicExpertsQueryParams = {
+          page,
+          limit: 12,
+          search: searchQuery.trim() || undefined,
+          category: selectedTopics.length > 0 ? selectedTopics.join(",") : undefined,
+          topics: selectedTopics.length > 0 ? selectedTopics : undefined,
+          languages: selectedLanguages.length > 0 ? selectedLanguages : undefined,
+          ratings: selectedRatings.length > 0 ? selectedRatings : undefined,
+          minPrice: priceRange[0] > ABSOLUTE_MIN_PRICE ? priceRange[0] : undefined,
+          maxPrice: priceRange[1] < ABSOLUTE_MAX_PRICE ? priceRange[1] : undefined,
+          availability: selectedAvailabilities.length > 0 ? selectedAvailabilities.join(",") : undefined,
+          sortBy,
+        };
+
+        const res = await getPublicExperts(queryParams);
+        if (isCancelled) return;
+
+        setUsingApi(true);
+        if (res.experts && res.experts.length > 0) {
+          setApiExperts((prev) => {
+            if (page === 1) return res.experts;
+            const existingIds = new Set(prev.map((item) => item.id || item.name));
+            const newItems = res.experts.filter((item) => !existingIds.has(item.id || item.name));
+            return [...prev, ...newItems];
+          });
+          setHasNextPage(res.pagination.hasNextPage);
+        } else {
+          if (page === 1) setApiExperts([]);
+          setHasNextPage(false);
+        }
+      } catch (err) {
+        if (isCancelled) return;
+        setUsingApi(false);
+        if (page === 1) {
+          setApiExperts(filteredExperts);
+        }
+        setHasNextPage(false);
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+          setIsLoadingMore(false);
+        }
+      }
+    }
+
+    fetchExpertsData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    page,
+    searchQuery,
+    selectedTopics,
+    selectedLanguages,
+    selectedRatings,
+    priceRange,
+    selectedAvailabilities,
+    sortBy,
+    filteredExperts,
+  ]);
+
+  // Infinite Scroll Trigger via IntersectionObserver
+  useEffect(() => {
+    const sentinel = observerTargetRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isLoading && !isLoadingMore) {
+          setPage((prevPage) => prevPage + 1);
+        }
+      },
+      { threshold: 0.1, rootMargin: "200px" }
+    );
+
+    observer.observe(sentinel);
+    return () => {
+      observer.unobserve(sentinel);
+    };
+  }, [hasNextPage, isLoading, isLoadingMore]);
+
+  const displayedExpertsList = usingApi ? apiExperts : filteredExperts;
+
   const removeAppliedFilter = (key: ExpertFilterKey, value: string) => {
     switch (key) {
       case "topic":
@@ -415,6 +537,7 @@ export default function Expert({
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, [seeker]);
+
 
   return (
     <>
@@ -670,15 +793,19 @@ export default function Expert({
               </div>
 
               <div className={styles.speaksCards}>
-                {filteredExperts.length === 0 ? (
+                {isLoading && page === 1 ? (
+                  <div className={styles.infiniteScrollContainer}>
+                    <div className={styles.spinner} role="status" aria-label="Loading experts..." />
+                  </div>
+                ) : displayedExpertsList.length === 0 ? (
                   <p className={styles.noResults}>No experts match your filters yet.</p>
                 ) : (
-                  filteredExperts.map((expert, index) => {
+                  displayedExpertsList.map((expert, index) => {
                     const isBookmarked = bookmarkedExperts.has(expert.name);
 
                     return (
                       <ExpertCard
-                        key={expert.name}
+                        key={`${expert.id || expert.name}-${index}`}
                         expert={expert}
                         isBookmarked={isBookmarked}
                         onBookmarkToggle={() => toggleBookmark(expert.name)}
@@ -687,6 +814,15 @@ export default function Expert({
                       />
                     );
                   })
+                )}
+              </div>
+
+              <div ref={observerTargetRef} className={styles.infiniteScrollContainer}>
+                {isLoadingMore && (
+                  <div className={styles.spinner} role="status" aria-label="Loading more experts..." />
+                )}
+                {!hasNextPage && displayedExpertsList.length > 0 && !isLoading && (
+                  <p className={styles.endOfListText}>You&apos;ve reached the end of the experts list.</p>
                 )}
               </div>
             </div>

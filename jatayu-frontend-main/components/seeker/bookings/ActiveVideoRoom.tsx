@@ -134,7 +134,7 @@ export default function ActiveVideoRoom({
     confirmText: "",
     cancelText: "",
     variant: "default",
-    onConfirmAction: () => {},
+    onConfirmAction: () => { },
   });
 
   const [isNotesSaved, setIsNotesSaved] = useState(false);
@@ -213,15 +213,14 @@ export default function ActiveVideoRoom({
               {/* Top Right Timer Badge & Extend Session Button (When Red) */}
               <div className={styles.videoTopRightBar}>
                 <div
-                  className={`${styles.timerBadge} ${
-                    secondsRemaining > 300
-                      ? styles.timerGreen
-                      : secondsRemaining > 120
+                  className={`${styles.timerBadge} ${secondsRemaining > 300
+                    ? styles.timerGreen
+                    : secondsRemaining > 120
                       ? styles.timerYellow
                       : styles.timerRed
-                  }`}
+                    }`}
                 >
-                  <Clock size={14} className={styles.timerIcon} />
+                  <Clock size={18} className={styles.timerIcon} />
                   <span>{formatTimer(secondsRemaining)} remaining</span>
                 </div>
 

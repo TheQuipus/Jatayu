@@ -45,6 +45,30 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+.forgotPasswordRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 16px;
+}
+
+.forgotPasswordLink {
+  margin-left: auto;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--white);
+  opacity: 0.75;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.forgotPasswordLink:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 .passwordStrengthRow {
   display: flex;
   flex-direction: column;

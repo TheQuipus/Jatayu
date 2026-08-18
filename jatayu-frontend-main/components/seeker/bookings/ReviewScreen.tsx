@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { Star, CheckCircle2, X } from "lucide-react";
 import Lottie from "lottie-react";
 import starAnimation from "@/public/Lottie/Star.json";
+import coinAnimation from "@/public/Lottie/coin_p.json";
 import ContinueButton from "@/components/ui/ContinueButton";
 import type { BookingDetail } from "@/lib/seekerDashboard";
 import styles from "./ReviewScreen.module.css";
@@ -29,7 +30,6 @@ export default function ReviewScreen({
   const [comment, setComment] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedData, setSubmittedData] = useState<{ rating: number; comment: string } | null>(null);
-  const [countdown, setCountdown] = useState(5);
 
   const activeTarget = hoveredRating !== null ? hoveredRating : rating;
 
@@ -44,21 +44,6 @@ export default function ReviewScreen({
     }, delay);
     return () => clearTimeout(timer);
   }, [activeTarget]);
-
-  useEffect(() => {
-    if (!isSubmitted) return;
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          router.push("/seeker/dashboard");
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isSubmitted, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,9 +94,9 @@ export default function ReviewScreen({
     return (
       <section className={styles.reviewSection}>
         <div className={`container ${styles.reviewContainer}`}>
-          <div className={styles.reviewCard}>
+          <div className={`${styles.reviewCard} ${styles.animatedSuccessCard}`}>
             <div className={styles.reviewHeader}>
-              <span className={styles.reviewHeaderTitle}>Review Submitted</span>
+              <span className={styles.reviewHeaderTitle}>Thanks for your review!</span>
               {onCancel ? (
                 <button
                   type="button"
@@ -127,13 +112,26 @@ export default function ReviewScreen({
             </div>
 
             <div className={styles.submittedBody}>
-              <div className={styles.successIconBadge}>
-                <CheckCircle2 size={40} className={styles.successCheckIcon} />
+              <div className={styles.animatedBadgeWrap}>
+                <div className={styles.successIconBadge}>
+                  <CheckCircle2 size={44} className={styles.successCheckIcon} />
+                </div>
               </div>
 
-              <h2 className={styles.submittedTitle}>Review Submitted!</h2>
+              <h2 className={styles.submittedTitle}>Thanks for your review!</h2>
+              <div className={styles.creditsEarnedBadge}>
+                <Lottie
+                  animationData={coinAnimation}
+                  loop={true}
+                  autoplay={true}
+                  style={{ width: 28, height: 28 }}
+                />
+                <span>+15 Credits Earned</span>
+              </div>
               <p className={styles.submittedDesc}>
-                Thank you for sharing your experience with <strong>{booking.expert.name}</strong>. Your feedback helps build trust in our community.
+                Thank you for sharing your experience with <strong>{booking.expert.name}</strong>.
+                <br />
+                You have earned <strong>15 credits</strong> for your feedback!
               </p>
 
               <div className={styles.submittedSummaryBox}>
@@ -141,9 +139,11 @@ export default function ReviewScreen({
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
-                      size={20}
+                      size={22}
                       fill={i < finalRating ? "#FFBC09" : "transparent"}
                       stroke={i < finalRating ? "#FFBC09" : "#9E9E9E"}
+                      className={styles.animatedSummaryStar}
+                      style={{ animationDelay: `${i * 100}ms` }}
                     />
                   ))}
                   <span className={styles.submittedRatingLabel}>
@@ -154,24 +154,9 @@ export default function ReviewScreen({
                   <p className={styles.submittedCommentQuote}>
                     &ldquo;{finalComment}&rdquo;
                   </p>
-                ) : null}
-              </div>
-
-              <div className={styles.redirectHintBox}>
-                <span className={styles.redirectSpinner} />
-                <span>Redirecting to homepage in <strong>{countdown}s</strong>...</span>
-              </div>
-
-              <div className={styles.submittedActions}>
-                <Link href="/seeker/dashboard" className={styles.homeBtnLink}>
-                  <ContinueButton
-                    label="Back to Homepage"
-                    className={styles.fullWidthBtn}
-                  />
-                </Link>
-                <Link href="/seeker/bookings" className={styles.secondaryBtnLink}>
-                  View All Bookings
-                </Link>
+                ) : (
+                  <p className={styles.noCommentText}>No written review provided</p>
+                )}
               </div>
             </div>
             <div className={styles.reviewFooter} aria-hidden="true" />
@@ -203,7 +188,20 @@ export default function ReviewScreen({
 
           <div className={styles.reviewBody}>
             <div className={styles.reviewIntro}>
-              <h2>Rate your session</h2>
+              <h2>
+                <span className={styles.headingLineOne}>Rate your session</span>
+                <span className={styles.headingLineTwo}>
+                  & earn 15 credits
+                  <span className={styles.coinLottieWrap}>
+                    <Lottie
+                      animationData={coinAnimation}
+                      loop={true}
+                      autoplay={true}
+                      style={{ width: 34, height: 34 }}
+                    />
+                  </span>
+                </span>
+              </h2>
               <div className={styles.avatarRow}>
                 <div
                   className={`${styles.reviewAvatar} ${activeTarget > 0 ? styles.reviewAvatarShifted : ""
@@ -241,7 +239,6 @@ export default function ReviewScreen({
 
             <form onSubmit={handleSubmit} className={styles.reviewForm}>
               <div className={styles.ratingFormGroup}>
-                <span className={styles.formLabel}>Rate Your Session</span>
                 <div className={styles.starRatingSelector}>
                   {[1, 2, 3, 4, 5].map((starValue) => {
                     const isSelectedLottie =
@@ -303,10 +300,9 @@ export default function ReviewScreen({
                   id="review-comment"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share detail about what advice was helpful, communication quality, or general takeaways..."
+                  placeholder="Share details about what advice was helpful, communication quality, or general takeaways (optional)..."
                   className={styles.commentTextarea}
                   rows={4}
-                  required
                 />
               </div>
 
@@ -314,7 +310,7 @@ export default function ReviewScreen({
                 <ContinueButton
                   type="submit"
                   label="Submit Feedback"
-                  disabled={rating === 0 && !comment.trim()}
+                  disabled={rating === 0}
                   className={styles.submitReviewBtn}
                 />
               </div>

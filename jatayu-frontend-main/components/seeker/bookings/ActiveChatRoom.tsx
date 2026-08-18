@@ -445,7 +445,7 @@ export default function ActiveChatRoom({
     confirmText: "",
     cancelText: "",
     variant: "default",
-    onConfirmAction: () => {},
+    onConfirmAction: () => { },
   });
 
   const handleFinishClick = () => {
@@ -491,8 +491,15 @@ export default function ActiveChatRoom({
                 </div>
 
                 <div className={styles.chatHeaderActions}>
-                  <div className={`${styles.timerBadgeHeader} ${secondsRemaining <= 120 ? styles.timerPulseWarning : ""}`}>
-                    <Clock size={13} className={styles.timerClockIcon} />
+                  <div
+                    className={`${styles.timerBadgeHeader} ${secondsRemaining > 300
+                      ? styles.timerGreen
+                      : secondsRemaining > 120
+                        ? styles.timerYellow
+                        : styles.timerRed
+                      }`}
+                  >
+                    <Clock size={14} className={styles.timerClockIcon} />
                     <span>{formatTimer(secondsRemaining)}</span>
                   </div>
 
@@ -546,9 +553,8 @@ export default function ActiveChatRoom({
                       return (
                         <div
                           key={msg.id}
-                          className={`${styles.chatMessage} ${
-                            msg.sender === "seeker" ? styles.seekerMessage : styles.expertMessage
-                          }`}
+                          className={`${styles.chatMessage} ${msg.sender === "seeker" ? styles.seekerMessage : styles.expertMessage
+                            }`}
                         >
                           <div className={styles.msgAvatarWrap}>
                             <Image
@@ -583,9 +589,8 @@ export default function ActiveChatRoom({
                     return (
                       <div
                         key={msg.id}
-                        className={`${styles.chatMessage} ${
-                          msg.sender === "seeker" ? styles.seekerMessage : styles.expertMessage
-                        }`}
+                        className={`${styles.chatMessage} ${msg.sender === "seeker" ? styles.seekerMessage : styles.expertMessage
+                          }`}
                       >
                         <div className={styles.msgAvatarWrap}>
                           <Image
@@ -629,9 +634,8 @@ export default function ActiveChatRoom({
                           {/* Message Bubble + Hover Trigger */}
                           <div className={styles.msgBubbleRow}>
                             <div
-                              className={`${styles.msgBubble} ${
-                                msg.sender === "seeker" ? styles.seekerBubble : styles.expertBubble
-                              } ${isEmojiOnly ? styles.msgBubbleEmojiOnly : ""}`}
+                              className={`${styles.msgBubble} ${msg.sender === "seeker" ? styles.seekerBubble : styles.expertBubble
+                                } ${isEmojiOnly ? styles.msgBubbleEmojiOnly : ""}`}
                             >
                               {isEmojiOnly ? (
                                 <NotoAnimatedEmojiMessage text={msg.text} size={76} />
@@ -659,9 +663,8 @@ export default function ActiveChatRoom({
 
                                 <button
                                   type="button"
-                                  className={`${styles.toolbarActionBtn} ${
-                                    activeMenuMsgId === msg.id ? styles.toolbarActionBtnActive : ""
-                                  }`}
+                                  className={`${styles.toolbarActionBtn} ${activeMenuMsgId === msg.id ? styles.toolbarActionBtnActive : ""
+                                    }`}
                                   onClick={() =>
                                     setActiveMenuMsgId(activeMenuMsgId === msg.id ? null : msg.id)
                                   }
@@ -766,9 +769,8 @@ export default function ActiveChatRoom({
                                   <button
                                     key={emoji}
                                     type="button"
-                                    className={`${styles.reactionPill} ${
-                                      isUserReacted ? styles.reactionPillActive : ""
-                                    }`}
+                                    className={`${styles.reactionPill} ${isUserReacted ? styles.reactionPillActive : ""
+                                      }`}
                                     onClick={() => handleToggleReaction(msg.id, emoji)}
                                   >
                                     <span className={styles.reactionEmoji}>{emoji}</span>
@@ -913,9 +915,8 @@ export default function ActiveChatRoom({
                         <button
                           key={pack.id}
                           type="button"
-                          className={`${styles.bottomPackChip} ${
-                            isSelected ? styles.bottomPackChipActive : ""
-                          }`}
+                          className={`${styles.bottomPackChip} ${isSelected ? styles.bottomPackChipActive : ""
+                            }`}
                           onClick={() => setSelectedPackId(pack.id)}
                         >
                           <span className={styles.bottomPackMins}>+{pack.mins} Mins</span>
@@ -1232,16 +1233,14 @@ export default function ActiveChatRoom({
                   return (
                     <div
                       key={pack.id}
-                      className={`${styles.astrotalkPackItem} ${
-                        isSelected ? styles.astrotalkPackItemActive : ""
-                      }`}
+                      className={`${styles.astrotalkPackItem} ${isSelected ? styles.astrotalkPackItemActive : ""
+                        }`}
                       onClick={() => setSelectedPackId(pack.id)}
                     >
                       <div className={styles.astrotalkPackLeft}>
                         <div
-                          className={`${styles.astrotalkRadioSquare} ${
-                            isSelected ? styles.astrotalkRadioSquareSelected : ""
-                          }`}
+                          className={`${styles.astrotalkRadioSquare} ${isSelected ? styles.astrotalkRadioSquareSelected : ""
+                            }`}
                         >
                           {isSelected && <div className={styles.astrotalkRadioInner} />}
                         </div>

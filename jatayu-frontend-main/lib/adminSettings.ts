@@ -1,4 +1,4 @@
-export type SmsProvider = "twilio" | "msg91" | "textlocal";
+export type SmsProvider = "twilio" | "msg91" | "textlocal" | (string & {});
 
 export type SmtpEncryption = "tls" | "ssl" | "none";
 

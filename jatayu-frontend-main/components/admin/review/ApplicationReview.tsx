@@ -252,29 +252,17 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
 
   const [sectionDecisions, setSectionDecisions] = useState<
     Record<string, SectionReviewState>
-  >(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`jatayu_review_decisions_${appId}`);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
-    return {
-      category: { decision: null, note: "" },
-      kyc: { decision: null, note: "" },
-      certifications: { decision: null, note: "" },
-      experience: { decision: null, note: "" },
-      portfolio: { decision: null, note: "" },
-      availability: { decision: null, note: "" },
-      audience: { decision: null, note: "" },
-      preferences: { decision: null, note: "" },
-      credentials: { decision: null, note: "" },
-      profile: { decision: null, note: "" },
-    };
+  >({
+    category: { decision: null, note: "" },
+    kyc: { decision: null, note: "" },
+    certifications: { decision: null, note: "" },
+    experience: { decision: null, note: "" },
+    portfolio: { decision: null, note: "" },
+    availability: { decision: null, note: "" },
+    audience: { decision: null, note: "" },
+    preferences: { decision: null, note: "" },
+    credentials: { decision: null, note: "" },
+    profile: { decision: null, note: "" },
   });
 
   const unapprovedSectionsList = useMemo(() => {
@@ -373,6 +361,21 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     }
   };
 
+  const scrollToNextSection = (currentSecId: string) => {
+    const currentIndex = REVIEW_SECTIONS.findIndex((s) => s.id === currentSecId);
+    if (currentIndex >= 0 && currentIndex < REVIEW_SECTIONS.length - 1) {
+      const nextSec = REVIEW_SECTIONS[currentIndex + 1];
+      scrollToSection(nextSec.id);
+    } else {
+      const el = document.getElementById("review-final-decision");
+      if (el) {
+        const stickyOffset = 130;
+        const top = el.getBoundingClientRect().top + window.scrollY - stickyOffset;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    }
+  };
+
 
 
   const openDocumentPreview = (doc: { name: string; url: string | null; size?: string }) => {
@@ -455,70 +458,70 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             }}
           />
         ) : null}
-        <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
-          <Link href="/admin/dashboard" className={styles.breadcrumbLink}>
-            Admin Console
-          </Link>
-          <span className={styles.breadcrumbSep}>/</span>
-          <Link href="/admin/applications" className={styles.breadcrumbLink}>
-            Expert Applications
-          </Link>
-          <span className={styles.breadcrumbSep}>/</span>
-          <span className={styles.breadcrumbCurrent}>{review.appId} Review</span>
-        </nav>
+        <div className={styles.stickyTopSection}>
+          <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
+            <Link href="/admin/dashboard" className={styles.breadcrumbLink}>
+              Admin Console
+            </Link>
+            <span className={styles.breadcrumbSep}>/</span>
+            <Link href="/admin/applications" className={styles.breadcrumbLink}>
+              Expert Applications
+            </Link>
+            <span className={styles.breadcrumbSep}>/</span>
+            <span className={styles.breadcrumbCurrent}>{review.appId} Review</span>
+          </nav>
 
-        <header className={styles.pageHeader}>
-          <div className={styles.pageHeaderText}>
-            <h1 className={styles.pageTitle}>
-              Application <span className={styles.accentWord}>Review</span>
-            </h1>
-            <p className={styles.pageSubtitle}>
-              {review.appId} · Submitted {review.submittedDate}
-            </p>
-          </div>
-          <div className={styles.metaTagsRow}>
-            <span className={`${styles.statusTag} ${REVIEW_STATUS_CLASS[review.status]}`}>
-              {REVIEW_STATUS_LABEL[review.status]}
-            </span>
-          </div>
-        </header>
-
-        <ApplicationReviewHero application={application} review={review} />
-
-        {actionError ? (
-          <p className={styles.actionError} role="alert">
-            {actionError}
-          </p>
-        ) : null}
-
-        <div 
-          className={`${styles.stickyChipsContainer} ${isTabsStuck ? styles.stickyChipsContainerStuck : ""}`} 
-          ref={tabsStickyRef}
-        >
-          <div className={`container ${styles.chipsScrollWrapper}`}>
-            {REVIEW_SECTIONS.map((sec) => {
-              const isActive = activeTab === sec.id;
-              const decision = getSectionDecision(sec.id);
-              return (
-                <button
-                  key={sec.id}
-                  type="button"
-                  className={`${styles.chipButton} ${isActive ? styles.chipActive : ""}`}
-                  onClick={() => scrollToSection(sec.id)}
-                >
-                  <span>{sec.label}</span>
-                  {decision !== null && (
-                    <span className={`${styles.chipDot} ${
-                      decision === "approve" ? styles.chipDotApproved :
-                      decision === "clarification" ? styles.chipDotClarification :
-                      styles.chipDotRejected
-                    }`} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <header className={styles.pageHeader}>
+            <div className={styles.pageHeaderText}>
+              <h1 className={styles.pageTitle}>
+                Application <span className={styles.accentWord}>Review</span>
+              </h1>
+              <p className={styles.pageSubtitle}>
+                {review.appId} · Submitted {review.submittedDate}
+              </p>
+            </div>
+            <div className={styles.metaTagsRow}>
+              <span className={`${styles.statusTag} ${REVIEW_STATUS_CLASS[review.status]}`}>
+                {REVIEW_STATUS_LABEL[review.status]}
+              </span>
+            </div>
+          </header>
         </div>
+
+        <div className={styles.threeColumnContainer}>
+          {/* COLUMN 1: Navigation Sidebar containing .chipsScrollWrapper */}
+          <aside className={styles.leftColNav}>
+            <div className={styles.chipsScrollWrapper}>
+              <div className={styles.chipsNavHeader}>
+                <span className={styles.chipsNavTitle}>Sections Nav</span>
+              </div>
+              <div className={styles.chipsNavList}>
+                {REVIEW_SECTIONS.map((sec, idx) => {
+                  const isActive = activeTab === sec.id;
+                  const decision = getSectionDecision(sec.id);
+                  return (
+                    <button
+                      key={sec.id}
+                      type="button"
+                      className={`${styles.chipButton} ${isActive ? styles.chipActive : ""}`}
+                      onClick={() => scrollToSection(sec.id)}
+                    >
+                      <span className={styles.chipNum}>{idx + 1}</span>
+                      <span className={styles.chipText}>{sec.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </aside>
+
+          {/* COLUMN 2: Center Main Content */}
+          <main className={styles.centerContentCol}>
+            {actionError ? (
+              <p className={styles.actionError} role="alert">
+                {actionError}
+              </p>
+            ) : null}
 
         <div className={styles.reviewSections}>
           {/* Category & Skills */}
@@ -563,6 +566,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionTitle="Category & Skills"
                 state={sectionDecisions.category ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("category", st)}
+                onNextSection={() => scrollToNextSection("category")}
                 disabled={isApproved}
               />
             </div>
@@ -722,6 +726,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionTitle="Work Experience & Portfolio"
                 state={sectionDecisions.experience ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("experience", st)}
+                onNextSection={() => scrollToNextSection("experience")}
                 disabled={isApproved}
               />
             </div>
@@ -777,6 +782,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionTitle="Profile Details"
                 state={sectionDecisions.profile ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("profile", st)}
+                onNextSection={() => scrollToNextSection("profile")}
                 disabled={isApproved}
               />
             </div>
@@ -989,6 +995,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionTitle="Credentials & KYC"
                 state={sectionDecisions.credentials ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("credentials", st)}
+                onNextSection={() => scrollToNextSection("credentials")}
                 disabled={isApproved}
               />
             </div>
@@ -1050,6 +1057,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionTitle="Consultation Preferences"
                 state={sectionDecisions.preferences ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("preferences", st)}
+                onNextSection={() => scrollToNextSection("preferences")}
                 disabled={isApproved}
               />
             </div>
@@ -1101,6 +1109,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionTitle="Target Audience & Languages"
                 state={sectionDecisions.audience ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("audience", st)}
+                onNextSection={() => scrollToNextSection("audience")}
                 disabled={isApproved}
               />
             </div>
@@ -1170,6 +1179,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionTitle="Availability & Schedule"
                 state={sectionDecisions.availability ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("availability", st)}
+                onNextSection={() => scrollToNextSection("availability")}
                 disabled={isApproved}
               />
             </div>
@@ -1178,44 +1188,247 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
 
 
 
-        <article className={`${styles.card} ${styles.reviewSection}`} style={{ marginTop: "32px" }}>
-          <div className={styles.cardHeader}>
-            <span className={styles.cardHeaderTitle}>
-              Final Application Decision
-            </span>
-            <span className={styles.cardHeaderTitleMeta}>
-              {unapprovedSectionsList.length > 0 ? (
-                `${unapprovedSectionsList.length} section${unapprovedSectionsList.length > 1 ? "s" : ""} remaining to review`
-              ) : (
-                "All sections reviewed and ready for decision"
-              )}
-            </span>
+        <div id="review-final-decision" className={styles.finalDecisionRow}>
+          <PrimaryButton
+            type="button"
+            label="Approve"
+            variant="orange"
+            disabled={unapprovedSectionsList.length > 0}
+            onClick={() => setShowApproveConfirm(true)}
+          />
+          <button
+            type="button"
+            className={styles.holdBtn}
+            onClick={() => setShowHoldConfirm(true)}
+          >
+            Place on Hold
+          </button>
+          <button
+            type="button"
+            className={styles.rejectBtn}
+            onClick={() => setShowRejectConfirm(true)}
+          >
+            Reject
+          </button>
+        </div>
+      </main>
+
+      {/* COLUMN 3: Right Sidebar - Complete Summary Form matching Wireframe */}
+      <aside className={styles.rightSummaryCol}>
+        <div className={styles.formaSummaryCard}>
+          {/* Header */}
+          <div className={styles.formaSummaryTitleBar}>
+            <span className={styles.formaSummaryTitle}>Application Summary</span>
           </div>
-          <div className={styles.cardBody} style={{ padding: "24px", display: "flex", gap: "12px", alignItems: "center" }}>
-            <PrimaryButton
-              type="button"
-              label="Approve"
-              variant="orange"
-              disabled={unapprovedSectionsList.length > 0}
-              onClick={() => setShowApproveConfirm(true)}
-            />
-            <button
-              type="button"
-              className={styles.holdBtn}
-              onClick={() => setShowHoldConfirm(true)}
-            >
-              Place on Hold
-            </button>
-            <button
-              type="button"
-              className={styles.rejectBtn}
-              onClick={() => setShowRejectConfirm(true)}
-            >
-              Reject
-            </button>
+
+          {/* Profile Header Box (Image left, details right) */}
+          <div className={styles.formaSummaryProfileBox}>
+            <div className={styles.formaSummaryAvatarWrap}>
+              <Image
+                src={application.avatar || "/assets/img/avatar.png"}
+                alt={application.name}
+                fill
+                className={styles.formaSummaryAvatarImg}
+              />
+            </div>
+            <div className={styles.formaSummaryProfileDetails}>
+              <h3 className={styles.formaSummaryName}>{application.name}</h3>
+              <span className={styles.formaSummaryRole}>{application.professionalTitle || review.title}</span>
+              <span className={styles.formaSummaryLine}>{application.categoryLabel || "Category"}</span>
+              <span className={styles.formaSummaryLine}>{application.email}</span>
+              <span className={styles.formaSummaryLine}>{application.phone || "—"}</span>
+            </div>
           </div>
-        </article>
-      </div>
-    </section>
-  );
+
+          {/* Section Summary Blocks */}
+          {REVIEW_SECTIONS.map((sec) => {
+            const dec = getSectionDecision(sec.id);
+            const noteText = getSectionNote(sec.id);
+            const badgeClass =
+              dec === "approve"
+                ? styles.formaBadgeApproved
+                : dec === "clarification"
+                ? styles.formaBadgeClarification
+                : dec === "reject"
+                ? styles.formaBadgeRejected
+                : styles.formaBadgePending;
+            const badgeLabel =
+              dec === "approve"
+                ? "APPROVED"
+                : dec === "clarification"
+                ? "ON HOLD"
+                : dec === "reject"
+                ? "REJECTED"
+                : "PENDING";
+
+            return (
+              <div key={sec.id} className={styles.formaSectionBlock}>
+                <div className={styles.formaSectionHeaderLine}>
+                  <span className={styles.formaSectionTitleText}>{sec.label}</span>
+                  <span className={styles.formaSectionRule} />
+                  <span className={`${styles.formaStatusBadgePill} ${badgeClass}`}>
+                    {badgeLabel}
+                  </span>
+                </div>
+
+                {/* Section Key-Value Fields summary */}
+                <div className={styles.formaFieldsRowGrid}>
+                  {sec.id === "category" && (
+                    <>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Category</span>
+                        <span className={styles.formaFieldBoxVal}>{application.categoryLabel || "—"}</span>
+                      </div>
+                      <div className={`${styles.formaFieldBox} ${styles.formaFieldBoxFull}`}>
+                        <span className={styles.formaFieldBoxLabel}>Expertise Skills</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.skills) && application.skills.length > 0
+                            ? application.skills.join(", ")
+                            : "—"}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {sec.id === "experience" && (
+                    <>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Jobs</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.employmentPositions) ? application.employmentPositions.length : 0}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Education</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.educationDegrees) ? application.educationDegrees.length : 0}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Portfolio</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.portfolioSamples) ? application.portfolioSamples.length : 0}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {sec.id === "profile" && (
+                    <>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Title</span>
+                        <span className={styles.formaFieldBoxVal}>{application.professionalTitle || "—"}</span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Tagline</span>
+                        <span className={styles.formaFieldBoxVal}>{application.tagLine || "—"}</span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Bio</span>
+                        <span className={styles.formaFieldBoxVal}>{application.bio ? "Submitted" : "—"}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {sec.id === "credentials" && (
+                    <>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>KYC</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {application.kycPhotos ? "3 Photos" : "—"}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Govt ID</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {application.governmentId?.type || "—"}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Certs</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.certificates) ? application.certificates.length : 0}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {sec.id === "preferences" && (
+                    <>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Formats</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.formats) ? application.formats.join(", ") : "—"}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Sessions</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.lengths) ? application.lengths.length : 0}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Pricing</span>
+                        <span className={styles.formaFieldBoxVal}>Set</span>
+                      </div>
+                    </>
+                  )}
+
+                  {sec.id === "audience" && (
+                    <>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Languages</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.languages) ? application.languages.slice(0, 2).join(", ") : "—"}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Audiences</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.audiences) ? application.audiences.length : 0}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Target</span>
+                        <span className={styles.formaFieldBoxVal}>Defined</span>
+                      </div>
+                    </>
+                  )}
+
+                  {sec.id === "availability" && (
+                    <>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Slots</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {Array.isArray(application.availabilitySlots) ? application.availabilitySlots.length : 0}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Timezone</span>
+                        <span className={styles.formaFieldBoxVal}>
+                          {review.availability?.timezoneLabel || "IST"}
+                        </span>
+                      </div>
+                      <div className={styles.formaFieldBox}>
+                        <span className={styles.formaFieldBoxLabel}>Status</span>
+                        <span className={styles.formaFieldBoxVal}>Configured</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {noteText && (
+                  <div className={styles.formaNoteBox}>
+                    <strong>Note:</strong> {noteText}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+);
 }

@@ -116,17 +116,15 @@ export default function TopNavbar() {
             JATAYU<sup className={styles.logoMark}>®</sup>
           </Link>
 
-          {!isAdminLogin && (
-            <button
-              className={`${styles.menuButton} ${isOpen ? styles.isOpen : ""}`}
-              onClick={() => setIsOpen(true)}
-              aria-label="Open menu"
-            >
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-          )}
+          <button
+            className={`${styles.menuButton} ${isOpen ? styles.isOpen : ""}`}
+            onClick={() => setIsOpen(true)}
+            aria-label="Open menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
         </div>
       </header>
 

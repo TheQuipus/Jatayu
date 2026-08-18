@@ -10,13 +10,6 @@ import styles from "./RegisterStep.module.css";
 import { seekerLogin, SeekerOtpRequiredError, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
-import {
-  buildPasswordContext,
-  getPasswordHint,
-  getPasswordStrength,
-  getPasswordStrengthColor,
-  getPasswordStrengthLabel,
-} from "@/lib/passwordValidation";
 
 type LoginStepProps = {
   onContinue: (response: AuthResponse) => void;
@@ -71,11 +64,6 @@ export default function LoginStep({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const values = { email, password };
-  const passwordContext = buildPasswordContext({ email });
-  const strength = getPasswordStrength(password, passwordContext);
-  const strengthColor = getPasswordStrengthColor(password, passwordContext);
-  const passwordHint = getPasswordHint(password, passwordContext);
-  const strengthLabel = getPasswordStrengthLabel(password, passwordContext);
   const canSubmit = isFormComplete(email, password);
 
   const markTouched = (field: FieldKey) => {
@@ -196,36 +184,15 @@ export default function LoginStep({
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            <div className={styles.passwordStrengthRow}>
-              <div className={styles.passwordStrengthBars}>
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className={styles.passwordStrengthBar}
-                    style={{
-                      background:
-                        i < strength ? strengthColor : "rgba(255, 255, 255, 0.08)",
-                    }}
-                  />
-                ))}
-              </div>
-              <div className={styles.passwordStrengthLabels}>
-                {strengthLabel ? (
-                  <span
-                    className={styles.passwordStrengthLabel}
-                    style={{ color: strengthColor }}
-                  >
-                    {strengthLabel}
-                  </span>
-                ) : passwordHint ? (
-                  <span
-                    className={`${styles.passwordHint} ${fieldError("password") ? styles.passwordHintError : ""}`}
-                    aria-live="polite"
-                  >
-                    {passwordHint}
-                  </span>
-                ) : null}
-              </div>
+            <div className={styles.forgotPasswordRow}>
+              {fieldError("password") ? (
+                <span className={register.fieldErrorStatic}>{fieldError("password")}</span>
+              ) : (
+                <span />
+              )}
+              <Link href="/forgot-password" className={styles.forgotPasswordLink}>
+                Forgot Password?
+              </Link>
             </div>
           </div>
 

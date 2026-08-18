@@ -763,3 +763,167 @@ export async function getPublicExpert(expertId: string): Promise<Expert | null> 
 
   return getExpertById(expertId) ?? null;
 }
+
+export interface PublicExpertAvailability {
+  id: string;
+  days: string[];
+  fromTime: string;
+  toTime: string;
+}
+
+export interface PublicExpertApiItem {
+  id: string;
+  fullName?: string;
+  name?: string;
+  professionalTitle?: string;
+  role?: string;
+  tagLine?: string;
+  bio?: string;
+  profilePhotoSrc?: string;
+  category?: string;
+  skills?: string[];
+  focusAreas?: string[];
+  topics?: string[];
+  languages?: string[];
+  experienceLevel?: string;
+  targetAudience?: string[];
+  timezone?: string;
+  selectedFormats?: string[];
+  selectedLengths?: string[];
+  formatPrices?: Record<string, string | number>;
+  price?: number;
+  replyTime?: string | null;
+  replyTimeMinutes?: number | null;
+  availabilities?: PublicExpertAvailability[];
+}
+
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface FilterOptions {
+  categories: string[];
+  languages: string[];
+  price: {
+    min: number;
+    max: number;
+  };
+  availability: Array<{
+    value: number;
+    label: string;
+  }>;
+}
+
+export interface PublicExpertsQueryParams {
+  page?: number;
+  limit?: number;
+  category?: string;
+  search?: string;
+  topics?: string[];
+  topic?: string;
+  languages?: string[];
+  language?: string;
+  ratings?: string[];
+  rating?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  availability?: string | number;
+  sortBy?: string;
+  sort?: string;
+}
+
+export interface PublicExpertsResponse {
+  experts: Expert[];
+  rawExperts?: PublicExpertApiItem[];
+  pagination: PaginationInfo;
+  filters: FilterOptions;
+}
+
+export async function getPublicExperts(
+  params: PublicExpertsQueryParams = {}
+): Promise<PublicExpertsResponse> {
+  const urlParams = new URLSearchParams();
+  urlParams.set("page", String(params.page || 1));
+  urlParams.set("limit", String(params.limit || 12));
+
+  if (params.category) urlParams.set("category", params.category);
+  if (params.search) urlParams.set("search", params.search);
+  if (params.topic) {
+    urlParams.set("topic", params.topic);
+  }
+  if (params.topics && params.topics.length > 0) {
+    urlParams.set("topics", params.topics.join(","));
+  }
+  if (params.language) {
+    urlParams.set("language", params.language);
+  }
+  if (params.languages && params.languages.length > 0) {
+    urlParams.set("languages", params.languages.join(","));
+  }
+  if (params.rating) {
+    urlParams.set("rating", params.rating);
+  }
+  if (params.ratings && params.ratings.length > 0) {
+    urlParams.set("ratings", params.ratings.join(","));
+  }
+  if (params.minPrice !== undefined) urlParams.set("minPrice", String(params.minPrice));
+  if (params.maxPrice !== undefined) urlParams.set("maxPrice", String(params.maxPrice));
+  if (params.availability) urlParams.set("availability", String(params.availability));
+  const sortVal = params.sort || params.sortBy;
+  if (sortVal) {
+    urlParams.set("sort", sortVal);
+    urlParams.set("sortBy", sortVal);
+  }
+
+  const queryString = urlParams.toString();
+  const res = await apiFetch<Record<string, unknown>>(`/api/public/experts?${queryString}`, {
+    method: "GET",
+  });
+
+  const rawExpertsList = (
+    Array.isArray(res.experts)
+      ? res.experts
+      : Array.isArray(res.data)
+      ? res.data
+      : []
+  ) as Record<string, unknown>[];
+
+  const experts = rawExpertsList.map((item) => normalizeExpert(item));
+
+  const paginationRaw = (res.pagination || {}) as Record<string, unknown>;
+  const pagination: PaginationInfo = {
+    page: Number(paginationRaw.page) || params.page || 1,
+    limit: Number(paginationRaw.limit) || params.limit || 12,
+    total: typeof paginationRaw.total === "number" ? paginationRaw.total : experts.length,
+    totalPages: typeof paginationRaw.totalPages === "number" ? paginationRaw.totalPages : Math.ceil(experts.length / (params.limit || 12)) || 1,
+    hasNextPage: typeof paginationRaw.hasNextPage === "boolean" ? paginationRaw.hasNextPage : (params.page || 1) < (Math.ceil(experts.length / (params.limit || 12)) || 1),
+    hasPreviousPage: typeof paginationRaw.hasPreviousPage === "boolean" ? paginationRaw.hasPreviousPage : (params.page || 1) > 1,
+  };
+
+  const filtersRaw = (res.filters || {}) as Record<string, unknown>;
+  const priceRaw = (filtersRaw.price || {}) as Record<string, unknown>;
+  const filters: FilterOptions = {
+    categories: Array.isArray(filtersRaw.categories) ? filtersRaw.categories.map(String) : [],
+    languages: Array.isArray(filtersRaw.languages) ? filtersRaw.languages.map(String) : [],
+    price: {
+      min: typeof priceRaw.min === "number" ? priceRaw.min : 0,
+      max: typeof priceRaw.max === "number" ? priceRaw.max : 300000,
+    },
+    availability: Array.isArray(filtersRaw.availability)
+      ? (filtersRaw.availability as Array<{ value: number; label: string }>)
+      : [],
+  };
+
+  return {
+    experts,
+    rawExperts: rawExpertsList as unknown as PublicExpertApiItem[],
+    pagination,
+    filters,
+  };
+}
+

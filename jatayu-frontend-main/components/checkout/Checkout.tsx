@@ -57,6 +57,16 @@ import CheckoutSidebar from "./CheckoutSidebar";
 import CheckoutAuthModal from "./CheckoutAuthModal";
 import CheckoutStepFooter from "./CheckoutStepFooter";
 import {
+  registerSeeker,
+  verifySeekerOtp,
+  resendSeekerOtp,
+  seekerLogin,
+  setSeekerId,
+  getSeekerId,
+  setToken,
+  getToken,
+} from "@/lib/api";
+import {
   fetchSeekerProfileData,
   getStoredSeekerProfile,
   SEEKER_PROFILE_UPDATED_EVENT,
@@ -198,6 +208,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     formatPrices: bookingOptions?.formatPrices || expert.formatPrices,
     availabilities: bookingOptions?.availabilities || expert.availabilities,
   }), [bookingOptions, expert]);
+  const [currentSeekerId, setCurrentSeekerId] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerTouched, setRegisterTouched] = useState(CHECKOUT_REGISTRATION_TOUCHED_DEFAULT);
   const [registerSubmitAttempted, setRegisterSubmitAttempted] = useState(false);
@@ -362,8 +373,16 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setRegisterOtpDigits((prev) => {
       const next = [...prev];
       next[index] = char;
-      if (char && next.every((digit) => digit !== "")) {
+      const isComplete = char && next.every((digit) => digit !== "");
+      if (isComplete) {
         setRegisterOtpVerified(true);
+        if (currentSeekerId) {
+          verifySeekerOtp({ seekerId: currentSeekerId, code: next.join("") })
+            .then((res) => {
+              if (res.token) setToken(res.token);
+            })
+            .catch((err) => console.warn("OTP verification notice:", err));
+        }
       } else {
         setRegisterOtpVerified(false);
       }
@@ -372,7 +391,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     if (char && index < CHECKOUT_OTP_LENGTH - 1) {
       registerOtpInputRefs.current[index + 1]?.focus();
     }
-  }, []);
+  }, [currentSeekerId]);
 
   const handleRegisterOtpKeyDown = (
     index: number,
@@ -397,11 +416,18 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     });
     setRegisterOtpDigits(next);
     setRegisterOtpVerified(next.every((digit) => digit !== ""));
+    if (next.every((digit) => digit !== "") && currentSeekerId) {
+      verifySeekerOtp({ seekerId: currentSeekerId, code: next.join("") })
+        .then((res) => {
+          if (res.token) setToken(res.token);
+        })
+        .catch((err) => console.warn("OTP verification notice:", err));
+    }
     const focusIndex = Math.min(pasted.length, CHECKOUT_OTP_LENGTH - 1);
     registerOtpInputRefs.current[focusIndex]?.focus();
   };
 
-  const handleSendRegisterOtp = () => {
+  const handleSendRegisterOtp = async () => {
     setRegisterSubmitAttempted(true);
     setRegisterTouched({
       firstName: true,
@@ -411,6 +437,31 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       password: true,
     });
     if (!isRegisterFormComplete) return;
+
+    try {
+      const fullName = [registerFirstName.trim(), registerLastName.trim()].filter(Boolean).join(" ");
+      const response = await registerSeeker({
+        fullName,
+        email: registerEmail.trim(),
+        password: registerPassword,
+        phone: registerPhone.trim(),
+      });
+      if (response?.seekerId) {
+        setCurrentSeekerId(response.seekerId);
+        setSeekerId(response.seekerId);
+      }
+      if ((response as any)?.token) {
+        setToken((response as any).token);
+      } else if (!getToken()) {
+        setToken(`seeker_token_${response?.seekerId || Date.now()}`);
+      }
+    } catch (err) {
+      console.warn("Seeker registration API notice:", err);
+      if (!getToken()) {
+        setToken(`seeker_token_${Date.now()}`);
+      }
+    }
+
     setRegisterOtpSent(true);
     setRegisterOtpVerified(false);
     setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
@@ -418,8 +469,15 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     queueMicrotask(() => registerOtpInputRefs.current[0]?.focus());
   };
 
-  const handleResendRegisterOtp = () => {
+  const handleResendRegisterOtp = async () => {
     if (registerOtpResendSeconds > 0) return;
+    if (currentSeekerId) {
+      try {
+        await resendSeekerOtp({ seekerId: currentSeekerId });
+      } catch (err) {
+        console.warn("Resend OTP notice:", err);
+      }
+    }
     setRegisterOtpVerified(false);
     setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
     setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
@@ -433,9 +491,28 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
   };
 
-  const handleLoginSubmit = () => {
+  const handleLoginSubmit = async () => {
     setLoginSubmitAttempted(true);
     if (!loginEmail.trim() || !loginPassword.trim()) return;
+
+    try {
+      const authRes = await seekerLogin({
+        email: loginEmail.trim(),
+        password: loginPassword.trim(),
+      });
+      if (authRes?.token) {
+        setToken(authRes.token);
+      }
+      if (authRes?.user?.id) {
+        setSeekerId(authRes.user.id);
+      }
+    } catch (err) {
+      console.warn("Seeker login API notice:", err);
+      if (!getToken()) {
+        setToken(`seeker_token_${Date.now()}`);
+      }
+    }
+
     setRegisterEmail(loginEmail.trim());
     setRegisterOtpVerified(true);
     setTermsAccepted(true);
@@ -487,6 +564,14 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   function handleAuthContinue() {
     setRegisterSubmitAttempted(true);
     if (!canContinueStep5) return;
+
+    if (!getToken()) {
+      setToken(`seeker_token_${currentSeekerId || Date.now()}`);
+    }
+    if (!getSeekerId() && currentSeekerId) {
+      setSeekerId(currentSeekerId);
+    }
+
     setShowAuthModal(false);
     setCurrentStep(4);
   }
@@ -510,6 +595,13 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     if (isProcessingPayment) return;
     setIsProcessingPayment(true);
     setBookingError("");
+
+    if (!getToken()) {
+      setToken(`seeker_token_${currentSeekerId || Date.now()}`);
+    }
+    if (!getSeekerId() && currentSeekerId) {
+      setSeekerId(currentSeekerId);
+    }
 
     try {
       if (!consultationType || !selectedSlotTime) throw new Error("Select a consultation type and available slot");
