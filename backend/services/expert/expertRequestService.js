@@ -10,8 +10,11 @@ import {
   refundBookingCredits,
   requestBookingRefund,
 } from '../seeker/bookingService.js';
+import {
+  EXPERT_REQUEST_NEW_WINDOW_MS,
+  EXPERT_REQUEST_RESPONSE_WINDOW_MS,
+} from '../../config/expertRequests.js';
 
-const NEW_REQUEST_WINDOW_MS = 60 * 60 * 1000;
 const DECLINE_REASON_CODES = new Set([
   'scheduling_conflict',
   'outside_expertise',
@@ -25,7 +28,17 @@ function requestStatus(booking, now = Date.now()) {
   if (booking.status === 'declined') return 'declined';
   if (booking.status !== 'awaiting_expert') return null;
   const requestedAt = new Date(booking.expertRequestedAt || booking.createdAt).getTime();
-  return now - requestedAt < NEW_REQUEST_WINDOW_MS ? 'new' : 'pending';
+  return now - requestedAt < EXPERT_REQUEST_NEW_WINDOW_MS ? 'new' : 'pending';
+}
+
+function responseTiming(booking, now) {
+  const requestedAt = new Date(booking.expertRequestedAt || booking.createdAt).getTime();
+  const dueAt = requestedAt + EXPERT_REQUEST_RESPONSE_WINDOW_MS;
+  return {
+    responseDueAt: new Date(dueAt),
+    responseTimeRemainingSeconds: Math.max(0, Math.ceil((dueAt - now) / 1000)),
+    isResponseOverdue: booking.status === 'awaiting_expert' && now >= dueAt,
+  };
 }
 
 function publicPayment(payment) {
@@ -43,9 +56,11 @@ export function serializeExpertRequest(booking, now = Date.now()) {
   delete data.activeSlotKey;
   delete data.seeker;
   delete data.payments;
+  const timing = responseTiming(data, now);
   return {
     ...data,
     requestStatus: requestStatus(data, now),
+    ...timing,
     seeker: seeker ? {
       id: seeker.id,
       fullName: seeker.fullName,
@@ -95,7 +110,7 @@ async function ensureExpert(expertId) {
 export async function listExpertRequests(expertId, options) {
   await ensureExpert(expertId);
   const now = Date.now();
-  const cutoff = new Date(now - NEW_REQUEST_WINDOW_MS);
+  const cutoff = new Date(now - EXPERT_REQUEST_NEW_WINDOW_MS);
   const { rows, count } = await Booking.findAndCountAll({
     where: whereForStatus(expertId, options.status, cutoff),
     include: [
