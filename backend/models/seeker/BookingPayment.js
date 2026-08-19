@@ -19,6 +19,13 @@ const BookingPayment = seekerDb.define('BookingPayment', {
   providerPayload: { type: DataTypes.JSON, allowNull: true },
   verifiedAt: { type: DataTypes.DATE, allowNull: true },
   paidAt: { type: DataTypes.DATE, allowNull: true },
+  razorpayRefundId: { type: DataTypes.STRING, allowNull: true, unique: true },
+  refundStatus: { type: DataTypes.STRING, allowNull: true },
+  refundedAmount: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+  refundRequestedAt: { type: DataTypes.DATE, allowNull: true },
+  refundedAt: { type: DataTypes.DATE, allowNull: true },
+  refundFailureCode: { type: DataTypes.STRING, allowNull: true },
+  refundFailureDescription: { type: DataTypes.TEXT, allowNull: true },
 }, {
   timestamps: true,
   indexes: [

@@ -30,6 +30,10 @@ const Booking = seekerDb.define('Booking', {
   payableAmount: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
   currency: { type: DataTypes.STRING(3), allowNull: false, defaultValue: 'INR' },
   paymentStatus: { type: DataTypes.STRING, allowNull: false, defaultValue: 'pending' },
+  expertRequestedAt: { type: DataTypes.DATE, allowNull: true },
+  expertRespondedAt: { type: DataTypes.DATE, allowNull: true },
+  declineReasonCode: { type: DataTypes.STRING(50), allowNull: true },
+  declineReasonNotes: { type: DataTypes.TEXT, allowNull: true },
   confirmedAt: { type: DataTypes.DATE, allowNull: true },
   expiresAt: { type: DataTypes.DATE, allowNull: true },
 }, {
@@ -47,6 +51,7 @@ const Booking = seekerDb.define('Booking', {
     },
     { name: 'bookings_seeker_created_at', fields: ['seekerId', 'createdAt'] },
     { name: 'bookings_expert_status_start', fields: ['expertId', 'status', 'scheduledStartAt'] },
+    { name: 'bookings_expert_requested_at', fields: ['expertId', 'expertRequestedAt'] },
   ],
 });
 

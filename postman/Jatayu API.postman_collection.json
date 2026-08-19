@@ -18,6 +18,8 @@
     { "key": "bookingId", "value": "" },
     { "key": "razorpayOrderId", "value": "" },
     { "key": "razorpayPaymentId", "value": "" },
+    { "key": "razorpayRefundId", "value": "" },
+    { "key": "refundAmount", "value": "" },
     { "key": "razorpayPaymentSignature", "value": "" },
     { "key": "bookingStartAt", "value": "" },
     { "key": "bookingIdempotencyKey", "value": "" },
@@ -55,6 +57,21 @@
               { "key": "X-Razorpay-Event-Id", "value": "{{razorpayWebhookEventId}}" }
             ],
             "body": { "mode": "raw", "raw": "{\n  \"entity\": \"event\",\n  \"account_id\": \"acc_postman\",\n  \"event\": \"payment.captured\",\n  \"contains\": [\"payment\"],\n  \"payload\": {\n    \"payment\": {\n      \"entity\": {\n        \"id\": \"pay_postman_001\",\n        \"entity\": \"payment\",\n        \"amount\": 100,\n        \"currency\": \"INR\",\n        \"status\": \"captured\"\n      }\n    }\n  },\n  \"created_at\": 0\n}" },
+            "url": "{{baseUrl}}/api/payments/webhooks/razorpay"
+          }
+        },
+        {
+          "name": "Receive Refund Processed Webhook",
+          "event": [{ "listen": "prerequest", "script": { "exec": ["const secret = pm.environment.get('razorpayWebhookSecret');", "if (!secret) { throw new Error('Set razorpayWebhookSecret in the local Postman environment'); }", "const signature = CryptoJS.HmacSHA256(pm.request.body.raw, secret).toString(CryptoJS.enc.Hex);", "pm.variables.set('razorpayWebhookSignature', signature);"] } }],
+          "request": {
+            "method": "POST",
+            "description": "Simulates Razorpay confirming a refund. Use real refund and payment IDs associated with the declined booking.",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Razorpay-Signature", "value": "{{razorpayWebhookSignature}}" },
+              { "key": "X-Razorpay-Event-Id", "value": "refund-processed-{{$guid}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"entity\": \"event\",\n  \"event\": \"refund.processed\",\n  \"contains\": [\"refund\"],\n  \"payload\": {\n    \"refund\": {\n      \"entity\": {\n        \"id\": \"{{razorpayRefundId}}\",\n        \"entity\": \"refund\",\n        \"payment_id\": \"{{razorpayPaymentId}}\",\n        \"amount\": {{refundAmount}},\n        \"currency\": \"INR\",\n        \"status\": \"processed\"\n      }\n    }\n  }\n}" },
             "url": "{{baseUrl}}/api/payments/webhooks/razorpay"
           }
         }
@@ -135,6 +152,41 @@
         },
         { "name": "List My Bookings", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/bookings" } },
         { "name": "Get My Booking", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}" } }
+      ]
+    },
+    {
+      "name": "Expert Booking Requests",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{expertToken}}", "type": "string" }] },
+      "item": [
+        {
+          "name": "List and Filter Requests",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.requests?.[0]?.id) {", "  pm.collectionVariables.set('bookingId', data.requests[0].id);", "  if (pm.environment.name) pm.environment.set('bookingId', data.requests[0].id);", "}"] } }],
+          "request": {
+            "method": "GET",
+            "description": "Returns only requests assigned to the authenticated expert. Change status to all, new, pending, accepted, or declined.",
+            "url": "{{baseUrl}}/api/expert/requests?status=all&page=1&limit=20&sort=newest"
+          }
+        },
+        {
+          "name": "Accept Request",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"decision\": \"accepted\"\n}" },
+            "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/decision"
+          }
+        },
+        {
+          "name": "Decline Request and Refund",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "const payment = data.request?.payment;", "if (payment?.razorpayRefundId) {", "  pm.collectionVariables.set('razorpayRefundId', payment.razorpayRefundId);", "  if (pm.environment.name) pm.environment.set('razorpayRefundId', payment.razorpayRefundId);", "}", "if (payment?.razorpayPaymentId) {", "  pm.collectionVariables.set('razorpayPaymentId', payment.razorpayPaymentId);", "  if (pm.environment.name) pm.environment.set('razorpayPaymentId', payment.razorpayPaymentId);", "}", "if (payment?.refundedAmount || payment?.amount) {", "  const amount = payment.refundedAmount || payment.amount;", "  pm.collectionVariables.set('refundAmount', amount);", "  if (pm.environment.name) pm.environment.set('refundAmount', amount);", "}"] } }],
+          "request": {
+            "method": "PATCH",
+            "description": "Declines immediately, restores credits, releases the slot, and initiates a full Razorpay refund when cash was captured.",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"decision\": \"declined\",\n  \"reasonCode\": \"scheduling_conflict\",\n  \"reasonNotes\": \"I am unavailable at the selected time.\"\n}" },
+            "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/decision"
+          }
+        }
       ]
     },
     {

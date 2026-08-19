@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { getProfile, updateProfile, submitOnboarding } from '../controllers/expertController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { getRequests, updateRequestDecision } from '../controllers/expertRequestController.js';
 
 const router = express.Router();
 
@@ -44,5 +45,7 @@ const upload = multer({
 router.get('/me', protect, getProfile);
 router.put('/profile', protect, upload.single('profilePhoto'), updateProfile);
 router.post('/submit', protect, submitOnboarding);
+router.get('/requests', protect, getRequests);
+router.patch('/requests/:bookingId/decision', protect, updateRequestDecision);
 
 export default router;

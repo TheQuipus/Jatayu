@@ -23,6 +23,35 @@ async function migrate() {
     });
   }
 
+  const bookingAdditions = {
+    expertRequestedAt: { type: DataTypes.DATE, allowNull: true },
+    expertRespondedAt: { type: DataTypes.DATE, allowNull: true },
+    declineReasonCode: { type: DataTypes.STRING(50), allowNull: true },
+    declineReasonNotes: { type: DataTypes.TEXT, allowNull: true },
+  };
+  for (const [column, definition] of Object.entries(bookingAdditions)) {
+    if (Object.keys(bookingColumns).length > 0 && !bookingColumns[column]) {
+      await queryInterface.addColumn('Bookings', column, definition);
+    }
+  }
+
+  let paymentColumns = {};
+  try { paymentColumns = await queryInterface.describeTable('BookingPayments'); } catch { /* created below */ }
+  const paymentAdditions = {
+    razorpayRefundId: { type: DataTypes.STRING, allowNull: true, unique: true },
+    refundStatus: { type: DataTypes.STRING, allowNull: true },
+    refundedAmount: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+    refundRequestedAt: { type: DataTypes.DATE, allowNull: true },
+    refundedAt: { type: DataTypes.DATE, allowNull: true },
+    refundFailureCode: { type: DataTypes.STRING, allowNull: true },
+    refundFailureDescription: { type: DataTypes.TEXT, allowNull: true },
+  };
+  for (const [column, definition] of Object.entries(paymentAdditions)) {
+    if (Object.keys(paymentColumns).length > 0 && !paymentColumns[column]) {
+      await queryInterface.addColumn('BookingPayments', column, definition);
+    }
+  }
+
   const indexes = await indexNames(queryInterface, 'Bookings');
   if (indexes.has('bookings_unique_expert_start_time')) {
     await queryInterface.removeIndex('Bookings', 'bookings_unique_expert_start_time');
@@ -30,6 +59,13 @@ async function migrate() {
 
   await Booking.sync();
   await BookingPayment.sync();
+  await Booking.update({
+    status: 'awaiting_expert',
+    expertRequestedAt: seekerDb.literal('COALESCE(`confirmedAt`, `createdAt`)'),
+    confirmedAt: null,
+  }, {
+    where: { status: 'confirmed', expertRespondedAt: null },
+  });
   console.log('Seeker booking tables migrated successfully.');
 }
 

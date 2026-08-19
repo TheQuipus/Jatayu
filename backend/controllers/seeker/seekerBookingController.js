@@ -51,7 +51,8 @@ export async function createOrder(req, res) {
     const payment = result.payment;
     return res.status(result.reused ? 200 : 201).json({
       booking: serializeBooking(result.booking),
-      checkoutRequired: result.booking.payableAmount > 0 && result.booking.status !== 'confirmed',
+      checkoutRequired: result.booking.payableAmount > 0
+        && !['paid', 'paid_with_credits'].includes(result.booking.paymentStatus),
       razorpayOrder: payment ? {
         id: payment.razorpayOrderId,
         amount: payment.amount,
@@ -68,8 +69,8 @@ export async function verifyPayment(req, res) {
   try {
     const booking = await verifyBookingPayment(req.user.id, req.params.bookingId, req.body);
     return res.status(200).json({
-      message: booking.status === 'confirmed'
-        ? 'Booking confirmed successfully'
+      message: booking.status === 'awaiting_expert'
+        ? 'Payment confirmed and booking request sent to the expert'
         : 'Payment verified and awaiting capture confirmation',
       booking: serializeBooking(booking),
     });

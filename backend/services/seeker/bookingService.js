@@ -12,7 +12,7 @@ import {
 import { getRazorpayClient } from '../../config/razorpay.js';
 import { verifyRazorpayPaymentSignature } from '../payment/razorpayService.js';
 
-const ACTIVE_BOOKING_STATUSES = ['payment_pending', 'payment_verified', 'confirmed'];
+const ACTIVE_BOOKING_STATUSES = ['payment_pending', 'payment_verified', 'awaiting_expert', 'confirmed'];
 const SLOT_DURATION_MINUTES = 30;
 const BOOKING_EXPIRY_MINUTES = 15;
 const SUPPORTED_TYPES = new Set(['text', 'video', 'shoutout', 'group']);
@@ -91,8 +91,10 @@ function serializeBooking(booking) {
   delete data.idempotencyKey;
   delete data.activeSlotKey;
   data.payments = (data.payments || []).map(({ providerPayload, ...payment }) => payment);
+  const refundStatus = data.payments[0]?.refundStatus || null;
   return {
     ...data,
+    refundStatus,
     amounts: {
       consultationFee: data.consultationFee,
       platformFee: data.platformFee,
@@ -106,7 +108,7 @@ function serializeBooking(booking) {
   };
 }
 
-async function refundBookingCredits(booking, transaction, reason) {
+export async function refundBookingCredits(booking, transaction, reason) {
   if (!booking.creditsUsed) return;
   const seeker = await Seeker.findByPk(booking.seekerId, { transaction, lock: transaction.LOCK.UPDATE });
   const reference = `${booking.id}:refund`;
@@ -254,9 +256,10 @@ export async function createBookingOrder(seekerId, input) {
         creditAmount,
         totalAmount,
         payableAmount,
-        status: payableAmount === 0 ? 'confirmed' : 'payment_pending',
+        status: payableAmount === 0 ? 'awaiting_expert' : 'payment_pending',
         paymentStatus: payableAmount === 0 ? 'paid_with_credits' : 'pending',
-        confirmedAt: payableAmount === 0 ? new Date() : null,
+        expertRequestedAt: payableAmount === 0 ? new Date() : null,
+        confirmedAt: null,
         expiresAt: payableAmount === 0 ? null : new Date(Date.now() + BOOKING_EXPIRY_MINUTES * 60000),
       }, { transaction });
 
@@ -344,12 +347,13 @@ export async function verifyBookingPayment(seekerId, bookingId, input) {
 export async function confirmBookingPayment(bookingId, paymentId) {
   return seekerDb.transaction(async (transaction) => {
     const booking = await Booking.findByPk(bookingId, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!booking || booking.status === 'confirmed') return booking;
+    if (!booking || ['awaiting_expert', 'confirmed', 'declined'].includes(booking.status)) return booking;
     const payment = await BookingPayment.findOne({ where: { bookingId }, transaction, lock: transaction.LOCK.UPDATE });
     if (!payment) return null;
-    booking.status = 'confirmed';
+    booking.status = 'awaiting_expert';
     booking.paymentStatus = 'paid';
-    booking.confirmedAt = new Date();
+    booking.expertRequestedAt = booking.expertRequestedAt || new Date();
+    booking.confirmedAt = null;
     booking.expiresAt = null;
     payment.status = 'paid';
     payment.razorpayPaymentId = paymentId || payment.razorpayPaymentId;
@@ -363,7 +367,7 @@ export async function confirmBookingPayment(bookingId, paymentId) {
 export async function failBookingPayment(bookingId, failure = {}) {
   return seekerDb.transaction(async (transaction) => {
     const booking = await Booking.findByPk(bookingId, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!booking || booking.status === 'confirmed' || booking.status === 'payment_failed') return booking;
+    if (!booking || ['awaiting_expert', 'confirmed', 'declined', 'payment_failed'].includes(booking.status)) return booking;
     booking.status = 'payment_failed';
     booking.paymentStatus = 'failed';
     booking.activeSlotKey = null;
@@ -381,7 +385,122 @@ export async function failBookingPayment(bookingId, failure = {}) {
   });
 }
 
+function refundReceipt(bookingId, failedRefundId = '') {
+  const retrySuffix = failedRefundId ? `_${failedRefundId.slice(-6)}` : '';
+  return `booking_refund_${bookingId.replace(/-/g, '').slice(0, 18)}${retrySuffix}`;
+}
+
+function refundState(providerStatus) {
+  if (providerStatus === 'processed') return 'refunded';
+  if (providerStatus === 'failed') return 'refund_failed';
+  return 'refund_pending';
+}
+
+export async function applyBookingRefund(refundEntity) {
+  if (!refundEntity?.id || !refundEntity.payment_id) return null;
+  return seekerDb.transaction(async (transaction) => {
+    const payment = await BookingPayment.findOne({
+      where: {
+        [Op.or]: [
+          { razorpayRefundId: refundEntity.id },
+          { razorpayPaymentId: refundEntity.payment_id },
+        ],
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!payment) return null;
+    if (payment.razorpayRefundId
+      && payment.razorpayRefundId !== refundEntity.id
+      && payment.refundStatus !== 'refund_failed') return payment;
+    const booking = await Booking.findByPk(payment.bookingId, { transaction, lock: transaction.LOCK.UPDATE });
+    const incomingStatus = refundState(refundEntity.status);
+    const status = payment.refundStatus === 'refunded' ? 'refunded' : incomingStatus;
+    payment.razorpayRefundId = refundEntity.id;
+    payment.refundStatus = status;
+    payment.refundedAmount = Number(refundEntity.amount || payment.amount || 0);
+    payment.refundRequestedAt = payment.refundRequestedAt || new Date();
+    payment.refundedAt = status === 'refunded' ? (payment.refundedAt || new Date()) : null;
+    payment.refundFailureCode = status === 'refund_failed' ? 'RAZORPAY_REFUND_FAILED' : null;
+    payment.refundFailureDescription = status === 'refund_failed'
+      ? 'Razorpay reported that the refund failed'
+      : null;
+    payment.status = status;
+    await payment.save({ transaction });
+    if (booking?.status === 'declined') {
+      booking.paymentStatus = status;
+      await booking.save({ transaction });
+    }
+    return payment;
+  });
+}
+
+export async function requestBookingRefund(bookingId) {
+  const claimed = await seekerDb.transaction(async (transaction) => {
+    const payment = await BookingPayment.findOne({ where: { bookingId }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!payment || !payment.razorpayPaymentId || payment.amount <= 0) return null;
+    if (payment.refundStatus === 'refunded'
+      || (payment.razorpayRefundId && payment.refundStatus !== 'refund_failed')) {
+      return { payment, skip: true };
+    }
+    const claimIsFresh = payment.refundStatus === 'refund_creating'
+      && payment.refundRequestedAt
+      && Date.now() - new Date(payment.refundRequestedAt).getTime() < 60_000;
+    if (claimIsFresh) return { payment, skip: true };
+    const failedRefundId = payment.refundStatus === 'refund_failed' ? payment.razorpayRefundId : null;
+    if (failedRefundId) payment.razorpayRefundId = null;
+    payment.refundStatus = 'refund_creating';
+    payment.status = 'refund_pending';
+    payment.refundRequestedAt = new Date();
+    payment.refundFailureCode = null;
+    payment.refundFailureDescription = null;
+    await payment.save({ transaction });
+    return { payment, failedRefundId, skip: false };
+  });
+  if (!claimed || claimed.skip) return claimed?.payment || null;
+
+  const payment = claimed.payment;
+  const receipt = refundReceipt(bookingId, claimed.failedRefundId || '');
+  try {
+    const existingRefunds = await getRazorpayClient().payments.fetchMultipleRefund(payment.razorpayPaymentId, { count: 100 });
+    const existing = existingRefunds.items?.find((refund) => (
+      refund.status !== 'failed'
+      && (refund.receipt === receipt || refund.notes?.bookingId === bookingId)
+    ));
+    const refund = existing || await getRazorpayClient().payments.refund(payment.razorpayPaymentId, {
+      amount: payment.amount,
+      speed: 'normal',
+      receipt,
+      notes: { bookingId, paymentRecordId: payment.id },
+    });
+    return applyBookingRefund(refund);
+  } catch (error) {
+    await seekerDb.transaction(async (transaction) => {
+      const current = await BookingPayment.findByPk(payment.id, { transaction, lock: transaction.LOCK.UPDATE });
+      const booking = await Booking.findByPk(bookingId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!current || current.razorpayRefundId) return;
+      current.status = 'refund_failed';
+      current.refundStatus = 'refund_failed';
+      current.refundFailureCode = error.error?.code || error.code || 'REFUND_REQUEST_FAILED';
+      current.refundFailureDescription = error.error?.description || error.message;
+      await current.save({ transaction });
+      if (booking?.status === 'declined') {
+        booking.paymentStatus = 'refund_failed';
+        await booking.save({ transaction });
+      }
+    });
+    return BookingPayment.findByPk(payment.id);
+  }
+}
+
 export async function processBookingWebhook(payload) {
+  const refundEntity = payload?.payload?.refund?.entity;
+  if (['refund.created', 'refund.processed', 'refund.failed'].includes(payload.event)) {
+    const payment = await applyBookingRefund(refundEntity);
+    return payment
+      ? { processed: true }
+      : { processed: false, reason: 'No booking payment matches this refund' };
+  }
   const paymentEntity = payload?.payload?.payment?.entity;
   const orderEntity = payload?.payload?.order?.entity;
   const orderId = paymentEntity?.order_id || orderEntity?.id;
