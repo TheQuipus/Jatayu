@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import MockGoogleLoginModal from "@/components/ui/MockGoogleLoginModal";
 import MockLinkedInLoginModal from "@/components/ui/MockLinkedInLoginModal";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
 import { useLinkedinAuth } from "@/hooks/useLinkedinAuth";
@@ -28,9 +27,6 @@ export default function ExpertSocialAuth({
 
   const {
     signInWithGoogle,
-    isMockOpen: isGoogleMockOpen,
-    closeMockModal: closeGoogleMock,
-    handleMockSelect: handleGoogleMockSelect,
     isLoading: isGoogleLoading,
   } = useGoogleAuth({ onSuccess, onError: handleError });
 
@@ -85,11 +81,6 @@ export default function ExpertSocialAuth({
         </button>
       </div>
 
-      <MockGoogleLoginModal
-        isOpen={isGoogleMockOpen}
-        onClose={closeGoogleMock}
-        onSelect={handleGoogleMockSelect}
-      />
       <MockLinkedInLoginModal
         isOpen={isLinkedinMockOpen}
         onClose={closeLinkedinMock}

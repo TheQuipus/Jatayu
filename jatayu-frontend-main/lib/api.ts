@@ -5,9 +5,21 @@
  */
 
 import { type Expert, expertSlug, getExpertById, getTopMatchesByCategory, normalizeExpert } from "@/lib/experts";
+import { publicApiBase } from "@/lib/publicApiBase";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const BASE_URL = publicApiBase();
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Token helpers (localStorage)
@@ -97,10 +109,17 @@ async function apiFetch<T>(
     headers["Content-Type"] = "application/json";
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the API at ${BASE_URL}. Start the backend with npm run dev in backend/ and ensure MySQL/MariaDB is running.`,
+    );
+  }
 
   const data = await response.json().catch(() => ({}));
 
@@ -108,7 +127,8 @@ async function apiFetch<T>(
     const message =
       (data as { message?: string }).message ||
       `Request failed with status ${response.status}`;
-    throw new Error(message);
+    const code = (data as { code?: string }).code;
+    throw new ApiError(message, response.status, code);
   }
 
   return data as T;
@@ -160,9 +180,12 @@ export interface AuthUser {
   email: string;
   fullName: string;
   phone?: string;
+  profilePhotoSrc?: string;
   onboardingStep: string;
   status: string;
   role?: string;
+  /** True only after wizard submit (`onboardingStep === "success"`) or approval. */
+  onboardingComplete?: boolean;
 }
 
 export interface AuthResponse {
@@ -223,12 +246,28 @@ export class OtpRequiredError extends Error {
   }
 }
 
+function isIncorrectCredentialsMessage(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("incorrect credentials") ||
+    lower.includes("invalid email") ||
+    lower.includes("invalid password")
+  );
+}
+
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  const response = await fetch(`${BASE_URL}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the API at ${BASE_URL}. Start the backend with npm run dev in backend/ and ensure MySQL/MariaDB is running.`,
+    );
+  }
 
   const data = await response.json().catch(() => ({}));
 
@@ -247,11 +286,19 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
     });
   }
 
+  if (response.status === 401) {
+    throw new ApiError("incorrect credentials", 401);
+  }
+
   if (!response.ok) {
     const message =
       (data as { message?: string }).message ||
       `Request failed with status ${response.status}`;
-    throw new Error(message);
+    const code = (data as { code?: string }).code;
+    if (isIncorrectCredentialsMessage(message)) {
+      throw new ApiError("incorrect credentials", response.status, code);
+    }
+    throw new ApiError(message, response.status, code);
   }
 
   return data as AuthResponse;
@@ -260,11 +307,8 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
 // ---------------------------------------------------------------------------
 
 export interface GoogleLoginPayload {
-  idToken: string;
-  /** Used in mock mode */
-  email?: string;
-  fullName?: string;
-  googleId?: string;
+  idToken?: string;
+  accessToken?: string;
 }
 
 export async function googleLogin(payload: GoogleLoginPayload): Promise<AuthResponse> {
@@ -368,6 +412,72 @@ export async function getProfile(): Promise<Record<string, unknown>> {
   });
 }
 
+export type DigilockerKycStartResponse = {
+  authorizationUrl: string;
+  sandbox?: boolean;
+};
+
+export type DigilockerKycStatusResponse = {
+  configured: boolean;
+  sandbox?: boolean;
+  kyc?: Record<string, unknown> | null;
+  governmentId?: Record<string, unknown> | null;
+};
+
+export async function startDigilockerKyc(): Promise<DigilockerKycStartResponse> {
+  return apiFetch<DigilockerKycStartResponse>("/api/expert/kyc/digilocker/start", {
+    method: "POST",
+  });
+}
+
+export async function getDigilockerKycStatus(): Promise<DigilockerKycStatusResponse> {
+  return apiFetch<DigilockerKycStatusResponse>("/api/expert/kyc/digilocker/status", {
+    method: "GET",
+  });
+}
+
+export type OnboardingAiSuggestPayload = {
+  fullName?: string;
+  category?: string;
+  skills?: string[];
+  experienceLevel?: string;
+  professionalTitle?: string;
+  languages?: string[];
+  employment?: Array<{
+    jobTitle?: string;
+    company?: string;
+    responsibilities?: string;
+  }>;
+  education?: Array<{
+    degree?: string;
+    fieldOfStudy?: string;
+    institution?: string;
+  }>;
+  currentTagLine?: string;
+  currentBio?: string;
+  tone?: string;
+  intent?: "suggest" | "regenerate" | "improve";
+  variantIndex?: number;
+  field?: "tagLine" | "bio";
+};
+
+export type OnboardingAiSuggestResponse = {
+  tagLine: string;
+  bio: string;
+  briefIntroduction?: string;
+  source?: "ai" | "fallback";
+  notice?: string;
+};
+
+export async function suggestOnboardingIdentityCopy(
+  payload: OnboardingAiSuggestPayload,
+): Promise<OnboardingAiSuggestResponse> {
+  return apiFetch<OnboardingAiSuggestResponse>("/api/expert/onboarding/ai-suggest", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // LinkedIn Login API
 // ---------------------------------------------------------------------------
@@ -394,7 +504,7 @@ export async function linkedinLogin(payload: LinkedinLoginPayload): Promise<Auth
 export interface AdminLoginPayload {
   email: string;
   password: string;
-  otp: string;
+  otp?: string;
 }
 
 export interface AdminAuthUser {
@@ -410,10 +520,18 @@ export interface AdminAuthResponse {
 }
 
 export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthResponse> {
-  return apiFetch<AdminAuthResponse>("/api/admin/auth/login", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  try {
+    return await apiFetch<AdminAuthResponse>("/api/admin/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "incorrect credentials";
+    if (isIncorrectCredentialsMessage(message)) {
+      throw new Error("incorrect credentials");
+    }
+    throw error instanceof Error ? error : new Error(message);
+  }
 }
 
 export async function getAdminMe(): Promise<AdminAuthUser> {
