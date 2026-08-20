@@ -28,6 +28,19 @@ function hasPlaceholderCredential(value) {
   );
 }
 
+export async function isSmtpConfigured() {
+  const smtpHost = await getSetting('SMTP_HOST');
+  const smtpPort = await getSetting('SMTP_PORT', '587');
+  const smtpUser = await getSetting('SMTP_USER');
+  const smtpPass = await getSetting('SMTP_PASS');
+
+  return Boolean(
+    smtpHost && smtpPort && smtpUser && smtpPass &&
+    !hasPlaceholderCredential(smtpUser) &&
+    !hasPlaceholderCredential(smtpPass)
+  );
+}
+
 function buildOtpHtml(recipientName, otpCode) {
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 480px; margin: 0 auto;">
@@ -162,13 +175,9 @@ export async function sendOtpEmail({ recipientEmail, recipientName, otpCode }) {
   const smtpPass = await getSetting('SMTP_PASS');
   const smtpSecure = await getSetting('SMTP_SECURE', 'false');
 
-  const isSmtpConfigured = Boolean(
-    smtpHost && smtpPort && smtpUser && smtpPass &&
-    !hasPlaceholderCredential(smtpUser) &&
-    !hasPlaceholderCredential(smtpPass)
-  );
+  const smtpConfigured = await isSmtpConfigured();
 
-  if (!isSmtpConfigured || !emailEnabled) {
+  if (!smtpConfigured || !emailEnabled) {
     if (process.env.NODE_ENV !== 'production') {
       console.log(`\n======================================================`);
       console.log(`[Email OTP Dev] To: ${recipientEmail}`);
