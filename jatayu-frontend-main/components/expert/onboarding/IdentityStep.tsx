@@ -10,109 +10,33 @@ import ContinueButton from "@/components/ui/ContinueButton";
 import ExpertCard from "@/components/ui/ExpertCard";
 import ShinyText from "@/components/ui/ShinyText";
 import { type Expert } from "@/lib/experts";
+import { ApiError, suggestOnboardingIdentityCopy } from "@/lib/api";
+import {
+  AI_FALLBACK_NOTICE,
+  buildLocalIdentityCopy,
+  type IdentitySuggestIntent,
+} from "@/lib/expertIdentitySuggest";
+import {
+  deriveExperienceLevel,
+  getFilledEducationDegrees,
+  getFilledEmploymentPositions,
+  type EducationDegree,
+  type EmploymentPosition,
+} from "@/lib/expertEmployment";
 import shared from "./onboarding.shared.module.css";
 import styles from "./IdentityStep.module.css";
 
-const IMPROVEMENT_STYLES = [
-  { id: "professional", label: "More Professional" },
-  { id: "casual", label: "Casual" },
-  { id: "concise", label: "More Concise" },
-] as const;
-
-type ImprovementStyleId = (typeof IMPROVEMENT_STYLES)[number]["id"];
-
-function getImprovedBioText(
-  styleId: ImprovementStyleId,
-  current: string,
-  role: string,
-  category: string,
-  maxChars: number = 160,
-): string {
-  const effectiveRole = role.trim() || "expert";
-  const effectiveCategory = category.trim() || "this field";
-
-  let base = current.trim();
-  const prefixes = [
-    `Senior ${effectiveRole} in ${effectiveCategory}.`,
-    `I'm a ${effectiveRole} passionate about ${effectiveCategory}.`,
-    `I am a ${effectiveRole} specializing in ${effectiveCategory}.`,
-  ];
-
-  for (const p of prefixes) {
-    if (base.toLowerCase().startsWith(p.toLowerCase())) {
-      base = base.slice(p.length).trim();
-    }
+function friendlyAiError(error: unknown): string {
+  const code = error instanceof ApiError ? error.code : undefined;
+  const status = error instanceof ApiError ? error.status : undefined;
+  const message = error instanceof Error ? error.message : "";
+  if (status === 401) {
+    return "Please sign in again to use AI suggestions, or write your tag line and introduction yourself.";
   }
-
-  base = base
-    .replace(/^Senior\s+[^.]+\.\s*/i, "")
-    .replace(/^I'm a\s+[^.]+\.\s*/i, "")
-    .replace(/^I am a\s+[^.]+\.\s*/i, "")
-    .trim();
-
-  if (!base) {
-    base = `focusing on user research, strategy, and shipping work that moves the needle.`;
+  if (code === "AI_NOT_CONFIGURED" || message.toLowerCase().includes("not configured")) {
+    return "AI suggestions are unavailable. You can write your tag line and introduction yourself.";
   }
-
-  let result = "";
-  if (styleId === "professional") {
-    result = `Senior ${effectiveRole} in ${effectiveCategory}. ${base}`;
-  } else if (styleId === "casual") {
-    result = `I'm a ${effectiveRole} passionate about ${effectiveCategory}. ${base}`;
-  } else if (styleId === "concise") {
-    const sentences = base
-      .split(/(?<=[.!?])\s+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    result = sentences.slice(0, 2).join(" ");
-  }
-
-  return result.replace(/\s+/g, " ").trim().slice(0, maxChars);
-}
-
-function getImprovedTaglineText(
-  styleId: ImprovementStyleId,
-  current: string,
-  role: string,
-  category: string,
-  maxChars: number = 160,
-): string {
-  const effectiveRole = role.trim() || "expert";
-  const effectiveCategory = category.trim() || "growth";
-
-  let base = current.trim();
-  const prefixes = [
-    `I help clients excel in ${effectiveCategory} as a ${effectiveRole}.`,
-    `Passionate ${effectiveRole} helping teams win in ${effectiveCategory}.`,
-    `${effectiveRole} in ${effectiveCategory} —`,
-  ];
-
-  for (const p of prefixes) {
-    if (base.toLowerCase().startsWith(p.toLowerCase())) {
-      base = base.slice(p.length).trim();
-    }
-  }
-
-  base = base
-    .replace(/^I help\s+[^.]+\.\s*/i, "")
-    .replace(/^Passionate\s+[^.]+\.\s*/i, "")
-    .replace(/^[^—]+—\s*/i, "")
-    .trim();
-
-  if (!base) {
-    base = `building high-impact systems and scalable solutions.`;
-  }
-
-  let result = "";
-  if (styleId === "professional") {
-    result = `I help clients excel in ${effectiveCategory} as a ${effectiveRole}. ${base}`;
-  } else if (styleId === "casual") {
-    result = `Passionate ${effectiveRole} helping teams win in ${effectiveCategory}. ${base}`;
-  } else if (styleId === "concise") {
-    result = `${effectiveRole} in ${effectiveCategory} — ${base}`;
-  }
-
-  return result.replace(/\s+/g, " ").trim().slice(0, maxChars);
+  return "Could not generate suggestions. You can write these yourself or try again.";
 }
 
 type IdentityStepProps = {
@@ -127,6 +51,10 @@ type IdentityStepProps = {
   onBioChange: (value: string) => void;
   profilePhotoSrc: string;
   onProfilePhotoChange: (src: string) => void;
+  experienceLevel?: string;
+  employmentPositions?: EmploymentPosition[];
+  educationDegrees?: EducationDegree[];
+  languages?: string[];
   stepCompletion: boolean[];
   onStepCompleteChange?: (step: number, complete: boolean) => void;
   onBack: () => void;
@@ -146,6 +74,10 @@ export default function IdentityStep({
   onBioChange,
   profilePhotoSrc,
   onProfilePhotoChange,
+  experienceLevel,
+  employmentPositions = [],
+  educationDegrees = [],
+  languages = [],
   stepCompletion,
   onStepCompleteChange,
   onBack,
@@ -153,22 +85,22 @@ export default function IdentityStep({
   onJumpToStep,
 }: IdentityStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const taglinePanelRef = useRef<HTMLDivElement | null>(null);
   const [photoError, setPhotoError] = useState("");
-  const [showImprovementPanel, setShowImprovementPanel] = useState(false);
-  const [selectedImproveStyle, setSelectedImproveStyle] = useState<ImprovementStyleId | null>(null);
-  const [appliedBioStyle, setAppliedBioStyle] = useState<ImprovementStyleId | null>(null);
-  const [showTaglinePanel, setShowTaglinePanel] = useState(false);
-  const [selectedTaglineStyle, setSelectedTaglineStyle] = useState<ImprovementStyleId | null>(null);
-  const [appliedTaglineStyle, setAppliedTaglineStyle] = useState<ImprovementStyleId | null>(null);
+  const [aiLoadingField, setAiLoadingField] = useState<"tagLine" | "bio" | null>(null);
+  const [aiError, setAiError] = useState("");
+  const [aiNotice, setAiNotice] = useState("");
+  const variantIndexRef = useRef({ tagLine: 0, bio: 0 });
 
   const maxChars = 160;
   const maxPhotoBytes = 5 * 1024 * 1024;
   const tagLineCharCount = tagLine.length;
   const introCharCount = bio.length;
-  const isUploadedPhoto =
+  const isObjectUrl =
     profilePhotoSrc.startsWith("blob:") || profilePhotoSrc.startsWith("data:");
+  const isRemotePhoto =
+    isObjectUrl ||
+    profilePhotoSrc.startsWith("https://") ||
+    profilePhotoSrc.startsWith("http://");
   const canContinue =
     professionalTitle.trim().length > 0 &&
     tagLine.trim().length > 0 &&
@@ -186,29 +118,120 @@ export default function IdentityStep({
     };
   }, [profilePhotoSrc]);
 
-  useEffect(() => {
-    if (showImprovementPanel && panelRef.current) {
-      const timer = setTimeout(() => {
-        panelRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [showImprovementPanel, selectedImproveStyle]);
+  const requestSuggestions = async (
+    intent: IdentitySuggestIntent,
+    field: "tagLine" | "bio",
+  ) => {
+    setAiLoadingField(field);
+    setAiError("");
+    setAiNotice("");
+    const context = {
+      fullName: userName,
+      category: categoryLabel,
+      skills: selectedSkills,
+      experienceLevel: experienceLevel || deriveExperienceLevel(employmentPositions),
+      professionalTitle,
+      currentTagLine: field === "tagLine" && intent !== "suggest" ? tagLine : undefined,
+      currentBio: field === "bio" && intent !== "suggest" ? bio : undefined,
+      intent,
+      variantIndex: variantIndexRef.current[field],
+      field,
+    };
+    const local = buildLocalIdentityCopy(context);
 
-  useEffect(() => {
-    if (showTaglinePanel && taglinePanelRef.current) {
-      const timer = setTimeout(() => {
-        taglinePanelRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
+    try {
+      const filledEmployment = getFilledEmploymentPositions(employmentPositions).map(
+        (position) => ({
+          jobTitle: position.jobTitle,
+          company: position.company,
+          responsibilities: position.responsibilities,
+        }),
+      );
+      const filledEducation = getFilledEducationDegrees(educationDegrees).map((degree) => ({
+        degree: degree.degree,
+        fieldOfStudy: degree.fieldOfStudy,
+        institution: degree.institution,
+      }));
+
+      const result = await suggestOnboardingIdentityCopy({
+        ...context,
+        languages,
+        employment: filledEmployment,
+        education: filledEducation,
+      });
+
+      let next = {
+        tagLine: (result.tagLine || local.tagLine).slice(0, maxChars),
+        bio: (result.bio || result.briefIntroduction || local.bio).slice(0, maxChars),
+      };
+
+      const sameAsCurrent =
+        intent !== "suggest" &&
+        (field === "tagLine"
+          ? next.tagLine.trim() === tagLine.trim()
+          : next.bio.trim() === bio.trim());
+
+      if (sameAsCurrent) {
+        variantIndexRef.current[field] += 1;
+        next = buildLocalIdentityCopy({
+          ...context,
+          variantIndex: variantIndexRef.current[field],
+          intent: intent === "improve" ? "regenerate" : intent,
         });
-      }, 150);
-      return () => clearTimeout(timer);
+      }
+
+      const suggestedValue = field === "tagLine" ? next.tagLine : next.bio;
+      if (!suggestedValue) {
+        setAiError(friendlyAiError(new Error("empty")));
+        return null;
+      }
+
+      if (result.source === "fallback" || result.notice || sameAsCurrent) {
+        setAiNotice(result.notice || AI_FALLBACK_NOTICE);
+      }
+
+      return next;
+    } catch (error) {
+      const fallbackValue = field === "tagLine" ? local.tagLine : local.bio;
+      if (fallbackValue) {
+        setAiNotice(AI_FALLBACK_NOTICE);
+        return {
+          tagLine: local.tagLine.slice(0, maxChars),
+          bio: local.bio.slice(0, maxChars),
+        };
+      }
+      setAiError(friendlyAiError(error));
+      return null;
+    } finally {
+      setAiLoadingField((current) => (current === field ? null : current));
     }
-  }, [showTaglinePanel, selectedTaglineStyle]);
+  };
+
+  const handleSuggestField = async (field: "tagLine" | "bio") => {
+    const hasValue = field === "tagLine" ? tagLine.trim().length > 0 : bio.trim().length > 0;
+    const intent: IdentitySuggestIntent = hasValue
+      ? field === "tagLine"
+        ? "regenerate"
+        : "improve"
+      : "suggest";
+
+    if (intent === "suggest") {
+      variantIndexRef.current[field] = 0;
+    } else {
+      variantIndexRef.current[field] += 1;
+    }
+
+    const result = await requestSuggestions(intent, field);
+    if (!result) return;
+
+    if (field === "tagLine" && result.tagLine) {
+      onTagLineChange(result.tagLine);
+      return;
+    }
+    if (field === "bio" && result.bio) {
+      onBioChange(result.bio);
+    }
+  };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -233,42 +256,6 @@ export default function IdentityStep({
     onProfilePhotoChange(URL.createObjectURL(file));
   };
 
-  const handleAiBioAssist = () => {
-    setShowImprovementPanel(true);
-    setSelectedImproveStyle("professional");
-  };
-
-  const handleApplyImprovement = () => {
-    if (!selectedImproveStyle) return;
-    const improved = getImprovedBioText(
-      selectedImproveStyle,
-      bio,
-      professionalTitle,
-      categoryLabel,
-      maxChars,
-    );
-    onBioChange(improved);
-    setAppliedBioStyle(selectedImproveStyle);
-  };
-
-  const handleAiTaglineAssist = () => {
-    setShowTaglinePanel(true);
-    setSelectedTaglineStyle("professional");
-  };
-
-  const handleApplyTagline = () => {
-    if (!selectedTaglineStyle) return;
-    const improved = getImprovedTaglineText(
-      selectedTaglineStyle,
-      tagLine,
-      professionalTitle,
-      categoryLabel,
-      maxChars,
-    );
-    onTagLineChange(improved);
-    setAppliedTaglineStyle(selectedTaglineStyle);
-  };
-
   const previewExpert: Expert = {
     name: userName.trim() || "Your Name",
     role: professionalTitle.trim() || "Professional Title",
@@ -285,8 +272,8 @@ export default function IdentityStep({
   const previewStatsText = professionalTitle.trim()
     ? professionalTitle.trim()
     : "Add your professional title";
-  const canUseAiBioAssist = bio.trim().length > 0;
-  const canUseAiTaglineAssist = professionalTitle.trim().length > 0;
+  const tagLineBusy = aiLoadingField === "tagLine";
+  const bioBusy = aiLoadingField === "bio";
 
   return (
     <section className={shared.card}>
@@ -295,13 +282,10 @@ export default function IdentityStep({
           <OnboardingStepTitle userName={userName} />
         </div>
 
-        {/* Progress Tracker */}
         <OnboardingProgressBar currentStep={4} stepCompletion={stepCompletion} onStepClick={onJumpToStep} />
-
       </div>
 
       <div className={shared.cardBody}>
-        {/* Heading */}
         <h1 className={`${shared.questionTitle} ${styles.questionTitle}`}>
           Craft your <span className={shared.accentWord}>professional identity</span>
         </h1>
@@ -310,11 +294,8 @@ export default function IdentityStep({
           This is the first impression clients will have. Make it count.
         </p>
 
-        {/* Split Layout */}
         <div className={styles.splitLayout}>
-          {/* Left Side: Inputs */}
           <div className={styles.inputsColumn}>
-            {/* Avatar Upload Container */}
             <div className={styles.photoUploadContainer}>
               <label
                 htmlFor="identity-photo-upload"
@@ -322,7 +303,7 @@ export default function IdentityStep({
                 aria-label="Upload profile photo"
               >
                 <span className={styles.photoAvatarInner}>
-                  {isUploadedPhoto ? (
+                  {isRemotePhoto ? (
                     <img
                       src={profilePhotoSrc}
                       alt="Expert profile headshot"
@@ -358,7 +339,6 @@ export default function IdentityStep({
               </div>
             </div>
 
-            {/* Professional Title Input */}
             <div className={styles.fieldGroup}>
               <label htmlFor="title-input" className={styles.fieldLabel}>
                 Professional Title
@@ -374,7 +354,6 @@ export default function IdentityStep({
               />
             </div>
 
-            {/* Tag Line */}
             <div className={styles.fieldGroup}>
               <label htmlFor="tagline-input" className={styles.fieldLabel}>
                 Tag Line
@@ -390,18 +369,30 @@ export default function IdentityStep({
                 />
                 <div className={styles.textareaFooterInline}>
                   <AnimatePresence>
-                    {canUseAiTaglineAssist && !showTaglinePanel && (
+                    {tagLineBusy ? (
+                      <motion.span
+                        key="tagline-ai-loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className={styles.aiBioLoadingText}
+                      >
+                        Suggesting…
+                      </motion.span>
+                    ) : (
                       <motion.button
+                        key="tagline-ai-suggest"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
                         type="button"
                         className={styles.aiBioInlineBtn}
-                        onClick={handleAiTaglineAssist}
+                        disabled={tagLineBusy}
+                        onClick={() => void handleSuggestField("tagLine")}
                       >
                         <ShinyText
-                          text="Suggest by Jatayu AI"
+                          text={tagLine.trim() ? "Regenerate with Jatayu AI" : "Suggest by Jatayu AI"}
                           icon="sparkles"
                           iconSize={14}
                           speed={2.5}
@@ -417,70 +408,8 @@ export default function IdentityStep({
                   </span>
                 </div>
               </div>
-
-              <AnimatePresence>
-                {canUseAiTaglineAssist && showTaglinePanel && (
-                  <motion.div
-                    ref={taglinePanelRef}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    style={{ overflow: "hidden" }}
-                    className={styles.aiImprovePanel}
-                  >
-                    <div className={styles.improvementChipsWrap}>
-                      {IMPROVEMENT_STYLES.map((style) => {
-                        const isSelected = selectedTaglineStyle === style.id;
-                        return (
-                          <button
-                            key={style.id}
-                            type="button"
-                            className={`${styles.suggestedPill} ${
-                              isSelected ? styles.suggestedPillSelected : ""
-                            }`}
-                            onClick={() =>
-                              setSelectedTaglineStyle(isSelected ? null : style.id)
-                            }
-                            aria-pressed={isSelected}
-                          >
-                            {style.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className={styles.aiImproveHint}>
-                      {selectedTaglineStyle
-                        ? getImprovedTaglineText(
-                            selectedTaglineStyle,
-                            tagLine,
-                            professionalTitle,
-                            categoryLabel,
-                            maxChars,
-                          )
-                        : "Select a tone to suggest a tagline"}
-                    </p>
-                    <button
-                      type="button"
-                      className={styles.aiApplyBtn}
-                      onClick={handleApplyTagline}
-                      disabled={!selectedTaglineStyle || appliedTaglineStyle === selectedTaglineStyle}
-                    >
-                      <ShinyText
-                        text={appliedTaglineStyle === selectedTaglineStyle ? "Applied" : "Apply"}
-                        speed={2.5}
-                        color="#E53B17"
-                        shineColor="#ffffff"
-                        disabled={!selectedTaglineStyle || appliedTaglineStyle === selectedTaglineStyle}
-                        className={styles.aiApplyShinyText}
-                      />
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
-            {/* Brief Introduction */}
             <div className={styles.fieldGroup}>
               <div className={styles.fieldLabelRow}>
                 <label htmlFor="intro-input" className={styles.fieldLabel}>
@@ -498,18 +427,30 @@ export default function IdentityStep({
                 />
                 <div className={styles.textareaFooterInline}>
                   <AnimatePresence>
-                    {canUseAiBioAssist && !showImprovementPanel && (
+                    {bioBusy ? (
+                      <motion.span
+                        key="bio-ai-loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className={styles.aiBioLoadingText}
+                      >
+                        Suggesting…
+                      </motion.span>
+                    ) : (
                       <motion.button
+                        key="bio-ai-suggest"
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
                         type="button"
                         className={styles.aiBioInlineBtn}
-                        onClick={handleAiBioAssist}
+                        disabled={bioBusy}
+                        onClick={() => void handleSuggestField("bio")}
                       >
                         <ShinyText
-                          text="Improve with Jatayu AI"
+                          text={bio.trim() ? "Improve with Jatayu AI" : "Suggest by Jatayu AI"}
                           icon="sparkles"
                           iconSize={14}
                           speed={2.5}
@@ -525,72 +466,11 @@ export default function IdentityStep({
                   </span>
                 </div>
               </div>
-
-              <AnimatePresence>
-                {canUseAiBioAssist && showImprovementPanel && (
-                  <motion.div
-                    ref={panelRef}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    style={{ overflow: "hidden" }}
-                    className={styles.aiImprovePanel}
-                  >
-                    <div className={styles.improvementChipsWrap}>
-                      {IMPROVEMENT_STYLES.map((style) => {
-                        const isSelected = selectedImproveStyle === style.id;
-                        return (
-                          <button
-                            key={style.id}
-                            type="button"
-                            className={`${styles.suggestedPill} ${
-                              isSelected ? styles.suggestedPillSelected : ""
-                            }`}
-                            onClick={() =>
-                              setSelectedImproveStyle(isSelected ? null : style.id)
-                            }
-                            aria-pressed={isSelected}
-                          >
-                            {style.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className={styles.aiImproveHint}>
-                      {selectedImproveStyle
-                        ? getImprovedBioText(
-                            selectedImproveStyle,
-                            bio,
-                            professionalTitle,
-                            categoryLabel,
-                            maxChars,
-                          )
-                        : "Select a tone to improve your introduction"}
-                    </p>
-                    <button
-                      type="button"
-                      className={styles.aiApplyBtn}
-                      onClick={handleApplyImprovement}
-                      disabled={!selectedImproveStyle || appliedBioStyle === selectedImproveStyle}
-                    >
-                      <ShinyText
-                        text={appliedBioStyle === selectedImproveStyle ? "Applied" : "Apply"}
-                        speed={2.5}
-                        color="#E53B17"
-                        shineColor="#ffffff"
-                        disabled={!selectedImproveStyle || appliedBioStyle === selectedImproveStyle}
-                        className={styles.aiApplyShinyText}
-                      />
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {aiNotice ? <p className={styles.aiSuggestNotice}>{aiNotice}</p> : null}
+              {aiError ? <p className={styles.aiSuggestError}>{aiError}</p> : null}
             </div>
-
           </div>
 
-          {/* Right Side: Live Preview */}
           <div className={styles.previewColumn}>
             <div className={styles.expertCardWrapper}>
               <ExpertCard
@@ -603,8 +483,6 @@ export default function IdentityStep({
             </div>
           </div>
         </div>
-
-        {/* Step 4 Footer */}
       </div>
 
       <div className={shared.onboardingFooter}>

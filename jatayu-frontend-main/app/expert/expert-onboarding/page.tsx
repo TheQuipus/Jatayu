@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Code,
@@ -36,7 +36,6 @@ import {
   deriveExperienceLevel,
   type EducationDegree,
   type EmploymentPosition,
-  type ExperienceLevel,
 } from "@/lib/expertEmployment";
 import {
   getProfile,
@@ -53,10 +52,12 @@ import {
   getPostAuthDestination,
   isAuthenticated,
   isNavigationHref,
+  parseCredentialsFromProfile,
   persistAuthSession,
   readPendingOtpSession,
   resolveOnboardingStep,
   savePendingOtpSession,
+  type BackendCredentialRecord,
   type ExpertOnboardingStep,
 } from "@/lib/expertAuth";
 import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expertOnboardingStatus";
@@ -181,6 +182,57 @@ const skillsByCategory: Record<string, string[]> = {
 
 type OnboardingStep = ExpertOnboardingStep;
 
+type ExpertOnboardingProfile = AuthUser & {
+  category?: string;
+  skills?: string[];
+  professionalTitle?: string;
+  tagLine?: string;
+  bio?: string;
+  profilePhotoSrc?: string;
+  selectedFormats?: string[];
+  selectedLengths?: string[];
+  formatPrices?: Record<string, string>;
+  targetAudience?: string[] | string;
+  focusAreas?: string[];
+  timezone?: string;
+  onboardingMetadata?: Record<string, unknown>;
+  credentials?: BackendCredentialRecord[];
+  availabilities?: Array<{
+    id?: string;
+    days?: string[];
+    fromTime?: string;
+    toTime?: string;
+  }>;
+};
+
+function asStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === "string");
+      }
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function asOnboardingProfile(profile: Record<string, unknown>): ExpertOnboardingProfile {
+  return profile as unknown as ExpertOnboardingProfile;
+}
+
+function isGovernmentIdData(value: unknown): value is GovernmentIdData {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  if (record.source === "digilocker" && typeof record.type === "string") return true;
+  return typeof record.type === "string" && Boolean(record.front);
+}
+
 function ExpertOnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -228,6 +280,118 @@ function ExpertOnboardingPageContent() {
   const signupFlowRef = useRef(false);
   const loginIntentRef = useRef(false);
 
+  function hydrateFromProfile(profile: ExpertOnboardingProfile) {
+    const user = profile;
+    if (user.fullName) setRegisteredName(user.fullName);
+    if (user.email) setRegisteredEmail(user.email);
+    if (user.phone) setRegisteredPhone(user.phone);
+    if (user.id) setExpertId(user.id);
+
+    if (user.category) {
+      const saved = user.category;
+      const known = categories.find(
+        (item) => item.id === saved || item.label.toLowerCase() === saved.toLowerCase(),
+      );
+      if (known) {
+        setSelectedCategory(known.id);
+      } else {
+        const customId = `custom-${saved.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "category"}`;
+        setCustomCategories((prev) => {
+          if (prev.some((item) => item.id === customId || item.label === saved)) return prev;
+          return [...prev, { id: customId, label: saved, icon: Briefcase }];
+        });
+        setSelectedCategory(customId);
+      }
+    }
+
+    if (user.skills?.length) {
+      setSelectedSkills(user.skills);
+      const categoryId =
+        categories.find(
+          (item) => item.id === user.category || item.label.toLowerCase() === String(user.category || "").toLowerCase(),
+        )?.id || "";
+      const knownSkills = new Set(skillsByCategory[categoryId] || []);
+      const extras = user.skills.filter((skill) => !knownSkills.has(skill));
+      if (extras.length > 0 && categoryId) {
+        setCustomSkills((prev) => ({
+          ...prev,
+          [categoryId]: Array.from(new Set([...(prev[categoryId] || []), ...extras])),
+        }));
+      }
+    }
+
+    if (user.professionalTitle) setProfessionalTitle(user.professionalTitle);
+    if (user.tagLine) setTagLine(user.tagLine);
+    if (user.bio) setBio(user.bio);
+    if (user.profilePhotoSrc) setProfilePhotoSrc(user.profilePhotoSrc);
+    if (user.selectedFormats?.length) setSelectedFormats(user.selectedFormats);
+    if (user.selectedLengths?.length) setSelectedLengths(user.selectedLengths);
+    if (user.formatPrices) setFormatPrices(user.formatPrices);
+    if (user.timezone) setTimezone(user.timezone);
+
+    const audiences = asStringArray(user.targetAudience);
+    if (audiences.length > 0) setSelectedAudiences(audiences);
+
+    const { employmentPositions: jobs, educationDegrees: degrees } = parseCredentialsFromProfile(
+      user.credentials,
+    );
+    if (jobs.length > 0) setEmploymentPositions(jobs);
+    if (degrees.length > 0) setEducationDegrees(degrees);
+
+    if (user.availabilities?.length) {
+      setAvailabilitySlots(
+        user.availabilities.map((slot) => ({
+          id: slot.id || `slot-${crypto.randomUUID?.() || Date.now()}`,
+          days: slot.days || [],
+          from: slot.fromTime || "",
+          to: slot.toTime || "",
+        })),
+      );
+    }
+
+    const metadata = user.onboardingMetadata ?? {};
+    if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
+    if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
+    const languages = asStringArray(metadata.languages).length
+      ? asStringArray(metadata.languages)
+      : asStringArray(user.focusAreas);
+    if (languages.length > 0) setLanguages(languages);
+    if (Array.isArray(metadata.audiences)) {
+      const fromMeta = asStringArray(metadata.audiences);
+      if (fromMeta.length > 0) setSelectedAudiences(fromMeta);
+    }
+    if (typeof metadata.acceptCustomRequests === "boolean") {
+      setAcceptCustomRequests(metadata.acceptCustomRequests);
+    }
+    if (typeof metadata.kycVideoUrl === "string") setKycVideoUrl(metadata.kycVideoUrl);
+    if (isGovernmentIdData(metadata.governmentId)) setGovernmentId(metadata.governmentId);
+    if (Array.isArray(metadata.certificates)) {
+      setCertificates(metadata.certificates as ExpertCertificate[]);
+    }
+    if (Array.isArray(metadata.portfolioSamples)) {
+      setPortfolioSamples(metadata.portfolioSamples as PortfolioSampleFile[]);
+    }
+
+    setAuthUser(user);
+    setAccountStatus(buildExpertAccountStatus(user));
+  }
+
+  function routeAfterAuth(user: AuthUser, options?: { freshSignup?: boolean }) {
+    if (options?.freshSignup) {
+      signupFlowRef.current = false;
+      setStep("signup-complete");
+      return;
+    }
+
+    const destination = getPostAuthDestination(user);
+    if (isNavigationHref(destination)) {
+      window.location.assign(destination);
+      return;
+    }
+
+    setStep(destination);
+  }
+
   function buildPortfolioLinks(linkedinUrl: string, portfolioUrl: string): PortfolioLink[] {
     const links: PortfolioLink[] = [];
 
@@ -272,28 +436,31 @@ function ExpertOnboardingPageContent() {
     [selectedCategory, selectedSkills, internalStepComplete],
   );
 
-  useEffect(() => {
-    const flow = searchParams.get("flow");
-    const resume = searchParams.get("resume");
-    const auth = searchParams.get("auth");
-    const nameParam = searchParams.get("name");
+  useLayoutEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flow = params.get("flow");
+    const resume = params.get("resume");
+    const auth = params.get("auth");
+    const nameParam = params.get("name");
 
     if (nameParam) {
       setRegisteredName(decodeURIComponent(nameParam));
+    }
+
+    // Honor ?auth=login before ?flow=signup so the login URL is never
+    // overridden by a stale Next searchParams signup value.
+    if (auth === "login") {
+      loginIntentRef.current = true;
+      signupFlowRef.current = false;
+      clearAuthSession();
+      setStep("login");
+      return;
     }
 
     if (flow === "signup") {
       signupFlowRef.current = true;
       clearAuthSession();
       setStep("register");
-      return;
-    }
-
-    if (auth === "login") {
-      loginIntentRef.current = true;
-      signupFlowRef.current = false;
-      clearAuthSession();
-      setStep("login");
       return;
     }
 
@@ -333,50 +500,14 @@ function ExpertOnboardingPageContent() {
         if (otpFlowLockRef.current) return;
         if (readPendingOtpSession()) return;
 
-        const user = (profile as unknown) as AuthUser & {
-          category?: string;
-          skills?: string[];
-          experienceLevel?: string;
-          professionalTitle?: string;
-          tagLine?: string;
-          bio?: string;
-          profilePhotoSrc?: string;
-          selectedFormats?: string[];
-          selectedLengths?: string[];
-          formatPrices?: Record<string, string>;
-          targetAudience?: string[] | string;
-          focusAreas?: string[];
-          timezone?: string;
-          onboardingMetadata?: Record<string, unknown>;
-        };
-
-        if (user.fullName) setRegisteredName(user.fullName);
-        if (user.email) setRegisteredEmail(user.email);
-        if (user.phone) setRegisteredPhone(user.phone);
-        if (user.id) setExpertId(user.id);
-        if (user.category) setSelectedCategory(user.category);
-        if (user.skills?.length) setSelectedSkills(user.skills);
-        if (user.professionalTitle) setProfessionalTitle(user.professionalTitle);
-        if (user.tagLine) setTagLine(user.tagLine);
-        if (user.bio) setBio(user.bio);
-        if (user.profilePhotoSrc) setProfilePhotoSrc(user.profilePhotoSrc);
-        if (user.selectedFormats?.length) setSelectedFormats(user.selectedFormats);
-        if (user.selectedLengths?.length) setSelectedLengths(user.selectedLengths);
-        if (user.formatPrices) setFormatPrices(user.formatPrices);
-        if (user.timezone) setTimezone(user.timezone);
-
-        const metadata = user.onboardingMetadata ?? {};
-        if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
-        if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
-        if (Array.isArray(metadata.languages)) setLanguages(metadata.languages as string[]);
-        if (Array.isArray(metadata.audiences)) setSelectedAudiences(metadata.audiences as string[]);
-        if (typeof metadata.acceptCustomRequests === "boolean") {
-          setAcceptCustomRequests(metadata.acceptCustomRequests);
+        const user = asOnboardingProfile(profile);
+        hydrateFromProfile(user);
+        const kycReturn = new URLSearchParams(window.location.search).get("kyc");
+        if (kycReturn === "success" || kycReturn === "denied" || kycReturn === "error") {
+          setStep("credentials");
+          return;
         }
-
-        setAuthUser(user);
-        setAccountStatus(buildExpertAccountStatus(user));
-        setStep("account-status");
+        routeAfterAuth(user);
       })
       .catch(() => {
         // A stored token that fails to resolve means the session expired or is
@@ -402,12 +533,25 @@ function ExpertOnboardingPageContent() {
     setAccountStatus(buildExpertAccountStatus(user));
 
     if (options?.freshSignup) {
-      signupFlowRef.current = false;
-      setStep("signup-complete");
+      routeAfterAuth(user, { freshSignup: true });
       return;
     }
 
-    setStep("account-status");
+    const destination = getPostAuthDestination(user);
+    if (isNavigationHref(destination)) {
+      window.location.assign(destination);
+      return;
+    }
+
+    void getProfile()
+      .then((profile) => {
+        const snapshot = asOnboardingProfile(profile);
+        hydrateFromProfile(snapshot);
+        routeAfterAuth(snapshot);
+      })
+      .catch(() => {
+        routeAfterAuth(user);
+      });
   };
 
   const handleContinueFromSignupComplete = () => {
@@ -501,13 +645,16 @@ function ExpertOnboardingPageContent() {
     setRegisteredName(user.fullName);
     setRegisteredEmail(user.email);
     if (user.phone) setRegisteredPhone(user.phone);
+    if (user.profilePhotoSrc) setProfilePhotoSrc(user.profilePhotoSrc);
     setAuthUser(user);
     setAccountStatus(buildExpertAccountStatus(user));
 
-    const isFreshSignup = user.onboardingStep === "category";
+    const fromSignup = signupFlowRef.current;
+    signupFlowRef.current = false;
+    const isFreshSignup = fromSignup && (user.onboardingStep === "category" || !user.onboardingStep);
+
     if (isFreshSignup) {
-      signupFlowRef.current = false;
-      setStep("signup-complete");
+      routeAfterAuth(user, { freshSignup: true });
       return;
     }
 
@@ -517,13 +664,15 @@ function ExpertOnboardingPageContent() {
       return;
     }
 
-    const status = buildExpertAccountStatus(user);
-    if (status.phase === "submitted" || status.phase === "rejected") {
-      setStep("success");
-      return;
-    }
-
-    setStep(resolveOnboardingStep(user));
+    void getProfile()
+      .then((profile) => {
+        const snapshot = asOnboardingProfile(profile);
+        hydrateFromProfile(snapshot);
+        routeAfterAuth(snapshot);
+      })
+      .catch(() => {
+        routeAfterAuth(user);
+      });
   };
 
   const handleBackToRegister = () => {
@@ -888,9 +1037,10 @@ function ExpertOnboardingPageContent() {
   const otpExpertId = expertId || pendingOtp?.expertId || "";
   const otpEmail = registeredEmail || pendingOtp?.email || "";
   const otpPhone = registeredPhone || pendingOtp?.phone || "";
+  const formStep: OnboardingStep = step;
 
   return (
-    <main className={styles.pageContainer}>
+    <main className={styles.pageContainer} data-onboarding-step={formStep}>
       {/* Blurred background image layer */}
       <div className={styles.bgWrapper}>
         <img
@@ -902,7 +1052,7 @@ function ExpertOnboardingPageContent() {
         <div className={styles.bgOverlay} />
       </div>
 
-      {step === "register" && (
+      {formStep === "register" && (
         <RegisterStep
           onContinue={handleRegisterComplete}
           onOAuthSuccess={(response) => handleAuthSuccess(response)}
@@ -910,7 +1060,7 @@ function ExpertOnboardingPageContent() {
         />
       )}
 
-      {step === "login" && (
+      {formStep === "login" && (
         <LoginStep
           onContinue={handleLoginComplete}
           onRequiresOtp={handleLoginRequiresOtp}
@@ -1027,6 +1177,10 @@ function ExpertOnboardingPageContent() {
           onBioChange={setBio}
           profilePhotoSrc={profilePhotoSrc}
           onProfilePhotoChange={setProfilePhotoSrc}
+          experienceLevel={deriveExperienceLevel(employmentPositions)}
+          employmentPositions={employmentPositions}
+          educationDegrees={educationDegrees}
+          languages={languages}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToExperience}

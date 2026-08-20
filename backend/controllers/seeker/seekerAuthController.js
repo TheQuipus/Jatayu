@@ -1,11 +1,15 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { OAuth2Client } from 'google-auth-library';
 import { Seeker } from '../../models/index.js';
 import dotenv from 'dotenv';
 import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../../utils/smsService.js';
 import { deliverOtpChannels, handleOtpDeliveryError } from '../../utils/otpDelivery.js';
 import { getSetting, getSettingBool } from '../../utils/settingsHelper.js';
+import {
+  getGoogleAuthConfig,
+  isDefaultProfilePhoto,
+  verifyGoogleLogin,
+} from '../../utils/googleAuth.js';
 import {
   storeOtpOnModel,
   readOtpFromModel,
@@ -83,6 +87,7 @@ function buildSeekerUser(seeker) {
     email: seeker.email,
     fullName: seeker.fullName,
     phone: seeker.phone,
+    profilePhotoSrc: seeker.profilePhotoSrc,
     onboardingStep: seeker.onboardingStep,
     status: seeker.status,
     role: 'seeker',
@@ -302,67 +307,38 @@ export const login = async (req, res) => {
 };
 
 export const googleLogin = async (req, res) => {
-  const { idToken } = req.body;
-
-  if (!idToken) {
-    return res.status(400).json({ message: 'Google ID token is required' });
-  }
+  const { idToken, accessToken } = req.body;
 
   try {
-    const googleClientId = await getSetting('GOOGLE_CLIENT_ID');
-    const googleLoginEnabled = await getSettingBool('GOOGLE_LOGIN_ENABLED', true);
+    const profile = await verifyGoogleLogin({ idToken, accessToken });
+    const { googleId, email, fullName, picture } = profile;
 
-    if (!googleLoginEnabled) {
-      return res.status(400).json({ message: 'Google Login is disabled by administrator settings' });
+    let seeker = await Seeker.findOne({ where: { googleId } });
+    if (!seeker) {
+      seeker = await Seeker.findOne({ where: { email } });
     }
-
-    let payload;
-    const isMockAuth =
-      idToken === 'mock-google-token' ||
-      !googleClientId ||
-      googleClientId.includes('your_google_client_id');
-
-    if (isMockAuth) {
-      console.log('Using mock Google token verification for seeker (development mode)');
-      payload = {
-        sub: req.body.googleId || 'mock-google-seeker-id',
-        email: req.body.email || 'google-seeker@example.com',
-        name: req.body.fullName || 'Google Seeker',
-        picture: req.body.profilePhotoSrc || '/assets/img/manportrait.png',
-        email_verified: true,
-      };
-    } else {
-      const authClient = new OAuth2Client(googleClientId);
-      const ticket = await authClient.verifyIdToken({
-        idToken,
-        audience: googleClientId,
-      });
-      payload = ticket.getPayload();
-    }
-
-    const { sub: googleId, email, name, picture } = payload;
-    let seeker = await Seeker.findOne({ where: { email } });
 
     if (!seeker) {
       seeker = await Seeker.create({
         email,
-        fullName: name || 'Google Seeker',
+        fullName: fullName || 'Google Seeker',
         googleId,
         isEmailVerified: true,
-        isPhoneVerified: true,
+        isPhoneVerified: false,
         profilePhotoSrc: picture || '/assets/img/manportrait.png',
         onboardingStep: 'category',
         status: 'draft',
       });
     } else {
-      if (!seeker.googleId) {
-        seeker.googleId = googleId;
-        seeker.isEmailVerified = true;
-        if (!seeker.profilePhotoSrc && picture) {
-          seeker.profilePhotoSrc = picture;
-        }
-        await seeker.save();
+      seeker.googleId = seeker.googleId || googleId;
+      seeker.isEmailVerified = true;
+      if (fullName && (!seeker.fullName || seeker.fullName === 'Google Seeker')) {
+        seeker.fullName = fullName;
       }
+      if (picture && isDefaultProfilePhoto(seeker.profilePhotoSrc)) {
+        seeker.profilePhotoSrc = picture;
+      }
+      await seeker.save();
     }
 
     return res.status(200).json({
@@ -371,7 +347,8 @@ export const googleLogin = async (req, res) => {
     });
   } catch (error) {
     console.error('Seeker Google Auth Error:', error);
-    return res.status(401).json({ message: 'Google authentication failed', error: error.message });
+    const status = error.status || 401;
+    return res.status(status).json({ message: error.message || 'Google authentication failed' });
   }
 };
 
@@ -484,17 +461,16 @@ export const getPublicConfig = async (req, res) => {
   try {
     const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
     const smsEnabled = await getSettingBool('SMS_ENABLED', true);
-    const googleLoginEnabled = await getSettingBool('GOOGLE_LOGIN_ENABLED', true);
     const linkedinLoginEnabled = await getSettingBool('LINKEDIN_LOGIN_ENABLED', true);
-    const googleClientId = await getSetting('GOOGLE_CLIENT_ID');
     const linkedinClientId = await getSetting('LINKEDIN_CLIENT_ID');
+    const google = await getGoogleAuthConfig();
 
     return res.status(200).json({
       emailEnabled,
       smsEnabled,
-      googleLoginEnabled,
+      googleLoginEnabled: google.enabled,
       linkedinLoginEnabled,
-      googleClientId,
+      googleClientId: google.enabled ? google.clientId : '',
       linkedinClientId,
     });
   } catch (error) {

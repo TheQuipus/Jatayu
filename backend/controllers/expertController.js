@@ -1,5 +1,9 @@
 import { Expert, Credential, Availability, sequelize } from '../models/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
+import {
+  AiNotConfiguredError,
+  suggestExpertIdentityCopy,
+} from '../utils/aiService.js';
 
 /**
  * Get current expert's full profile
@@ -19,7 +23,10 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ message: 'Expert not found' });
     }
 
-    return res.status(200).json(expert);
+    return res.status(200).json({
+      ...expert.toJSON(),
+      onboardingComplete: expert.status === 'approved' || expert.onboardingStep === 'success',
+    });
   } catch (error) {
     console.error('Get Profile Error:', error);
     return res.status(500).json({ message: 'Server error retrieving profile', error: error.message });
@@ -203,5 +210,107 @@ export const submitOnboarding = async (req, res) => {
   } catch (error) {
     console.error('Submit Onboarding Error:', error);
     return res.status(500).json({ message: 'Server error during submission', error: error.message });
+  }
+};
+
+function asList(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function credentialsToContext(credentials = []) {
+  const employment = [];
+  const education = [];
+
+  for (const cred of credentials) {
+    if (!cred) continue;
+    if (cred.type === 'education') {
+      education.push({
+        degree: cred.title,
+        institution: cred.institution,
+        fieldOfStudy: cred.description,
+      });
+    } else {
+      employment.push({
+        jobTitle: cred.title,
+        company: cred.institution,
+        responsibilities: cred.description,
+      });
+    }
+  }
+
+  return { employment, education };
+}
+
+/**
+ * Suggest tag line + brief introduction from prior onboarding selections.
+ */
+export const suggestOnboardingIdentity = async (req, res) => {
+  const expertId = req.user.id;
+  const body = req.body || {};
+
+  try {
+    const expert = await Expert.findByPk(expertId, {
+      include: [{ model: Credential, as: 'credentials' }],
+    });
+
+    if (!expert) {
+      return res.status(404).json({ message: 'Expert not found' });
+    }
+
+    const fromDb = credentialsToContext(expert.credentials || []);
+    const metadata = expert.onboardingMetadata || {};
+    const skills = body.skills ?? expert.skills;
+    const languages = body.languages ?? metadata.languages ?? expert.focusAreas;
+
+    const suggestion = await suggestExpertIdentityCopy({
+      fullName: body.fullName || expert.fullName,
+      category: body.category || expert.category,
+      skills: asList(skills),
+      experienceLevel: body.experienceLevel || expert.experienceLevel,
+      professionalTitle: body.professionalTitle || expert.professionalTitle,
+      languages: asList(languages),
+      employment: Array.isArray(body.employment) && body.employment.length > 0
+        ? body.employment
+        : fromDb.employment,
+      education: Array.isArray(body.education) && body.education.length > 0
+        ? body.education
+        : fromDb.education,
+      currentTagLine: body.currentTagLine || body.tagLine,
+      currentBio: body.currentBio || body.bio || body.briefIntroduction,
+      tone: body.tone,
+      intent: body.intent,
+      variantIndex: body.variantIndex,
+      field: body.field === 'bio' || body.field === 'tagLine' ? body.field : undefined,
+    });
+
+    return res.status(200).json({
+      tagLine: suggestion.tagLine,
+      bio: suggestion.bio,
+      briefIntroduction: suggestion.bio,
+      source: suggestion.source || 'ai',
+      notice: suggestion.notice || undefined,
+    });
+  } catch (error) {
+    if (error instanceof AiNotConfiguredError || error?.code === 'AI_NOT_CONFIGURED') {
+      return res.status(503).json({
+        message: error.message,
+        code: 'AI_NOT_CONFIGURED',
+      });
+    }
+
+    console.error('Onboarding AI suggest error:', error.message);
+    return res.status(502).json({
+      message: error.message || 'Could not generate suggestions. You can write these yourself.',
+      code: error.code || 'AI_PROVIDER_ERROR',
+    });
   }
 };

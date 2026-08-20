@@ -4,7 +4,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const sharedOptions = {
-  host: process.env.DB_HOST || 'localhost',
+  // Prefer IPv4 loopback — Windows "localhost" can fail with ECONNREFUSED on ::1.
+  host: process.env.DB_HOST === 'localhost' ? '127.0.0.1' : (process.env.DB_HOST || '127.0.0.1'),
   dialect: 'mysql',
   logging: false,
   pool: {
@@ -23,10 +24,12 @@ export function resolveDbName(moduleEnvVar, defaultName) {
 }
 
 export function createSequelize(databaseName) {
+  // Empty DB_PASSWORD must be null so mysql2 does not send "using password: YES".
+  const password = process.env.DB_PASSWORD ? process.env.DB_PASSWORD : null;
   return new Sequelize(
     databaseName,
     process.env.DB_USER,
-    process.env.DB_PASSWORD,
+    password,
     sharedOptions,
   );
 }

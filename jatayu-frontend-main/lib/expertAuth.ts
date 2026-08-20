@@ -178,3 +178,58 @@ export function buildCredentialsPayload(
 
   return [...employment, ...education];
 }
+
+import { type EducationDegree, type EmploymentPosition } from "@/lib/expertEmployment";
+
+export type BackendCredentialRecord = {
+  id?: string;
+  type?: string;
+  title?: string;
+  institution?: string;
+  startYear?: number | string | null;
+  endYear?: number | string | null;
+  description?: string | null;
+};
+
+export function parseCredentialsFromProfile(credentials?: unknown): {
+  employmentPositions: EmploymentPosition[];
+  educationDegrees: EducationDegree[];
+} {
+  if (!Array.isArray(credentials)) {
+    return { employmentPositions: [], educationDegrees: [] };
+  }
+
+  const employmentPositions: EmploymentPosition[] = [];
+  const educationDegrees: EducationDegree[] = [];
+
+  for (const item of credentials as BackendCredentialRecord[]) {
+    if (!item || typeof item !== "object") continue;
+    const type = (item.type || "").toLowerCase();
+    if (type === "employment" || type === "work" || type === "job") {
+      employmentPositions.push({
+        id: item.id || `emp-${crypto.randomUUID?.() || Date.now()}`,
+        jobTitle: item.title || "",
+        company: item.institution || "",
+        startMonth: "",
+        startYear: item.startYear ? String(item.startYear) : "",
+        endMonth: "",
+        endYear: item.endYear ? String(item.endYear) : "",
+        currentlyWorking: !item.endYear,
+        responsibilities: item.description || "",
+      });
+    } else if (type === "education" || type === "degree" || type === "academic") {
+      const desc = item.description || "";
+      const parts = desc.split(" · ");
+      educationDegrees.push({
+        id: item.id || `edu-${crypto.randomUUID?.() || Date.now()}`,
+        degree: item.title || "",
+        fieldOfStudy: parts[0] || "",
+        institution: item.institution || "",
+        graduationYear: item.endYear ? String(item.endYear) : item.startYear ? String(item.startYear) : "",
+        honours: parts[1] || "",
+      });
+    }
+  }
+
+  return { employmentPositions, educationDegrees };
+}

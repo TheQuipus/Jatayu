@@ -1,11 +1,16 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { OAuth2Client } from 'google-auth-library';
 import { Expert } from '../models/index.js';
 import dotenv from 'dotenv';
 import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
+import { isSmtpConfigured } from '../utils/emailService.js';
 import { deliverOtpChannels, handleOtpDeliveryError } from '../utils/otpDelivery.js';
 import { getSetting, getSettingBool } from '../utils/settingsHelper.js';
+import {
+  getGoogleAuthConfig,
+  isDefaultProfilePhoto,
+  verifyGoogleLogin,
+} from '../utils/googleAuth.js';
 import { promoteExpertToApplicationQueue } from '../utils/expertApplicationQueue.js';
 import {
   storeOtpOnModel,
@@ -18,6 +23,57 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
 
+function normalizeExpertEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function nationalPhoneDigits(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits;
+}
+
+async function findExpertByEmail(email) {
+  const normalized = normalizeExpertEmail(email);
+  if (!normalized) return null;
+  return Expert.findOne({
+    where: Expert.sequelize.where(
+      Expert.sequelize.fn('LOWER', Expert.sequelize.col('email')),
+      normalized,
+    ),
+  });
+}
+
+async function findExpertByPhone(phone) {
+  const last10 = nationalPhoneDigits(phone);
+  if (last10.length < 10) return null;
+  return Expert.findOne({
+    where: Expert.sequelize.where(
+      Expert.sequelize.fn(
+        'RIGHT',
+        Expert.sequelize.fn('REGEXP_REPLACE', Expert.sequelize.col('phone'), '[^0-9]', ''),
+        10,
+      ),
+      last10,
+    ),
+  });
+}
+
+function serializeAuthUser(expert) {
+  const onboardingStep = expert.onboardingStep;
+  const status = expert.status;
+  return {
+    id: expert.id,
+    email: expert.email,
+    fullName: expert.fullName,
+    phone: expert.phone,
+    profilePhotoSrc: expert.profilePhotoSrc,
+    onboardingStep,
+    status,
+    onboardingComplete: status === 'approved' || onboardingStep === 'success',
+  };
+}
+
 // Keep track of active OTPs in memory for demo/verification steps (in-production we'd store in DB or Redis with TTL)
 const tempOtps = new Map();
 
@@ -27,8 +83,9 @@ function generateOtpCode() {
 
 async function createOtpCode() {
   const smsConfigured = await isSmsProviderConfigured();
-  if (!smsConfigured) {
-    console.log('[OTP] SMS provider not configured — using temporary OTP 123456');
+  const smtpConfigured = await isSmtpConfigured();
+  if (!smsConfigured && !smtpConfigured) {
+    console.log('[OTP] SMS and SMTP not configured — using temporary OTP 123456');
     return TEMP_SMS_OTP;
   }
   return generateOtpCode();
@@ -77,45 +134,21 @@ export const register = async (req, res) => {
   }
 
   try {
-    // Check if email or phone already registered
-    const existingEmail = await Expert.findOne({ where: { email } });
+    const normalizedEmail = normalizeExpertEmail(email);
+    const normalizedPhone = nationalPhoneDigits(phone);
+
+    const existingEmail = await findExpertByEmail(normalizedEmail);
     if (existingEmail) {
-      const hasPassword = Boolean(existingEmail.password);
-      const passwordMatches = hasPassword && (await bcrypt.compare(password, existingEmail.password));
-
-      if (!passwordMatches) {
-        return res.status(409).json({
-          message: 'An account with this email already exists. Please log in to continue.',
-          code: 'EMAIL_EXISTS',
-        });
-      }
-
-      // Same email + same password re-submitted (e.g. user exited mid-onboarding
-      // and came back to the signup form instead of login). Resume their
-      // existing account instead of blocking them — resend the OTP and let
-      // them continue exactly where they left off, without losing progress.
-      const otp = await issueOtp(existingEmail);
-
-      console.log(`\n======================================================`);
-      console.log(`[OTP Resent] Existing expert re-submitted registration: ${existingEmail.fullName}`);
-      console.log(`Email: ${existingEmail.email}`);
-      if (otp === TEMP_SMS_OTP) {
-        console.log(`Temporary OTP (until SMS configured): ${TEMP_SMS_OTP}`);
-      }
-      console.log(`======================================================\n`);
-
-      return res.status(200).json({
-        message: 'Welcome back! Verification code sent to your email and phone.',
-        expertId: existingEmail.id,
-        email: existingEmail.email,
-        phone: existingEmail.phone,
+      return res.status(409).json({
+        message: 'An expert account with this email already exists. Please log in to continue.',
+        code: 'EMAIL_EXISTS',
       });
     }
 
-    const existingPhone = await Expert.findOne({ where: { phone } });
+    const existingPhone = await findExpertByPhone(normalizedPhone);
     if (existingPhone) {
       return res.status(409).json({
-        message: 'An account with this phone number already exists. Please log in to continue.',
+        message: 'An expert account with this contact number already exists. Please log in to continue.',
         code: 'PHONE_EXISTS',
       });
     }
@@ -127,9 +160,9 @@ export const register = async (req, res) => {
     // Create expert in draft state
     const expert = await Expert.create({
       fullName,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
-      phone,
+      phone: normalizedPhone,
       onboardingStep: 'otp', // Next step is OTP verification
       status: 'draft'
     });
@@ -217,14 +250,7 @@ export const verifyOtp = async (req, res) => {
     return res.status(200).json({
       message: 'Account verified successfully',
       token,
-      user: {
-        id: expert.id,
-        email: expert.email,
-        fullName: expert.fullName,
-        phone: expert.phone,
-        onboardingStep: expert.onboardingStep,
-        status: expert.status
-      }
+      user: serializeAuthUser(expert)
     });
   } catch (error) {
     console.error('OTP Verification Error:', error);
@@ -276,9 +302,12 @@ export const login = async (req, res) => {
   }
 
   try {
-    const expert = await Expert.findOne({ where: { email } });
+    const expert = await Expert.findOne({
+      where: { email: String(email).trim().toLowerCase() },
+    });
+    // Same message for unknown email and wrong password — do not leak which failed.
     if (!expert) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: 'incorrect credentials' });
     }
 
     // Check password if it was registered with one (not a Google-only account)
@@ -290,7 +319,7 @@ export const login = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, expert.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: 'incorrect credentials' });
     }
 
     if (expert.onboardingStep === 'otp') {
@@ -320,14 +349,7 @@ export const login = async (req, res) => {
 
     return res.status(200).json({
       token,
-      user: {
-        id: expert.id,
-        email: expert.email,
-        fullName: expert.fullName,
-        phone: expert.phone,
-        onboardingStep: expert.onboardingStep,
-        status: expert.status
-      }
+      user: serializeAuthUser(expert)
     });
   } catch (error) {
     console.error('Login Error:', error);
@@ -339,76 +361,41 @@ export const login = async (req, res) => {
  * Login or Sign up using Google Authentication
  */
 export const googleLogin = async (req, res) => {
-  const { idToken } = req.body;
-
-  if (!idToken) {
-    return res.status(400).json({ message: 'Google ID token is required' });
-  }
+  const { idToken, accessToken } = req.body;
 
   try {
-    const googleClientId = await getSetting('GOOGLE_CLIENT_ID');
-    const googleLoginEnabled = await getSettingBool('GOOGLE_LOGIN_ENABLED', true);
+    const profile = await verifyGoogleLogin({ idToken, accessToken });
+    const { googleId, email, fullName, picture } = profile;
 
-    if (!googleLoginEnabled) {
-      return res.status(400).json({ message: 'Google Login is disabled by administrator settings' });
+    let expert = await Expert.findOne({ where: { googleId } });
+    if (!expert) {
+      expert = await findExpertByEmail(email);
     }
-
-    let payload;
-    
-    // Check if running in development mode without a Google Client ID configured
-    const isMockAuth = idToken === 'mock-google-token' || 
-                       !googleClientId || 
-                       googleClientId.includes('your_google_client_id');
-
-    if (isMockAuth) {
-      console.log('Using mock Google token verification (development mode)');
-      payload = {
-        sub: req.body.googleId || 'mock-google-id-12345',
-        email: req.body.email || 'google-expert@example.com',
-        name: req.body.fullName || 'Google Expert',
-        picture: req.body.profilePhotoSrc || '/assets/img/manportrait.png',
-        email_verified: true
-      };
-    } else {
-      const authClient = new OAuth2Client(googleClientId);
-      const ticket = await authClient.verifyIdToken({
-        idToken,
-        audience: googleClientId,
-      });
-      payload = ticket.getPayload();
-    }
-
-    const { sub: googleId, email, name, picture } = payload;
-
-    // Check if user already exists
-    let expert = await Expert.findOne({ where: { email } });
 
     if (!expert) {
-      // Create new expert - verify immediately since they verified via Google
       expert = await Expert.create({
         email,
-        fullName: name || 'Google Expert',
+        fullName: fullName || 'Google Expert',
         googleId,
         isEmailVerified: true,
-        isPhoneVerified: true, // Google login links email securely
+        isPhoneVerified: false,
         profilePhotoSrc: picture || '/assets/img/manportrait.png',
-        onboardingStep: 'category', // Skip OTP verification step
-        status: 'draft'
+        onboardingStep: 'category',
+        status: 'draft',
       });
       await promoteExpertToApplicationQueue(expert);
     } else {
-      // Update Google ID if not present
-      if (!expert.googleId) {
-        expert.googleId = googleId;
-        expert.isEmailVerified = true;
-        if (!expert.profilePhotoSrc && picture) {
-          expert.profilePhotoSrc = picture;
-        }
-        await expert.save();
+      expert.googleId = expert.googleId || googleId;
+      expert.isEmailVerified = true;
+      if (fullName && (!expert.fullName || expert.fullName === 'Google Expert')) {
+        expert.fullName = fullName;
       }
+      if (picture && isDefaultProfilePhoto(expert.profilePhotoSrc)) {
+        expert.profilePhotoSrc = picture;
+      }
+      await expert.save();
     }
 
-    // Generate JWT
     const token = jwt.sign(
       { id: expert.id, email: expert.email, fullName: expert.fullName },
       JWT_SECRET,
@@ -417,18 +404,12 @@ export const googleLogin = async (req, res) => {
 
     return res.status(200).json({
       token,
-      user: {
-        id: expert.id,
-        email: expert.email,
-        fullName: expert.fullName,
-        phone: expert.phone,
-        onboardingStep: expert.onboardingStep,
-        status: expert.status
-      }
+      user: serializeAuthUser(expert),
     });
   } catch (error) {
     console.error('Google Auth Error:', error);
-    return res.status(401).json({ message: 'Google authentication failed', error: error.message });
+    const status = error.status || 401;
+    return res.status(status).json({ message: error.message || 'Google authentication failed' });
   }
 };
 
@@ -546,14 +527,7 @@ export const linkedinLogin = async (req, res) => {
 
     return res.status(200).json({
       token,
-      user: {
-        id: expert.id,
-        email: expert.email,
-        fullName: expert.fullName,
-        phone: expert.phone,
-        onboardingStep: expert.onboardingStep,
-        status: expert.status
-      }
+      user: serializeAuthUser(expert)
     });
   } catch (error) {
     console.error('LinkedIn Auth Error:', error);
@@ -568,17 +542,16 @@ export const getPublicConfig = async (req, res) => {
   try {
     const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
     const smsEnabled = await getSettingBool('SMS_ENABLED', true);
-    const googleLoginEnabled = await getSettingBool('GOOGLE_LOGIN_ENABLED', true);
     const linkedinLoginEnabled = await getSettingBool('LINKEDIN_LOGIN_ENABLED', true);
-    const googleClientId = await getSetting('GOOGLE_CLIENT_ID');
     const linkedinClientId = await getSetting('LINKEDIN_CLIENT_ID');
+    const google = await getGoogleAuthConfig();
 
     return res.status(200).json({
       emailEnabled,
       smsEnabled,
-      googleLoginEnabled,
+      googleLoginEnabled: google.enabled,
       linkedinLoginEnabled,
-      googleClientId,
+      googleClientId: google.enabled ? google.clientId : '',
       linkedinClientId
     });
   } catch (error) {
