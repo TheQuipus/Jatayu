@@ -1,0 +1,403 @@
+.needsBody {
+  align-items: stretch;
+  text-align: left;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.storyBadge {
+  align-self: center;
+  margin-bottom: 20px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--orange) 35%, transparent);
+  background: color-mix(in srgb, var(--orange) 10%, transparent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--orange);
+  letter-spacing: 0.02em;
+}
+
+
+
+.textareaWrapper {
+  width: 100%;
+  min-height: 220px;
+  margin: 0;
+  padding: 16px 18px 64px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.needsTextEditor {
+  position: relative;
+  width: 100%;
+  min-height: 88px;
+  height: 88px;
+  max-height: 88px;
+}
+
+.needsTextMirror,
+.needsTextarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 88px;
+  height: 88px;
+  max-height: 88px;
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.needsTextMirror {
+  overflow: hidden;
+  font-family: var(--font-body);
+  pointer-events: none;
+}
+
+.suggestionText {
+  color: var(--silver-chalice);
+}
+
+.typedText {
+  color: var(--white);
+}
+
+.needsTextarea {
+  z-index: 1;
+  color: transparent;
+  caret-color: var(--white);
+  resize: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.needsTextarea::-webkit-scrollbar {
+  display: none;
+}
+
+.charCounter {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.needChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.promptChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.promptChip {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: #9e9e9e;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-chip);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.promptChip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--white);
+}
+
+.aiAssistTextBtn {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.2s ease;
+}
+
+.aiAssistTextBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.aiAssistTextBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aiAssistTextBtn:focus-visible {
+  opacity: 1;
+}
+
+.aiAssistShinyText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.aiImprovePanel {
+  width: 100%;
+  padding-top: 28px;
+}
+
+.improvementChipsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.improvementChip {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--silver);
+  background: var(--background-chip);
+  border: 1px solid var(--border-chip);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  white-space: nowrap;
+  max-height: 36px;
+}
+
+
+.aiImproveHint {
+  margin: 16px 0 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--silver-chalice);
+}
+
+.aiApplyBtn {
+  margin-top: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: #E53B17;
+  cursor: pointer;
+  outline: none;
+}
+
+.aiApplyBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aiApplyBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.qualitySection {
+  margin-top: 22px;
+  width: 100%;
+}
+
+.qualityHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.qualityLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.qualityStatus {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.qualityStatusEmpty {
+  color: var(--orange);
+}
+
+.qualityTrack {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-chip);
+  overflow: hidden;
+}
+
+.qualityFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--pomegranate), var(--tango));
+  transition: width 0.25s ease;
+}
+
+.qualityTip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.qualityTipIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.qualityTipHighlight {
+  color: var(--orange);
+  font-weight: 600;
+}
+
+.privacyBox {
+  margin-top: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border-chip);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.privacyIconWrap {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--orange) 12%, transparent);
+}
+
+.privacyIcon {
+  color: var(--orange);
+}
+
+.privacyText strong {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+
+.privacyText p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.needsFooterActions {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.suggestedPillIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--silver);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.suggestedPill {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 14px;
+  gap: 8px;
+  width: fit-content;
+  background: var(--background-chip);
+  border: 1px solid var(--border-chip);
+  border-radius: 9999px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: var(--silver);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  max-height: 36px;
+  outline: none;
+}
+
+.suggestedPillSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.suggestedPillSelected .suggestedPillIcon,
+.suggestedPillIconSelected {
+  color: var(--pomegranate);
+}
+
+.aiApplyShinyText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.proTipContainer {
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.proTipTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--orange);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.proTipText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--silver-chalice);
+}

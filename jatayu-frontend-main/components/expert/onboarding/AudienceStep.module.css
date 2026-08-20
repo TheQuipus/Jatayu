@@ -1,0 +1,334 @@
+/* Onboarding Step 8 Styles - Languages & Audience */
+
+
+.sectionHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 13px;
+  width: 100%;
+}
+
+.preferencesSectionLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+  margin: 0;
+}
+
+.preferencesSectionHint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+.audienceSection {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.languagesCluster {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.languagesRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.languagePill {
+  box-sizing: border-box;
+  color: var(--silver);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: #ffffff0d;
+  border: 1px solid #ffffff14;
+  border-radius: 9999px;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  height: 36px;
+  max-height: 36px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.languagePillSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.languagePillRemovable {
+  padding-right: 6px;
+}
+
+.languagePillMain {
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.languageRemoveBtn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.languageRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white, #ffffff);
+}
+
+.languageRemoveBtn:active {
+  transform: scale(0.9);
+}
+
+.languagePillSelected .languageRemoveBtn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.languagePillSelected .languageRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white, #ffffff);
+}
+
+.languagePillInput {
+  width: 250px;
+  max-height: 36px;
+  cursor: text;
+  padding-right: 6px;
+}
+
+.languageInputForm {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.languageInlineInput {
+  flex: 1;
+  min-width: 120px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: var(--white);
+  padding: 0;
+}
+
+.languageInlineInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.languageAddBtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--silver, #b0b0b0);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.languageAddBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white, #ffffff);
+}
+
+.languageAddBtn:active {
+  transform: scale(0.92);
+}
+
+.counterBadge {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.counterBadgeActive {
+  background: rgba(229, 59, 23, 0.08);
+  border-color: rgba(229, 59, 23, 0.3);
+  color: #E53B17;
+}
+
+.sectionInstruction {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+  margin: 24px 0 13px;
+}
+
+.audiencesGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+.audienceCard {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  padding: 24px;
+  display: block;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+  clip-path: url(#custom-clip);
+  -webkit-clip-path: url(#custom-clip);
+}
+
+.audienceCardSelected {
+  background: #080A10;
+  box-shadow: 0 0 24px rgba(229, 59, 23, 0.15);
+}
+
+.cardBorderSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.audienceCardInner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-right: 28px;
+  position: relative;
+  z-index: 12;
+  width: 100%;
+}
+
+.audienceIconWrap {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 22px;
+  margin-top: 1px;
+  color: var(--silver);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 12;
+  transition: color 0.2s ease;
+}
+
+.audienceCardSelected .audienceIconWrap {
+  color: var(--pomegranate);
+}
+
+.audienceCardIcon {
+  width: 18px;
+  height: 18px;
+}
+
+.audienceTextWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+  z-index: 12;
+}
+
+.audienceTitle {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.audienceDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--silver-chalice);
+  margin: 0;
+}
+
+.audienceCardSelected .audienceDesc {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.audienceCheckbox {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: var(--white);
+  transition: all 0.2s ease;
+  z-index: 12;
+}
+
+.audienceCheckboxSelected {
+  background: #E53B17;
+  border-color: #E53B17;
+  box-shadow: 0 2px 6px rgba(229, 59, 23, 0.3);
+}
+
+@media (max-width: 768px) {
+  .audiencesGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

@@ -1,0 +1,400 @@
+export type SmsProvider = "twilio" | "msg91" | "textlocal" | (string & {});
+
+export type SmtpEncryption = "tls" | "ssl" | "none";
+
+export type MessageTemplateChannel = "sms" | "email";
+
+export type MessageTemplateRecipient = "expert" | "seeker";
+
+export type MessageTemplateCategory =
+  | "application_approved"
+  | "application_rejected"
+  | "application_on_hold"
+  | "otp_verification"
+  | "booking_confirmed"
+  | "session_reminder";
+
+export type SmsSettings = {
+  provider: SmsProvider;
+  authToken: string;
+  contactNo: string;
+  senderId: string;
+};
+
+export type SmtpSettings = {
+  host: string;
+  port: string;
+  username: string;
+  password: string;
+  encryption: SmtpEncryption;
+};
+
+export type PaymentProvider = "razorpay" | "stripe" | "cashfree";
+
+export type PaymentSettings = {
+  provider: PaymentProvider;
+  keyId: string;
+  secretKey: string;
+  webhookSecret: string;
+  currency: string;
+  testMode: boolean;
+};
+
+export type ProviderAuthCredentials = {
+  clientId: string;
+  redirectUri: string;
+  authorizedDomains: string;
+  enableSignIn: boolean;
+  enableCalendar: boolean;
+};
+
+export type AuthCredentialsSettings = {
+  google: ProviderAuthCredentials;
+  meta: ProviderAuthCredentials;
+  linkedin: ProviderAuthCredentials;
+};
+
+export type MessageTemplate = {
+  id: string;
+  name: string;
+  channel: MessageTemplateChannel;
+  category: MessageTemplateCategory;
+  recipient: MessageTemplateRecipient;
+  subject?: string;
+  body: string;
+  variables: string[];
+  status?: "active" | "disabled";
+};
+
+export type AiSettings = {
+  name: string;
+  apiKey: string;
+};
+
+export type AdminSettings = {
+  sms: SmsSettings;
+  smtp: SmtpSettings;
+  payment: PaymentSettings;
+  auth: AuthCredentialsSettings;
+  ai: AiSettings;
+  templates: MessageTemplate[];
+};
+
+export type SettingsSection =
+  | "sms"
+  | "smtp"
+  | "auth"
+  | "payment"
+  | "ai"
+  | "templates";
+
+export const SETTINGS_SECTIONS: {
+  id: SettingsSection;
+  label: string;
+  description: string;
+}[] = [
+  { id: "sms", label: "SMS Config", description: "Provider credentials and sender ID" },
+  { id: "smtp", label: "SMTP", description: "Outbound mail server configuration" },
+  {
+    id: "auth",
+    label: "Auth Credentials",
+    description: "OAuth client ID, secret, and sign-in configuration",
+  },
+  { id: "payment", label: "Payment", description: "Gateway keys, webhooks, and payout mode" },
+  { id: "ai", label: "AI Config", description: "AI provider model name and API credentials" },
+  { id: "templates", label: "Templates", description: "SMS and email notification templates for experts and seekers" },
+];
+
+export const ADMIN_SETTINGS_BASE = "/admin/settings";
+
+export function getSettingsSectionHref(section: SettingsSection): string {
+  return `${ADMIN_SETTINGS_BASE}/${section}`;
+}
+
+export function parseSettingsSection(value: string | undefined): SettingsSection {
+  if (value && SETTINGS_SECTIONS.some((section) => section.id === value)) {
+    return value as SettingsSection;
+  }
+
+  return "sms";
+}
+
+export const SMS_PROVIDER_OPTIONS: { value: SmsProvider; label: string }[] = [
+  { value: "twilio", label: "Twilio" },
+  { value: "msg91", label: "MSG91" },
+  { value: "textlocal", label: "Textlocal" },
+];
+
+export const SMTP_ENCRYPTION_OPTIONS: { value: SmtpEncryption; label: string }[] = [
+  { value: "tls", label: "TLS (STARTTLS)" },
+  { value: "ssl", label: "SSL" },
+  { value: "none", label: "None" },
+];
+
+export const PAYMENT_PROVIDER_OPTIONS: { value: PaymentProvider; label: string }[] = [
+  { value: "razorpay", label: "Razorpay" },
+  { value: "stripe", label: "Stripe" },
+  { value: "cashfree", label: "Cashfree" },
+];
+
+export const TEMPLATE_CATEGORY_LABELS: Record<MessageTemplateCategory, string> = {
+  application_approved: "Application Approved",
+  application_rejected: "Application Rejected",
+  application_on_hold: "Application On Hold",
+  otp_verification: "OTP Verification",
+  booking_confirmed: "Booking Confirmed",
+  session_reminder: "Session Reminder",
+};
+
+export const TEMPLATE_CHANNEL_LABELS: Record<MessageTemplateChannel, string> = {
+  sms: "SMS",
+  email: "Email",
+};
+
+export const TEMPLATE_RECIPIENT_LABELS: Record<MessageTemplateRecipient, string> = {
+  expert: "Expert",
+  seeker: "Seeker",
+};
+
+const STORAGE_KEY = "jatayu_admin_settings";
+export const ADMIN_SETTINGS_UPDATED_EVENT = "admin-settings-updated";
+
+export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
+  sms: {
+    provider: "msg91",
+    authToken: "",
+    contactNo: "",
+    senderId: "JATAYU",
+  },
+  smtp: {
+    host: "smtp.gmail.com",
+    port: "587",
+    username: "",
+    password: "",
+    encryption: "tls",
+  },
+  payment: {
+    provider: "razorpay",
+    keyId: "",
+    secretKey: "",
+    webhookSecret: "",
+    currency: "INR",
+    testMode: true,
+  },
+  auth: {
+    google: {
+      clientId: "",
+      redirectUri: "https://jatayu.com/api/auth/google/callback",
+      authorizedDomains: "jatayu.com",
+      enableSignIn: true,
+      enableCalendar: false,
+    },
+    meta: {
+      clientId: "",
+      redirectUri: "https://jatayu.com/api/auth/meta/callback",
+      authorizedDomains: "jatayu.com",
+      enableSignIn: false,
+      enableCalendar: false,
+    },
+    linkedin: {
+      clientId: "",
+      redirectUri: "https://jatayu.com/api/auth/linkedin/callback",
+      authorizedDomains: "jatayu.com",
+      enableSignIn: false,
+      enableCalendar: false,
+    },
+  },
+  ai: {
+    name: "OpenAI GPT-4",
+    apiKey: "",
+  },
+  templates: [
+    {
+      id: "tpl-approval-sms",
+      name: "Application Approved",
+      channel: "sms",
+      category: "application_approved",
+      recipient: "expert",
+      body: "Hi {{expert_name}}, your Jatayu expert application ({{app_id}}) has been approved. Log in to complete your profile: {{profile_link}}",
+      variables: ["{{expert_name}}", "{{app_id}}", "{{profile_link}}"],
+    },
+    {
+      id: "tpl-approval-email",
+      name: "Application Approved",
+      channel: "email",
+      category: "application_approved",
+      recipient: "expert",
+      subject: "Welcome to Jatayu — Your Expert Application is Approved",
+      body: "Dear {{expert_name}},\n\nCongratulations! Your expert application ({{app_id}}) has been approved. You can now complete your profile and start accepting consultations.\n\nGet started: {{profile_link}}\n\nBest regards,\nThe Jatayu Team",
+      variables: ["{{expert_name}}", "{{app_id}}", "{{profile_link}}"],
+    },
+    {
+      id: "tpl-rejection-sms",
+      name: "Application Rejected",
+      channel: "sms",
+      category: "application_rejected",
+      recipient: "expert",
+      body: "Hi {{expert_name}}, your Jatayu expert application ({{app_id}}) was not approved. Reason: {{rejection_reason}}. You may reapply after {{reapply_date}}. View guidance: {{guidance_link}}",
+      variables: [
+        "{{expert_name}}",
+        "{{app_id}}",
+        "{{rejection_reason}}",
+        "{{reapply_date}}",
+        "{{guidance_link}}",
+      ],
+    },
+    {
+      id: "tpl-rejection-email",
+      name: "Application Rejected",
+      channel: "email",
+      category: "application_rejected",
+      recipient: "expert",
+      subject: "Update on your Jatayu Expert Application",
+      body: "Dear {{expert_name}},\n\nWe regret to inform you that your expert application ({{app_id}}) was not approved at this time.\n\nReason: {{rejection_reason}}\n\nYou may reapply after {{reapply_date}}. View detailed guidance here: {{guidance_link}}\n\nBest regards,\nThe Jatayu Team",
+      variables: [
+        "{{expert_name}}",
+        "{{app_id}}",
+        "{{rejection_reason}}",
+        "{{reapply_date}}",
+        "{{guidance_link}}",
+      ],
+    },
+    {
+      id: "tpl-hold-sms",
+      name: "Application On Hold",
+      channel: "sms",
+      category: "application_on_hold",
+      recipient: "expert",
+      body: "Hi {{expert_name}}, your Jatayu expert application ({{app_id}}) is on hold pending additional review. We will contact you within {{review_days}} business days.",
+      variables: ["{{expert_name}}", "{{app_id}}", "{{review_days}}"],
+    },
+    {
+      id: "tpl-otp-expert-sms",
+      name: "OTP Verification",
+      channel: "sms",
+      category: "otp_verification",
+      recipient: "expert",
+      body: "Your Jatayu verification code is {{otp_code}}. Valid for {{expiry_minutes}} minutes. Do not share this code with anyone.",
+      variables: ["{{otp_code}}", "{{expiry_minutes}}"],
+    },
+    {
+      id: "tpl-otp-seeker-sms",
+      name: "OTP Verification",
+      channel: "sms",
+      category: "otp_verification",
+      recipient: "seeker",
+      body: "Your Jatayu verification code is {{otp_code}}. Valid for {{expiry_minutes}} minutes. Do not share this code with anyone.",
+      variables: ["{{otp_code}}", "{{expiry_minutes}}"],
+    },
+    {
+      id: "tpl-booking-confirmed-seeker-email",
+      name: "Booking Confirmed",
+      channel: "email",
+      category: "booking_confirmed",
+      recipient: "seeker",
+      subject: "Your Jatayu Session is Confirmed — {{session_date}}",
+      body: "Dear {{seeker_name}},\n\nYour session with {{expert_name}} is confirmed for {{session_date}} at {{session_time}}.\n\nSession type: {{session_type}}\nBooking ID: {{booking_id}}\n\nJoin link: {{session_link}}\n\nBest regards,\nThe Jatayu Team",
+      variables: [
+        "{{seeker_name}}",
+        "{{expert_name}}",
+        "{{session_date}}",
+        "{{session_time}}",
+        "{{session_type}}",
+        "{{booking_id}}",
+        "{{session_link}}",
+      ],
+    },
+    {
+      id: "tpl-booking-confirmed-expert-email",
+      name: "Booking Confirmed",
+      channel: "email",
+      category: "booking_confirmed",
+      recipient: "expert",
+      subject: "New Session Booking — {{session_date}}",
+      body: "Hi {{expert_name}},\n\nYou have a new booking from {{seeker_name}} for {{session_date}} at {{session_time}}.\n\nSession type: {{session_type}}\nBooking ID: {{booking_id}}\n\nJoin link: {{session_link}}\n\nBest regards,\nThe Jatayu Team",
+      variables: [
+        "{{expert_name}}",
+        "{{seeker_name}}",
+        "{{session_date}}",
+        "{{session_time}}",
+        "{{session_type}}",
+        "{{booking_id}}",
+        "{{session_link}}",
+      ],
+    },
+    {
+      id: "tpl-reminder-seeker-sms",
+      name: "Session Reminder",
+      channel: "sms",
+      category: "session_reminder",
+      recipient: "seeker",
+      body: "Reminder: Your Jatayu session with {{expert_name}} starts in {{minutes_until}} minutes. Join here: {{session_link}}",
+      variables: ["{{expert_name}}", "{{minutes_until}}", "{{session_link}}"],
+    },
+    {
+      id: "tpl-reminder-expert-sms",
+      name: "Session Reminder",
+      channel: "sms",
+      category: "session_reminder",
+      recipient: "expert",
+      body: "Reminder: Your Jatayu session with {{seeker_name}} starts in {{minutes_until}} minutes. Join here: {{session_link}}",
+      variables: ["{{seeker_name}}", "{{minutes_until}}", "{{session_link}}"],
+    },
+  ],
+};
+
+function dispatchUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(ADMIN_SETTINGS_UPDATED_EVENT));
+}
+
+function mergeWithDefaults(partial: Partial<AdminSettings>): AdminSettings {
+  const templates = (partial.templates ?? DEFAULT_ADMIN_SETTINGS.templates).filter(
+    (template) => template.channel === "sms" || template.channel === "email",
+  );
+
+  return {
+    sms: { ...DEFAULT_ADMIN_SETTINGS.sms, ...partial.sms },
+    smtp: { ...DEFAULT_ADMIN_SETTINGS.smtp, ...partial.smtp },
+    payment: { ...DEFAULT_ADMIN_SETTINGS.payment, ...partial.payment },
+    auth: {
+      google: { ...DEFAULT_ADMIN_SETTINGS.auth.google, ...partial.auth?.google },
+      meta: { ...DEFAULT_ADMIN_SETTINGS.auth.meta, ...partial.auth?.meta },
+      linkedin: { ...DEFAULT_ADMIN_SETTINGS.auth.linkedin, ...partial.auth?.linkedin },
+    },
+    ai: { ...DEFAULT_ADMIN_SETTINGS.ai, ...partial.ai },
+    templates: templates.length > 0 ? templates : DEFAULT_ADMIN_SETTINGS.templates,
+  };
+}
+
+export function getAdminSettings(): AdminSettings {
+  if (typeof window === "undefined") return DEFAULT_ADMIN_SETTINGS;
+
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return DEFAULT_ADMIN_SETTINGS;
+
+  try {
+    return mergeWithDefaults(JSON.parse(raw) as Partial<AdminSettings>);
+  } catch {
+    return DEFAULT_ADMIN_SETTINGS;
+  }
+}
+
+export function saveAdminSettings(settings: AdminSettings): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  dispatchUpdated();
+}
+
+export function updateMessageTemplate(
+  templateId: string,
+  updates: Partial<MessageTemplate>,
+): AdminSettings {
+  const current = getAdminSettings();
+  const templates = current.templates.map((template) =>
+    template.id === templateId ? { ...template, ...updates } : template,
+  );
+  const next = { ...current, templates };
+  saveAdminSettings(next);
+  return next;
+}

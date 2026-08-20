@@ -1,0 +1,865 @@
+.detail {
+  padding: 140px 0 96px;
+  background: var(--gallery);
+}
+
+.detailSeeker {
+  padding-top: 28px;
+}
+
+.detailAdminPreview {
+  padding: 32px 0 64px;
+  background: var(--gallery);
+}
+
+.detailInner {
+  position: relative;
+}
+
+.breadcrumbWrap {
+  margin-bottom: 24px;
+  transform: translateY(-75px);
+}
+
+.breadcrumbWrapSeeker {
+  margin-bottom: 0;
+  transform: translateY(0px);
+}
+
+/* Three-column Desktop Grid Layout aligned with the 4-column system */
+.mainGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+}
+
+.leftCol {
+  grid-column: 1 / span 1;
+  grid-row: 1;
+}
+
+.centerCol {
+  grid-column: 2 / span 2;
+  grid-row: 1;
+  padding: 0 154px 0 45px;
+}
+
+.rightCol {
+  grid-column: 4 / span 1;
+  grid-row: 1 / span 4;
+  align-self: stretch;
+}
+
+.rightColInner {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 182px;
+}
+
+.detailSeeker .rightColInner {
+  top: 76px;
+}
+
+
+/* COLUMN 1 Elements */
+.portraitCard {
+  position: relative;
+  background: var(--woodsmoke);
+  clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
+  -webkit-clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
+  width: 100%;
+  max-width: 340px;
+  height: 396px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  box-shadow: 0 12px 36px rgba(8, 10, 16, 0.12);
+}
+
+.portraitImageWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.portraitImageWrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(8, 10, 16, 0.92) 10%, rgba(8, 10, 16, 0.3) 50%, transparent 80%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.portraitImage {
+  object-fit: cover;
+  object-position: top center;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cardOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 24px 32px 24px 10px;
+  z-index: 3;
+  color: var(--white);
+}
+
+/* Tags under portrait card */
+.tagListBelow {
+  grid-column: 1 / span 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 30px;
+}
+
+.topicTag {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 14px;
+  gap: 12px;
+  height: 33px;
+  border: 1px solid #18191E;
+  border-radius: 100px;
+  font-family: 'IBM Plex Mono', var(--font-mono);
+  font-style: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 17px;
+  letter-spacing: -0.56px;
+  text-transform: uppercase;
+  color: #686868;
+  transition: all 0.2s ease;
+}
+
+
+/* COLUMN 2 & 3 Elements */
+.displayName {
+  margin-top: 10px;
+  color: #0D0E12;
+  display: flex;
+  flex-direction: column;
+  font-size: 48px;
+  line-height: 0.92;
+  letter-spacing: -4.2px;
+}
+
+.roleSub {
+  font-family: 'IBM Plex Mono', var(--font-mono);
+  font-style: normal;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 19px;
+  display: flex;
+  align-items: center;
+  letter-spacing: -0.64px;
+  color: #0B0D14;
+  margin-top: 12px;
+  word-break: break-word;
+}
+
+
+
+/* Star Divider - takes 2nd column only on desktop */
+.starDivider {
+  display: flex;
+  align-items: center;
+  width: calc(90% - 16px);
+  margin: 16px 0 16px 0;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: #000;
+}
+
+.dividerStar {
+  font-size: 18px;
+  line-height: 1;
+  color: #000;
+  display: inline-flex;
+  align-items: center;
+  transform: translateX(1px);
+}
+
+/* Ratings & Sessions Completed */
+.ratingsRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--dove-gray);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.ratingItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ratingText strong {
+  color: var(--ink);
+}
+
+.statsIcon {
+  color: var(--dove-gray);
+}
+
+/* Metadata translation/location/reply speed row */
+.metaRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--dove-gray);
+  text-transform: uppercase;
+}
+
+.metaIconBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bunker);
+  color: var(--white);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.metaVal {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.metaItemGreen {
+  color: var(--green);
+}
+
+.metaItemGreen .metaVal {
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* Bio copy */
+.bioText {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--dove-gray);
+  margin-bottom: 24px;
+}
+
+/* Sample Answers */
+.sampleAnswersSection {
+  grid-column: 1 / span 2;
+  grid-row: 3;
+  margin-top: 24px;
+}
+
+.sampleAnswersTitle {
+  font-family: 'Geist', var(--font-body);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 25px;
+  display: flex;
+  align-items: center;
+  color: #5E5E5E;
+  margin-bottom: 16px;
+}
+
+.sampleAnswersList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sampleAnswerCardInner {
+  background: var(--white);
+  clip-path: polygon(0% 5.063%, 1.727% 0%, 68.633% 0%, 70.647% 5.063%, 97.914% 5.063%, 100% 18.354%, 100% 84.81%, 98.489% 90.506%, 95.683% 90.823%, 90.36% 100%, 0% 100%, 0% 5.063%);
+  -webkit-clip-path: polygon(0% 5.063%, 1.727% 0%, 68.633% 0%, 70.647% 5.063%, 97.914% 5.063%, 100% 18.354%, 100% 84.81%, 98.489% 90.506%, 95.683% 90.823%, 90.36% 100%, 0% 100%, 0% 5.063%);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sampleQuestion {
+  font-family: 'IBM Plex Mono', var(--font-mono);
+  font-style: normal;
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 29px;
+  display: flex;
+  align-items: center;
+  letter-spacing: -0.96px;
+  color: #0B0D14;
+  margin: 0;
+}
+
+.sampleAnswer {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dove-gray);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0px;
+  align-self: stretch;
+}
+
+/* COLUMN 4 Elements */
+.bookingBox {
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.bookingHeader {
+  background: var(--ink);
+  color: var(--white);
+  padding: 20px 24px;
+  min-height: 63px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.bookingHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.64px;
+  line-height: 19.2px;
+  white-space: nowrap;
+}
+
+.bookingHeaderDots {
+  width: 116px;
+  border-bottom: 2px dotted rgba(255, 255, 255, 0.35);
+  height: 3px;
+  flex-shrink: 0;
+}
+
+.soundwaveIcon {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.soundwaveIcon span {
+  width: 2px;
+  background: var(--white);
+  border-radius: 1px;
+}
+
+.soundwaveIcon span:nth-child(1) {
+  height: 4px;
+}
+
+.soundwaveIcon span:nth-child(2) {
+  height: 8px;
+}
+
+.soundwaveIcon span:nth-child(3) {
+  height: 6px;
+}
+
+.soundwaveIcon span:nth-child(4) {
+  height: 10px;
+}
+
+.bookingOptions {
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+}
+
+.optionGroup {
+  width: 100%;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  transition: background 0.2s ease;
+}
+
+
+.optionHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f5f5f5;
+  border: 1px solid #e3e3e3;
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.optionHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.optionIcon {
+  color: var(--pomegranate);
+  flex-shrink: 0;
+}
+
+.optionTitle {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.96px;
+  line-height: 28.8px;
+  color: var(--ink);
+}
+
+.optionPrice {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.64px;
+  line-height: 19.2px;
+  color: #1a1a1a;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.optionBody {
+  background: var(--white);
+  min-height: 113px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.optionDesc {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 17.4px;
+  color: var(--dove-gray);
+  margin: 0;
+}
+
+.optionMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 3.5px;
+}
+
+.optionSla,
+.optionFollow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  color: #6b7280;
+}
+
+.slaIcon {
+  color: var(--pomegranate);
+  flex-shrink: 0;
+}
+
+.followIcon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.bookingFooter {
+  height: 39px;
+  background: var(--ink);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+}
+
+/* CTA Book Now Button & Avatar */
+.ctaButtonRow {
+  --contact-avatar-size: 66px;
+  display: flex;
+  width: 100%;
+}
+
+.ctaButtonRow :global(.btn__avatar) {
+  transform: translate(calc(var(--contact-avatar-offset-ratio) * 0%), -50%) !important;
+  width: 56px !important;
+  height: 56px !important;
+  border: 1px solid var(--white) !important;
+}
+
+.bookNowButton {
+  width: 100% !important;
+  justify-content: center !important;
+  background-color: #e53b17 !important;
+  color: #ffffff !important;
+  border: 1px solid #ebebeb !important;
+  box-shadow: none !important;
+  font-size: 16px !important;
+  letter-spacing: -0.64px !important;
+  transition: all 0.25s ease !important;
+}
+
+
+/* RELATED SECTION styles (retained) */
+.related {
+  padding: 120px 0 96px;
+  display: grid;
+  gap: 40px;
+}
+
+.relatedHead {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.relatedTitle {
+  grid-column: 1 / span 2;
+  font-size: clamp(40px, 5vw, 58px);
+  line-height: 0.94;
+}
+
+.relatedDesc {
+  grid-column: 3 / span 2;
+  max-width: 360px;
+  justify-self: end;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--dove-gray);
+}
+
+.relatedCards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Reviews Section */
+.reviewsSection {
+  grid-column: 1 / span 2;
+  grid-row: 4;
+  margin-top: 48px;
+  padding-top: 36px;
+}
+
+.reviewsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.reviewsTitle {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.reviewsRatingSummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reviewsRatingSummaryText {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.reviewsList {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.reviewItem {
+  position: relative;
+  padding-bottom: 28px;
+  border-bottom: 1px solid #fff;
+}
+
+.reviewItem::before {
+  content: "✦";
+  position: absolute;
+  left: -10px;
+  bottom: 0;
+  transform: translateY(50%);
+  font-family: var(--font-mono);
+  font-size: 24px;
+  color: #fff;
+  line-height: 1;
+}
+
+.reviewItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.reviewItem:last-child::before {
+  display: none;
+}
+
+.reviewItemHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.reviewUserInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reviewAvatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.reviewAvatarImg {
+  object-fit: cover;
+}
+
+.reviewAvatarFallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #E52E87;
+  /* pink-magenta */
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.reviewUserMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reviewUserName {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.reviewUserSub {
+  font-family: var(--font-body);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 16px;
+  display: flex;
+  align-items: center;
+  color: #6B7280;
+}
+
+.reviewStars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.reviewText {
+  font-family: var(--font-body);
+  font-style: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  display: flex;
+  align-items: center;
+  color: #374151;
+  margin: 0;
+  align-self: stretch;
+}
+
+/* RESPONSIVE MEDIA QUERIES */
+@media (max-width: 1024px) {
+  .detail {
+    padding: 110px 0 72px;
+  }
+
+  .detailSeeker {
+    padding-top: 25px;
+    padding-bottom: 48px;
+  }
+
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .leftCol,
+  .centerCol,
+  .rightCol,
+  .rightColInner,
+  .sampleAnswersSection,
+  .reviewsSection {
+    grid-column: auto;
+    grid-row: auto;
+    position: static;
+    padding: 0;
+  }
+
+  .portraitCard {
+    max-width: 400px;
+    margin: 0 auto 20px;
+  }
+
+  .tagListBelow {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .topicTag {
+    width: auto;
+  }
+
+  .displayName {
+    font-size: 48px;
+    text-align: center;
+    align-items: center;
+  }
+
+  .roleSub {
+    justify-content: center;
+  }
+
+  .starDivider {
+    width: 100%;
+    max-width: 500px;
+    margin: 12px auto 6px;
+  }
+
+
+
+  .ratingsRow,
+  .metaRow {
+    justify-content: center;
+  }
+
+  .bioText {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto 24px;
+  }
+
+  .sampleAnswersTitle {
+    text-align: center;
+  }
+
+  .sampleAnswerCard {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .bookingBox {
+    max-width: 450px;
+    margin: 0 auto 20px;
+  }
+
+  .ctaButtonRow {
+    max-width: 450px;
+    margin: 0 auto;
+  }
+
+  .related {
+    padding: 80px 0 60px;
+  }
+
+  .relatedHead,
+  .relatedCards {
+    grid-template-columns: 1fr;
+  }
+
+  .relatedTitle,
+  .relatedDesc {
+    grid-column: auto;
+  }
+
+  .relatedDesc {
+    justify-self: start;
+  }
+
+  .relatedCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .detail {
+    padding: 92px 0 64px;
+  }
+
+  .detailSeeker {
+    padding-top: 25px;
+    padding-bottom: 48px;
+  }
+
+  .displayName {
+    font-size: 38px;
+  }
+
+  .relatedCards {
+    grid-template-columns: 1fr;
+  }
+}

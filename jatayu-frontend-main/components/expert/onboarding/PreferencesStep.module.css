@@ -1,0 +1,338 @@
+/* Onboarding Step 6 Styles */
+
+.preferencesSection {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.sectionHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.preferencesSectionLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+  margin-bottom: 13px;
+}
+
+.preferencesSectionHint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.formatsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.formatCard {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  clip-path: url(#custom-clip);
+  -webkit-clip-path: url(#custom-clip);
+}
+
+.formatCardBody {
+  position: relative;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.formatCardSelected {
+  background: #080A10;
+  box-shadow: 0 0 24px rgba(229, 59, 23, 0.15);
+}
+
+.formatPriceRow {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  margin-top: 30px;
+  margin-left: auto;
+  margin-right: 20px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border-chip);
+}
+
+.formatPriceRowHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.formatPriceCurrency {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.formatPriceInput,
+.formatPriceInputPlaceholder {
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--white);
+  caret-color: var(--white);
+  cursor: text;
+}
+
+.formatPriceInputPlaceholder {
+  visibility: hidden;
+  cursor: default;
+}
+
+.formatPriceInput::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.formatPriceUnit {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.formatPriceActive {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.cardBorderSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.formatCheckbox {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: var(--white);
+  transition: all 0.2s ease;
+  z-index: 13;
+  pointer-events: none;
+}
+
+.formatCheckboxSelected {
+  background: #E53B17;
+  border-color: #E53B17;
+  box-shadow: 0 2px 6px rgba(229, 59, 23, 0.3);
+}
+
+.formatCardInner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-right: 28px;
+  position: relative;
+  z-index: 12;
+}
+
+.formatIconCircle {
+  display: grid;
+  place-items: center;
+  color: var(--silver);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.formatCardSelected .formatIconCircle {
+  color: var(--pomegranate);
+}
+
+.formatIcon {
+  width: 18px;
+  height: 18px;
+}
+
+.formatInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formatTitle {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.formatDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--silver-chalice);
+  margin: 0;
+}
+
+.formatCardSelected .formatDesc {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* Length Pills */
+.lengthsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.lengthPill {
+  box-sizing: border-box;
+  color: var(--silver);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: #ffffff0d;
+  border: 1px solid #ffffff14;
+  border-radius: 9999px;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.lengthPillSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.lengthsSectionDisabled .lengthPill {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lengthsDisabledHint {
+  margin: -8px 0 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 768px) {
+  .formatsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* Custom Request Toggle Card */
+.toggleCard {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  text-align: left;
+  margin-bottom: 48px;
+}
+
+.toggleTextWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toggleTitle {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.toggleDesc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+.switchTrack {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.25s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.switchTrackActive {
+  background: #E53B17;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--white);
+  transition: transform 0.25s ease;
+}
+
+.switchThumbActive {
+  transform: translateX(20px);
+}

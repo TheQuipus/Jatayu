@@ -1,0 +1,259 @@
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.layoutSummary {
+  display: grid;
+  align-items: start;
+  gap: 24px;
+}
+
+.summaryLeft {
+  grid-column: 1 / 4;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bookingBox {
+  overflow: hidden;
+}
+
+.bookingBody {
+  background: var(--white);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mercury);
+}
+
+.summarySection {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionHeaderLine {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 14px 0 10px;
+}
+
+.sectionHeaderTitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -.02em;
+  text-transform: uppercase;
+  color: var(--dove-gray);
+  white-space: nowrap;
+}
+
+.sectionLine {
+  flex: 1;
+  height: 1px;
+  background: var(--mercury);
+}
+
+.summaryExpertBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.summaryExpertAvatar {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--mercury);
+  flex-shrink: 0;
+  background: var(--seashell);
+}
+
+.expertAvatarImg {
+  object-fit: cover;
+}
+
+.summaryExpertInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summaryExpertName {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.summaryExpertRole {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--dove-gray);
+}
+
+.summaryExpertMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--dove-gray);
+  margin-top: 2px;
+}
+
+.summaryExpertMeta .statItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.summaryExpertMeta .statItem svg {
+  color: var(--orange);
+  fill: var(--orange);
+}
+
+.summaryExpertMeta .statDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--silver-chalice);
+}
+
+.sessionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sessionInset {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0px;
+}
+
+.sessionInsetFull {
+  grid-column: 1 / -1;
+}
+
+.sessionLabel {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--dove-gray);
+}
+
+.sessionValue {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--bunker);
+}
+
+.contextText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--bunker);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.priceBreakdownBox {
+  display: flex;
+  flex-direction: column;
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--dove-gray);
+}
+
+.priceRow strong {
+  color: var(--bunker);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.creditsRow strong {
+  color: var(--green);
+}
+
+.invoiceTotalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mercury);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.invoiceTotalRow .totalLabel {
+  font-family: var(--font-sora);
+  font-size: 28px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.invoiceTotalRow strong {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.confirmPayWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.confirmPayBtn {
+  width: 100%;
+  min-height: 52px !important;
+  background-color: var(--pomegranate) !important;
+  color: var(--white) !important;
+  border: none !important;
+  border-radius: 40px !important;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--pomegranate) 22%, transparent) !important;
+}
+
+
+@media (max-width: 1100px) {
+  .layoutSummary {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .summaryLeft {
+    grid-column: 1;
+  }
+
+  .sessionGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,329 @@
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.questionStep {
+  gap: 0;
+  text-align: left;
+}
+
+.questionStepTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 36px;
+  line-height: 48px;
+  letter-spacing: -1.2px;
+  color: var(--ink);
+}
+
+.questionStepSubtitle {
+  margin: 0 0 24px;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--scorpion);
+}
+
+.questionStepSubject {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.questionStepContext {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contextLabel {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dove-gray);
+}
+
+.subjectInput {
+  width: 100%;
+  border: 1px solid var(--mercury);
+  border-radius: 0;
+  background: var(--white);
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink);
+  outline: none;
+}
+
+.subjectInput::placeholder {
+  color: var(--silver-chalice);
+}
+
+.subjectInput:-webkit-autofill,
+.subjectInput:-webkit-autofill:hover,
+.subjectInput:-webkit-autofill:focus,
+.subjectInput:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--white) inset !important;
+  box-shadow: 0 0 0 1000px var(--white) inset !important;
+  -webkit-text-fill-color: var(--ink) !important;
+  caret-color: var(--ink);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.textareaBox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-height: 220px;
+  margin: 0;
+  border: 1px solid var(--mercury);
+  border-radius: 0;
+  background: var(--white);
+  padding: 16px 18px 64px;
+  box-sizing: border-box;
+}
+
+.contextChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.contextChip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--mercury);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gallery) 45%, var(--white));
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.contextChipSelected {
+  background: var(--pomegranate);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.contextChipIcon {
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.contextTextEditor {
+  position: relative;
+  width: 100%;
+  min-height: 88px;
+  height: 88px;
+  max-height: 88px;
+}
+
+.textarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 88px;
+  height: 88px;
+  max-height: 88px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+  border: none;
+  background: transparent;
+  padding: 0;
+  resize: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  box-sizing: border-box;
+}
+
+.textarea::-webkit-scrollbar {
+  display: none;
+}
+
+.textarea::placeholder {
+  color: var(--silver-chalice);
+}
+
+.textarea:focus {
+  outline: none;
+}
+
+.textarea:-webkit-autofill,
+.textarea:-webkit-autofill:hover,
+.textarea:-webkit-autofill:focus,
+.textarea:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--white) inset !important;
+  box-shadow: 0 0 0 1000px var(--white) inset !important;
+  -webkit-text-fill-color: var(--bunker) !important;
+  caret-color: var(--bunker);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.charCounter {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--silver-chalice);
+}
+
+.aiAssistTextBtn {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.2s ease;
+}
+
+.aiAssistTextBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.aiAssistTextBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aiAssistTextBtn:focus-visible {
+  opacity: 1;
+}
+
+.aiAssistShinyText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.aiImprovePanel {
+  width: 100%;
+}
+
+.improvementChipsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.improvementChip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--mercury);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gallery) 45%, var(--white));
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.improvementChipSelected {
+  background: var(--pomegranate);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.aiImproveHint {
+  margin: 16px 0 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--scorpion);
+}
+
+.aiApplyBtn {
+  margin-top: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: #E53B17;
+  cursor: pointer;
+  outline: none;
+}
+
+.aiApplyBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aiApplyBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.aiApplyShinyText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.proTip {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.proTipIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: color-mix(in srgb, var(--ink) 55%, var(--white));
+}
+
+.proTipText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--scorpion);
+}
+
+.proTipText strong {
+  color: var(--ink);
+  font-weight: 600;
+}

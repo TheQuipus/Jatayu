@@ -1,0 +1,359 @@
+.services {
+  padding: 120px 0;
+  background: var(--gallery);
+}
+
+.servicesInner {
+  position: relative;
+}
+
+.speaks {
+  --expert-sticky-top: var(--nav-height);
+  --expert-eyebrow-height: 30px;
+  --expert-sticky-gap: 12px;
+  --expert-topic-row-sticky-top: calc(var(--expert-sticky-top) + var(--expert-eyebrow-height) + var(--expert-sticky-gap));
+  margin-top: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  row-gap: 40px;
+  align-items: start;
+  position: relative;
+  isolation: isolate;
+}
+
+.speaksFirst {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.speaksTitle {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  font-size: 70px;
+  line-height: 0.92;
+}
+
+.keepTogether {
+  white-space: nowrap;
+}
+
+.speaksRight {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: flex-start;
+  position: sticky;
+  top: var(--expert-sticky-top);
+  z-index: 3;
+}
+
+.speaksRight :global(.eyebrow) {
+  margin-bottom: 2px;
+}
+
+.speaksDesc {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: end;
+  margin-top: 0;
+  max-width: 360px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--dove-gray);
+}
+
+.speaksRule {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
+  margin-top: 0;
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.22);
+  position: relative;
+  top: -10px;
+}
+
+.speaksRule::before {
+  content: "✦";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  color: rgba(0, 0, 0, 0.48);
+}
+
+.topicRowShell {
+  grid-column: 1 / -1;
+  position: sticky;
+  top: var(--expert-topic-row-sticky-top);
+  z-index: 2;
+  padding-top: var(--expert-sticky-gap);
+  padding-bottom: 40px;
+}
+
+.topicRowBackdrop {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 100vw;
+  height: var(--expert-topic-row-sticky-top);
+  transform: translateX(-50%);
+  background: var(--gallery);
+  pointer-events: none;
+}
+
+.topicRowShellStuck {
+  background: var(--gallery);
+}
+
+.topicRowShellStuck .topicRowBackdrop {
+  display: block;
+}
+
+.topicRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.topicPill {
+  padding: 7px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: var(--gallery);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 17px;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--dove-gray);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.topicPill:hover {
+  border-color: rgba(255, 141, 40, 0.45);
+  color: var(--ink);
+}
+
+.topicPillActive {
+  background: var(--bunker);
+  border-color: var(--orange);
+  color: var(--white);
+}
+
+.topicPillActive:hover {
+  color: var(--white);
+}
+
+.noResults {
+  grid-column: 1 / -1;
+  padding: 48px 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--dove-gray);
+  text-align: center;
+}
+
+.speaksCards {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.expertCardShell {
+  position: relative;
+  background: var(--bunker);
+}
+
+.bookmarkBtn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  color: var(--orange);
+  background: rgba(8, 10, 16, 0.45);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.bookmarkBtn[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+
+.bookmarkBtn:hover {
+  transform: scale(1.08);
+  background: rgba(8, 10, 16, 0.65);
+}
+
+.expertCard {
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(10% 3.179%,
+      12.647% 0%,
+      91.177% 0%,
+      96.765% 4.48%,
+      96.765% 53.757%,
+      100% 57.659%,
+      100% 95.376%,
+      95.294% 100%,
+      0% 100%,
+      0% 19.364%,
+      10% 8.736%,
+      10% 3.179%);
+  -webkit-clip-path: polygon(10% 3.179%,
+      12.647% 0%,
+      91.177% 0%,
+      96.765% 4.48%,
+      96.765% 53.757%,
+      100% 57.659%,
+      100% 95.376%,
+      95.294% 100%,
+      0% 100%,
+      0% 19.364%,
+      10% 8.736%,
+      10% 3.179%);
+  background: var(--bunker);
+  border: 1px solid var(--border-chip);
+}
+
+.expertImageWrap {
+  position: relative;
+  aspect-ratio: 1 / 1.32;
+  overflow: hidden;
+  background: var(--bunker);
+}
+
+.expertImage {
+  object-fit: cover;
+}
+
+.expertOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top,
+      var(--bunker) 2%,
+      color-mix(in srgb, var(--bunker) 88%, transparent) 35%,
+      transparent 60%);
+}
+
+.expertMeta {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+}
+
+.expertName {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.expertName :global(.mark) {
+  width: 8px;
+  height: 8px;
+}
+
+.expertRole {
+  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.expertDesc {
+  margin-top: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+@media (max-width: 1024px) {
+  .speaks {
+    grid-template-columns: 1fr;
+  }
+
+  .speaksTitle,
+  .speaksRight {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .speaksRight {
+    align-self: start;
+    position: static;
+  }
+
+  .topicRowShell {
+    position: static;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+    background: transparent;
+  }
+
+  .topicRowBackdrop {
+    display: none;
+  }
+
+  .speaksCards {
+    position: static;
+    z-index: auto;
+  }
+
+  .speaksDesc {
+    grid-column: auto;
+    grid-row: auto;
+    margin-top: 0;
+    font-size: 16px;
+  }
+
+  .speaksRule {
+    display: none;
+  }
+
+  .speaksCards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .services {
+    padding: 92px 0;
+  }
+
+  .speaksTitle {
+    font-size: clamp(36px, 11vw, 52px);
+  }
+
+  .speaksCards {
+    grid-template-columns: 1fr;
+  }
+}

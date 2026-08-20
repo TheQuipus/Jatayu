@@ -1,0 +1,208 @@
+.timePicker {
+  position: relative;
+  width: 148px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.timePickerLabel {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+  margin-bottom: 6px;
+  text-transform: capitalize;
+}
+
+.timePickerDisabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.timePickerFieldOuter {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.timePickerField {
+  position: relative;
+  width: 100%;
+  height: 42px;
+  padding: 0 34px 0 12px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-chip);
+  border-radius: 0;
+  text-align: left;
+  appearance: none;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--white);
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.timePickerField::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.timePickerField:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.timePicker:has(.timePickerFieldOpen) {
+  z-index: 20;
+}
+
+.timePickerFieldOpen,
+.timePickerField:focus {
+  border-color: rgba(255, 255, 255, 0.18);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.timePickerField:disabled {
+  cursor: not-allowed;
+}
+
+.clockBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 4px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  outline: none;
+  transition: color 0.2s ease;
+}
+
+.clockBtn:hover:not(:disabled) {
+  color: var(--white);
+}
+
+.timePickerFieldPlaceholder .timePickerValue {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.timePickerValue {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timePickerPopover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  background: var(--cod-gray);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.timePickerColumns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 12px 8px;
+  max-height: 220px;
+}
+
+.timePickerColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-height: 196px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.timePickerColumn::-webkit-scrollbar {
+  width: 4px;
+}
+
+.timePickerColumn::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+.timePickerColumnItem {
+  width: 100%;
+  min-width: 44px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 8px 4px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.timePickerColumnItem:hover {
+  color: var(--white);
+}
+
+.timePickerColumnItemActive {
+  background: #e53b17;
+  color: var(--white);
+  font-weight: 600;
+}
+
+.timePickerFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--border-chip);
+}
+
+.timePickerAction {
+  border: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #e53b17;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+
+.timePickerAction:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.timePickerAction:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.timePickerError {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: #e53b17;
+  padding: 8px 12px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}

@@ -1,0 +1,194 @@
+.checkout {
+  padding: 120px 0 80px;
+  background: var(--gallery);
+  min-height: 100vh;
+}
+
+.checkoutSeeker {
+  padding-top: 25px;
+  padding-bottom: 80px;
+  min-height: auto;
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+}
+
+.breadcrumbWrap {
+  grid-column: 1 / -1;
+  margin-bottom: -76px;
+  transform: translateY(-50px);
+}
+
+.innerConfirmed {
+  row-gap: 0;
+  min-height: calc(100vh - 200px);
+  place-content: center;
+}
+
+.layout {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+}
+
+.bookingError {
+  grid-column: 1 / -1;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.layoutMain {
+  grid-column: 1 / 4;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: calc(100vh - 300px);
+  min-height: 560px;
+  padding-right: 24px;
+}
+
+.checkoutSeeker .layoutMain {
+  height: calc(100vh - 220px);
+  min-height: 520px;
+}
+
+.layoutMainSummary {
+  grid-column: 1 / -1;
+  margin: 0;
+  width: 100%;
+  padding-right: 0;
+}
+
+.stepViewport {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: visible;
+  padding-left: 16px;
+  margin-left: -16px;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.stepViewport::-webkit-scrollbar {
+  display: none;
+}
+
+.sectionDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+}
+
+.sectionDivider::before,
+.sectionDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--mercury);
+}
+
+.sectionDividerLeft::before {
+  content: none;
+}
+
+.priceListCollapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.32s ease;
+}
+
+.priceListCollapseOpen {
+  grid-template-rows: 1fr;
+}
+
+.priceListCollapse>.priceList {
+  overflow: hidden;
+  min-height: 0;
+  opacity: 0;
+  transition: opacity 0.24s ease;
+}
+
+.priceListCollapseOpen>.priceList {
+  opacity: 1;
+}
+
+.priceList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--dove-gray);
+}
+
+.priceRow strong {
+  color: var(--bunker);
+  font-weight: 500;
+}
+
+.creditsRow strong {
+  color: var(--green);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .priceListCollapse,
+  .priceListCollapse>.priceList {
+    transition: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .layoutMain {
+    grid-column: 1;
+    height: auto;
+    min-height: 0;
+    padding-right: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stepViewport {
+    overflow: visible;
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .checkout {
+    padding-top: 100px;
+  }
+
+  .checkoutSeeker {
+    padding-top: 24px;
+    padding-bottom: 48px;
+  }
+}

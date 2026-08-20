@@ -1,0 +1,565 @@
+.benefits { 
+  background: var(--gallery); 
+  padding: 60px 0 120px; 
+}
+
+.benefitsHead { 
+  display: grid; 
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 60px; 
+}
+
+.benefitsTitle { 
+  grid-column: 2 / span 2;
+  font-size: 100px; 
+  line-height: .92; 
+}
+
+.titleLineNoWrap {
+  white-space: nowrap;
+}
+
+.titleLeadNoWrap {
+  white-space: nowrap;
+}
+
+.benefitsTitle .tMuted { 
+  color: var(--gray); 
+}
+
+.benefitsHead > :global(.eyebrow) { 
+  grid-row: 1; 
+  grid-column: 1; 
+  align-self: start; 
+  width: fit-content;
+}
+
+.benefitsLines {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  pointer-events: none;
+}
+
+.benefitsDesc {
+  grid-column: 3 / span 2;
+  grid-row: 2;
+  justify-self: start; 
+  max-width: none; 
+  width: 100%;
+  margin-top: 40px;
+  font-family: var(--font-body); 
+  font-size: 16px; 
+  line-height: 1.4; 
+  color: var(--dove-gray);
+}
+
+.benefitsRuleRow {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: 40px;
+  margin-bottom: 2px;
+  align-self: end;
+}
+
+.benefitsRule { 
+  height: 1px; 
+  background: rgba(0,0,0,.3); 
+  display: block;
+  position: relative;
+  top: -8px;
+}
+
+.benefitsRule::before {
+  content: "✦";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  z-index: 1;
+}
+
+.benefitsGrid { 
+  display: grid; 
+  grid-template-columns: 1.1fr 2.6fr; 
+  gap: 24px; 
+  align-items: start; 
+}
+
+.benefitsRightCol {
+  display: grid;
+  grid-template-columns: 1.3fr 1.3fr;
+  gap: 0px 24px;
+  align-content: start;
+}
+
+.bcard { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px; 
+}
+
+.bcard h3 { 
+  font-family: var(--font-mono); 
+  font-weight: 500; 
+  font-size: 16px; 
+  letter-spacing: -.02em; 
+  color: var(--bunker); 
+}
+
+.bcard p { 
+  font-family: var(--font-body); 
+  font-size: 14px; 
+  line-height: 1.4; 
+  color: var(--dove-gray); 
+  margin-bottom: 8px; 
+}
+
+.bcard p.mt, .bcard h3.mt { 
+  margin-top: 14px; 
+}
+
+.bcardLabel {
+  font-family: var(--font-mono); 
+  font-weight: 500; 
+  font-size: 16px; 
+  letter-spacing: -.02em;
+  color: var(--bunker); 
+  margin-bottom: 8px;
+}
+
+.bcardImg { 
+  overflow: hidden; 
+  border-radius: 4px; 
+}
+
+.bcardImg img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+}
+
+.bcardImgTall { aspect-ratio: 440/560; }
+.bcardImgWide { aspect-ratio: 512/286; }
+.bcard .bcardImg:not(.bcardImgTall):not(.bcardImgWide) { aspect-ratio: 467/349; }
+
+.benefitsGrid > .bcard:first-child .bcardPortrait {
+  --portrait-pad-x: 48px;
+  --portrait-pad-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--portrait-pad-top) var(--portrait-pad-x) 0;
+  background: var(--white);
+  clip-path: polygon(
+    7.407% 1.975%,
+    9.368% 0%,
+    94.88% 0%,
+    99.925% 4.129%,
+    99.925% 100%,
+    0% 100%,
+    0% 12.029%,
+    7.407% 5.425%,
+    7.407% 1.975%
+  );
+  -webkit-clip-path: polygon(
+    7.407% 1.975%,
+    9.368% 0%,
+    94.88% 0%,
+    99.925% 4.129%,
+    99.925% 100%,
+    0% 100%,
+    0% 12.029%,
+    7.407% 5.425%,
+    7.407% 1.975%
+  );
+}
+
+.benefitsGrid > .bcard:first-child .bcardPortrait .bcardOffer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 0;
+  padding: 0 2px;
+}
+
+.bcardOfferHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.bcardOffer .bcardOfferPrice {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--bunker);
+}
+
+.bcardOffer .bcardOfferType {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--dove-gray);
+}
+
+.bcardOffer .bcardOfferDesc {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--bunker);
+  max-width: 220px;
+}
+
+.benefitsGrid > .bcard:first-child .bcardPortrait .bcardImg {
+  position: relative;
+  border-radius: 0;
+  width: calc(100% + (var(--portrait-pad-x) * 2));
+  margin-inline: calc(var(--portrait-pad-x) * -1);
+  aspect-ratio: 530 / 560;
+  flex: 1;
+  min-height: 0;
+}
+
+.benefitsGrid > .bcard:first-child .bcardPortrait .bcardImg::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 45%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, var(--white) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.benefitsGrid > .bcard:first-child .bcardPortrait .bcardImgEl {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.benefitsRightCol > .bcard:first-child .bcardImg {
+  border-radius: 0;
+  background: var(--white);
+  clip-path: polygon(
+    0% 93.41%,
+    0% 0%,
+    100% 0%,
+    100% 93.41%,
+    94.937% 100%,
+    5.022% 100%,
+    0% 93.41%
+  );
+  -webkit-clip-path: polygon(
+    0% 93.41%,
+    0% 0%,
+    100% 0%,
+    100% 93.41%,
+    94.937% 100%,
+    5.022% 100%,
+    0% 93.41%
+  );
+}
+
+.bcardBrands {
+  padding: 24px;
+  background: var(--white);
+  clip-path: polygon(
+    99.891% 19.658%,
+    99.891% 99.573%,
+    99.891% 100%,
+    0% 100%,
+    0% 19.658%,
+    5.022% 0%,
+    94.869% 0%,
+    99.891% 19.658%
+  );
+  -webkit-clip-path: polygon(
+    99.891% 19.658%,
+    99.891% 99.573%,
+    99.891% 100%,
+    0% 100%,
+    0% 19.658%,
+    5.022% 0%,
+    94.869% 0%,
+    99.891% 19.658%
+  );
+}
+
+.bcardBrands h3 {
+  margin-top: 0;
+}
+
+.bcardBrands p {
+  margin-bottom: 0;
+}
+
+.bcardMotion {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  background: var(--white);
+  clip-path: polygon(
+    0% 99.857%,
+    0.218% 6.59%,
+    5.131% 0%,
+    93.45% 0%,
+    97.598% 4.441%,
+    97.598% 27.507%,
+    100% 31.375%,
+    100% 99.857%,
+    0% 99.857%
+  );
+  -webkit-clip-path: polygon(
+    0% 99.857%,
+    0.218% 6.59%,
+    5.131% 0%,
+    93.45% 0%,
+    97.598% 4.441%,
+    97.598% 27.507%,
+    100% 31.375%,
+    100% 99.857%,
+    0% 99.857%
+  );
+}
+
+.bcardMotion h3 {
+  margin-top: 0;
+}
+
+.bcardMotion p {
+  margin-bottom: 0;
+}
+
+.bcardMotion .bcardImg {
+  border-radius: 0;
+  background: var(--white);
+  clip-path: polygon(
+    0% 99.763%,
+    0% 11.137%,
+    5.623% 0%,
+    89.609% 0%,
+    93.032% 8.768%,
+    97.311% 8.768%,
+    100% 17.062%,
+    100% 99.763%,
+    0% 99.763%
+  );
+  -webkit-clip-path: polygon(
+    0% 99.763%,
+    0% 11.137%,
+    5.623% 0%,
+    89.609% 0%,
+    93.032% 8.768%,
+    97.311% 8.768%,
+    100% 17.062%,
+    100% 99.763%,
+    0% 99.763%
+  );
+  margin-top: 16px;
+}
+
+.bcardBeyond {
+  padding: 27px 18px 27px;
+  background: var(--white);
+  clip-path: polygon(
+    0% 80.342%,
+    0% 0.427%,
+    0% 0%,
+    99.891% 0%,
+    99.891% 80.342%,
+    94.869% 100%,
+    5.022% 100%,
+    0% 80.342%
+  );
+  -webkit-clip-path: polygon(
+    0% 80.342%,
+    0% 0.427%,
+    0% 0%,
+    99.891% 0%,
+    99.891% 80.342%,
+    94.869% 100%,
+    5.022% 100%,
+    0% 80.342%
+  );
+}
+
+.bcardBeyond h3 {
+  margin-top: 0;
+}
+
+.bcardBeyond p {
+  margin-bottom: 0;
+}
+
+.benefitsFoot {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 24px 18px 18px;
+  background: var(--white);
+  clip-path: polygon(
+    0% 30.667%,
+    2.489% 0%,
+    97.457% 0%,
+    99.946% 30.667%,
+    99.946% 100%,
+    0% 100%,
+    0% 30.667%
+  );
+  -webkit-clip-path: polygon(
+    0% 30.667%,
+    2.489% 0%,
+    97.457% 0%,
+    99.946% 30.667%,
+    99.946% 100%,
+    0% 100%,
+    0% 30.667%
+  );
+}
+
+.benefitsFootMain {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.avatars { 
+  display: flex; 
+}
+
+.avatars img { 
+  width: 38px; 
+  height: 38px; 
+  border-radius: 50%; 
+  border: 2px solid var(--gallery); 
+  margin-left: -10px; 
+  object-fit: cover; 
+}
+
+.avatars img:first-child { 
+  margin-left: 0; 
+}
+
+.benefitsFootRating {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stars { 
+  color: var(--thunderbird); 
+  letter-spacing: 2px; 
+  font-size: 14px; 
+}
+
+.benefitsClients { 
+  font-family: var(--font-mono); 
+  font-size: 14px; 
+  color: var(--bunker); 
+}
+
+.logos { 
+  grid-column: 2;
+  overflow: hidden;
+  min-width: 0;
+  justify-self: stretch;
+  position: relative;
+}
+
+.logos::before,
+.logos::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.logos::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--white) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.logos::after {
+  right: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, var(--white) 100%);
+}
+
+.logosTrack {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  width: max-content;
+  white-space: nowrap;
+  will-change: transform;
+  animation: logosScrollRtl 22s linear infinite;
+}
+
+@keyframes logosScrollRtl {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.logos span { 
+  flex: none;
+  white-space: nowrap;
+  font-family: var(--font-mono); 
+  font-weight: 600; 
+  font-size: 15px; 
+  color: var(--bunker); 
+  opacity: .85; 
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logosTrack {
+    animation: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .benefitsHead { grid-template-columns: 1fr; }
+  .benefitsTitle, .benefitsLines, .benefitsRuleRow, .benefitsDesc { grid-column: 1; }
+  .benefitsLines { display: none; }
+  .benefitsRuleRow, .benefitsDesc { grid-row: auto; }
+  .benefitsDesc { justify-self: start; }
+  .benefitsGrid { grid-template-columns: 1fr; }
+  .benefitsRightCol { grid-template-columns: 1fr; }
+  .benefitsFoot {
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+  .benefitsFootMain,
+  .logos {
+    grid-column: auto;
+    justify-self: auto;
+  }
+
+  .logos {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .logosTrack { gap: 16px; }
+}

@@ -1,0 +1,22 @@
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.priceValue {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.priceLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--silver-chalice);
+}
+
+.optionTitle {
+  color: var(--silver);
+}

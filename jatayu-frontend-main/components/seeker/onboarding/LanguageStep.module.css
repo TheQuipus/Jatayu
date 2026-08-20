@@ -1,0 +1,64 @@
+
+.searchWrapper {
+  width: 100%;
+  margin: 0 auto 24px;
+}
+
+.languageCluster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 24px;
+}
+
+.languagePill {
+  box-sizing: border-box;
+  color: var(--silver);
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  background: #ffffff0d;
+  border: 1px solid #ffffff14;
+  border-radius: 9999px;
+  outline: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  transition: all 0.2s;
+  display: inline-flex;
+}
+
+.languagePill:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--border-chip);
+}
+
+.languagePillSelected {
+  background: #080A10;
+  border-color: #E53B17;
+  color: var(--white);
+  box-shadow: 0 0 12px rgba(229, 59, 23, 0.15);
+}
+
+.emptyState {
+  width: 100%;
+  max-width: 840px;
+  margin: 40px auto;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+@media (max-width: 768px) {
+  .languageCluster {
+    gap: 10px;
+  }
+}

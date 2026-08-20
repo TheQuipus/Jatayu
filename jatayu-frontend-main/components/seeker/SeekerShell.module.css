@@ -1,0 +1,296 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--gallery);
+  color: var(--ink);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  align-self: flex-start;
+  width: 260px;
+  height: 100vh;
+  max-height: 100vh;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px 20px;
+  background: var(--white);
+  border-right: 1px solid var(--mercury);
+  overflow-y: auto;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brandContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.collapseBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--mercury);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--scorpion);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.collapseBtn:hover {
+  background: var(--seashell);
+  color: var(--ink);
+  border-color: var(--silver-chalice);
+}
+
+.collapseBtnCollapsed {
+  margin: 0 auto;
+}
+
+.brandMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bunker);
+  color: var(--white);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.navSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navLabel {
+  padding: 16px 12px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--scorpion);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.navLink:hover {
+  background: var(--seashell);
+  color: var(--ink);
+}
+
+.navLinkActive {
+  background: var(--bunker);
+  color: var(--white);
+}
+
+.navLinkActive:hover {
+  background: var(--bunker);
+  color: var(--white);
+}
+
+.navBadge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 8%, var(--white));
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.navLinkActive .navBadge {
+  background: color-mix(in srgb, var(--white) 18%, transparent);
+  color: var(--white);
+}
+
+.userCard {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.userCardCollapsed {
+  flex-direction: column;
+  padding: 10px 4px;
+  gap: 8px;
+}
+
+.userAvatar {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--mercury);
+}
+
+.userMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+}
+
+.userName {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--scorpion);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userMenuBtn {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--silver-chalice);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.userMenuBtn:hover {
+  background: color-mix(in srgb, var(--ink) 6%, var(--white));
+  color: var(--ink);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  --seeker-sticky-top: 56px;
+}
+
+.gridWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  --section-grid-line-color: var(--white);
+}
+
+.topBar {
+  position: relative;
+  z-index: 20;
+  padding: 24px 0 0;
+  background: linear-gradient(to bottom,
+      var(--gallery) 70%,
+      color-mix(in srgb, var(--gallery) 0%, transparent));
+}
+
+.topBarInner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 40px;
+}
+
+.breadcrumbsSlot {
+  flex: 1;
+  min-width: 0;
+}
+
+.content {
+  flex: 1;
+}
+
+.sidebarCollapsed {
+  width: 72px;
+  padding: 24px 10px 20px;
+}
+
+.sidebarCollapsed .navLink {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+@media (max-width: 900px) {
+  .collapseBtn {
+    display: none;
+  }
+
+  .shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--mercury);
+    overflow-y: visible;
+  }
+
+  .userCard {
+    margin-top: 16px;
+  }
+
+  .topBar {
+    padding-top: 12px;
+  }
+
+  .main {
+    --seeker-sticky-top: 52px;
+  }
+}

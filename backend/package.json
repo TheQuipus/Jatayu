@@ -1,0 +1,29 @@
+{
+  "name": "jatayu-backend",
+  "version": "1.0.0",
+  "description": "Jatayu Expert Onboarding Backend",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "migrate:seeker-credits": "node scripts/migrateSeekerCredits.js",
+    "migrate:seeker-bookings": "node scripts/migrateSeekerBookings.js"
+  },
+  "dependencies": {
+    "@getbrevo/brevo": "^6.0.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "google-auth-library": "^9.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.10.1",
+    "nodemailer": "^9.0.1",
+    "razorpay": "^2.9.8",
+    "sequelize": "^6.37.3",
+    "socket.io": "^4.8.3",
+    "twilio": "^6.0.2"
+  }
+}

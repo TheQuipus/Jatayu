@@ -1,0 +1,204 @@
+
+.preferencesSectionLabel {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.hoursPane {
+  width: 100%;
+  margin-bottom: 40px;
+  text-align: left;
+  overflow: visible;
+  --day-btn-size: 40px;
+  --day-btn-gap: 8px;
+  --days-cluster-width: calc(7 * var(--day-btn-size) + 6 * var(--day-btn-gap));
+}
+
+.hoursPaneHeader {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 0 5px 3px;
+}
+
+.hoursPaneTitle {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+  margin: 0;
+}
+
+.slotDaysCol {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.selectDaysLabel,
+.daysCluster {
+  width: var(--days-cluster-width);
+  max-width: 100%;
+}
+
+.selectDaysLabel {
+  display: block;
+  text-align: left;
+  margin-right: 50px;
+}
+
+.slotsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.slotRow {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: flex-end;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 12px 16px;
+  overflow: visible;
+}
+
+.slotTimes {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.daysCluster {
+  display: flex;
+  align-items: center;
+  gap: var(--day-btn-gap);
+  justify-content: flex-start;
+}
+
+.dayBtn {
+  width: var(--day-btn-size);
+  height: var(--day-btn-size);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--silver-chalice);
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.dayBtnSelected {
+  border-color: var(--pomegranate);
+  color: var(--white);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.dayBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.slotCloseSpacer {
+  width: 27px;
+  flex-shrink: 0;
+}
+
+.slotToDivider {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+}
+
+.slotCloseBtn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 6px;
+  display: grid;
+  place-items: center;
+  outline: none;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.slotCloseBtn:hover:not(:disabled) {
+  color: var(--white);
+}
+
+.slotCloseBtn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.slotCloseBtn:focus-visible:not(:disabled) {
+  color: var(--white);
+}
+
+.addSlotBtn {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  height: 48px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .hoursPaneHeader,
+  .slotRow {
+    grid-template-columns: 1fr;
+  }
+
+  .slotDaysCol {
+    justify-content: flex-start;
+  }
+
+  .selectDaysLabel,
+  .daysCluster {
+    width: 100%;
+  }
+
+  .slotTimes {
+    width: 100%;
+  }
+
+  .daysCluster {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .hoursPane {
+    --day-btn-size: 36px;
+    --day-btn-gap: 6px;
+  }
+
+  .dayBtn {
+    font-size: 10px;
+  }
+}

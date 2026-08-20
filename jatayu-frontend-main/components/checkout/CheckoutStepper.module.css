@@ -1,0 +1,127 @@
+.stepper {
+  grid-column: 1 / -1;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0;
+  min-height: 28px;
+  margin-bottom: 60px;
+}
+
+.stepperTrack {
+  position: absolute;
+  top: 13px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: var(--mercury);
+  z-index: 0;
+  pointer-events: none;
+  transform: none;
+}
+
+.stepperTrackFill {
+  height: 100%;
+  width: calc(var(--step-progress, 0) / 3 * 100%);
+  background: var(--tango, #E9681E);
+  transition: width 0.25s ease;
+}
+
+.stepperItem {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: flex;
+}
+
+.stepperItemFirst {
+  align-items: flex-start;
+}
+
+.stepperItemLast {
+  align-items: flex-end;
+}
+
+.stepperBtn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  background: var(--gallery);
+  border: none;
+  cursor: default;
+  padding: 0 6px 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+.stepperBtn:not(:disabled) {
+  cursor: pointer;
+}
+
+.stepperCircle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--silver);
+  background: var(--white);
+  color: var(--gray);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.stepperCircleActive {
+  background: var(--bunker);
+  border-color: var(--bunker);
+  color: var(--white);
+}
+
+.stepperCircleComplete {
+  background: var(--pomegranate);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.stepperLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--gray);
+  text-align: left;
+  line-height: 1.2;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  background: var(--gallery);
+}
+
+.stepperLabelActive {
+  color: var(--bunker);
+  font-weight: 600;
+}
+
+.stepperLabelComplete {
+  color: var(--pomegranate);
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .stepper {
+    flex-wrap: nowrap;
+  }
+
+  .stepperLabel {
+    font-size: 10px;
+    white-space: normal;
+    max-width: 72px;
+  }
+}

@@ -1,0 +1,14 @@
+.page :global(.services) {
+  padding: 40px 0 80px;
+}
+
+.page :global(.speaks) {
+  --expert-sticky-top: 0px;
+  --expert-topic-row-sticky-top: calc(var(--expert-sticky-top) + var(--expert-eyebrow-height) + var(--expert-sticky-gap));
+}
+
+@media (max-width: 900px) {
+  .page :global(.services) {
+    padding: 24px 0 48px;
+  }
+}

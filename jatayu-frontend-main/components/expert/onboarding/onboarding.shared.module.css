@@ -1,0 +1,346 @@
+.card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1024px;
+  min-height: 768px;
+  max-height: 768px;
+  backdrop-filter: blur(65px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cardHeader {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 48px 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.cardHeader .progressContainer {
+  margin-bottom: 0;
+}
+
+.cardBody {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 0px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.cardBody::-webkit-scrollbar {
+  display: none;
+}
+
+.accentWord {
+  color: var(--white);
+  /* --pomegranate brand color */
+  text-shadow: 0 0 40px rgba(229, 59, 23, 0.15);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.topHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.headerTitleCompact {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 2.8;
+  letter-spacing: 0.45px;
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.95;
+}
+
+.headerIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--silver);
+  flex-shrink: 0;
+}
+
+.progressContainer {
+  width: 100%;
+  margin-bottom: 48px;
+}
+
+.progressTextRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressBarBg {
+  width: 100%;
+  height: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+.progressBarSegment {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: var(--border-chip);
+  border-radius: 2px;
+  transition: background 0.3s ease, opacity 0.2s ease;
+}
+
+.progressBarSegment:disabled {
+  cursor: default;
+}
+
+.progressBarSegmentFilled {
+  background: var(--pomegranate);
+}
+
+.progressBarSegmentCurrent {
+  background: var(--gray);
+}
+
+.progressBarSegmentClickable {
+  cursor: pointer;
+}
+
+.progressBarSegmentClickable:hover {
+  opacity: 0.85;
+}
+
+.progressBarSegmentClickable:focus-visible {
+  outline: 2px solid rgba(229, 59, 23, 0.6);
+  outline-offset: 2px;
+}
+
+.questionTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 36px;
+  line-height: 48px;
+  letter-spacing: -1.2px;
+  color: var(--silver-chalice);
+  width: 100%;
+  text-align: left;
+  display: block;
+}
+
+.questionSubtitle {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--silver-chalice);
+  width: 100%;
+  margin: 0 0 24px;
+  text-align: left;
+}
+
+.customInputFooter {
+  flex-shrink: 0;
+  margin-top: auto;
+  width: 100%;
+  max-width: 440px;
+}
+
+.customInputWrapper {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 440px;
+  margin: 28px 0;
+}
+
+.customInput {
+  width: 100%;
+  height: 48px;
+  background: var(--background-chip);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  padding: 0 48px 0 24px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  outline: none;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.customInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.customInput:focus:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.customInput:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.customInputBtn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-chip);
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.customInputBtn:focus-visible:not(:disabled) {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.customInputBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.onboardingFooter {
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px 40px 30px;
+  gap: 20px;
+  max-height: 105px;
+  min-height: 105px;
+  border-top: 1px solid #ffffff1a;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.avatarMiniWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+}
+
+.avatarMini {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.footerTip {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.footerTip small {
+  display: block;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 1px;
+  font-size: 12px;
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.textBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 20px;
+  color: var(--silver-chalice);
+  text-transform: uppercase;
+  transition: color 0.2s ease;
+  outline: none;
+  padding: 6px;
+}
+
+.textBtn:focus-visible {
+  color: var(--white);
+}
+
+@media (max-width: 600px) {
+  .cardHeader {
+    padding: 36px 24px 20px;
+  }
+
+  .cardBody {
+    padding: 20px 24px;
+  }
+
+  .onboardingFooter {
+    padding: 24px 24px 36px;
+  }
+}
+
+@media (max-width: 768px) {
+  .onboardingFooter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 24px;
+  }
+
+  .footerLeft {
+    justify-content: center;
+  }
+
+  .footerActions {
+    justify-content: space-between;
+  }
+}

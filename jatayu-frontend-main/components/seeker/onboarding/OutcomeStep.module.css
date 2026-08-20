@@ -1,0 +1,118 @@
+.outcomeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto 32px;
+}
+
+.outcomeCard {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  outline: none;
+  height: 100%;
+}
+
+.outcomeCardSelected {
+  background: #080A10;
+  border-color: #E53B17;
+  box-shadow: 0 0 16px rgba(229, 59, 23, 0.2);
+}
+
+.emojiWrap {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.textWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardTitle {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.cardDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+}
+
+.outcomeCardSelected .cardDesc {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.optionalSection {
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto 20px;
+  text-align: left;
+}
+
+.optionalLabel {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 12px;
+}
+
+.optionalChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hopeChip {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 16px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.hopeChip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--white);
+}
+
+.hopeChipSelected {
+  background: #080A10;
+  border-color: #E53B17;
+  color: var(--white);
+  box-shadow: 0 0 12px rgba(229, 59, 23, 0.15);
+}
+
+@media (max-width: 768px) {
+  .outcomeGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

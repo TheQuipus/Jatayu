@@ -1,0 +1,182 @@
+.trust {
+  background: var(--gallery);
+  padding: 120px 0;
+}
+
+.trustInner {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+}
+
+.trustLeft {
+  grid-column: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.trustTitle {
+  margin-top: 22px;
+  font-size: 70px;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.trustCtaWrap {
+  margin-top: 34px;
+  width: var(--grid-col);
+  max-width: 100%;
+}
+
+.trustJoinCta {
+  margin-top: 20px;
+  width: var(--grid-col);
+  max-width: 100%;
+}
+
+
+.trustCtaBtn,
+.trustJoinBtn {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 24px;
+}
+
+.trustList {
+  grid-column: 3 / 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trustCard {
+  background: var(--white);
+  border: none;
+  border-radius: 0;
+  padding: 24px;
+  overflow: hidden;
+  clip-path: polygon(
+    0% 5.063%,
+    1.727% 0%,
+    68.633% 0%,
+    70.647% 5.063%,
+    97.914% 5.063%,
+    100% 18.354%,
+    100% 84.81%,
+    98.489% 90.506%,
+    95.683% 90.823%,
+    90.36% 100%,
+    0% 100%,
+    0% 5.063%
+  );
+  -webkit-clip-path: polygon(
+    0% 5.063%,
+    1.727% 0%,
+    68.633% 0%,
+    70.647% 5.063%,
+    97.914% 5.063%,
+    100% 18.354%,
+    100% 84.81%,
+    98.489% 90.506%,
+    95.683% 90.823%,
+    90.36% 100%,
+    0% 100%,
+    0% 5.063%
+  );
+}
+
+.trustCard + .trustCard {
+  border-top: none;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cardNum {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--dove-gray);
+  letter-spacing: 0.04em;
+  border: 1px dashed rgba(0, 0, 0, 0.26);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.cardNum :global(.mark) {
+  width: 8px;
+  height: 8px;
+}
+
+.cardRule {
+  flex: 1;
+  border-top: 1px dashed rgba(0, 0, 0, 0.16);
+  margin-left: 12px;
+}
+
+.cardTitle {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--bunker);
+  margin-bottom: 6px;
+}
+
+.cardDesc {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--dove-gray);
+  max-width: 94%;
+}
+
+@media (max-width: 1200px) {
+  .trustTitle {
+    font-size: clamp(40px, 5vw, 66px);
+  }
+
+  .cardTitle {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .trustInner {
+    grid-template-columns: 1fr;
+  }
+
+  .trustLeft,
+  .trustList {
+    grid-column: 1;
+  }
+
+  .trustList {
+    margin-top: 12px;
+  }
+
+  .trustCtaWrap {
+    margin-top: 24px;
+  }
+
+  .trustJoinCta {
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .trust {
+    padding: 92px 0;
+  }
+
+  .cardTitle {
+    font-size: 23px;
+  }
+}

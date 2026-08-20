@@ -1,0 +1,336 @@
+.skillsCardBody {
+  overflow-y: hidden !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.directoryWrapper {
+  width: 100%;
+  color: var(--white);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.alphabetBar {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.alphabetLetter {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--silver-chalice);
+  text-transform: uppercase;
+  user-select: none;
+  text-align: center;
+  outline: none;
+}
+
+.alphabetLetterActive {
+  color: var(--white);
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.alphabetLetterActive:hover {
+  transform: scale(1.2);
+}
+
+.groupsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-bottom: 24px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.groupsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.groupRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+  scroll-margin-top: 10px;
+}
+
+.letterBadgeWrap {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.letterBadge {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--silver-chalice);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
+}
+
+.groupItems {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+}
+
+.skillPill {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 16px;
+  gap: 8px;
+  background: var(--background-chip);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: var(--silver);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  width: fit-content;
+  max-height: 36px;
+  white-space: nowrap;
+}
+
+.skillPillSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.skillPillRemovable {
+  padding-right: 6px;
+  max-height: 36px;
+}
+
+.skillPillInput {
+  width: 250px;
+  max-height: 36px;
+  cursor: text;
+  padding-right: 6px;
+}
+
+.skillInputForm {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skillInlineInput {
+  flex: 1;
+  min-width: 120px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: var(--white);
+  padding: 0;
+}
+
+.skillInlineInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.skillAddBtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--silver, #b0b0b0);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.skillAddBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white, #ffffff);
+}
+
+.skillAddBtn:active {
+  transform: scale(0.92);
+}
+
+.skillPillMain {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.skillRemoveBtn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.skillRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white, #ffffff);
+}
+
+.skillRemoveBtn:active {
+  transform: scale(0.9);
+}
+
+.skillPillSelected .skillRemoveBtn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.skillPillSelected .skillRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white, #ffffff);
+}
+
+@media (max-width: 768px) {
+  .letterBadgeWrap {
+    width: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .groupRow {
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+}
+
+.skillPillWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.customInputContainer {
+  margin-top: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.customHeading {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--silver-chalice);
+  margin: 0 0 12px 0;
+  text-align: left;
+}
+
+.customChipsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+/* Badge/ring progress indicator in footer */
+.footerTagIconWrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.footerTagRing {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.footerTagIcon {
+  position: absolute;
+  inset: 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.footerTagRingSegment {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+
+.footerTagRingSegmentFilled {
+  stroke: var(--orange);
+  transition: opacity 0.2s ease;
+}
+
+.footerTagIconSvg,
+.footerMedalIconSvg {
+  color: var(--orange);
+}
+
+.footerTagIconWrapUnlocked .footerTagIcon {
+  background: color-mix(in srgb, var(--orange) 12%, transparent);
+}

@@ -1,0 +1,568 @@
+.categoryGrid {
+  display: flex;
+  flex-wrap: wrap;
+  place-content: flex-start !important;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+.categoryCard {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 14px;
+  gap: 8px;
+  width: fit-content;
+  background: var(--background-chip);
+  border: 1px solid var(--border-chip);
+  border-radius: 9999px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: var(--silver);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  max-height: 36px;
+  outline: none;
+}
+
+
+.categoryCardSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.categoryIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--silver);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.categoryCardSelected .categoryIcon {
+  color: var(--pomegranate);
+}
+
+.categoryCardInput {
+  cursor: text;
+  min-width: 160px;
+}
+
+.categoryInlineInput {
+  flex: 1;
+  min-width: 120px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: var(--white);
+  padding: 0;
+}
+
+.categoryInlineInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.customInputWrapper {
+  width: 100%;
+  max-width: 440px;
+  margin: 16px auto 24px;
+}
+
+@media (max-width: 768px) {
+  .categoryGrid {
+    width: 100%;
+    max-width: 100%;
+    gap: 10px;
+  }
+}
+
+.signupRight {
+  justify-content: flex-start;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.signupRight::-webkit-scrollbar {
+  display: none;
+}
+
+.signupTopHeader {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 75px;
+}
+
+.signupTitle {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.25;
+  letter-spacing: -0.8px;
+  color: #9e9e9e;
+  text-align: left;
+}
+
+.signupAccent {
+  color: #e53b17;
+  text-transform: uppercase;
+}
+
+.signupSubtitle {
+  margin: 0 0 20px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: left;
+}
+
+.categoryGridSplit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  margin: 0 0 10px;
+}
+
+.categoryGridSplit .categoryCard {
+  font-size: 13px;
+  padding: 8px 14px;
+}
+
+.signupRight .customInputWrapper {
+  max-width: 100%;
+  margin: 0 0 24px;
+}
+
+.signupActions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.signupContinueBtn {
+  width: 100%;
+}
+
+.singleLineTitle {
+  max-width: none;
+  white-space: nowrap;
+}
+
+/* Redesigned Directory Layout Styles */
+
+.directoryWrapper {
+  width: 100%;
+  color: var(--white);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.directoryHeader {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.searchBoxWrap {
+  width: 240px;
+}
+
+.searchBoxInput {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 10px 14px;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.searchBoxInput:focus {
+  border-color: var(--pomegranate);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.alphabetBar {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.alphabetLetter {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--silver-chalice);
+  text-transform: uppercase;
+  user-select: none;
+  text-align: center;
+  outline: none;
+}
+
+.alphabetLetterActive {
+  color: var(--white);
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.alphabetLetterActive:hover {
+  transform: scale(1.2);
+}
+
+.groupsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-bottom: 24px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.groupsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.groupRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+  scroll-margin-top: 10px;
+}
+
+.letterBadgeWrap {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.letterBadge {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--silver-chalice);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
+}
+
+.groupItems {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+}
+
+.categoryItem {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 16px;
+  gap: 8px;
+  background: var(--background-chip);
+  border: 1px solid var(--border-chip);
+  border-radius: 9999px;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: var(--silver);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  width: fit-content;
+  max-height: 36px;
+  white-space: nowrap;
+}
+
+.categoryLabelText {
+  color: inherit;
+}
+
+
+.categoryCount {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.categoryItemSelected {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.categoryItemSelected .categoryLabelText {
+  color: var(--white);
+}
+
+.categoryItemSelected .categoryCount {
+  color: var(--pomegranate);
+}
+
+.categoryItemSelected .categoryIcon {
+  color: var(--pomegranate);
+}
+
+.categoryItemInput {
+  width: 250px;
+  max-height: 36px;
+  padding-right: 6px;
+}
+
+.categoryInputForm {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.categoryItemInput .categoryInlineInput {
+  flex: 1;
+  min-width: 120px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: var(--white);
+  padding: 0;
+}
+
+.categoryAddBtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--silver, #b0b0b0);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.categoryAddBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white, #ffffff);
+}
+
+.categoryAddBtn:active {
+  transform: scale(0.92);
+}
+
+.noResults {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  text-align: center;
+  padding: 40px 0;
+}
+
+@media (max-width: 768px) {
+  .letterBadgeWrap {
+    width: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .groupRow {
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+}
+
+/* Topics Tooltip Box Styles */
+.categoryItemWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.categoryItemWrapper:hover,
+.categoryItemWrapper:has(.categoryItemSelected) {
+  z-index: 100;
+}
+
+.topicsTooltipBox {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: max-content;
+  max-width: 320px;
+  background: var(--bunker);
+  border: 1px solid var(--pomegranate);
+  padding: 10px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  animation: popIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.topicsTooltipText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--silver-chalice);
+  margin: 0;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.categoryCardBody,
+.signupRight {
+  overflow-y: hidden !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.customInputContainer {
+  margin-top: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.categoryItemDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.customLimitMessage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--silver-chalice);
+  margin-top: 10px;
+}
+
+.infoIcon {
+  flex-shrink: 0;
+  color: var(--silver-chalice);
+}
+
+.customHeading {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--silver-chalice);
+  margin: 0 0 12px 0;
+  text-align: left;
+}
+
+.customChipsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.categoryItemRemovable {
+  padding-right: 6px;
+  max-height: 36px;
+}
+
+.categoryItemMain {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.categoryRemoveBtn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.categoryItemSelected .categoryRemoveBtn {
+  color: rgba(255, 255, 255, 0.7);
+}

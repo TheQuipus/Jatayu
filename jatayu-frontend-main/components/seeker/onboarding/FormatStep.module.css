@@ -1,0 +1,171 @@
+/* Onboarding Step 6 Styles */
+
+.preferencesSection {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.formatPriceRow {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 72px;
+  margin-left: auto;
+  margin-right: 28px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-chip);
+}
+
+.formatPriceRowHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.formatPriceCurrency {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.65);
+  flex-shrink: 0;
+}
+
+.formatPriceInput,
+.formatPriceInputPlaceholder {
+  width: 4.5ch;
+  min-width: 4.5ch;
+  max-width: 8ch;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--white);
+  caret-color: var(--white);
+  cursor: text;
+  field-sizing: content;
+}
+
+.formatPriceInputPlaceholder {
+  visibility: hidden;
+  cursor: default;
+}
+
+.formatPriceInput::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* Length Pills */
+.lengthsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.lengthPill {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 100px;
+  padding: 10px 24px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.lengthPillSelected {
+  background: #080A10;
+  border-color: #E53B17;
+  color: var(--white);
+  box-shadow: 0 0 16px rgba(229, 59, 23, 0.25);
+}
+
+.lengthsSectionDisabled .lengthPill {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lengthsDisabledHint {
+  margin: -8px 0 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Custom Request Toggle Card */
+.toggleCard {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  text-align: left;
+  margin-bottom: 48px;
+}
+
+.toggleTextWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toggleTitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.toggleDesc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+.switchTrack {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.25s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.switchTrackActive {
+  background: #E53B17;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--white);
+  transition: transform 0.25s ease;
+}
+
+.switchThumbActive {
+  transform: translateX(20px);
+}
