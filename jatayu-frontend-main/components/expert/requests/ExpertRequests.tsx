@@ -5,11 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   CalendarDays,
+  CalendarClock,
+  Ban,
   CheckCircle2,
   Clock,
   ExternalLink,
+  Handshake,
   Hourglass,
   Inbox,
+  Layers,
   Video,
   X,
   XCircle,
@@ -18,17 +22,24 @@ import {
 import {
   formatRequestPrice,
   getStoredRequests,
+  isRequestPoked,
   updateStoredRequestStatus,
+  updateRequestStatusAsync,
   type ClientRequest,
   type RequestStatusFilter,
 } from "@/lib/expertRequests";
+import { getExpertRequests, type ExpertRequestsResponse } from "@/lib/api";
 import ContinueButton from "@/components/ui/ContinueButton";
+import SecondaryCTA from "@/components/ui/SecondaryCTA";
 import AcceptRequestModal from "./AcceptRequestModal";
 import DeclineRequestModal from "./DeclineRequestModal";
+import RescheduleRequestModal from "./RescheduleRequestModal";
 import styles from "./ExpertRequests.module.css";
 
 const SUMMARY_CARDS = [
-  { id: "new", label: "New Requests", icon: Inbox },
+  { id: "all", label: "All", icon: Layers },
+  { id: "urgent", label: "Urgent", icon: Zap },
+  { id: "new", label: "New", icon: Inbox },
   { id: "pending", label: "Pending", icon: Hourglass },
   { id: "accepted", label: "Accepted", icon: CheckCircle2 },
   { id: "declined", label: "Declined", icon: XCircle },
@@ -79,42 +90,89 @@ function getCountdownTextForRequest(dateLabel: string, currentTime: number): str
 export default function ExpertRequests() {
   const [requests, setRequests] = useState<ClientRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<RequestStatusFilter>("all");
+  const [page, setPage] = useState<number>(1);
+  const [limit] = useState<number>(20);
+  const [sort] = useState<string>("newest");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [apiCounts, setApiCounts] = useState<Record<string, number> | null>(null);
 
   const [acceptingRequest, setAcceptingRequest] = useState<ClientRequest | null>(null);
+  const [reschedulingRequest, setReschedulingRequest] = useState<ClientRequest | null>(null);
   const [decliningRequest, setDecliningRequest] = useState<ClientRequest | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
 
   useEffect(() => {
-    setRequests(getStoredRequests());
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Dynamic counts calculated from current requests state
-  const counts = {
-    all: requests.length,
-    new: requests.filter((r) => r.status === "new").length,
-    pending: requests.filter((r) => r.status === "pending").length,
-    accepted: requests.filter((r) => r.status === "accepted").length,
-    declined: requests.filter((r) => r.status === "declined").length,
+  useEffect(() => {
+    let isSubscribed = true;
+    setLoading(true);
+
+    getExpertRequests({
+      status: statusFilter,
+      page,
+      limit,
+      sort,
+    })
+      .then((res: ExpertRequestsResponse) => {
+        if (isSubscribed) {
+          setRequests(res.requests);
+          if (res.counts) setApiCounts(res.counts);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isSubscribed) setLoading(false);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [statusFilter, page, limit, sort]);
+
+  // Dynamic counts calculated from state / API
+  const allStored = getStoredRequests();
+  const counts: Record<string, number> = {
+    all: apiCounts?.all ?? allStored.length,
+    urgent: apiCounts?.urgent ?? allStored.filter((r) => Boolean(r.urgent)).length,
+    new: apiCounts?.new ?? allStored.filter((r) => r.status === "new").length,
+    pending: apiCounts?.pending ?? allStored.filter((r) => r.status === "pending").length,
+    accepted: apiCounts?.accepted ?? allStored.filter((r) => r.status === "accepted").length,
+    declined: apiCounts?.declined ?? allStored.filter((r) => r.status === "declined").length,
   };
 
   const filteredRequests =
     statusFilter === "all"
       ? requests
+      : statusFilter === "urgent"
+      ? requests.filter((request) => request.urgent)
       : requests.filter((request) => request.status === statusFilter);
 
-  const handleConfirmAccept = (requestId: string) => {
-    const updated = updateStoredRequestStatus(requestId, "accepted");
-    setRequests(updated);
+  const handleConfirmAccept = async (requestId: string) => {
+    await updateRequestStatusAsync(requestId, "accepted");
+    try {
+      const fresh = await getExpertRequests({ status: statusFilter, page, limit, sort });
+      setRequests(fresh.requests);
+      if (fresh.counts) setApiCounts(fresh.counts);
+    } catch {
+      setRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status: "accepted" } : r)));
+    }
     setAcceptingRequest(null);
   };
 
-  const handleConfirmDecline = (requestId: string, reason: string, notes: string) => {
-    const updated = updateStoredRequestStatus(requestId, "declined", reason, notes);
-    setRequests(updated);
+  const handleConfirmDecline = async (requestId: string, reason: string, notes: string) => {
+    await updateRequestStatusAsync(requestId, "declined", reason, notes);
+    try {
+      const fresh = await getExpertRequests({ status: statusFilter, page, limit, sort });
+      setRequests(fresh.requests);
+      if (fresh.counts) setApiCounts(fresh.counts);
+    } catch {
+      setRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status: "declined" } : r)));
+    }
     setDecliningRequest(null);
   };
 
@@ -136,6 +194,11 @@ export default function ExpertRequests() {
         {/* Summary Stat Cards / KPI Row */}
         <div className={`${styles.summaryGrid} ${styles.kpiRow}`} role="group" aria-label="Filter by status">
           {SUMMARY_CARDS.map((card) => {
+            // Urgent card is only shown when there is at least 1 urgent request available
+            if (card.id === "urgent" && counts.urgent === 0) {
+              return null;
+            }
+
             const Icon = card.icon;
             const count = counts[card.id];
             const isActive = statusFilter === card.id;
@@ -174,22 +237,51 @@ export default function ExpertRequests() {
               <p>No requests match your filters.</p>
             </div>
           ) : (
-            filteredRequests.map((request) => (
-              <article key={request.id} className={styles.requestCard}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.avatarWrapper}>
-                    <Image
-                      src={request.clientAvatar}
-                      alt={request.clientName}
-                      width={72}
-                      height={82}
-                      className={styles.clientAvatar}
-                    />
-                  </div>
+            filteredRequests.map((request) => {
+              const isPoked = isRequestPoked(request);
+              return (
+                <article
+                  key={request.id}
+                  className={`${styles.requestCard} ${
+                    isPoked ? styles.requestCardPoked : request.status === "new" ? styles.requestCardNew : ""
+                  }`}
+                >
+                  <div className={styles.cardHeader}>
+                    <div className={styles.avatarContainer}>
+                      <div className={styles.avatarWrapper}>
+                        <Image
+                          src={request.clientAvatar}
+                          alt={request.clientName}
+                          width={72}
+                          height={82}
+                          className={styles.clientAvatar}
+                        />
+                      </div>
+                      {isPoked && (
+                        <div className={styles.avatarPokedBadge} title="Seeker poked this request!">
+                          <picture className={styles.pokedPicture}>
+                            <source
+                              srcSet="https://fonts.gstatic.com/s/e/notoemoji/latest/1f914/512.webp"
+                              type="image/webp"
+                            />
+                            <img
+                              src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f914/512.gif"
+                              alt="🤔"
+                              width={32}
+                              height={32}
+                              className={styles.pokedEmojiImg}
+                            />
+                          </picture>
+                        </div>
+                      )}
+                    </div>
 
                   <div className={styles.headerMain}>
                     <div className={styles.clientRow}>
-                      <span className={styles.clientName}>{request.clientName}</span>
+                      <span className={styles.clientName}>
+                        {request.clientName}
+                        {isRequestPoked(request) && " Has poked you"}
+                      </span>
                       {request.status === "new" && <span className={styles.badgeNew}>• New</span>}
                       {request.urgent && (
                         <span className={styles.badgeUrgent}>
@@ -201,8 +293,14 @@ export default function ExpertRequests() {
                       )}
                     </div>
 
-                    <h3 className={styles.requestTitle}>{request.title}</h3>
-                    <p className={styles.requestDescription}>{request.description}</p>
+                    <h3 className={styles.requestTitle}>
+                      <span className={styles.requestPrefix}>Topic: </span>
+                      {request.title}
+                    </h3>
+                    <p className={styles.requestDescription}>
+                      <span className={styles.requestPrefix}>Seeking advice on: </span>
+                      {request.description}
+                    </p>
 
                     <div className={styles.cardMetaRow}>
                       <span className={styles.metaItem}>
@@ -249,32 +347,39 @@ export default function ExpertRequests() {
                     })()
                   ) : request.status === "declined" ? (
                     <span className={styles.statusBadgeDeclined}>
-                      <XCircle size={14} aria-hidden="true" />
+                      <Ban size={14} aria-hidden="true" />
                       Declined
                     </span>
                   ) : (
                     <>
                       <div onClick={() => setAcceptingRequest(request)}>
-                        <ContinueButton label="ACCEPT" />
+                        <ContinueButton label="ACCEPT" icon={<Handshake size={15} />} />
                       </div>
-                      <button
+                      <SecondaryCTA
                         type="button"
-                        className={styles.btnDecline}
+                        label="RESCHEDULE"
+                        icon={<CalendarClock size={14} aria-hidden="true" />}
+                        showArrow={false}
+                        onClick={() => setReschedulingRequest(request)}
+                      />
+                      <SecondaryCTA
+                        type="button"
+                        label="DECLINE"
+                        icon={<Ban size={14} aria-hidden="true" />}
+                        showArrow={false}
                         onClick={() => setDecliningRequest(request)}
-                      >
-                        <X size={14} aria-hidden="true" />
-                        DECLINE
-                      </button>
+                      />
                     </>
                   )}
                   <Link href={`/expert/requests/${request.id}/`} className={styles.btnDetails}>
-                    <ExternalLink size={14} aria-hidden="true" />
                     VIEW DETAILS
+                    <ExternalLink size={14} aria-hidden="true" />
                   </Link>
                 </div>
               </article>
-            ))
-          )}
+            );
+          })
+        )}
         </div>
       </div>
 
@@ -284,6 +389,14 @@ export default function ExpertRequests() {
           request={acceptingRequest}
           onClose={() => setAcceptingRequest(null)}
           onConfirm={handleConfirmAccept}
+        />
+      )}
+
+      {/* Reschedule Proposal Modal */}
+      {reschedulingRequest && (
+        <RescheduleRequestModal
+          request={reschedulingRequest}
+          onClose={() => setReschedulingRequest(null)}
         />
       )}
 

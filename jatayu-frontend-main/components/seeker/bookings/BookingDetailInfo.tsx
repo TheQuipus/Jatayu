@@ -11,9 +11,12 @@ import {
   Briefcase,
   CalendarClock,
   Check,
+  CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Clapperboard,
   ClipboardList,
+  Coins,
   Download,
   FileText,
   Flag,
@@ -35,6 +38,8 @@ import {
 import ContinueButton from "@/components/ui/ContinueButton";
 import SecondaryCTA from "@/components/ui/SecondaryCTA";
 import ReviewScreen from "./ReviewScreen";
+import Lottie from "lottie-react";
+import coinAnimation from "@/public/Lottie/coin_p.json";
 import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
 import { formatCurrency, getPokeState, savePokeState, type BookingDetail } from "@/lib/seekerDashboard";
 import type { ConsultationType } from "@/lib/booking";
@@ -105,6 +110,29 @@ export default function BookingDetailInfo({
   const searchParams = useSearchParams();
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const [fastForwarded, setFastForwarded] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return (
+        window.sessionStorage.getItem("fast_forward_timer") === "true" ||
+        window.location.search.includes("testJoin") ||
+        window.location.search.includes("action=join")
+      );
+    }
+    return false;
+  });
+
+  const toggleFastForward = () => {
+    const next = !fastForwarded;
+    setFastForwarded(next);
+    if (typeof window !== "undefined") {
+      if (next) {
+        window.sessionStorage.setItem("fast_forward_timer", "true");
+      } else {
+        window.sessionStorage.removeItem("fast_forward_timer");
+      }
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -406,6 +434,7 @@ export default function BookingDetailInfo({
 
   const timeStatus = useMemo(() => {
     if (booking.status !== "confirmed") return booking.status;
+    if (fastForwarded) return "active";
 
     const targetDate = new Date(currentTime);
     targetDate.setDate(targetDate.getDate() + booking.dayOffset);
@@ -418,12 +447,12 @@ export default function BookingDetailInfo({
     } else {
       return "active";
     }
-  }, [booking, currentTime]);
+  }, [booking, currentTime, fastForwarded]);
 
   const isCompletedSession = sessionState === "completed" || booking.status === "completed";
 
   const countdownText = useMemo(() => {
-    if (isCompletedSession || timeStatus !== "upcoming") {
+    if (isCompletedSession || timeStatus !== "upcoming" || fastForwarded) {
       return null;
     }
 
@@ -694,10 +723,12 @@ export default function BookingDetailInfo({
           <div className={styles.mainCol}>
             <div className={styles.bookingHero}>
               <article className={styles.bookingExpertCard}>
-                <div className={styles.expertCategoryBadge}>
-                  <span className={styles.expertCategoryDot} />
-                  {(booking.expert.category || booking.expert.topics[0] || "Expert").toUpperCase()}
-                </div>
+                {booking.expert.role || booking.expert.category ? (
+                  <div className={styles.expertCategoryBadge}>
+                    <span className={styles.expertCategoryDot} />
+                    {(booking.expert.role || booking.expert.category || "").toUpperCase()}
+                  </div>
+                ) : null}
                 <div className={styles.bookingExpertImageWrap}>
                   <Image
                     src={booking.expert.image}
@@ -770,142 +801,219 @@ export default function BookingDetailInfo({
 
             <div className={styles.badgeFloatAnchor}>
               {booking.status === "cancelled" ? (
-                <div className={styles.cancelledBadgeWrapCol1}>
-                  <span className={styles.cancelledBadge}>
-                    Session Cancelled
-                  </span>
-                  <p className={styles.cancellationReasonCol1}>
-                    Reason: {booking.cancellationReason || "Cancelled due to an unforeseen schedule conflict by the expert."}
-                  </p>
-                  {!submittedReview && (
-                    <ContinueButton
-                      showArrow={false}
-                      label="Give Review"
-                      onClick={() => {
-                        setIsReviewModalOpen(true);
-                      }}
-                      className={styles.giveReviewBtn}
-                    />
-                  )}
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderRed}`}>
+                      <span>Session Cancelled</span>
+                    </div>
+
+                    <div className={styles.chewyBody}>
+                      <p className={styles.chewyDesc}>
+                        Reason: {booking.cancellationReason || "Cancelled due to an unforeseen schedule conflict by the expert."}
+                      </p>
+
+                      {!submittedReview && (
+                        <>
+                          <div className={styles.reviewEarnNotice}>
+                            Review now and earn 15 credits
+                            <span className={styles.coinLottieWrap}>
+                              <Lottie
+                                animationData={coinAnimation}
+                                loop={true}
+                                autoplay={true}
+                                style={{ width: 28, height: 28 }}
+                              />
+                            </span>
+                          </div>
+                          <ContinueButton
+                            label="Review now and earn 15 credits"
+                            onClick={() => setIsReviewModalOpen(true)}
+                            className={styles.giveReviewBtn}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (isCompletedSession || submittedReview) ? (
                 <div className={styles.completedBadgeWrap}>
-                  <span className={styles.completedBadge}>
-                    Session Completed
-                  </span>
-                  {!submittedReview && (
-                    <ContinueButton
-                      showArrow={false}
-                      label="Give Review"
-                      onClick={() => {
-                        setIsReviewModalOpen(true);
-                      }}
-                      className={styles.giveReviewBtn}
-                    />
-                  )}
+                  <div className={styles.chewyCard}>
+                    <div className={styles.chewyTopHeader}>
+                      <span>Session Completed</span>
+                    </div>
+
+                    <div className={styles.chewyBody}>
+                      <h3 className={styles.chewyTitle}>We'd love to hear about your recent session.</h3>
+
+                      <p className={styles.chewyDesc}>
+                        Help other seekers choose <br />the right expert.
+                      </p>
+
+                      {!submittedReview ? (
+                        <>
+
+                          {/* <ContinueButton
+                            label="Review now and earn 15 credits"
+                            onClick={() => setIsReviewModalOpen(true)}
+                            className={styles.giveReviewBtn}
+                          /> */}
+                        </>
+                      ) : (
+                        <span className={styles.chewyReviewedTag}>
+                          <CheckCircle2 size={14} /> Reviewed
+                        </span>
+                      )}                          <div className={styles.reviewEarnNotice}>
+                        Review now and earn 15 credits
+                        <span className={styles.coinLottieWrap}>
+                          <Lottie
+                            animationData={coinAnimation}
+                            loop={true}
+                            autoplay={true}
+                            style={{ width: 28, height: 28 }}
+                          />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : timeStatus === "active" ? (
-                <div className={styles.activeBadgeWrap}>
-                  <ContinueButton
-                    label="Join Session"
-                    onClick={onJoinSession}
-                    className={styles.joinSessionBtn}
-                  />
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={styles.chewyTopHeader}>
+                      <span>Session Active</span>
+                    </div>
+
+                    <div className={styles.chewyBody}>
+                      <h3 className={styles.chewyTitle}>Your Session Is Live</h3>
+                      <p className={styles.chewyDesc}>
+                        Your expert is waiting in the room. Click below to join now.
+                      </p>
+                      <ContinueButton
+                        label="Join Session"
+                        onClick={onJoinSession}
+                        className={styles.giveReviewBtn}
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : timeStatus === "upcoming" && countdownText ? (
-                <div className={styles.upcomingBadgeWrap}>
-                  <div className={styles.countdownValueDisplay}>{countdownText}</div>
-                  <span className={styles.statusSubText}>Join room activates 5m prior</span>
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderBlue}`}>
+                      <span>Your Session Starts In</span>
+                    </div>
+
+                    <div className={styles.chewyBody}>
+                      <div className={styles.countdownValueDisplay}>{countdownText}</div>
+                      <div className={styles.reviewEarnNotice}>
+                        Join room activates 5m prior
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : booking.status === "pending" ? (
-                <div className={styles.pendingBadgeWrap}>
-                  {!isOneHourPassed ? (
-                    <ContinueButton
-                      showArrow={false}
-                      leadingIcon={
-                        <Image
-                          src="/pointright.svg"
-                          alt=""
-                          width={16}
-                          height={16}
-                          className={styles.pokeIconSvg}
-                          aria-hidden="true"
-                        />
-                      }
-                      label={`Poke ${pokeState.count}/2`}
-                      disabled
-                      title="Poke option will be active 1 hour after booking placement."
-                      className={styles.sessionPokeBtn}
-                    />
-                  ) : pokeState.count === 0 ? (
-                    <ContinueButton
-                      showArrow={false}
-                      leadingIcon={
-                        <Image
-                          src="/pointright.svg"
-                          alt=""
-                          width={16}
-                          height={16}
-                          className={styles.pokeIconSvg}
-                          aria-hidden="true"
-                        />
-                      }
-                      label={`Poke ${pokeState.count}/2`}
-                      onClick={handlePoke}
-                      className={styles.sessionPokeBtn}
-                    />
-                  ) : pokeState.count === 1 && cooldownSeconds > 0 ? (
-                    <ContinueButton
-                      showArrow={false}
-                      leadingIcon={
-                        <Image
-                          src="/pointright.svg"
-                          alt=""
-                          width={16}
-                          height={16}
-                          className={styles.pokeIconSvg}
-                          aria-hidden="true"
-                        />
-                      }
-                      label={`Next poke: ${formatCooldown(cooldownSeconds)}`}
-                      disabled
-                      className={styles.sessionPokeBtn}
-                    />
-                  ) : pokeState.count === 1 && cooldownSeconds === 0 ? (
-                    <ContinueButton
-                      showArrow={false}
-                      leadingIcon={
-                        <Image
-                          src="/pointright.svg"
-                          alt=""
-                          width={16}
-                          height={16}
-                          className={styles.pokeIconSvg}
-                          aria-hidden="true"
-                        />
-                      }
-                      label={`Poke ${pokeState.count}/2`}
-                      onClick={handlePoke}
-                      className={styles.sessionPokeBtn}
-                    />
-                  ) : (
-                    <ContinueButton
-                      showArrow={false}
-                      leadingIcon={
-                        <Image
-                          src="/pointright.svg"
-                          alt=""
-                          width={16}
-                          height={16}
-                          className={styles.pokeIconSvg}
-                          aria-hidden="true"
-                        />
-                      }
-                      label="Max pokes reached"
-                      disabled
-                      className={styles.sessionPokeBtn}
-                    />
-                  )}
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderAmber}`}>
+                      <span>Awaiting Acceptance</span>
+                    </div>
+
+                    <div className={styles.chewyBody}>
+                      <h3 className={styles.chewyTitle}>Request Pending</h3>
+                      <p className={styles.chewyDesc}>
+                        We have notified {booking.expert.name}. You will be notified when accepted.
+                      </p>
+                      <div style={{ marginTop: "12px", width: "100%" }}>
+                        {!isOneHourPassed ? (
+                          <ContinueButton
+                            showArrow={false}
+                            leadingIcon={
+                              <Image
+                                src="/pointright.svg"
+                                alt=""
+                                width={16}
+                                height={16}
+                                className={styles.pokeIconSvg}
+                                aria-hidden="true"
+                              />
+                            }
+                            label={`Poke ${pokeState.count}/2`}
+                            disabled
+                            title="Poke option will be active 1 hour after booking placement."
+                            className={styles.sessionPokeBtn}
+                          />
+                        ) : pokeState.count === 0 ? (
+                          <ContinueButton
+                            showArrow={false}
+                            leadingIcon={
+                              <Image
+                                src="/pointright.svg"
+                                alt=""
+                                width={16}
+                                height={16}
+                                className={styles.pokeIconSvg}
+                                aria-hidden="true"
+                              />
+                            }
+                            label={`Poke ${pokeState.count}/2`}
+                            onClick={handlePoke}
+                            className={styles.sessionPokeBtn}
+                          />
+                        ) : pokeState.count === 1 && cooldownSeconds > 0 ? (
+                          <ContinueButton
+                            showArrow={false}
+                            leadingIcon={
+                              <Image
+                                src="/pointright.svg"
+                                alt=""
+                                width={16}
+                                height={16}
+                                className={styles.pokeIconSvg}
+                                aria-hidden="true"
+                              />
+                            }
+                            label={`Next poke: ${formatCooldown(cooldownSeconds)}`}
+                            disabled
+                            className={styles.sessionPokeBtn}
+                          />
+                        ) : pokeState.count === 1 && cooldownSeconds === 0 ? (
+                          <ContinueButton
+                            showArrow={false}
+                            leadingIcon={
+                              <Image
+                                src="/pointright.svg"
+                                alt=""
+                                width={16}
+                                height={16}
+                                className={styles.pokeIconSvg}
+                                aria-hidden="true"
+                              />
+                            }
+                            label={`Poke ${pokeState.count}/2`}
+                            onClick={handlePoke}
+                            className={styles.sessionPokeBtn}
+                          />
+                        ) : (
+                          <ContinueButton
+                            showArrow={false}
+                            leadingIcon={
+                              <Image
+                                src="/pointright.svg"
+                                alt=""
+                                width={16}
+                                height={16}
+                                className={styles.pokeIconSvg}
+                                aria-hidden="true"
+                              />
+                            }
+                            label="Max pokes reached"
+                            disabled
+                            className={styles.sessionPokeBtn}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -958,10 +1066,6 @@ export default function BookingDetailInfo({
             {/* Session Resources & Artifacts Section (Shown only after session is completed) */}
             {(isCompletedSession || submittedReview) && (
               <>
-                <div className={styles.resourceSectionHead}>
-                  <FileText size={16} aria-hidden="true" />
-                  <h2 className={styles.sectionTitle}>Session Resources & Artifacts</h2>
-                </div>
 
                 <div className={styles.accContainer}>
                   {accordionItems.map((item, idx) => {

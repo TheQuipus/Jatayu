@@ -19,6 +19,7 @@ export type RequestDetailHistoryEvent = {
 
 export type RequestDetailModel = {
   id: string;
+  expertProfessionalTitle: string;
   title: string;
   subtitle: string;
   submittedDate: string;
@@ -66,6 +67,7 @@ export type RequestDetailModel = {
 
 export const REQUEST_DETAIL_DATA: RequestDetailModel = {
   id: "req-1",
+  expertProfessionalTitle: "Business Strategy",
   title: "Product Strategy Workshop",
   subtitle: "Product Strategy Workshop — 09:00 AM - 05:00 PM",
   submittedDate: "Dec 17, 2024 at 10:32 AM",
@@ -167,8 +169,39 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
     return REQUEST_DETAIL_DATA;
   }
 
+  const raw = (found.rawItem || {}) as Record<string, unknown>;
+  const seeker = (raw.seeker || {}) as Record<string, unknown>;
+  const amounts = (raw.amounts || {}) as Record<string, unknown>;
+
+  const clientName = String(seeker.fullName || found.clientName || "Client");
+  const clientAvatar = String(seeker.profilePhotoSrc || found.clientAvatar || "/assets/img/avatar2.png");
+  const clientLocation = String(seeker.location || raw.seekerLocation || "India");
+  const clientCategory = String(seeker.category || raw.seekerCategory || "");
+  const timezoneStr = String(raw.timezone || seeker.timezone || "Asia/Calcutta");
+
+  const languagesList = Array.isArray(seeker.selectedLanguages)
+    ? (seeker.selectedLanguages as string[]).map(String)
+    : ["English"];
+
+  const contextText = String(raw.context || found.description || "");
+
+  let feeTotal = found.price;
+  if (typeof amounts.total === "number") {
+    feeTotal = amounts.unit === "paise" ? Math.round(amounts.total / 100) : amounts.total;
+  }
+
+  const expertProfTitle = String(
+    raw.expertProfessionalTitle ||
+      found.expertProfessionalTitle ||
+      raw.professionalTitle ||
+      seeker.category ||
+      raw.seekerCategory ||
+      ""
+  );
+
   return {
     id: found.id,
+    expertProfessionalTitle: expertProfTitle,
     title: found.title,
     subtitle: `${found.title} — ${found.durationLabel}`,
     submittedDate: found.dateLabel,
@@ -184,36 +217,32 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
     timeReceivedAgo: `Received ${found.timeAgo}`,
     respondTimeLeft: "Respond within 24h to maintain response rate",
     client: {
-      name: found.clientName,
-      avatar: found.clientAvatar || "/assets/img/avatar2.png",
-      role: "Client",
-      company: "Client Organization",
-      location: "San Francisco, CA",
-      timezone: "PST (UTC-8)",
+      name: clientName,
+      avatar: clientAvatar,
+      role: clientCategory,
+      company: "Jatayu Member",
+      location: clientLocation,
+      timezone: timezoneStr,
       isOnline: true,
       rating: 5.0,
-      totalSessions: 8,
+      totalSessions: 1,
       isVerified: true,
       isPro: true,
       isOrg: false,
       stats: {
-        sessionsBooked: 2,
-        totalSpent: formatRequestPrice(found.price),
+        sessionsBooked: 1,
+        totalSpent: formatRequestPrice(feeTotal),
         completionRate: "100%",
       },
     },
     proposal: {
-      summary: found.description,
-      paragraphs: [
-        found.description,
-        "Looking for an experienced expert to facilitate this session, review current challenges, and provide an actionable strategy and roadmap.",
-        "Please review the proposed duration and format to confirm or suggest adjustments.",
-      ],
-      tags: ["Strategy", "Consultation", "Expert Review", "Direct Session"],
+      summary: contextText,
+      paragraphs: [contextText].filter(Boolean),
+      tags: [clientCategory, found.formatLabel, "1:1 Consultation"].filter(Boolean),
       scopeDeliverables: [
-        "Pre-session discovery & requirements review",
-        `Interactive consultation session (${found.durationLabel})`,
-        "Post-session action items & recommendations summary",
+        `1:1 Consultation session (${found.durationLabel})`,
+        "Direct guidance & answers to submitted context",
+        "Post-session recommendations",
       ],
     },
     sessionDetails: {
@@ -221,9 +250,9 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
       duration: found.durationLabel,
       format: found.formatLabel,
       participantsCount: "1-on-1 session",
-      language: "English",
+      language: languagesList.join(", "),
       recurrence: "One-time session",
-      proposedPrice: formatRequestPrice(found.price),
+      proposedPrice: formatRequestPrice(feeTotal),
     },
     attachments: REQUEST_DETAIL_DATA.attachments,
     history: [
@@ -231,14 +260,14 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
         id: "hist-1",
         title: "Request Submitted",
         timestamp: found.dateLabel,
-        description: `${found.clientName} submitted a session request.`,
-        actor: found.clientName,
+        description: `${clientName} submitted a session request.`,
+        actor: clientName,
       },
       {
         id: "hist-2",
         title: "Payment Authorized",
         timestamp: found.dateLabel,
-        description: `Escrow funds held in full (${formatRequestPrice(found.price)}).`,
+        description: `Escrow funds held in full (${formatRequestPrice(feeTotal)}).`,
         actor: "System",
       },
       ...(found.status === "accepted"

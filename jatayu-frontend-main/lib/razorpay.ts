@@ -62,3 +62,55 @@ export async function openRazorpayCheckout(options: {
     checkout.open();
   });
 }
+
+// ---------------------------------------------------------------------------
+// Razorpay Webhook API Types & Helpers
+// ---------------------------------------------------------------------------
+
+export interface RazorpayRefundEntity {
+  id: string;
+  entity: "refund";
+  payment_id: string;
+  amount: number;
+  currency: string;
+  status: "processed" | "pending" | "failed" | string;
+  speed_processed?: string;
+  speed_requested?: string;
+  created_at?: number;
+  batch_id?: string | null;
+  notes?: Record<string, string>;
+  receipt?: string | null;
+}
+
+export interface RazorpayWebhookRefundPayload {
+  entity: "event";
+  event: "refund.processed" | "refund.created" | "refund.failed" | string;
+  contains: string[];
+  payload: {
+    refund: {
+      entity: RazorpayRefundEntity;
+    };
+  };
+  created_at?: number;
+}
+
+/**
+ * Helper function to trigger or post Razorpay refund webhook events to backend
+ */
+export async function sendRazorpayWebhookEvent(
+  eventPayload: RazorpayWebhookRefundPayload
+): Promise<{ success: boolean; message?: string }> {
+  const response = await fetch(`${BASE_URL}/api/payments/webhooks/razorpay`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(eventPayload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error((data as { message?: string }).message || `Webhook request failed (${response.status})`);
+  }
+
+  return data as { success: boolean; message?: string };
+}
+

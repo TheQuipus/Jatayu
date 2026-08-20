@@ -7,6 +7,7 @@ type SecondaryCTAProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children
   showArrow?: boolean;
   arrowSize?: number;
   leadingIcon?: ReactNode;
+  icon?: ReactNode;
 };
 
 function ButtonLabel({ label }: { label: ReactNode }) {
@@ -27,6 +28,7 @@ export default function SecondaryCTA({
   showArrow = true,
   arrowSize = 14,
   leadingIcon,
+  icon,
   className = "",
   type = "button",
   ...props
@@ -39,7 +41,7 @@ export default function SecondaryCTA({
     >
       {leadingIcon}
       <ButtonLabel label={label} />
-      {showArrow ? <ArrowRight size={arrowSize} /> : null}
+      {icon ? icon : showArrow ? <ArrowRight size={arrowSize} /> : null}
     </button>
   );
 }

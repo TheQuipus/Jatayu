@@ -655,8 +655,14 @@ export function normalizeExpert(rawData: Record<string, unknown>): Expert {
       ? meta.category.trim()
       : resolvedTopics[0] || "Consultation";
 
-  const desc = tagLine.length > 0 ? tagLine : bioRaw.length > 0 ? bioRaw : "";
-  const bio = bioRaw.length > 0 ? bioRaw : tagLine.length > 0 ? tagLine : desc;
+  const fallbackBio = role
+    ? `Expert in ${role}${resolvedTopics.length > 0 ? ` specializing in ${resolvedTopics.join(", ")}` : ""}.`
+    : category
+    ? `Expert in ${category}.`
+    : "Verified Jatayu Expert available for 1:1 consultation sessions.";
+
+  const desc = tagLine.length > 0 ? tagLine : bioRaw.length > 0 ? bioRaw : fallbackBio;
+  const bio = bioRaw.length > 0 ? bioRaw : tagLine.length > 0 ? tagLine : fallbackBio;
 
   const image = String(
     data.image ||

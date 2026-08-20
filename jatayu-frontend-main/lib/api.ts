@@ -5,6 +5,7 @@
  */
 
 import { type Expert, expertSlug, getExpertById, getTopMatchesByCategory, normalizeExpert } from "@/lib/experts";
+import type { ClientRequest, RequestStatus } from "@/lib/expertRequests";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -730,35 +731,46 @@ export async function getFeaturedMatches(
 export async function getPublicExpert(expertId: string): Promise<Expert | null> {
   if (!expertId) return null;
 
-  const targetId =
-    expertSlug(expertId) === "aditya-kane"
-      ? "6ca14cb0-b79c-4628-9fe2-ec8a9bce67e4"
-      : expertId;
-
-  // 1. Try direct public expert endpoint by target UUID or ID
+  // 1. Try direct public expert endpoint by target ID or UUID
   try {
-    const res = await apiFetch<unknown>(`/api/public/experts/${encodeURIComponent(targetId)}`, {
+    const res = await apiFetch<unknown>(`/api/public/experts/${encodeURIComponent(expertId)}`, {
       method: "GET",
     });
     if (res && typeof res === "object") {
-      return normalizeExpert(res as Record<string, unknown>);
+      const norm = normalizeExpert(res as Record<string, unknown>);
+      if (norm && norm.name && norm.name !== "Verified Expert") {
+        return norm;
+      }
     }
   } catch {
-    // ignore
+    // continue
   }
 
-  // 2. Try direct public expert endpoint by raw expertId string
-  if (targetId !== expertId) {
-    try {
-      const res = await apiFetch<unknown>(`/api/public/experts/${encodeURIComponent(expertId)}`, {
-        method: "GET",
-      });
-      if (res && typeof res === "object") {
-        return normalizeExpert(res as Record<string, unknown>);
+  // 2. Search public experts list to match slug (e.g., "aditya-kane") with real database UUID
+  try {
+    const listRes = await getPublicExperts({ limit: 100 });
+    const targetSlug = expertSlug(expertId);
+
+    const match = listRes.rawExperts?.find((item) => {
+      const nameSlug = expertSlug(item.fullName || item.name || "");
+      return item.id === expertId || nameSlug === targetSlug;
+    });
+
+    if (match && match.id) {
+      try {
+        const detailRes = await apiFetch<unknown>(`/api/public/experts/${encodeURIComponent(match.id)}`, {
+          method: "GET",
+        });
+        if (detailRes && typeof detailRes === "object") {
+          return normalizeExpert(detailRes as Record<string, unknown>);
+        }
+      } catch {
+        // fallback to match object
       }
-    } catch {
-      // ignore
+      return normalizeExpert(match as unknown as Record<string, unknown>);
     }
+  } catch {
+    // continue
   }
 
   return getExpertById(expertId) ?? null;
@@ -926,4 +938,296 @@ export async function getPublicExperts(
     filters,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Expert Requests API
+// ---------------------------------------------------------------------------
+
+export interface ExpertRequestsQueryParams {
+  status?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+}
+
+export interface ExpertRequestsResponse {
+  requests: ClientRequest[];
+  pagination: PaginationInfo;
+  counts?: Record<string, number>;
+}
+
+export function normalizeClientRequest(item: Record<string, unknown>): ClientRequest {
+  const seekerObj = (item.seeker || {}) as Record<string, unknown>;
+  const amountsObj = (item.amounts || {}) as Record<string, unknown>;
+
+  const reqStatusStr = String(item.requestStatus || item.status || "new").toLowerCase();
+  const validStatus: RequestStatus =
+    reqStatusStr === "accepted" || reqStatusStr === "confirmed"
+      ? "accepted"
+      : reqStatusStr === "declined" || reqStatusStr === "rejected"
+      ? "declined"
+      : reqStatusStr === "pending"
+      ? "pending"
+      : reqStatusStr === "awaiting_expert"
+      ? "new"
+      : "new";
+
+  const clientName = String(
+    seekerObj.fullName || item.seekerName || item.clientName || item.userName || "Client"
+  );
+  const clientAvatar = String(
+    seekerObj.profilePhotoSrc || item.seekerAvatar || item.clientAvatar || item.userAvatar || "/assets/img/avatar1.png"
+  );
+
+  const title = String(item.subject || item.title || item.topic || "Consultation Session");
+  const description = String(item.context || item.description || item.notes || item.summary || "");
+
+  let price = 0;
+  if (typeof amountsObj.total === "number") {
+    price = amountsObj.unit === "paise" ? Math.round(amountsObj.total / 100) : amountsObj.total;
+  } else if (typeof item.totalAmount === "number") {
+    price = item.totalAmount > 1000 ? Math.round(item.totalAmount / 100) : item.totalAmount;
+  } else if (typeof item.payableAmount === "number") {
+    price = item.payableAmount > 1000 ? Math.round(item.payableAmount / 100) : item.payableAmount;
+  } else if (typeof item.price === "number") {
+    price = item.price;
+  }
+
+  let dateLabel = String(item.dateLabel || item.requestedDate || "");
+  let durationLabel = String(item.durationLabel || item.duration || "");
+
+  if (item.scheduledStartAt && typeof item.scheduledStartAt === "string") {
+    const startDate = new Date(item.scheduledStartAt);
+    if (!isNaN(startDate.getTime())) {
+      dateLabel = startDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+
+      if (item.scheduledEndAt && typeof item.scheduledEndAt === "string") {
+        const endDate = new Date(item.scheduledEndAt);
+        if (!isNaN(endDate.getTime())) {
+          const startTimeStr = startDate.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const endTimeStr = endDate.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          durationLabel = `${startTimeStr} - ${endTimeStr}`;
+        }
+      }
+    }
+  }
+
+  if (!dateLabel) dateLabel = "Dec 20, 2024";
+  if (!durationLabel) durationLabel = "30 mins";
+
+  const consultationType = String(item.consultationType || "video").toLowerCase();
+  const formatLabel = String(
+    item.formatLabel ||
+      (consultationType === "video"
+        ? "Video call"
+        : consultationType === "text" || consultationType === "chat"
+        ? "Text chat"
+        : "Async consultation")
+  );
+
+  return {
+    id: String(item.id || item._id || `req-${Math.random().toString(36).substring(2, 9)}`),
+    clientName,
+    clientAvatar,
+    title,
+    description,
+    status: validStatus,
+    urgent: Boolean(item.urgent),
+    repeatClient: Boolean(item.repeatClient),
+    isPoked: Boolean(item.isPoked),
+    pokeCount: typeof item.pokeCount === "number" ? item.pokeCount : undefined,
+    price,
+    timeAgo: String(item.timeAgo || "Recently"),
+    dateLabel,
+    durationLabel,
+    formatLabel,
+    createdAt:
+      typeof item.createdAt === "string"
+        ? new Date(item.createdAt).getTime()
+        : typeof item.createdAt === "number"
+        ? item.createdAt
+        : Date.now(),
+    declineReason: item.declineReasonNotes
+      ? String(item.declineReasonNotes)
+      : item.declineReason
+      ? String(item.declineReason)
+      : undefined,
+    declineNotes: item.declineReasonNotes
+      ? String(item.declineReasonNotes)
+      : item.declineNotes
+      ? String(item.declineNotes)
+      : undefined,
+    expertProfessionalTitle: item.expertProfessionalTitle
+      ? String(item.expertProfessionalTitle)
+      : seekerObj.category
+      ? String(seekerObj.category)
+      : undefined,
+    rawItem: item,
+  };
+}
+
+export async function getExpertRequests(
+  params: ExpertRequestsQueryParams = {}
+): Promise<ExpertRequestsResponse> {
+  const urlParams = new URLSearchParams();
+  urlParams.set("status", params.status || "all");
+  urlParams.set("page", String(params.page || 1));
+  urlParams.set("limit", String(params.limit || 20));
+  urlParams.set("sort", params.sort || "newest");
+
+  const queryString = urlParams.toString();
+  const res = await apiFetch<Record<string, unknown>>(`/api/expert/requests?${queryString}`, {
+    method: "GET",
+  });
+
+  const rawList = (
+    Array.isArray(res.requests)
+      ? res.requests
+      : Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res)
+      ? res
+      : []
+  ) as Record<string, unknown>[];
+
+  const requests = rawList.map((item) => normalizeClientRequest(item));
+
+  const paginationRaw = (res.pagination || {}) as Record<string, unknown>;
+  const totalPages =
+    typeof paginationRaw.totalPages === "number"
+      ? paginationRaw.totalPages
+      : typeof paginationRaw.pages === "number"
+      ? (paginationRaw.pages as number)
+      : Math.ceil(requests.length / (params.limit || 20)) || 1;
+
+  const pagination: PaginationInfo = {
+    page: Number(paginationRaw.page) || params.page || 1,
+    limit: Number(paginationRaw.limit) || params.limit || 20,
+    total: typeof paginationRaw.total === "number" ? paginationRaw.total : requests.length,
+    totalPages,
+    hasNextPage:
+      typeof paginationRaw.hasNextPage === "boolean"
+        ? paginationRaw.hasNextPage
+        : (params.page || 1) < totalPages,
+    hasPreviousPage:
+      typeof paginationRaw.hasPreviousPage === "boolean"
+        ? paginationRaw.hasPreviousPage
+        : (params.page || 1) > 1,
+  };
+
+  const counts = (res.counts || {}) as Record<string, number>;
+
+  return {
+    requests,
+    pagination,
+    counts,
+  };
+}
+
+export interface ExpertRequestDecisionPayload {
+  decision: "accept" | "accepted" | "decline" | "declined" | "reschedule";
+  reasonCode?: string;
+  reasonNotes?: string;
+  reason?: string;
+  notes?: string;
+  proposedSlots?: Array<{ date: string; time: string }>;
+}
+
+export function toReasonCode(reason?: string): string {
+  if (!reason) return "scheduling_conflict";
+  const lower = reason.toLowerCase();
+  if (lower.includes("not available") || lower.includes("schedule") || lower.includes("conflict") || lower.includes("available")) {
+    return "scheduling_conflict";
+  }
+  if (lower.includes("outside expertise") || lower.includes("expertise")) {
+    return "outside_expertise";
+  }
+  if (lower.includes("out of scope") || lower.includes("scope")) {
+    return "out_of_scope";
+  }
+  if (lower.includes("budget") || lower.includes("fee")) {
+    return "budget_mismatch";
+  }
+  if (lower.includes("notice") || lower.includes("lead")) {
+    return "short_notice";
+  }
+  return "scheduling_conflict";
+}
+
+export async function submitExpertRequestDecision(
+  bookingId: string,
+  payload: ExpertRequestDecisionPayload
+): Promise<{ message: string; request?: ClientRequest }> {
+  const res = await apiFetch<Record<string, unknown>>(
+    `/api/expert/requests/${encodeURIComponent(bookingId)}/decision`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const requestObj = res.request ? normalizeClientRequest(res.request as Record<string, unknown>) : undefined;
+
+  return {
+    message: String(res.message || "Decision submitted successfully"),
+    request: requestObj,
+  };
+}
+
+export async function updateExpertRequestStatusApi(
+  requestId: string,
+  status: RequestStatus,
+  declineReason?: string,
+  declineNotes?: string
+): Promise<{ message: string; request?: ClientRequest }> {
+  try {
+    const isDeclined = status === "declined";
+    const isAccepted = status === "accepted";
+    const decisionVal = isDeclined ? "declined" : isAccepted ? "accepted" : (status as any);
+
+    return await submitExpertRequestDecision(requestId, {
+      decision: decisionVal,
+      ...(isDeclined
+        ? {
+            reasonCode: toReasonCode(declineReason),
+            reasonNotes: declineNotes || declineReason || "",
+            reason: declineReason,
+            notes: declineNotes,
+          }
+        : {}),
+    });
+  } catch {
+    // Fallback to PATCH /api/expert/requests/:requestId/status if decision endpoint fails
+    const res = await apiFetch<Record<string, unknown>>(
+      `/api/expert/requests/${encodeURIComponent(requestId)}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          status,
+          ...(declineReason ? { declineReason, reasonCode: toReasonCode(declineReason) } : {}),
+          ...(declineNotes ? { declineNotes, reasonNotes: declineNotes } : {}),
+        }),
+      }
+    );
+
+    const requestObj = res.request ? normalizeClientRequest(res.request as Record<string, unknown>) : undefined;
+
+    return {
+      message: String(res.message || "Status updated successfully"),
+      request: requestObj,
+    };
+  }
+}
+
+
 

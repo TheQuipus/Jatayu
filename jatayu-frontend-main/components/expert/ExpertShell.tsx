@@ -31,6 +31,8 @@ import {
 import { getExpertProfile } from "@/lib/expertStore";
 import { fetchExpertProfileData } from "@/lib/expertProfileApi";
 import { clearAuthSession } from "@/lib/expertAuth";
+import { getStoredRequests } from "@/lib/expertRequests";
+import { getExpertRequests } from "@/lib/api";
 import styles from "./ExpertShell.module.css";
 
 const NAV_ICONS = {
@@ -107,6 +109,43 @@ export default function ExpertShell({ children }: ExpertShellProps) {
   const [currentHash, setCurrentHash] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const shellContext = useMemo(() => ({ setBreadcrumbs }), []);
+
+  const [requestsBadgeCount, setRequestsBadgeCount] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const list = getStoredRequests();
+      return list.length;
+    }
+    return 0;
+  });
+
+  useEffect(() => {
+    let isSubscribed = true;
+    getExpertRequests({ status: "all", page: 1, limit: 20, sort: "newest" })
+      .then((res) => {
+        if (isSubscribed) {
+          setRequestsBadgeCount(res.requests.length);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch dynamic requests count for shell:", err);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [pathname]);
+
+  const dynamicMainNav = useMemo(() => {
+    return MAIN_NAV.map((item) => {
+      if (item.id === "requests") {
+        return {
+          ...item,
+          badge: requestsBadgeCount,
+        };
+      }
+      return item;
+    });
+  }, [requestsBadgeCount]);
 
   useEffect(() => {
     setCurrentHash(window.location.hash);
@@ -186,7 +225,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
 
           {!isCollapsed && <div className={styles.navLabel}>MAIN MENU</div>}
           <nav className={styles.navSection} aria-label="Main">
-            {MAIN_NAV.map((item) => (
+            {dynamicMainNav.map((item) => (
               <NavLink
                 key={item.id}
                 item={item}

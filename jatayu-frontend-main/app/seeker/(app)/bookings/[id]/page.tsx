@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import BookingDetailView from "@/components/seeker/bookings/BookingDetail";
+import BookingDetailContainer from "@/components/seeker/bookings/BookingDetailContainer";
 import { BOOKING_DETAILS, getBookingById } from "@/lib/seekerDashboard";
 import styles from "./page.module.css";
 
@@ -20,7 +19,7 @@ export async function generateMetadata({ params }: BookingDetailPageProps): Prom
   const booking = getBookingById(id);
 
   if (!booking) {
-    return { title: "Booking — Jatayu" };
+    return { title: "Booking Details — Jatayu" };
   }
 
   return {
@@ -31,16 +30,12 @@ export async function generateMetadata({ params }: BookingDetailPageProps): Prom
 
 export default async function SeekerBookingDetailPage({ params }: BookingDetailPageProps) {
   const { id } = await params;
-  const booking = getBookingById(id);
-
-  if (!booking) {
-    notFound();
-  }
+  const initialBooking = getBookingById(id);
 
   return (
     <div className={styles.page}>
       <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--scorpion)' }}>Loading session details...</div>}>
-        <BookingDetailView booking={booking} />
+        <BookingDetailContainer bookingId={id} initialBooking={initialBooking} />
       </Suspense>
     </div>
   );

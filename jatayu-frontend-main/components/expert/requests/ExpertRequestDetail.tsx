@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ import {
   Check,
   ClipboardList,
   Clock,
+  Download,
   Flag,
   Headphones,
   Info,
@@ -22,21 +23,30 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { getRequestDetailById } from "@/lib/expertRequestDetailStore";
+import { getRequestDetailById, type RequestDetailModel } from "@/lib/expertRequestDetailStore";
 import ExpertReportForm from "@/app/expert/(app)/report/[requestId]/ExpertReportForm";
 import AcceptRequestModal from "./AcceptRequestModal";
 import DeclineRequestModal from "./DeclineRequestModal";
 import ExpertActiveRoom from "./ExpertActiveRoom";
 import ContinueButton from "@/components/ui/ContinueButton";
+import SecondaryCTA from "@/components/ui/SecondaryCTA";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import { updateStoredRequestStatus, getStoredRequests, type ClientRequest } from "@/lib/expertRequests";
-import styles from "./ExpertRequestDetail.module.css";
+import {
+  updateStoredRequestStatus,
+  getStoredRequests,
+  updateRequestStatusAsync,
+  fetchExpertRequests,
+  type ClientRequest,
+} from "@/lib/expertRequests";
+import styles from "@/components/seeker/bookings/BookingDetailInfo.module.css";
 
 export default function ExpertRequestDetail({ requestId }: { requestId?: string }) {
   const router = useRouter();
   const params = useParams();
   const activeRequestId = (params?.id as string) || requestId || "req-1";
-  const data = getRequestDetailById(activeRequestId);
+
+  const [data, setData] = useState<RequestDetailModel>(() => getRequestDetailById(activeRequestId));
+  const [loading, setLoading] = useState<boolean>(true);
 
   const [requestStatus, setRequestStatus] = useState<"new" | "pending" | "accepted" | "declined">(() => {
     if (typeof window !== "undefined") {
@@ -46,6 +56,53 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
     }
     return data.status;
   });
+
+  const [fastForwarded, setFastForwarded] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return window.sessionStorage.getItem("fast_forward_timer") === "true";
+    }
+    return false;
+  });
+
+  const toggleFastForward = () => {
+    if (typeof window === "undefined") return;
+    const next = !fastForwarded;
+    setFastForwarded(next);
+    if (next) {
+      window.sessionStorage.setItem("fast_forward_timer", "true");
+    } else {
+      window.sessionStorage.removeItem("fast_forward_timer");
+    }
+    setCurrentTime(Date.now());
+  };
+
+  useEffect(() => {
+    let isSubscribed = true;
+    setLoading(true);
+
+    fetchExpertRequests({
+      status: "all",
+      page: 1,
+      limit: 20,
+      sort: "newest",
+    })
+      .then(() => {
+        if (isSubscribed) {
+          const detail = getRequestDetailById(activeRequestId);
+          setData(detail);
+          setRequestStatus(detail.status);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load expert request detail from API:", err);
+        if (isSubscribed) setLoading(false);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [activeRequestId]);
 
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
@@ -62,7 +119,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
     return () => clearInterval(interval);
   }, [requestStatus]);
 
-  const targetTimeMs = React.useMemo(() => {
+  const targetTimeMs = useMemo(() => {
     const text = data.sessionDetails.requestedDate;
     if (text.includes("Tomorrow")) {
       const d = new Date();
@@ -74,15 +131,21 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
     if (!isNaN(parsed) && parsed > Date.now()) {
       return parsed;
     }
-    // Demo countdown target: 1 hour 45 minutes from mount time if past/mocked
     return Date.now() + (1 * 60 * 60 + 45 * 60) * 1000;
   }, [data.sessionDetails.requestedDate]);
 
-  const countdownText = React.useMemo(() => {
-    if (requestStatus !== "accepted") return null;
+  const countdownText = useMemo(() => {
+    if (
+      requestStatus !== "accepted" ||
+      fastForwarded ||
+      (typeof window !== "undefined" &&
+        (window.location.search.includes("testJoin") ||
+          window.location.search.includes("action=join")))
+    ) {
+      return null;
+    }
 
     const diffMs = targetTimeMs - currentTime;
-    // Within 5 minutes or past start time => JOIN SESSION is active!
     if (diffMs <= 5 * 60 * 1000) {
       return null;
     }
@@ -105,9 +168,8 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
       return `${dd}D:${hh}H:${mm}M`;
     }
     return `${hh}:${mm}:${ss}`;
-  }, [requestStatus, targetTimeMs, currentTime]);
+  }, [requestStatus, targetTimeMs, currentTime, fastForwarded]);
 
-  // Sync state if activeRequestId changes
   useEffect(() => {
     const stored = getStoredRequests();
     const match = stored.find((r) => r.id === activeRequestId);
@@ -133,14 +195,14 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
     createdAt: Date.now(),
   };
 
-  const handleConfirmAccept = () => {
-    updateStoredRequestStatus(data.id, "accepted");
+  const handleConfirmAccept = async () => {
+    await updateRequestStatusAsync(data.id, "accepted");
     setRequestStatus("accepted");
     setShowAcceptModal(false);
   };
 
-  const handleConfirmDecline = (reqId: string, reason: string, notes: string) => {
-    updateStoredRequestStatus(data.id, "declined", reason, notes);
+  const handleConfirmDecline = async (reqId: string, reason: string, notes: string) => {
+    await updateRequestStatusAsync(data.id, "declined", reason, notes);
     setRequestStatus("declined");
     setShowDeclineModal(false);
   };
@@ -189,17 +251,19 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
           </button>
         </div>
 
-        {/* Main Layout Grid matching Seeker BookingDetailInfo */}
+        {/* Main Layout Grid matched 1:1 with Seeker BookingDetailInfo */}
         <div className={styles.mainGrid}>
-          {/* Main Column */}
+          {/* Left Main Column */}
           <div className={styles.mainCol}>
-            {/* Booking Hero (Client Photo Card & Info Header) */}
+            {/* Booking Hero (Client Profile Card & Info Header) */}
             <div className={styles.bookingHero}>
               <article className={styles.bookingExpertCard}>
-                <div className={styles.expertCategoryBadge}>
-                  <span className={styles.expertCategoryDot} />
-                  CLIENT REQUEST
-                </div>
+                {data.expertProfessionalTitle || data.client.role ? (
+                  <div className={styles.expertCategoryBadge}>
+                    <span className={styles.expertCategoryDot} />
+                    {(data.expertProfessionalTitle || data.client.role).toUpperCase()}
+                  </div>
+                ) : null}
                 <div className={styles.bookingExpertImageWrap}>
                   <Image
                     src={data.client.avatar}
@@ -218,7 +282,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                     )}
                   </p>
                   <p className={styles.bookingExpertDesc}>
-                    {data.client.role} at {data.client.company}
+                    {data.client.role} • {data.client.company}
                   </p>
                 </div>
               </article>
@@ -274,8 +338,105 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                   )}
                 </div>
 
-                <p className={styles.bioText}>{data.proposal.summary}</p>
+                <div className={styles.bioText}>
+                  {data.title ? (
+                    <p style={{ fontWeight: 700, color: "var(--ink)", marginBottom: "4px" }}>
+                      Subject: {data.title}
+                    </p>
+                  ) : null}
+                  <p style={{ margin: 0 }}>{data.proposal.summary}</p>
+                </div>
               </div>
+            </div>
+
+            {/* Status Chewy Banner Anchor matched 1:1 with BookingDetailInfo */}
+            <div className={styles.badgeFloatAnchor}>
+              {requestStatus === "declined" ? (
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderRed}`}>
+                      <span>Request Declined</span>
+                    </div>
+                    <div className={styles.chewyBody}>
+                      <p className={styles.chewyDesc}>
+                        This request was declined. The client has been notified and escrow funds released.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : requestStatus === "accepted" && !countdownText ? (
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={styles.chewyTopHeader}>
+                      <span>Session Active</span>
+                    </div>
+                    <div className={styles.chewyBody}>
+                      <h3 className={styles.chewyTitle}>Your Session Is Live</h3>
+                      <p className={styles.chewyDesc}>
+                        Your client is waiting in the active room. Click below to join now.
+                      </p>
+                      <ContinueButton
+                        label="Join Session"
+                        onClick={() => setIsInActiveRoom(true)}
+                        className={styles.giveReviewBtn}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : requestStatus === "accepted" && countdownText ? (
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderBlue}`}>
+                      <span>Your Session Starts In</span>
+                    </div>
+                    <div className={styles.chewyBody}>
+                      <div className={styles.countdownValueDisplay}>{countdownText}</div>
+                      <div className={styles.reviewEarnNotice}>
+                        Join room activates 5m prior
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (requestStatus === "new" || requestStatus === "pending") ? (
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderAmber}`}>
+                      <span>Awaiting Your Acceptance</span>
+                    </div>
+                    <div className={styles.chewyBody}>
+                      <h3 className={styles.chewyTitle}>New Consultation Request</h3>
+                      <p className={styles.chewyDesc}>
+                        {data.client.name} requested a {data.sessionDetails.duration} session on {data.sessionDetails.requestedDate}.
+                      </p>
+                      <div style={{ display: "flex", gap: "10px", marginTop: "12px", width: "100%" }}>
+                        <ContinueButton
+                          label="Accept Request"
+                          onClick={() => setShowAcceptModal(true)}
+                          className={styles.giveReviewBtn}
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowDeclineModal(true)}
+                          style={{
+                            flex: 1,
+                            padding: "10px 16px",
+                            borderRadius: "8px",
+                            fontWeight: 600,
+                            fontSize: "14px",
+                            border: "1px solid var(--scorpion)",
+                            background: "transparent",
+                            color: "var(--ink)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {/* Request Details Card */}
@@ -291,72 +452,34 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                     <Video size={22} strokeWidth={2} />
                   </span>
                   <div className={styles.summaryCopy}>
-                    <h1 className={styles.summaryTitle}>{data.title}</h1>
+                    <h1 className={styles.summaryTitle}>{data.sessionDetails.format}</h1>
                     <p className={styles.summaryMeta}>
                       Request ID: {data.id} • Submitted on {data.submittedDate}
                     </p>
                   </div>
                 </div>
-
-                <div className={styles.completedBadgeWrap}>
-                  {requestStatus === "accepted" ? (
-                    countdownText ? (
-                      <div className={styles.countdownWrapper}>
-                        <span className={styles.countdownTimer}>
-                          {countdownText}
-                        </span>
-                        <span className={styles.countdownHint}>
-                          Join room activates 5m prior
-                        </span>
-                      </div>
-                    ) : (
-                      <ContinueButton
-                        label="JOIN SESSION"
-                        onClick={() => setIsInActiveRoom(true)}
-                      />
-                    )
-                  ) : requestStatus === "declined" ? (
-                    <span className={styles.cancelledBadge}>Request Declined</span>
-                  ) : null}
-                </div>
               </div>
 
               <div className={styles.sessionGrid}>
                 <div className={styles.sessionInset}>
-                  <span className={styles.sessionLabel}>Requested Date</span>
+                  <span className={styles.sessionLabel}>Scheduled For</span>
                   <strong className={styles.sessionValue}>{data.sessionDetails.requestedDate}</strong>
                   <span className={styles.sessionHint}>{data.sessionDetails.duration}</span>
                 </div>
-                <div className={styles.sessionInset}>
-                  <span className={styles.sessionLabel}>Format & Language</span>
-                  <strong className={styles.sessionValue}>{data.sessionDetails.format}</strong>
-                  <span className={styles.sessionHint}>{data.sessionDetails.language} • {data.sessionDetails.recurrence}</span>
-                </div>
-              </div>
 
-              <div className={styles.contextSection}>
-                <span className={styles.fieldLabel}>Client Request Details</span>
-                <p className={styles.contextSubject}>{data.subtitle}</p>
-                {data.proposal.paragraphs.map((p, idx) => (
-                  <p key={idx} className={styles.contextText} style={{ marginBottom: 10 }}>
-                    {p}
-                  </p>
-                ))}
-                <div className={styles.tagsRow} style={{ marginTop: 12 }}>
-                  {data.proposal.tags.map((tag) => (
-                    <span key={tag} className={styles.tagChip}>
-                      {tag}
-                    </span>
-                  ))}
+                <div className={styles.sessionInset}>
+                  <span className={styles.sessionLabel}>Duration & Format</span>
+                  <strong className={styles.sessionValue}>{data.sessionDetails.duration}</strong>
+                  <span className={styles.sessionHint}>{data.sessionDetails.format} • {data.sessionDetails.language}</span>
                 </div>
               </div>
             </article>
           </div>
 
-          {/* Right Column / Sidebar */}
+          {/* Right Sidebar Column */}
           <aside className={styles.rightCol}>
             <div className={styles.rightColInner}>
-              {/* Card 1: Payment Summary */}
+              {/* Payment Summary Card */}
               <div className={styles.bookingBox}>
                 <div className={styles.bookingHeader}>
                   <span className={styles.bookingHeaderTitle}>Payment Summary</span>
@@ -379,7 +502,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
 
                   <div className={styles.priceList}>
                     <div className={styles.priceRow}>
-                      <span>Proposed Fee</span>
+                      <span>Consultation Fee</span>
                       <strong>{data.sessionDetails.proposedPrice}</strong>
                     </div>
                     <div className={styles.priceRow}>
@@ -392,12 +515,20 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                     <span>Total Payout</span>
                     <strong>{data.sessionDetails.proposedPrice}</strong>
                   </div>
+
+                  <SecondaryCTA
+                    label="Download Summary PDF"
+                    showArrow={false}
+                    leadingIcon={<Download size={14} aria-hidden="true" />}
+                    onClick={() => window.print()}
+                    className={styles.sidebarInvoiceBtn}
+                  />
                 </div>
 
                 <div className={styles.bookingFooter} aria-hidden="true" />
               </div>
 
-              {/* Card 2: Manage Request */}
+              {/* Manage Request Card */}
               {requestStatus !== "declined" ? (
                 <div className={styles.bookingBox}>
                   <div className={styles.bookingHeader}>
@@ -502,7 +633,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                 </div>
               ) : null}
 
-              {/* Card 3: Need Help? */}
+              {/* Need Assistance Box */}
               <div className={styles.bookingBox}>
                 <div className={styles.bookingHeader}>
                   <span className={styles.bookingHeaderTitle}>Need Assistance?</span>

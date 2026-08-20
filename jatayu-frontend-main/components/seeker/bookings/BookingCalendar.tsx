@@ -27,6 +27,7 @@ import {
   savePokeState,
   type CalendarBooking,
 } from "@/lib/seekerDashboard";
+import { fetchSeekerBookings, toCalendarBooking } from "@/lib/seekerBookingApi";
 import styles from "./BookingCalendar.module.css";
 
 const CONSULTATION_ICONS: Record<ConsultationType, typeof MessageSquare> = {
@@ -118,9 +119,14 @@ function formatRangeLabel(days: Date[]): string {
 interface PendingCardPokeBoxProps {
   bookingId: string;
   placedDaysAgo?: number;
+  createdAt?: number | string;
 }
 
-const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({ bookingId, placedDaysAgo = 0 }) => {
+const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({
+  bookingId,
+  placedDaysAgo = 0,
+  createdAt,
+}) => {
   const [pokeState, setPokeState] = useState<{
     count: number;
     lastPokedAt: number | null;
@@ -145,23 +151,42 @@ const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({ bookingId, plac
     return () => clearInterval(interval);
   }, []);
 
-  const isOneHourPassed = placedDaysAgo > 0;
+  // Determine elapsed time since booking placement
+  const bookingTimeMs = createdAt
+    ? typeof createdAt === "string"
+      ? new Date(createdAt).getTime()
+      : createdAt
+    : Date.now() - placedDaysAgo * 24 * 60 * 60 * 1000;
+
+  const fourHoursMs = 4 * 60 * 60 * 1000;
+  const timeSinceCreationMs = currentTime - bookingTimeMs;
+  const isInitialDelayPassed = timeSinceCreationMs >= fourHoursMs || placedDaysAgo > 0;
+  const remainingInitialMs = Math.max(0, fourHoursMs - timeSinceCreationMs);
+
   const cooldownDuration = 4 * 60 * 60 * 1000;
-  const isCooldownActive = isMounted && pokeState.lastPokedAt !== null && (currentTime - pokeState.lastPokedAt) < cooldownDuration;
-  const remainingCooldownMs = pokeState.lastPokedAt !== null ? Math.max(0, cooldownDuration - (currentTime - pokeState.lastPokedAt)) : 0;
+  const isCooldownActive =
+    isMounted &&
+    pokeState.lastPokedAt !== null &&
+    currentTime - pokeState.lastPokedAt < cooldownDuration;
+
+  const remainingCooldownMs =
+    pokeState.lastPokedAt !== null
+      ? Math.max(0, cooldownDuration - (currentTime - pokeState.lastPokedAt))
+      : 0;
 
   const formatRemainingTime = (ms: number): string => {
     const totalSecs = Math.floor(ms / 1000);
     const hrs = Math.floor(totalSecs / 3600);
     const mins = Math.floor((totalSecs % 3600) / 60);
     const secs = totalSecs % 60;
-    return `${hrs}h ${mins}m ${secs}s`;
+    if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
+    return `${mins}m ${secs}s`;
   };
 
   const handlePoke = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!isOneHourPassed || pokeState.count >= 2 || isCooldownActive) return;
+    if (!isInitialDelayPassed || pokeState.count >= 2 || isCooldownActive) return;
 
     const nextCount = pokeState.count + 1;
     const now = Date.now();
@@ -171,12 +196,17 @@ const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({ bookingId, plac
     });
     savePokeState(bookingId, nextCount, now);
   };
+
   return (
     <div className={styles.pokeForm} onClick={(e) => e.stopPropagation()}>
-      {!isOneHourPassed ? (
-        <button disabled className={styles.pokeBtnDisabled} title="Poke option will be active 1 hour after booking placement.">
+      {!isInitialDelayPassed ? (
+        <button
+          disabled
+          className={styles.pokeBtnDisabled}
+          title="Poke option becomes active 4 hours after booking placement."
+        >
           <Lock size={12} />
-          <span>Poke active in 1h</span>
+          <span>Poke active in {formatRemainingTime(remainingInitialMs)}</span>
         </button>
       ) : pokeState.count >= 2 ? (
         <button disabled className={styles.pokeBtnDisabled}>
@@ -246,6 +276,15 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
   }, []);
 
   const getConfirmedCountdown = (bookingId: string) => {
+    if (
+      typeof window !== "undefined" &&
+      (window.sessionStorage.getItem("fast_forward_timer") === "true" ||
+        window.location.search.includes("testJoin") ||
+        window.location.search.includes("action=join"))
+    ) {
+      return null;
+    }
+
     if (bookingId === "booking-1") {
       return null;
     }
@@ -313,12 +352,32 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
   }, [visibleStart, isLoaded]);
 
   const [pageStart, setPageStart] = useState(0);
+  const [apiBookings, setApiBookings] = useState<CalendarBooking[]>([]);
+
+  useEffect(() => {
+    let isSubscribed = true;
+    fetchSeekerBookings()
+      .then((res) => {
+        if (isSubscribed && res.bookings && res.bookings.length > 0) {
+          const mapped = res.bookings.map((b) => toCalendarBooking(b));
+          setApiBookings(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch seeker bookings for calendar:", err);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
 
   const upcomingBookings = useMemo(() => {
-    return UPCOMING_BOOKINGS.filter(
-      (booking) => booking.dayOffset >= 0 && booking.status !== "completed"
+    const source = apiBookings.length > 0 ? apiBookings : UPCOMING_BOOKINGS;
+    return source.filter(
+      (booking) => booking.status !== "completed"
     );
-  }, []);
+  }, [apiBookings]);
 
   const allBookingOffsets = useMemo(() => {
     const offsetsWithBookings = Array.from(
@@ -597,7 +656,7 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
                           <p className={styles.bookingType}>{booking.specialty}</p>
                         </Link>
                         <div className={styles.pendingDivider} />
-                        <PendingCardPokeBox bookingId={booking.id} placedDaysAgo={detail?.placedDaysAgo || 0} />
+                        <PendingCardPokeBox bookingId={booking.id} placedDaysAgo={detail?.placedDaysAgo || 0} createdAt={(booking as any).createdAt} />
                       </div>
                     );
                   })}

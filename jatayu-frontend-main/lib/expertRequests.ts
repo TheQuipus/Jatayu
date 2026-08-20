@@ -9,6 +9,8 @@ export type ClientRequest = {
   status: RequestStatus;
   urgent?: boolean;
   repeatClient?: boolean;
+  isPoked?: boolean;
+  pokeCount?: number;
   price: number;
   timeAgo: string;
   dateLabel: string;
@@ -17,9 +19,11 @@ export type ClientRequest = {
   createdAt: number;
   declineReason?: string;
   declineNotes?: string;
+  expertProfessionalTitle?: string;
+  rawItem?: Record<string, unknown>;
 };
 
-export type RequestStatusFilter = "all" | RequestStatus;
+export type RequestStatusFilter = "all" | "urgent" | RequestStatus;
 
 export type RequestSort = "newest" | "oldest";
 
@@ -86,6 +90,8 @@ export const INITIAL_CLIENT_REQUESTS: ClientRequest[] = [
     description:
       "Running a D2C skincare brand and need expert guidance on scaling paid acquisition while improving retention. Looking for actionable frameworks we can implement immediately.",
     status: "pending",
+    isPoked: true,
+    pokeCount: 1,
     price: 8500,
     timeAgo: "1d ago",
     dateLabel: "Dec 28, 2024",
@@ -101,6 +107,8 @@ export const INITIAL_CLIENT_REQUESTS: ClientRequest[] = [
     description:
       "Growing from 15 to 40 people and need help implementing an OKR framework that works for a hybrid product-engineering org.",
     status: "pending",
+    isPoked: true,
+    pokeCount: 1,
     price: 15000,
     timeAgo: "1d ago",
     dateLabel: "Jan 05, 2025",
@@ -225,3 +233,123 @@ export function getRequestCounts(requestsList?: ClientRequest[]) {
 export function formatRequestPrice(amount: number): string {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
+
+export function isRequestPoked(request: ClientRequest): boolean {
+  if (request.isPoked) return true;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = sessionStorage.getItem(`poke_state_${request.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.count && parsed.count > 0) return true;
+      }
+    } catch {
+      // ignore JSON parse error
+    }
+  }
+  return false;
+}
+
+export type FetchExpertRequestsParams = {
+  status?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+};
+
+export async function fetchExpertRequests(params: FetchExpertRequestsParams = {}) {
+  const { getExpertRequests } = await import("@/lib/api");
+
+  try {
+    const response = await getExpertRequests({
+      status: params.status || "all",
+      page: params.page || 1,
+      limit: params.limit || 20,
+      sort: params.sort || "newest",
+    });
+
+    saveStoredRequests(response.requests);
+    return response;
+  } catch {
+    // Fallback to local stored requests if API is unreachable
+    const allStored = getStoredRequests();
+    const statusFilter = params.status || "all";
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+    const sort = params.sort || "newest";
+
+    let filtered =
+      statusFilter === "all"
+        ? [...allStored]
+        : statusFilter === "urgent"
+        ? allStored.filter((r) => Boolean(r.urgent))
+        : allStored.filter((r) => r.status === statusFilter);
+
+    if (sort === "oldest") {
+      filtered.sort((a, b) => a.createdAt - b.createdAt);
+    } else {
+      filtered.sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    const total = filtered.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const paginatedRequests = filtered.slice(startIndex, startIndex + limit);
+
+    return {
+      requests: paginatedRequests,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      counts: {
+        all: allStored.length,
+        urgent: allStored.filter((r) => Boolean(r.urgent)).length,
+        new: allStored.filter((r) => r.status === "new").length,
+        pending: allStored.filter((r) => r.status === "pending").length,
+        accepted: allStored.filter((r) => r.status === "accepted").length,
+        declined: allStored.filter((r) => r.status === "declined").length,
+      },
+    };
+  }
+}
+
+export async function updateRequestStatusAsync(
+  requestId: string,
+  newStatus: RequestStatus,
+  declineReason?: string,
+  declineNotes?: string
+): Promise<ClientRequest[]> {
+  const { updateExpertRequestStatusApi, getExpertRequests } = await import("@/lib/api");
+
+  try {
+    await updateExpertRequestStatusApi(requestId, newStatus, declineReason, declineNotes);
+    const fresh = await getExpertRequests({ status: "all", page: 1, limit: 20, sort: "newest" });
+    if (fresh.requests && fresh.requests.length > 0) {
+      saveStoredRequests(fresh.requests);
+      return fresh.requests;
+    }
+  } catch {
+    // ignore backend error on offline/standalone mode
+  }
+
+  return updateStoredRequestStatus(requestId, newStatus, declineReason, declineNotes);
+}
+
+export async function acceptExpertBookingRequest(bookingId: string): Promise<ClientRequest[]> {
+  const { submitExpertRequestDecision } = await import("@/lib/api");
+
+  try {
+    await submitExpertRequestDecision(bookingId, { decision: "accepted" });
+  } catch {
+    // ignore backend error on offline/standalone mode
+  }
+
+  return updateStoredRequestStatus(bookingId, "accepted");
+}
+
+

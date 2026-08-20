@@ -231,6 +231,12 @@
   align-items: center;
   justify-content: center;
   background: radial-gradient(circle, #252830 0%, #0d0f14 100%);
+  overflow: hidden;
+}
+
+.pipImage {
+  object-fit: cover;
+  object-position: center top;
 }
 
 .pipLabel {
@@ -648,6 +654,9 @@
   letter-spacing: 0.04em;
   color: var(--scorpion);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
 }
 
 .transcriptSpeakerYou {

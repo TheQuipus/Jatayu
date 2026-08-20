@@ -2,17 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { XCircle, X } from "lucide-react";
+import { X, XCircle, AlertTriangle } from "lucide-react";
 import { type ClientRequest } from "@/lib/expertRequests";
 import ContinueButton from "@/components/ui/ContinueButton";
+import SecondaryCTA from "@/components/ui/SecondaryCTA";
 import styles from "./DeclineRequestModal.module.css";
 
 const DECLINE_REASONS = [
-  "Scheduling Conflict / Not Available",
-  "Out of Scope / Outside Expertise",
-  "Budget / Fee Mismatch",
-  "Short Notice / Insufficient Lead Time",
-  "Other Reason",
+  "Not Available",
+  "Outside Expertise",
+  "Out of Scope",
 ];
 
 interface DeclineRequestModalProps {
@@ -28,7 +27,7 @@ export default function DeclineRequestModal({
 }: DeclineRequestModalProps) {
   const [selectedReason, setSelectedReason] = useState<string>("");
   const [customNotes, setCustomNotes] = useState<string>("");
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
@@ -59,10 +58,14 @@ export default function DeclineRequestModal({
     setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmitDecline = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedReason) {
-      setError("Please select a reason for declining this request.");
+      setError("Please select a reason for declining.");
+      return;
+    }
+    if (!customNotes.trim()) {
+      setError("Please enter a note for the client.");
       return;
     }
     setError("");
@@ -79,10 +82,12 @@ export default function DeclineRequestModal({
       }}
     >
       <div className={styles.modalContainer}>
-        {/* Header matching ConfirmModal style */}
+        {/* Header */}
         <div className={styles.modalHeader}>
-          <span className={styles.modalHeaderTitle}>DECLINE REQUEST</span>
-          <span className={styles.modalHeaderDots} />
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <XCircle size={18} />
+            <span className={styles.modalHeaderTitle}>DECLINE REQUEST</span>
+          </div>
           <button
             type="button"
             className={styles.closeBtn}
@@ -94,19 +99,25 @@ export default function DeclineRequestModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit}>
+        <form className={styles.modalForm} onSubmit={handleSubmitDecline}>
           <div className={styles.modalBody}>
             <div className={styles.iconWrapper}>
               <XCircle size={26} />
             </div>
 
             <p className={styles.modalIntroText}>
-              Are you sure you want to decline <strong>"{request.title}"</strong>?
-              <span className={styles.clientNameSpan}>
-                Client: <strong>{request.clientName}</strong>
-              </span>
+              Decline request from <strong>{request.clientName}</strong>
             </p>
 
+            {/* Warning Notice Box */}
+            <div className={styles.modalWarningNotice}>
+              <AlertTriangle size={16} className={styles.warningIcon} />
+              <p>
+                Declining requests will degrade your profile rating. We strongly suggest to reschedule the session instead.
+              </p>
+            </div>
+
+            {/* Reasons Selection */}
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>
                 Reason for declining <span className={styles.requiredStar}>*</span>
@@ -118,7 +129,9 @@ export default function DeclineRequestModal({
                     <button
                       key={reason}
                       type="button"
-                      className={`${styles.reasonRadioCard} ${isSelected ? styles.reasonRadioCardActive : ""}`}
+                      className={`${styles.reasonRadioCard} ${
+                        isSelected ? styles.reasonRadioCardActive : ""
+                      }`}
                       onClick={() => handleToggleReason(reason)}
                     >
                       <span>{reason}</span>
@@ -126,43 +139,48 @@ export default function DeclineRequestModal({
                   );
                 })}
               </div>
-              {error && <p className={styles.formErrorText}>{error}</p>}
             </div>
 
+            {/* Custom Notes Input */}
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>
-                Additional notes for client <span className={styles.optionalText}>(optional)</span>
+                Note <span className={styles.requiredStar}>*</span>
               </label>
               <textarea
                 className={styles.formTextarea}
-                placeholder="Share any additional details or suggest an alternative..."
-                rows={3}
+                placeholder="Share your note for the client..."
+                rows={2}
                 value={customNotes}
-                onChange={(e) => setCustomNotes(e.target.value)}
+                onChange={(e) => {
+                  setCustomNotes(e.target.value);
+                  setError("");
+                }}
+                required
               />
             </div>
 
+            {error && <p className={styles.errorMessage}>{error}</p>}
+
             {/* Action buttons */}
             <div className={styles.modalActions}>
-              <button
+              <SecondaryCTA
                 type="button"
-                className={styles.cancelBtn}
+                label="CANCEL"
+                showArrow={false}
                 onClick={onClose}
-              >
-                Cancel
-              </button>
+                className={styles.cancelBtn}
+              />
               <ContinueButton
                 type="submit"
-                label="DECLINE"
-                disabled={!selectedReason}
+                label="CONFIRM & DECLINE"
+                showArrow={false}
                 className={styles.confirmBtn}
               />
             </div>
           </div>
-        </form>
 
-        {/* Footer matching ConfirmModal style */}
-        <div className={styles.modalFooter} aria-hidden="true" />
+          <div className={styles.modalFooter} aria-hidden="true" />
+        </form>
       </div>
     </div>,
     document.body

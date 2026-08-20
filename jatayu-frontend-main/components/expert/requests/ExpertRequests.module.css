@@ -157,9 +157,12 @@
 .summaryGrid,
 .kpiRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-wrap: nowrap;
+  gap: 12px;
   width: 100%;
+  overflow-x: auto;
+  padding: 12px 6px;
+  margin: -12px -6px;
 }
 
 .summaryGrid>*,
@@ -175,10 +178,10 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  width: 220px;
-  max-width: 100%;
-  min-height: 140px;
-  padding: 18px 20px;
+  flex: 1 1 0px;
+  min-width: 130px;
+  min-height: 155px;
+  padding: 16px;
   border-radius: 0;
   text-align: left;
   cursor: pointer;
@@ -188,7 +191,7 @@
   border: 1px solid var(--mercury);
   clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
   -webkit-clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, filter 0.2s ease, color 0.2s ease;
 }
 
 .summaryHeader,
@@ -198,6 +201,7 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  padding-left: 5px;
 }
 
 .summaryLabel,
@@ -236,13 +240,15 @@
 .summaryCard:hover:not(.summaryCardActive),
 .kpiCard:hover:not(.kpiCardActive) {
   background: var(--seashell);
+  border-color: color-mix(in srgb, var(--ink) 25%, var(--mercury));
+  filter: drop-shadow(0 8px 16px color-mix(in srgb, var(--ink) 14%, transparent));
 }
 
 .summaryCardActive,
 .kpiCardActive {
-  background: var(--bunker) !important;
+  background: #3E4044 !important;
   border-color: var(--bunker) !important;
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--bunker) 22%, transparent) !important;
+  filter: drop-shadow(0 10px 22px color-mix(in srgb, var(--bunker) 28%, transparent)) !important;
   cursor: pointer;
 }
 
@@ -428,8 +434,13 @@
 }
 
 .requestCardNew {
-  border-color: color-mix(in srgb, var(--pomegranate) 35%, var(--mercury));
-  box-shadow: 0 2px 12px color-mix(in srgb, var(--pomegranate) 6%, transparent);
+  /* Default card styling without custom border color or shadow */
+}
+
+.requestCardPoked {
+  border-color: color-mix(in srgb, var(--pomegranate) 45%, var(--mercury));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pomegranate) 3%, var(--white)) 0%, var(--white) 100%);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--pomegranate) 10%, transparent);
 }
 
 .cardHeader {
@@ -437,19 +448,71 @@
   grid-template-columns: auto 1fr auto;
   gap: 16px;
   align-items: start;
+  position: relative;
 }
 
-.avatarWrapper {
+.avatarContainer {
   position: relative;
   flex-shrink: 0;
   width: 115px;
   height: 140px;
+}
+
+.avatarWrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
   background: var(--gallery);
   border: 1px solid var(--mercury);
   clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
   -webkit-clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(11, 13, 20, 0.04);
+}
+
+.avatarPokedBadge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--white);
+  border: 1.5px solid color-mix(in srgb, var(--pomegranate) 40%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--pomegranate) 25%, transparent);
+  z-index: 10;
+  animation: pokePulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pokedPicture {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.pokedEmojiImg {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  display: block;
+}
+
+@keyframes pokePulse {
+
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-3px) scale(1.08);
+  }
 }
 
 .clientAvatar {
@@ -525,6 +588,13 @@
   color: var(--scorpion);
 }
 
+.pokedText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--dove-gray);
+}
+
 .requestTitle {
   margin: 2px 0 0;
   font-family: var(--font-display);
@@ -535,11 +605,15 @@
 }
 
 .requestDescription {
-  margin: 4px 0 0;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.55;
   color: var(--dove-gray);
+}
+
+.requestPrefix {
+  font-weight: 600;
+  color: var(--scorpion);
 }
 
 .priceMeta {
@@ -579,7 +653,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 16px;
   color: var(--dove-gray);
 }
 
@@ -588,7 +662,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 25px;
   padding-top: 16px;
   border-top: 1px solid var(--mercury);
 }

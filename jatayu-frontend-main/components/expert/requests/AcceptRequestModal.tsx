@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { CheckCircle2, X, CalendarDays, Clock, Video, AlertCircle } from "lucide-react";
 import { type ClientRequest, formatRequestPrice } from "@/lib/expertRequests";
 import ContinueButton from "@/components/ui/ContinueButton";
+import SecondaryCTA from "@/components/ui/SecondaryCTA";
 import styles from "./AcceptRequestModal.module.css";
 
 interface AcceptRequestModalProps {
@@ -56,7 +57,6 @@ export default function AcceptRequestModal({
         {/* Header matching ConfirmModal style */}
         <div className={styles.modalHeader}>
           <span className={styles.modalHeaderTitle}>ACCEPT REQUEST</span>
-          <span className={styles.modalHeaderDots} />
           <button
             type="button"
             className={styles.closeBtn}
@@ -81,7 +81,14 @@ export default function AcceptRequestModal({
             <span className={styles.clientNameLabel}>
               Client: <strong>{request.clientName}</strong>
             </span>
-            <h4 className={styles.summaryTitle}>{request.title}</h4>
+            <h4 className={styles.summaryTitle}>
+              <span className={styles.summaryPrefix}>Subject: </span>
+              {request.title}
+            </h4>
+            <p className={styles.summaryDescription}>
+              <span className={styles.summaryPrefix}>Seeking advice on: </span>
+              {request.description}
+            </p>
             <div className={styles.summaryGrid}>
               <div className={styles.summaryItem}>
                 <CalendarDays size={14} />
@@ -111,16 +118,17 @@ export default function AcceptRequestModal({
 
           {/* Action buttons */}
           <div className={styles.modalActions}>
-            <button
+            <SecondaryCTA
               type="button"
-              className={styles.cancelBtn}
+              label="CANCEL"
+              showArrow={false}
               onClick={onClose}
-            >
-              Cancel
-            </button>
+              className={styles.cancelBtn}
+            />
             <ContinueButton
               type="button"
               label="CONFIRM & ACCEPT"
+              showArrow={false}
               onClick={() => onConfirm(request.id)}
               className={styles.confirmBtn}
             />

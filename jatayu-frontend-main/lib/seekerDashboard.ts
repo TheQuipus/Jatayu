@@ -22,6 +22,7 @@ export type CalendarBooking = {
   startMinute: number;
   durationMinutes: number;
   status: "confirmed" | "pending" | "cancelled" | "completed";
+  createdAt?: string | number;
 };
 
 export type BookingAttachment = {
@@ -467,7 +468,38 @@ export const BOOKING_DETAILS: BookingDetail[] = [
 ];
 
 export function getBookingById(id: string): BookingDetail | undefined {
-  return BOOKING_DETAILS.find((booking) => booking.id === id);
+  const found = BOOKING_DETAILS.find((booking) => booking.id === id);
+  if (found) return found;
+
+  return {
+    id,
+    referenceId: `BK-${id.slice(0, 5).toUpperCase()}`,
+    expert: featuredExperts[0],
+    specialty: "Consultation",
+    dayOffset: 0,
+    startHour: 18,
+    startMinute: 30,
+    durationMinutes: 30,
+    status: "pending",
+    consultationType: "video",
+    consultationLabel: "1:1 Video Call",
+    placedOnLabel: "Recently",
+    placedDaysAgo: 0,
+    scheduledDateLabel: "Today",
+    scheduledTimeLabel: "06:30 PM - 07:00 PM (IST)",
+    durationLabel: "30 Minutes",
+    paymentStatus: "paid",
+    consultationFee: 500,
+    platformFee: 0,
+    gst: 90,
+    walletApplied: 0,
+    totalPaid: 590,
+    invoiceId: `JTY-${id.slice(0, 8).toUpperCase()}`,
+    calendarUrl: "#",
+    subject: "Consultation Session",
+    context: "Session details",
+    attachments: [],
+  };
 }
 
 export function getBookingDetailHref(id: string): string {
@@ -582,3 +614,34 @@ export function savePokeState(bookingId: string, count: number, lastPokedAt: num
     console.error("Failed to save poke state to sessionStorage", e);
   }
 }
+
+export async function getSeekerBookingsAsync(params?: { status?: string; page?: number; limit?: number; sort?: string }) {
+  const { fetchSeekerBookings } = await import("./seekerBookingApi");
+  try {
+    return await fetchSeekerBookings(params);
+  } catch {
+    const status = params?.status || "all";
+    let filtered = status === "all" ? UPCOMING_BOOKINGS : UPCOMING_BOOKINGS.filter((b) => b.status === status);
+    return {
+      bookings: filtered as any[],
+      pagination: {
+        page: params?.page || 1,
+        limit: params?.limit || 20,
+        total: filtered.length,
+        totalPages: 1,
+      },
+    };
+  }
+}
+
+export async function getSeekerBookingDetailAsync(bookingId: string) {
+  const { fetchBooking } = await import("./seekerBookingApi");
+  try {
+    const res = await fetchBooking(bookingId);
+    if (res) return res;
+  } catch {
+    // Fallback to local mock data
+  }
+  return getBookingById(bookingId);
+}
+
