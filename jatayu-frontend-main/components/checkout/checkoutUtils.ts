@@ -15,48 +15,20 @@ export function getPaymentMethodLabel(method: PaymentMethodId | null): string {
   return PAYMENT_METHODS.find((item) => item.id === method)?.title ?? "Not selected";
 }
 
+import { transformTextWithAi, getAiImprovementHint } from "@/lib/aiTextImprovement";
+
 export function getImprovedContextText(
   styleId: ContextImprovementStyleId,
   current: string
 ): string {
-  const trimmed = current.trim();
-  if (!trimmed) return current;
-
-  const profPrefix = "I am seeking expert guidance on the following challenge:\n";
-  const casualPrefix = "Hey! I'd love help with this:\n";
-
-  let baseText = trimmed;
-  if (baseText.startsWith(profPrefix)) {
-    baseText = baseText.slice(profPrefix.length).trim();
-  } else if (baseText.startsWith(casualPrefix)) {
-    baseText = baseText.slice(casualPrefix.length).trim();
-  }
-
-  if (styleId === "professional") {
-    return `${profPrefix}${baseText}`;
-  }
-
-  if (styleId === "casual") {
-    return `${casualPrefix}${baseText}`;
-  }
-
-  const sentences = baseText
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-
-  return sentences.slice(0, 2).join(" ");
+  return transformTextWithAi(current, styleId);
 }
 
 export function getContextImprovementHint(
   styleId: ContextImprovementStyleId | null,
   currentText: string
 ): string {
-  if (!styleId || !currentText.trim()) {
-    return DEFAULT_CONTEXT_IMPROVE_HINT;
-  }
-
-  return getImprovedContextText(styleId, currentText.trim());
+  return getAiImprovementHint(styleId, currentText);
 }
 
 export function maskCheckoutPhone(phone: string): string {

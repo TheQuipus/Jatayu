@@ -85,8 +85,14 @@ export default function AccountStatusStep({
 
         <ContinueButton
           type="button"
-          label={accountStatus.continueLabel}
-          onClick={onContinue}
+          label={phase === "submitted" || phase === "approved" ? "Go to dashboard" : accountStatus.continueLabel}
+          onClick={() => {
+            if (phase === "submitted" || phase === "approved") {
+              window.location.assign("/expert/dashboard/");
+              return;
+            }
+            onContinue();
+          }}
           className={styles.continueBtn}
           arrowSize={16}
         />

@@ -14,7 +14,7 @@ export function getExpertProfile(): ExtendedExpertProfileData {
   if (typeof window === "undefined") {
     return DEFAULT_EXPERT_PROFILE;
   }
-  const data = localStorage.getItem(STORAGE_KEY);
+  const data = sessionStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY);
   if (!data) {
     return DEFAULT_EXPERT_PROFILE;
   }
@@ -29,10 +29,13 @@ export function saveExpertProfile(profile: Partial<ExtendedExpertProfileData>): 
   if (typeof window === "undefined") return;
   const current = getExpertProfile();
   const updated = { ...current, ...profile };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  const serialized = JSON.stringify(updated);
+  sessionStorage.setItem(STORAGE_KEY, serialized);
+  localStorage.setItem(STORAGE_KEY, serialized);
 }
 
 export function clearExpertProfile(): void {
   if (typeof window === "undefined") return;
+  sessionStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(STORAGE_KEY);
 }

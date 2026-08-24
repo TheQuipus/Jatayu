@@ -132,9 +132,8 @@ export default function ForgotPasswordForm({
                 </label>
                 <div className={register.inputFieldWrap}>
                   <div
-                    className={`${register.inputWithIconWrap} ${
-                      emailError ? register.inputWithIconWrapError : ""
-                    }`}
+                    className={`${register.inputWithIconWrap} ${emailError ? register.inputWithIconWrapError : ""
+                      }`}
                   >
                     <Mail className={register.inputInnerIcon} size={16} />
                     <input
@@ -160,14 +159,12 @@ export default function ForgotPasswordForm({
                 type="submit"
                 label={isSubmitting ? "Sending..." : "Send Reset Link"}
                 disabled={!canSubmit || isSubmitting}
-                className={`${formStyles.registerSubmitBtn} ${
-                  canSubmit && !isSubmitting ? "" : formStyles.registerSubmitBtnInactive
-                }`}
+                className={`${formStyles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : formStyles.registerSubmitBtnInactive
+                  }`}
                 arrowSize={16}
               />
 
-              <p className={register.authToggle} style={{ marginTop: 12 }}>
-                Remembered your password?{" "}
+              <p className={register.authToggle}>
                 <Link href={loginHref} className={register.authToggleBtn}>
                   Back to Login
                 </Link>

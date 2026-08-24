@@ -96,9 +96,11 @@ function isPdfFileUrl(url: string, fileName?: string): boolean {
   return Boolean(fileName && /\.pdf$/i.test(fileName));
 }
 
+import { generateUUID } from "@/lib/uuid";
+
 function certificatesToEntries(certs: ExpertCertificate[]): CertificateEntry[] {
   if (certs.length === 0) {
-    return [{ id: crypto.randomUUID(), name: "", issuer: "" }];
+    return [{ id: generateUUID(), name: "", issuer: "" }];
   }
   return certs.map((cert) => ({
     id: cert.id,
@@ -302,14 +304,14 @@ export default function CredentialsStep({
   const handleAddCertificate = () => {
     setCertificateEntries((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), name: "", issuer: "" },
+      { id: generateUUID(), name: "", issuer: "" },
     ]);
   };
 
   const handleRemoveCertificate = (id: string) => {
     setCertificateEntries((prev) =>
       prev.length === 1
-        ? [{ id: crypto.randomUUID(), name: "", issuer: "" }]
+        ? [{ id: generateUUID(), name: "", issuer: "" }]
         : prev.filter((entry) => entry.id !== id),
     );
   };

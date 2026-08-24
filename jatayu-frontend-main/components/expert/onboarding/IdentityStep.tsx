@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
@@ -85,16 +85,20 @@ export default function IdentityStep({
   onJumpToStep,
 }: IdentityStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const taglineInputRef = useRef<HTMLTextAreaElement>(null);
   const [photoError, setPhotoError] = useState("");
   const [aiLoadingField, setAiLoadingField] = useState<"tagLine" | "bio" | null>(null);
   const [aiError, setAiError] = useState("");
   const [aiNotice, setAiNotice] = useState("");
   const variantIndexRef = useRef({ tagLine: 0, bio: 0 });
 
+  const safeTagLine = tagLine ?? "";
+  const safeBio = bio ?? "";
+  const safeTitle = professionalTitle ?? "";
   const maxChars = 160;
   const maxPhotoBytes = 5 * 1024 * 1024;
-  const tagLineCharCount = tagLine.length;
-  const introCharCount = bio.length;
+  const tagLineCharCount = safeTagLine.length;
+  const introCharCount = safeBio.length;
   const isObjectUrl =
     profilePhotoSrc.startsWith("blob:") || profilePhotoSrc.startsWith("data:");
   const isRemotePhoto =
@@ -102,9 +106,9 @@ export default function IdentityStep({
     profilePhotoSrc.startsWith("https://") ||
     profilePhotoSrc.startsWith("http://");
   const canContinue =
-    professionalTitle.trim().length > 0 &&
-    tagLine.trim().length > 0 &&
-    bio.trim().length > 0;
+    safeTitle.trim().length > 0 &&
+    safeTagLine.trim().length > 0 &&
+    safeBio.trim().length > 0;
 
   useEffect(() => {
     onStepCompleteChange?.(4, canContinue);
@@ -226,10 +230,23 @@ export default function IdentityStep({
 
     if (field === "tagLine" && result.tagLine) {
       onTagLineChange(result.tagLine);
+      setTimeout(() => {
+        if (taglineInputRef.current) {
+          taglineInputRef.current.focus();
+          taglineInputRef.current.selectionStart = taglineInputRef.current.value.length;
+          taglineInputRef.current.selectionEnd = taglineInputRef.current.value.length;
+        }
+      }, 0);
       return;
     }
     if (field === "bio" && result.bio) {
       onBioChange(result.bio);
+    }
+  };
+
+  const handleTitleBlur = () => {
+    if (safeTitle.trim().length > 0 && safeTagLine.trim().length === 0) {
+      void handleSuggestField("tagLine");
     }
   };
 
@@ -348,6 +365,7 @@ export default function IdentityStep({
                 type="text"
                 value={professionalTitle ?? ""}
                 onChange={(e) => onProfessionalTitleChange(e.target.value)}
+                onBlur={handleTitleBlur}
                 className={styles.textField}
                 placeholder="e.g. Senior Software Engineer"
                 autoComplete="off"
@@ -360,6 +378,7 @@ export default function IdentityStep({
               </label>
               <div className={styles.textareaWrapper}>
                 <textarea
+                  ref={taglineInputRef}
                   id="tagline-input"
                   value={tagLine ?? ""}
                   onChange={(e) => onTagLineChange(e.target.value.slice(0, maxChars))}

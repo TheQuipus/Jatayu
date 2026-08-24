@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Check, FileText, Lightbulb, Upload, X } from "lucide-react";
 import type { PortfolioSampleFile } from "@/lib/expertApplicationSubmission";
+import { generateUUID } from "@/lib/uuid";
 import styles from "./PortfolioSamplesSection.module.css";
 
 type PortfolioSamplesSectionProps = {
@@ -88,7 +89,7 @@ export default function PortfolioSamplesSection({
   const handleAddFile = async (file: File) => {
     if (!isAcceptedFile(file) || file.size > MAX_FILE_BYTES) return;
 
-    const id = crypto.randomUUID();
+    const id = generateUUID();
     const url = await readFileAsDataUrl(file);
     const nextSample: PortfolioSampleFile = {
       id,

@@ -70,7 +70,7 @@ export function getStoredSeekerProfile(): SeekerProfileData {
   }
 
   try {
-    const raw = localStorage.getItem(SEEKER_PROFILE_STORAGE_KEY);
+    const raw = sessionStorage.getItem(SEEKER_PROFILE_STORAGE_KEY) || localStorage.getItem(SEEKER_PROFILE_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as SeekerProfileData;
       return {
@@ -103,7 +103,9 @@ export function saveStoredSeekerProfile(data: Partial<SeekerProfileData>): void 
     ...current,
     ...data,
   };
-  localStorage.setItem(SEEKER_PROFILE_STORAGE_KEY, JSON.stringify(updated));
+  const serialized = JSON.stringify(updated);
+  sessionStorage.setItem(SEEKER_PROFILE_STORAGE_KEY, serialized);
+  localStorage.setItem(SEEKER_PROFILE_STORAGE_KEY, serialized);
   if (data.category) {
     sessionStorage.setItem("jatayu_seeker_category", data.category);
   }

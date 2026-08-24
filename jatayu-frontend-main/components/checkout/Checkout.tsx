@@ -71,6 +71,7 @@ import {
   getStoredSeekerProfile,
   SEEKER_PROFILE_UPDATED_EVENT,
 } from "@/lib/seekerProfileApi";
+import { isDuplicateRegistrationMessage } from "@/lib/expertOnboardingStatus";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import {
   buildScheduledStartAt,
@@ -456,6 +457,14 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         setToken(`seeker_token_${response?.seekerId || Date.now()}`);
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Registration failed.";
+      if (isDuplicateRegistrationMessage(message)) {
+        setBookingError(`${message} Please log in to your existing account.`);
+        setLoginEmail(registerEmail.trim());
+        setIsAuthLogin(true);
+        setShowAuthModal(true);
+        return;
+      }
       console.warn("Seeker registration API notice:", err);
       if (!getToken()) {
         setToken(`seeker_token_${Date.now()}`);
@@ -648,11 +657,14 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         userPhone: userPhoneNumber,
       });
       let verified = await verifyBookingPayment(created.booking.id, checkoutResult);
-      for (let attempt = 0; verified.status === "payment_verified" && attempt < 10; attempt += 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 1500));
-        verified = await fetchBooking(created.booking.id);
+      for (let attempt = 0; verified.status === "payment_verified" && attempt < 5; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        const latest = await fetchBooking(created.booking.id).catch(() => null);
+        if (latest) verified = latest;
       }
-      if (verified.status !== "confirmed") throw new Error("Payment is being confirmed. Please check My Bookings shortly.");
+      if (verified.status !== "confirmed" && verified.status !== "payment_verified") {
+        throw new Error("Payment verification failed. Please check My Bookings.");
+      }
       setConfirmedBookingId(verified.id);
       setBookingConfirmed(true);
       clearBookingIdempotencyKey(fingerprint);

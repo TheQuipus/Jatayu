@@ -15,46 +15,12 @@ import {
   NEED_STEP_CHIPS,
   getSeekerOutcomeDescription,
 } from "./seekerOutcomeOptions";
-
-const IMPROVEMENT_STYLES = [
-  { id: "professional", label: "More Professional" },
-  { id: "casual", label: "Casual" },
-  { id: "concise", label: "More Concise" },
-] as const;
-
-type ImprovementStyleId = (typeof IMPROVEMENT_STYLES)[number]["id"];
-
-const DEFAULT_IMPROVE_HINT = "Choose your Goal or describe your challenges and questions";
-
-function getImprovedText(styleId: ImprovementStyleId, current: string): string {
-  const trimmed = current.trim();
-  if (!trimmed) return current;
-
-  const profPrefix = "I am seeking expert guidance on the following challenge:\n";
-  const casualPrefix = "Hey! I'd love help with this:\n";
-
-  let baseText = trimmed;
-  if (baseText.startsWith(profPrefix)) {
-    baseText = baseText.slice(profPrefix.length).trim();
-  } else if (baseText.startsWith(casualPrefix)) {
-    baseText = baseText.slice(casualPrefix.length).trim();
-  }
-
-  if (styleId === "professional") {
-    return `${profPrefix}${baseText}`;
-  }
-
-  if (styleId === "casual") {
-    return `${casualPrefix}${baseText}`;
-  }
-
-  const sentences = baseText
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  return sentences.slice(0, 2).join(" ");
-}
+import {
+  AI_IMPROVEMENT_STYLES as IMPROVEMENT_STYLES,
+  type AiImprovementStyleId as ImprovementStyleId,
+  transformTextWithAi as getImprovedText,
+  getAiImprovementHint,
+} from "@/lib/aiTextImprovement";
 
 function getImprovementHint(
   styleId: ImprovementStyleId | null,
@@ -66,11 +32,7 @@ function getImprovementHint(
     : currentText;
 
   const targetText = userSuffix.trim() || currentText.trim();
-  if (!styleId || !targetText) {
-    return DEFAULT_IMPROVE_HINT;
-  }
-
-  return getImprovedText(styleId, targetText);
+  return getAiImprovementHint(styleId, targetText);
 }
 
 function NeedChipIcon({ chipId, isSelected }: { chipId: string; isSelected?: boolean }) {

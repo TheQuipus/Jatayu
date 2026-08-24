@@ -117,9 +117,8 @@ export default function BudgetStep({
               return (
                 <div
                   key={opt.id}
-                  className={`${cards.optionCard} ${clipped.clippedCard} ${
-                    isSelected ? `${cards.optionCardSelected} ${clipped.clippedCardSelected}` : ""
-                  }`}
+                  className={`${cards.optionCard} ${clipped.clippedCard} ${isSelected ? `${cards.optionCardSelected} ${clipped.clippedCardSelected}` : ""
+                    }`}
                 >
                   <ClippedCardBorder isSelected={isSelected} />
                   <SelectionCheckbox isSelected={isSelected} />
@@ -138,7 +137,7 @@ export default function BudgetStep({
                         <h3 className={`${cards.optionTitle} ${styles.optionTitle}`}>{opt.title}</h3>
                         <div className={styles.priceRow}>
                           <span className={styles.priceValue}>{opt.priceText}</span>
-                          <span className={styles.priceLabel}> / session</span>
+                          <span className={styles.priceLabel}>/min</span>
                         </div>
                         <p className={cards.optionDesc}>{opt.desc}</p>
                       </div>

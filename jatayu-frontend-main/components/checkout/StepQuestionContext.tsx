@@ -14,6 +14,7 @@ import {
   getImprovedContextText,
   getContextImprovementHint,
 } from "./checkoutUtils";
+import { generateAiSubject } from "@/lib/aiTextImprovement";
 import StepHeader from "./StepHeader";
 import styles from "./StepQuestionContext.module.css";
 
@@ -139,9 +140,17 @@ export default function StepQuestionContext({
     onContextChange(updatedText.slice(0, MAX_CONTEXT_LENGTH));
   };
 
+  const handleGenerateAiSubject = () => {
+    const generated = generateAiSubject(context, subject);
+    onSubjectChange(generated);
+  };
+
   const handleApplyContextImprovement = () => {
     if (!selectedContextImproveStyle || isImprovementApplied) return;
     handleContextImproveStyle(selectedContextImproveStyle);
+    if (!subject.trim() && context.trim()) {
+      onSubjectChange(generateAiSubject(context, ""));
+    }
     setIsImprovementApplied(true);
   };
 
@@ -153,9 +162,11 @@ export default function StepQuestionContext({
       />
 
       <div className={styles.questionStepSubject}>
-        <label htmlFor="booking-subject" className={styles.contextLabel}>
-          Subject / Topic
-        </label>
+        <div className={styles.subjectHeaderRow}>
+          <label htmlFor="booking-subject" className={styles.contextLabel}>
+            Subject / Topic
+          </label>
+        </div>
         <input
           id="booking-subject"
           type="text"

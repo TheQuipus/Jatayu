@@ -35,8 +35,9 @@
 }
 
 .accentWord {
-  color: var(--pomegranate);
+  color: #f16538;
   text-transform: uppercase;
+  font-weight: 800;
 }
 
 .pageSubtitle {
@@ -53,6 +54,36 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.saveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  border: none;
+  background: #f16538;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(241, 101, 56, 0.25);
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: #e05427;
+  transform: translateY(-1px);
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .savedBanner,

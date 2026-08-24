@@ -1,9 +1,12 @@
 import { getToken } from "@/lib/api";
+import { generateUUID } from "@/lib/uuid";
 import type { CalendarBooking, BookingDetail } from "@/lib/seekerDashboard";
 import type { ExpertiseTag } from "@/lib/experts";
 import type { ConsultationType } from "@/lib/booking";
+import { publicApiBase } from "@/lib/publicApiBase";
+import { parseUtcDate, formatUtcToLocalDate, formatUtcToLocalTime } from "@/lib/dateTimeUtils";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const BASE_URL = publicApiBase();
 
 export type BookingAvailability = { id: string; days: string[]; fromTime: string; toTime: string };
 export type BookingOptions = {
@@ -265,8 +268,8 @@ export async function fetchBooking(bookingId: string): Promise<SeekerBooking> {
 export const getSeekerBookingById = fetchBooking;
 
 export function toCalendarBooking(b: SeekerBooking): CalendarBooking {
-  const startDate = new Date(b.scheduledStartAt);
-  const endDate = new Date(b.scheduledEndAt);
+  const startDate = parseUtcDate(b.scheduledStartAt) || new Date();
+  const endDate = parseUtcDate(b.scheduledEndAt) || new Date(startDate.getTime() + 30 * 60000);
   const now = new Date();
 
   const dayOffset = Math.round(
@@ -316,20 +319,12 @@ export function toCalendarBooking(b: SeekerBooking): CalendarBooking {
 
 export function toBookingDetail(b: SeekerBooking): BookingDetail {
   const baseCalendar = toCalendarBooking(b);
-  const startDate = new Date(b.scheduledStartAt);
-  const createdAtDate = b.createdAt ? new Date(b.createdAt) : new Date();
+  const startDate = parseUtcDate(b.scheduledStartAt);
+  const createdAtDate = parseUtcDate(b.createdAt) || new Date();
 
-  const formattedDate = !isNaN(startDate.getTime())
-    ? startDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
-    : "TBD";
-
-  const formattedTime = !isNaN(startDate.getTime())
-    ? startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
-    : "TBD";
-
-  const placedOn = !isNaN(createdAtDate.getTime())
-    ? createdAtDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    : "Recently";
+  const formattedDate = formatUtcToLocalDate(startDate);
+  const formattedTime = formatUtcToLocalTime(startDate);
+  const placedOn = formatUtcToLocalDate(createdAtDate, { month: "short", day: "numeric", year: "numeric" });
 
   const placedDaysAgo = !isNaN(createdAtDate.getTime())
     ? Math.max(0, Math.floor((Date.now() - createdAtDate.getTime()) / (24 * 60 * 60 * 1000)))
@@ -427,7 +422,7 @@ export function getBookingIdempotencyKey(fingerprint: string): string {
   const storageKey = `booking-idempotency:${fingerprint}`;
   const existing = sessionStorage.getItem(storageKey);
   if (existing) return existing;
-  const key = `booking-${crypto.randomUUID()}`;
+  const key = `booking-${generateUUID()}`;
   sessionStorage.setItem(storageKey, key);
   return key;
 }

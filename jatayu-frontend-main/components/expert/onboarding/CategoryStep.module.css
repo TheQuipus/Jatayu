@@ -361,3 +361,31 @@
   flex-shrink: 0;
   color: var(--silver-chalice);
 }
+
+.customErrorMessage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: #FF3B30;
+  margin-top: 10px;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #FF3B30;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

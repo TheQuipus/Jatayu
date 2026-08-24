@@ -18,6 +18,7 @@ type LoginStepProps = {
   onRequiresOtp?: (data: { expertId: string; email: string; phone: string; fullName?: string }) => void;
   onSwitchToRegister?: () => void;
   registerHref?: string;
+  initialEmail?: string;
 };
 
 type FieldKey = "email" | "password";
@@ -57,8 +58,9 @@ export default function LoginStep({
   onRequiresOtp,
   onSwitchToRegister,
   registerHref = EXPERT_SIGNUP_HREF,
+  initialEmail = "",
 }: LoginStepProps) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState(emptyTouched);
@@ -161,38 +163,38 @@ export default function LoginStep({
             <label className={register.registerFieldLabel} htmlFor="loginPassword">
               Password
             </label>
-            <div className={inputWrapClass("password")}>
-              <Lock className={register.inputInnerIcon} size={16} />
-              <input
-                id="loginPassword"
-                type={showPassword ? "text" : "password"}
-                className={`${register.textFieldWithIcon} ${styles.textFieldWithToggle}`}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onBlur={() => markTouched("password")}
-                autoComplete="current-password"
-                aria-invalid={Boolean(fieldError("password"))}
-              />
-              <button
-                type="button"
-                className={styles.passwordToggle}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowPassword((prev) => !prev);
-                }}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                aria-pressed={showPassword}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+            <div className={register.inputFieldWrap}>
+              <div className={inputWrapClass("password")}>
+                <Lock className={register.inputInnerIcon} size={16} />
+                <input
+                  id="loginPassword"
+                  type={showPassword ? "text" : "password"}
+                  className={`${register.textFieldWithIcon} ${styles.textFieldWithToggle}`}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => markTouched("password")}
+                  autoComplete="current-password"
+                  aria-invalid={Boolean(fieldError("password"))}
+                />
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowPassword((prev) => !prev);
+                  }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {fieldError("password") && (
+                <span className={register.fieldErrorBelow}>{fieldError("password")}</span>
+              )}
             </div>
             <div className={styles.forgotPasswordRow}>
-              {fieldError("password") ? (
-                <span className={register.fieldErrorStatic}>{fieldError("password")}</span>
-              ) : (
-                <span />
-              )}
               <Link href="/forgot-password?role=expert" className={styles.forgotPasswordLink}>
                 Forgot Password?
               </Link>

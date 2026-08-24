@@ -194,6 +194,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
+  text-align: left;
+  align-self: flex-start;
   margin-bottom: 14px;
 }
 
@@ -206,6 +209,8 @@
   font-weight: 600;
   color: var(--white);
   margin: 0;
+  text-align: left;
+  align-self: flex-start;
 }
 
 .featuredHeaderMeta {

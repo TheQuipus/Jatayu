@@ -16,16 +16,16 @@ export const CONSULTATION_FORMATS = [
   },
   {
     id: "group",
-    title: "Group Session",
-    desc: "Join interactive group Q&A\nand live learning.",
+    title: "Live Chat",
+    desc: "Real-time live messaging and\ninteractive chat session.",
   },
 ] as const;
 
 export const SESSION_LENGTHS = [
-  { id: "15", label: "15 mins" },
-  { id: "30", label: "30 mins" },
-  { id: "45", label: "45 mins" },
-  { id: "60", label: "60 mins" },
+  { id: "15", label: "15+ mins" },
+  { id: "30", label: "30+ mins" },
+  { id: "45", label: "45+ mins" },
+  { id: "60", label: "60+ mins" },
   { id: "90", label: "90+ mins" },
 ] as const;
 

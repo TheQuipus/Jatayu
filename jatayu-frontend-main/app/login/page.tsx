@@ -1,11 +1,18 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SeekerLoginStep from "@/components/seeker/onboarding/LoginStep";
+import ExpertLoginStep from "@/components/expert/onboarding/LoginStep";
 import { type AuthResponse } from "@/lib/api";
 import { persistSeekerAuthSession } from "@/lib/seekerAuth";
-import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
+import {
+  persistAuthSession as persistExpertAuthSession,
+  getPostAuthDestination,
+  isNavigationHref,
+} from "@/lib/expertAuth";
+import { EXPERT_DASHBOARD_HREF } from "@/lib/expertDashboard";
+import { EXPERT_SIGNUP_HREF } from "@/lib/joinAsExpertNav";
 import styles from "@/app/expert/expert-onboarding/page.module.css";
 
 type LoginRole = "expert" | "user";
@@ -30,19 +37,37 @@ function LoginShell({ children }: { children?: React.ReactNode }) {
 function LoginPageContent({ role }: { role: LoginRole }) {
   const router = useRouter();
 
-  useEffect(() => {
-    if (role === "expert") {
-      router.replace(EXPERT_LOGIN_HREF);
-    }
-  }, [role, router]);
-
   const handleSeekerContinue = (response: AuthResponse) => {
     persistSeekerAuthSession(response);
     window.location.assign("/seeker/dashboard/");
   };
 
+  const handleExpertContinue = (response: AuthResponse) => {
+    const user = persistExpertAuthSession(response);
+    const destination = getPostAuthDestination(user);
+    if (isNavigationHref(destination)) {
+      window.location.assign(destination);
+    } else if (destination === "success") {
+      window.location.assign(EXPERT_DASHBOARD_HREF);
+    } else {
+      window.location.assign(`/expert/expert-onboarding/?step=${destination}`);
+    }
+  };
+
+  const handleExpertRequiresOtp = () => {
+    router.push("/expert/expert-onboarding/?resume=otp");
+  };
+
   if (role === "expert") {
-    return <LoginShell />;
+    return (
+      <LoginShell>
+        <ExpertLoginStep
+          onContinue={handleExpertContinue}
+          onRequiresOtp={handleExpertRequiresOtp}
+          registerHref={EXPERT_SIGNUP_HREF}
+        />
+      </LoginShell>
+    );
   }
 
   return (

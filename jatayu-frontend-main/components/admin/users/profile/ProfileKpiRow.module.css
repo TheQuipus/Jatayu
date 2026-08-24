@@ -1,0 +1,79 @@
+/* KPI Row Cards matching ExpertApplications with clip-path cut corner */
+.kpiRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpiRow > * {
+  min-width: 0;
+}
+
+.kpiCard {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  flex: 1 1 200px;
+  min-height: 135px;
+  padding: 18px 20px;
+  border-radius: 0;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  -webkit-clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpiCard:hover {
+  border-color: color-mix(in srgb, var(--ink) 18%, var(--white));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.kpiHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.kpiLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--dove-gray);
+}
+
+.kpiIconBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--dove-gray);
+}
+
+.kpiValue {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.kpiSubDetail {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  margin-top: 6px;
+}

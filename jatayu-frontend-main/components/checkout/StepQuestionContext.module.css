@@ -34,6 +34,15 @@
   gap: 8px;
 }
 
+.subjectHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+
+
 .questionStepContext {
   display: flex;
   flex-direction: column;

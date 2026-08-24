@@ -1,4 +1,4 @@
-export type UserStatus = "active" | "on_hold" | "suspended" | "pending";
+export type UserStatus = "active" | "on_hold" | "suspended" | "pending" | "deleted" | "flagged";
 
 export type ExpertUser = {
   id: string;
@@ -17,6 +17,7 @@ export type ExpertUser = {
   hourlyRate: number;
   status: UserStatus;
   joinedDate: string;
+  lastActive: string;
   city: string;
   location: string;
   bio: string;
@@ -58,6 +59,7 @@ export const MOCK_EXPERTS: ExpertUser[] = [
     hourlyRate: 1200,
     status: "active",
     joinedDate: "12 Jan 2025",
+    lastActive: "10 mins ago",
     city: "New Delhi",
     location: "New Delhi, NCR",
     bio: "Over 15 years of experience in Vedic astrology, horoscope analysis, and birth chart reading.",
@@ -79,6 +81,7 @@ export const MOCK_EXPERTS: ExpertUser[] = [
     hourlyRate: 1500,
     status: "active",
     joinedDate: "28 Feb 2025",
+    lastActive: "3 hours ago",
     city: "Mumbai",
     location: "Mumbai, Maharashtra",
     bio: "Certified Vastu consultant helping households and businesses align their energy flows for success.",
@@ -100,6 +103,7 @@ export const MOCK_EXPERTS: ExpertUser[] = [
     hourlyRate: 900,
     status: "on_hold",
     joinedDate: "15 Apr 2025",
+    lastActive: "2 days ago",
     city: "Bengaluru",
     location: "Bengaluru, Karnataka",
     bio: "Specializing in career guidance, personal relationships, and intuitive Tarot card readings.",
@@ -121,6 +125,7 @@ export const MOCK_EXPERTS: ExpertUser[] = [
     hourlyRate: 1100,
     status: "suspended",
     joinedDate: "03 Jun 2025",
+    lastActive: "1 week ago",
     city: "Gurugram",
     location: "Gurugram, Haryana",
     bio: "Financial planner assisting individuals with tax planning, investment portfolios, and savings.",
@@ -142,6 +147,7 @@ export const MOCK_EXPERTS: ExpertUser[] = [
     hourlyRate: 1000,
     status: "active",
     joinedDate: "19 Mar 2025",
+    lastActive: "Just now",
     city: "Chennai",
     location: "Chennai, Tamil Nadu",
     bio: "Holistic mindfulness coach and meditation practitioner focusing on emotional balance.",
@@ -205,4 +211,40 @@ export const MOCK_SEEKERS: SeekerUser[] = [
     joinedDate: "22 Dec 2024",
     lastActive: "Just now",
   },
+  {
+    id: "skr-5",
+    name: "Vikram Shah",
+    email: "vikram.shah@example.com",
+    phone: "+91 98334 11229",
+    avatar: "/assets/img/manportrait.png",
+    city: "Ahmedabad",
+    totalBookings: 0,
+    totalSpent: 0,
+    preferredCategory: "Vedic Astrology",
+    status: "deleted",
+    joinedDate: "15 Mar 2025",
+    lastActive: "1 month ago",
+  },
+  {
+    id: "skr-6",
+    name: "Ananya Roy",
+    email: "ananya.roy@example.com",
+    phone: "+91 97112 88990",
+    avatar: "/assets/img/manportrait.png",
+    city: "Kolkata",
+    totalBookings: 3,
+    totalSpent: 4500,
+    preferredCategory: "Mindfulness & Therapy",
+    status: "flagged",
+    joinedDate: "02 Apr 2025",
+    lastActive: "4 days ago",
+  },
 ];
+
+export function getExpertById(id: string): ExpertUser | undefined {
+  return MOCK_EXPERTS.find((exp) => exp.id === id);
+}
+
+export function getSeekerById(id: string): SeekerUser | undefined {
+  return MOCK_SEEKERS.find((skr) => skr.id === id);
+}

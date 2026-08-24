@@ -59,16 +59,13 @@ export type PaymentMethodId = (typeof PAYMENT_METHODS)[number]["id"];
 export const MIN_CONTEXT_LENGTH = 3;
 export const MAX_CONTEXT_LENGTH = 1000;
 
-export const CONTEXT_IMPROVEMENT_STYLES = [
-  { id: "professional", label: "More Professional" },
-  { id: "casual", label: "Casual" },
-  { id: "concise", label: "More Concise" },
-] as const;
+import { AI_IMPROVEMENT_STYLES, DEFAULT_AI_IMPROVE_HINT } from "@/lib/aiTextImprovement";
+
+export const CONTEXT_IMPROVEMENT_STYLES = AI_IMPROVEMENT_STYLES;
 
 export type ContextImprovementStyleId = (typeof CONTEXT_IMPROVEMENT_STYLES)[number]["id"];
 
-export const DEFAULT_CONTEXT_IMPROVE_HINT =
-  "Choose your Goal or describe your challenges and questions";
+export const DEFAULT_CONTEXT_IMPROVE_HINT = DEFAULT_AI_IMPROVE_HINT;
 
 export const CHECKOUT_OTP_LENGTH = 6;
 export const CHECKOUT_OTP_RESEND_SECONDS = 24;

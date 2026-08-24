@@ -10,7 +10,6 @@ import {
   Eye,
   Filter,
   Search,
-  Star,
   UserCheck,
   Users,
   X,
@@ -21,7 +20,10 @@ import {
   MapPin,
   Mail,
   Phone,
+  UserX,
+  AlertTriangle,
 } from "lucide-react";
+import problemStyles from "@/components/homepage/Problem.module.css";
 import {
   useUserManagement,
 } from "@/hooks/useUserManagement";
@@ -45,9 +47,6 @@ export default function UserManagement({ subSection }: UserManagementProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
-  const [selectedExpert, setSelectedExpert] = useState<ExpertUser | null>(null);
-  const [selectedSeeker, setSelectedSeeker] = useState<SeekerUser | null>(null);
-
   // Expert statistics
   const totalExperts = experts.length;
   const activeExperts = experts.filter((e) => e.status === "active").length;
@@ -58,6 +57,8 @@ export default function UserManagement({ subSection }: UserManagementProps) {
   const totalSeekers = seekers.length;
   const activeSeekers = seekers.filter((s) => s.status === "active").length;
   const suspendedSeekers = seekers.filter((s) => s.status === "suspended").length;
+  const deletedSeekers = seekers.filter((s) => s.status === "deleted").length;
+  const flaggedSeekers = seekers.filter((s) => s.status === "flagged").length;
   const totalBookingsCount = seekers.reduce((sum, s) => sum + s.totalBookings, 0);
 
   // Categories list for filter
@@ -101,17 +102,20 @@ export default function UserManagement({ subSection }: UserManagementProps) {
 
   if (!ready) {
     return (
-      <div className={styles.container}>
-        <div style={{ padding: "40px", textAlign: "center", color: "var(--dove-gray)" }}>
-          Loading user records...
+      <section className={styles.dashboard}>
+        <div className={`container ${styles.dashboardInner}`}>
+          <div className={styles.loadingState}>
+            Loading user records...
+          </div>
         </div>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className={styles.container}>
-      {/* Header */}
+    <section className={styles.dashboard}>
+      <div className={`container ${styles.dashboardInner}`}>
+        {/* Header */}
       <div className={styles.header}>
         <div className={styles.titleGroup}>
           <h1 className={styles.title}>User Management</h1>
@@ -157,11 +161,11 @@ export default function UserManagement({ subSection }: UserManagementProps) {
           <div className={styles.metricCard}>
             <div className={styles.metricMeta}>
               <span className={styles.metricLabel}>Active</span>
-              <span className={styles.metricValue} style={{ color: "#16a34a" }}>
+              <span className={`${styles.metricValue} ${styles.metricValueActive}`}>
                 {activeExperts}
               </span>
             </div>
-            <div className={styles.metricIcon} style={{ background: "rgba(34, 197, 94, 0.1)", color: "#16a34a" }}>
+            <div className={`${styles.metricIcon} ${styles.metricIconActive}`}>
               <CheckCircle2 size={20} />
             </div>
           </div>
@@ -169,11 +173,11 @@ export default function UserManagement({ subSection }: UserManagementProps) {
           <div className={styles.metricCard}>
             <div className={styles.metricMeta}>
               <span className={styles.metricLabel}>On Hold</span>
-              <span className={styles.metricValue} style={{ color: "#ca8a04" }}>
+              <span className={`${styles.metricValue} ${styles.metricValueHold}`}>
                 {onHoldExperts}
               </span>
             </div>
-            <div className={styles.metricIcon} style={{ background: "rgba(234, 179, 8, 0.1)", color: "#ca8a04" }}>
+            <div className={`${styles.metricIcon} ${styles.metricIconHold}`}>
               <Clock size={20} />
             </div>
           </div>
@@ -181,69 +185,57 @@ export default function UserManagement({ subSection }: UserManagementProps) {
           <div className={styles.metricCard}>
             <div className={styles.metricMeta}>
               <span className={styles.metricLabel}>Suspended</span>
-              <span className={styles.metricValue} style={{ color: "#dc2626" }}>
+              <span className={`${styles.metricValue} ${styles.metricValueSuspended}`}>
                 {suspendedExperts}
               </span>
             </div>
-            <div className={styles.metricIcon} style={{ background: "rgba(239, 68, 68, 0.1)", color: "#dc2626" }}>
+            <div className={`${styles.metricIcon} ${styles.metricIconSuspended}`}>
               <Ban size={20} />
             </div>
           </div>
         </div>
       ) : (
-        <div className={styles.metricsGrid}>
-          <div className={styles.metricCard}>
-            <div className={styles.metricMeta}>
-              <span className={styles.metricLabel}>Total Seekers</span>
-              <span className={styles.metricValue}>{totalSeekers}</span>
-            </div>
-            <div className={styles.metricIcon}>
-              <Users size={20} />
-            </div>
-          </div>
+        <div className={styles.metricsGrid} role="group" aria-label="Filter by status">
+          {[
+            { id: "all", label: "Total", value: totalSeekers, icon: Users },
+            { id: "active", label: "Active", value: activeSeekers, icon: CheckCircle2 },
+            { id: "suspended", label: "Suspended", value: suspendedSeekers, icon: Ban },
+            { id: "deleted", label: "Deleted", value: deletedSeekers, icon: UserX },
+            { id: "flagged", label: "Flagged", value: flaggedSeekers, icon: AlertTriangle },
+          ].map((kpi) => {
+            const Icon = kpi.icon;
+            const isActive =
+              statusFilter === kpi.id || (kpi.id === "all" && statusFilter === "all");
 
-          <div className={styles.metricCard}>
-            <div className={styles.metricMeta}>
-              <span className={styles.metricLabel}>Active Seekers</span>
-              <span className={styles.metricValue} style={{ color: "#16a34a" }}>
-                {activeSeekers}
-              </span>
-            </div>
-            <div className={styles.metricIcon} style={{ background: "rgba(34, 197, 94, 0.1)", color: "#16a34a" }}>
-              <CheckCircle2 size={20} />
-            </div>
-          </div>
-
-          <div className={styles.metricCard}>
-            <div className={styles.metricMeta}>
-              <span className={styles.metricLabel}>Total Bookings</span>
-              <span className={styles.metricValue}>{totalBookingsCount}</span>
-            </div>
-            <div className={styles.metricIcon} style={{ background: "var(--seashell)", color: "var(--tango)" }}>
-              <Calendar size={20} />
-            </div>
-          </div>
-
-          <div className={styles.metricCard}>
-            <div className={styles.metricMeta}>
-              <span className={styles.metricLabel}>Suspended Accounts</span>
-              <span className={styles.metricValue} style={{ color: "#dc2626" }}>
-                {suspendedSeekers}
-              </span>
-            </div>
-            <div className={styles.metricIcon} style={{ background: "rgba(239, 68, 68, 0.1)", color: "#dc2626" }}>
-              <Ban size={20} />
-            </div>
-          </div>
+            return (
+              <button
+                key={kpi.id}
+                type="button"
+                className={`${problemStyles.scardMini} ${styles.kpiCard} ${isActive ? problemStyles.active : ""} ${isActive ? styles.kpiCardActive : ""}`}
+                onClick={() => setStatusFilter(isActive && kpi.id !== "all" ? "all" : kpi.id)}
+                aria-pressed={isActive}
+              >
+                <div className={styles.kpiHeader}>
+                  <span className={styles.kpiLabel}>{kpi.label}</span>
+                  <span className={styles.kpiIconBox}>
+                    <Icon size={24} aria-hidden="true" />
+                  </span>
+                </div>
+                <p className={styles.kpiValue}>
+                  {String(kpi.value).padStart(2, "0")}
+                </p>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* Control Bar: Search & Filters */}
-      <div className={styles.controlBar}>
-        <div className={styles.searchBox}>
-          <Search size={16} className={styles.searchIcon} />
+      {/* Control Bar: Search */}
+      <div className={styles.controlsCard}>
+        <div className={styles.searchWrap}>
+          <Search className={styles.searchIcon} size={16} />
           <input
-            type="text"
+            type="search"
             className={styles.searchInput}
             placeholder={
               subSection === "experts"
@@ -254,35 +246,6 @@ export default function UserManagement({ subSection }: UserManagementProps) {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
-        <div className={styles.filterGroup}>
-          <Filter size={14} style={{ color: "var(--dove-gray)" }} />
-          <select
-            className={styles.select}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            {subSection === "experts" && <option value="on_hold">On Hold</option>}
-            <option value="suspended">Suspended</option>
-          </select>
-
-          {subSection === "experts" && (
-            <select
-              className={styles.select}
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="all">All Domains</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
       </div>
 
       {/* Main Table Card */}
@@ -292,26 +255,27 @@ export default function UserManagement({ subSection }: UserManagementProps) {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Expert Name & Contact</th>
-                  <th>Domain & Specialty</th>
-                  <th>Rating</th>
-                  <th>Sessions / Earnings</th>
-                  <th>Hourly Rate</th>
-                  <th>Status</th>
-                  <th>Joined Date</th>
-                  <th>Actions</th>
+                  <th className={styles.colNum}>#</th>
+                  <th><span className={styles.thFilterSelect}>Expert Name & Contact</span></th>
+                  <th><span className={styles.thFilterSelect}>Domain & Specialty</span></th>
+                  <th><span className={styles.thFilterSelect}>Status</span></th>
+                  <th><span className={styles.thFilterSelect}>Last Active</span></th>
+                  <th><span className={styles.thFilterSelect}>Sessions</span></th>
+                  <th><span className={styles.thFilterSelect}>Money</span></th>
+                  <th><span className={styles.thFilterSelect}>Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredExperts.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: "center", padding: "32px", color: "var(--dove-gray)" }}>
+                    <td colSpan={8} className={styles.emptyStateCell}>
                       No expert records match the search filter.
                     </td>
                   </tr>
                 ) : (
-                  filteredExperts.map((exp) => (
+                  filteredExperts.map((exp, index) => (
                     <tr key={exp.id}>
+                      <td className={styles.rowNum}>{index + 1}</td>
                       <td>
                         <div className={styles.userCell}>
                           <Image
@@ -322,53 +286,45 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                             className={styles.avatar}
                           />
                           <div className={styles.userInfo}>
-                            <span className={styles.userName}>{exp.name}</span>
+                            <Link href={`/admin/users/experts/${exp.id}`} className={styles.userName}>
+                              {exp.name}
+                            </Link>
                             <span className={styles.userEmail}>{exp.email}</span>
+                            <span className={styles.userMeta}>{exp.phone} • {exp.city}</span>
                           </div>
                         </div>
                       </td>
                       <td>
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                          <span style={{ fontWeight: 600, color: "var(--ink)" }}>{exp.category}</span>
-                          <span style={{ fontSize: "11px", color: "var(--dove-gray)" }}>{exp.subCategory}</span>
+                        <div className={styles.domainCell}>
+                          <span className={styles.domainTitle}>{exp.category}</span>
+                          <span className={styles.domainSub}>{exp.subCategory}</span>
                         </div>
-                      </td>
-                      <td>
-                        <span className={styles.ratingTag}>
-                          <Star size={13} fill="#f59e0b" color="#f59e0b" />
-                          {exp.rating.toFixed(1)}{" "}
-                          <span style={{ fontSize: "11px", color: "var(--dove-gray)" }}>({exp.reviewCount})</span>
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                          <span style={{ fontWeight: 600, color: "var(--ink)" }}>{exp.totalSessions} sessions</span>
-                          <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: 600 }}>
-                            ₹{exp.totalEarnings.toLocaleString("en-IN")}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: 600, color: "var(--ink)" }}>
-                          ₹{exp.hourlyRate}/hr
-                        </span>
                       </td>
                       <td>
                         {exp.status === "active" && <span className={styles.badgeActive}>Active</span>}
                         {exp.status === "on_hold" && <span className={styles.badgeHold}>On Hold</span>}
                         {exp.status === "suspended" && <span className={styles.badgeSuspended}>Suspended</span>}
                       </td>
-                      <td style={{ color: "var(--dove-gray)", fontSize: "12px" }}>{exp.joinedDate}</td>
                       <td>
-                        <div className={styles.actionMenu}>
-                          <button
-                            type="button"
+                        <span className={styles.lastActiveText}>{exp.lastActive || exp.joinedDate}</span>
+                      </td>
+                      <td>
+                        <span className={styles.sessionsText}>{exp.totalSessions} sessions</span>
+                      </td>
+                      <td>
+                        <span className={styles.earningsText}>
+                          ₹{exp.totalEarnings.toLocaleString("en-IN")}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={styles.actionMenu}>
+                          <Link
+                            href={`/admin/users/experts/${exp.id}`}
                             className={styles.actionBtn}
-                            onClick={() => setSelectedExpert(exp)}
                             title="View Profile Details"
                           >
                             <Eye size={14} /> View
-                          </button>
+                          </Link>
                           {exp.status === "active" ? (
                             <button
                               type="button"
@@ -385,10 +341,10 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                               onClick={() => updateExpertStatus(exp.id, "active")}
                               title="Activate Account"
                             >
-                              <CheckCircle2 size={14} style={{ color: "#16a34a" }} /> Activate
+                              <CheckCircle2 size={14} className={styles.activateIcon} /> Activate
                             </button>
                           )}
-                        </div>
+                        </span>
                       </td>
                     </tr>
                   ))
@@ -399,26 +355,26 @@ export default function UserManagement({ subSection }: UserManagementProps) {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Seeker Name & Contact</th>
-                  <th>Phone Number</th>
-                  <th>Location</th>
-                  <th>Bookings / Total Spent</th>
-                  <th>Preferred Category</th>
-                  <th>Status</th>
-                  <th>Last Active</th>
-                  <th>Actions</th>
+                  <th className={styles.colNum}>#</th>
+                  <th><span className={styles.thFilterSelect}>Seeker Name & Contact</span></th>
+                  <th><span className={styles.thFilterSelect}>Status</span></th>
+                  <th><span className={styles.thFilterSelect}>Last Active</span></th>
+                  <th><span className={styles.thFilterSelect}>Sessions</span></th>
+                  <th><span className={styles.thFilterSelect}>Money</span></th>
+                  <th><span className={styles.thFilterSelect}>Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredSeekers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: "center", padding: "32px", color: "var(--dove-gray)" }}>
+                    <td colSpan={7} className={styles.emptyStateCell}>
                       No seeker records match the search filter.
                     </td>
                   </tr>
                 ) : (
-                  filteredSeekers.map((skr) => (
+                  filteredSeekers.map((skr, index) => (
                     <tr key={skr.id}>
+                      <td className={styles.rowNum}>{index + 1}</td>
                       <td>
                         <div className={styles.userCell}>
                           <Image
@@ -429,44 +385,40 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                             className={styles.avatar}
                           />
                           <div className={styles.userInfo}>
-                            <span className={styles.userName}>{skr.name}</span>
+                            <Link href={`/admin/users/seekers/${skr.id}`} className={styles.userName}>
+                              {skr.name}
+                            </Link>
                             <span className={styles.userEmail}>{skr.email}</span>
+                            <span className={styles.userMeta}>{skr.phone} • {skr.city}</span>
                           </div>
                         </div>
                       </td>
-                      <td style={{ fontSize: "12px", color: "var(--dove-gray)" }}>{skr.phone}</td>
-                      <td style={{ fontWeight: 500, color: "var(--ink)" }}>{skr.city}</td>
                       <td>
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                          <span style={{ fontWeight: 600, color: "var(--ink)" }}>{skr.totalBookings} bookings</span>
-                          <span style={{ fontSize: "11px", color: "var(--tango)", fontWeight: 600 }}>
-                            ₹{skr.totalSpent.toLocaleString("en-IN")}
-                          </span>
-                        </div>
+                        {skr.status === "active" && <span className={styles.badgeActive}>Active</span>}
+                        {skr.status === "suspended" && <span className={styles.badgeSuspended}>Suspended</span>}
+                        {skr.status === "deleted" && <span className={styles.badgeDeleted}>Deleted</span>}
+                        {skr.status === "flagged" && <span className={styles.badgeFlagged}>Flagged</span>}
                       </td>
                       <td>
-                        <span style={{ fontSize: "12px", color: "var(--dove-gray)" }}>
-                          {skr.preferredCategory}
+                        <span className={styles.lastActiveText}>{skr.lastActive}</span>
+                      </td>
+                      <td>
+                        <span className={styles.sessionsText}>{skr.totalBookings} bookings</span>
+                      </td>
+                      <td>
+                        <span className={styles.spentText}>
+                          ₹{skr.totalSpent.toLocaleString("en-IN")}
                         </span>
                       </td>
                       <td>
-                        {skr.status === "active" ? (
-                          <span className={styles.badgeActive}>Active</span>
-                        ) : (
-                          <span className={styles.badgeSuspended}>Suspended</span>
-                        )}
-                      </td>
-                      <td style={{ color: "var(--dove-gray)", fontSize: "12px" }}>{skr.lastActive}</td>
-                      <td>
-                        <div className={styles.actionMenu}>
-                          <button
-                            type="button"
+                        <span className={styles.actionMenu}>
+                          <Link
+                            href={`/admin/users/seekers/${skr.id}`}
                             className={styles.actionBtn}
-                            onClick={() => setSelectedSeeker(skr)}
                             title="View Profile Details"
                           >
                             <Eye size={14} /> View
-                          </button>
+                          </Link>
                           {skr.status === "active" ? (
                             <button
                               type="button"
@@ -483,10 +435,10 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                               onClick={() => updateSeekerStatus(skr.id, "active")}
                               title="Activate Account"
                             >
-                              <CheckCircle2 size={14} style={{ color: "#16a34a" }} /> Activate
+                              <CheckCircle2 size={14} className={styles.activateIcon} /> Activate
                             </button>
                           )}
-                        </div>
+                        </span>
                       </td>
                     </tr>
                   ))
@@ -496,212 +448,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
           )}
         </div>
       </div>
-
-      {/* Expert Profile Detail Modal */}
-      {selectedExpert ? (
-        <div className={styles.modalOverlay} onClick={() => setSelectedExpert(null)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Expert Profile Details</h3>
-              <button
-                type="button"
-                className={styles.modalClose}
-                onClick={() => setSelectedExpert(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <div className={styles.profileHero}>
-                <Image
-                  src={selectedExpert.avatar}
-                  alt={selectedExpert.name}
-                  width={56}
-                  height={56}
-                  className={styles.profileAvatar}
-                />
-                <div>
-                  <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--ink)" }}>
-                    {selectedExpert.name}
-                  </h4>
-                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--dove-gray)" }}>
-                    {selectedExpert.category} · {selectedExpert.location}
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.detailGrid}>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Email</span>
-                  <span className={styles.detailValue}>{selectedExpert.email}</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Phone</span>
-                  <span className={styles.detailValue}>{selectedExpert.phone}</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Hourly Rate</span>
-                  <span className={styles.detailValue}>₹{selectedExpert.hourlyRate}/hr</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Rating</span>
-                  <span className={styles.detailValue}>
-                    ⭐ {selectedExpert.rating.toFixed(1)} ({selectedExpert.reviewCount} reviews)
-                  </span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Completed Sessions</span>
-                  <span className={styles.detailValue}>{selectedExpert.totalSessions} sessions</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Total Platform Earnings</span>
-                  <span className={styles.detailValue} style={{ color: "#16a34a" }}>
-                    ₹{selectedExpert.totalEarnings.toLocaleString("en-IN")}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className={styles.detailLabel}>Bio & Background</span>
-                <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--ink)", lineHeight: 1.5 }}>
-                  {selectedExpert.bio}
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.modalFooter}>
-              {selectedExpert.status !== "active" && (
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  onClick={() => {
-                    updateExpertStatus(selectedExpert.id, "active");
-                    setSelectedExpert({ ...selectedExpert, status: "active" });
-                  }}
-                >
-                  Set Active
-                </button>
-              )}
-              {selectedExpert.status !== "on_hold" && (
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  onClick={() => {
-                    updateExpertStatus(selectedExpert.id, "on_hold");
-                    setSelectedExpert({ ...selectedExpert, status: "on_hold" });
-                  }}
-                >
-                  Set On Hold
-                </button>
-              )}
-              {selectedExpert.status !== "suspended" && (
-                <button
-                  type="button"
-                  className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                  onClick={() => {
-                    updateExpertStatus(selectedExpert.id, "suspended");
-                    setSelectedExpert({ ...selectedExpert, status: "suspended" });
-                  }}
-                >
-                  Suspend Expert
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Seeker Profile Detail Modal */}
-      {selectedSeeker ? (
-        <div className={styles.modalOverlay} onClick={() => setSelectedSeeker(null)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Seeker Account Details</h3>
-              <button
-                type="button"
-                className={styles.modalClose}
-                onClick={() => setSelectedSeeker(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <div className={styles.profileHero}>
-                <Image
-                  src={selectedSeeker.avatar}
-                  alt={selectedSeeker.name}
-                  width={56}
-                  height={56}
-                  className={styles.profileAvatar}
-                />
-                <div>
-                  <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--ink)" }}>
-                    {selectedSeeker.name}
-                  </h4>
-                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--dove-gray)" }}>
-                    Seeker · {selectedSeeker.city}
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.detailGrid}>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Email</span>
-                  <span className={styles.detailValue}>{selectedSeeker.email}</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Phone</span>
-                  <span className={styles.detailValue}>{selectedSeeker.phone}</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Total Bookings</span>
-                  <span className={styles.detailValue}>{selectedSeeker.totalBookings} bookings</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Total Amount Spent</span>
-                  <span className={styles.detailValue} style={{ color: "var(--tango)" }}>
-                    ₹{selectedSeeker.totalSpent.toLocaleString("en-IN")}
-                  </span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Joined Date</span>
-                  <span className={styles.detailValue}>{selectedSeeker.joinedDate}</span>
-                </div>
-                <div className={styles.detailItem}>
-                  <span className={styles.detailLabel}>Last Activity</span>
-                  <span className={styles.detailValue}>{selectedSeeker.lastActive}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.modalFooter}>
-              {selectedSeeker.status !== "active" ? (
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  onClick={() => {
-                    updateSeekerStatus(selectedSeeker.id, "active");
-                    setSelectedSeeker({ ...selectedSeeker, status: "active" });
-                  }}
-                >
-                  Set Active
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                  onClick={() => {
-                    updateSeekerStatus(selectedSeeker.id, "suspended");
-                    setSelectedSeeker({ ...selectedSeeker, status: "suspended" });
-                  }}
-                >
-                  Suspend Account
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
+  </section>
   );
 }

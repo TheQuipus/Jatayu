@@ -113,29 +113,60 @@ function captureMirroredFrame(video: HTMLVideoElement): string | null {
   }
 }
 
-async function detectFaceInFrame(video: HTMLVideoElement): Promise<boolean> {
+type HeadPose = "center" | "left" | "right" | "none";
+
+async function detectHeadPoseInFrame(video: HTMLVideoElement): Promise<{
+  faceDetected: boolean;
+  pose: HeadPose;
+}> {
   if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
-    return false;
+    return { faceDetected: false, pose: "none" };
   }
 
+  // 1. Native FaceDetector API with facial landmarks (Chrome / Edge / Opera / Android)
   const FaceDetectorCtor = (
     window as Window & {
       FaceDetector?: new (options?: { fastMode?: boolean; maxDetectedFaces?: number }) => {
-        detect: (source: HTMLVideoElement) => Promise<unknown[]>;
+        detect: (source: HTMLVideoElement) => Promise<{
+          boundingBox: { x: number; y: number; width: number; height: number };
+          landmarks?: { type: string; locations: { x: number; y: number }[] }[];
+        }[]>;
       };
     }
   ).FaceDetector;
 
   if (FaceDetectorCtor) {
     try {
-      const detector = new FaceDetectorCtor({ fastMode: true, maxDetectedFaces: 1 });
+      const detector = new FaceDetectorCtor({ fastMode: false, maxDetectedFaces: 1 });
       const faces = await detector.detect(video);
-      if (faces.length > 0) return true;
+      if (faces.length > 0) {
+        const face = faces[0];
+        const landmarks = face.landmarks || [];
+        const nose = landmarks.find((l) => l.type === "nose")?.locations[0];
+        const eyes = landmarks.filter((l) => l.type === "eye");
+
+        if (nose && eyes.length >= 2) {
+          const eye1 = eyes[0].locations[0];
+          const eye2 = eyes[1].locations[0];
+          const leftEye = eye1.x < eye2.x ? eye1 : eye2;
+          const rightEye = eye1.x < eye2.x ? eye2 : eye1;
+
+          const distLeft = nose.x - leftEye.x;
+          const distRight = rightEye.x - nose.x;
+          const ratio = distLeft / (distRight || 1);
+
+          if (ratio < 0.65) return { faceDetected: true, pose: "left" };
+          if (ratio > 1.55) return { faceDetected: true, pose: "right" };
+          return { faceDetected: true, pose: "center" };
+        }
+        return { faceDetected: true, pose: "center" };
+      }
     } catch {
-      // Fall through to heuristic detection.
+      // Fall through to Canvas analysis
     }
   }
 
+  // 2. High-speed Canvas Pixel & Feature Centroid Analysis (Cross-browser)
   const canvas = document.createElement("canvas");
   const width = 160;
   const height = 200;
@@ -143,52 +174,64 @@ async function detectFaceInFrame(video: HTMLVideoElement): Promise<boolean> {
   canvas.height = height;
 
   const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) return false;
+  if (!context) return { faceDetected: false, pose: "none" };
 
-  const sourceX = video.videoWidth * 0.25;
-  const sourceY = video.videoHeight * 0.12;
-  const sourceWidth = video.videoWidth * 0.5;
-  const sourceHeight = video.videoHeight * 0.72;
+  const sourceX = video.videoWidth * 0.2;
+  const sourceY = video.videoHeight * 0.1;
+  const sourceWidth = video.videoWidth * 0.6;
+  const sourceHeight = video.videoHeight * 0.8;
 
   context.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
   const { data } = context.getImageData(0, 0, width, height);
 
-  let brightnessSum = 0;
-  let brightnessSqSum = 0;
-  let skinLikePixels = 0;
-  const pixelCount = width * height;
+  let leftWeight = 0;
+  let rightWeight = 0;
+  let skinCount = 0;
+  let xSum = 0;
 
-  for (let index = 0; index < data.length; index += 4) {
-    const red = data[index];
-    const green = data[index + 1];
-    const blue = data[index + 2];
-    const brightness = (red + green + blue) / 3;
+  for (let y = 30; y < height - 30; y += 3) {
+    for (let x = 10; x < width - 10; x += 3) {
+      const idx = (y * width + x) * 4;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const brightness = (r + g + b) / 3;
 
-    brightnessSum += brightness;
-    brightnessSqSum += brightness * brightness;
+      const isSkin =
+        r > 50 &&
+        g > 35 &&
+        b > 20 &&
+        r > g &&
+        r > b &&
+        brightness > 35 &&
+        brightness < 225;
 
-    if (
-      red > 60 &&
-      green > 40 &&
-      blue > 20 &&
-      red > green &&
-      red > blue &&
-      brightness > 40 &&
-      brightness < 220
-    ) {
-      skinLikePixels += 1;
+      if (isSkin) {
+        skinCount++;
+        xSum += x;
+        if (x < width / 2) {
+          leftWeight += (width / 2 - x) * brightness;
+        } else {
+          rightWeight += (x - width / 2) * brightness;
+        }
+      }
     }
   }
 
-  const meanBrightness = brightnessSum / pixelCount;
-  const variance = brightnessSqSum / pixelCount - meanBrightness * meanBrightness;
+  const totalPixels = ((width - 20) / 3) * ((height - 60) / 3);
+  if (skinCount / totalPixels < 0.1) {
+    return { faceDetected: false, pose: "none" };
+  }
 
-  return (
-    variance > 400 &&
-    skinLikePixels / pixelCount > 0.14 &&
-    meanBrightness > 35 &&
-    meanBrightness < 200
-  );
+  const xCenter = xSum / skinCount;
+  const normalizedCenter = (xCenter - width / 2) / (width / 2);
+  const weightRatio = (rightWeight - leftWeight) / (rightWeight + leftWeight || 1);
+
+  const poseScore = normalizedCenter * 0.6 + weightRatio * 0.4;
+
+  if (poseScore < -0.05) return { faceDetected: true, pose: "right" };
+  if (poseScore > 0.05) return { faceDetected: true, pose: "left" };
+  return { faceDetected: true, pose: "center" };
 }
 
 export default function KycVerificationPanel({
@@ -209,6 +252,10 @@ export default function KycVerificationPanel({
   const [poseFrames, setPoseFrames] = useState<PoseFrames>(() =>
     videoSrc ? readStoredPoseFrames() : EMPTY_POSE_FRAMES,
   );
+
+  const [detectedPose, setDetectedPose] = useState<HeadPose>("none");
+  const [holdProgress, setHoldProgress] = useState(0);
+  const holdProgressRef = useRef(0);
 
   const isModalOpen =
     phase === "requesting" || phase === "guided" || phase === "processing" || phase === "denied";
@@ -232,6 +279,9 @@ export default function KycVerificationPanel({
     setStepIndex(0);
     setCountdown(null);
     setFaceDetected(false);
+    setDetectedPose("none");
+    setHoldProgress(0);
+    holdProgressRef.current = 0;
     setPoseFrames(EMPTY_POSE_FRAMES);
     clearStoredPoseFrames();
     setPhase("intro");
@@ -295,44 +345,6 @@ export default function KycVerificationPanel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isModalOpen, phase, resetVerification]);
 
-  useEffect(() => {
-    if (phase !== "guided") {
-      setFaceDetected(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    const checkFace = async () => {
-      const video = liveVideoRef.current;
-      if (!video || cancelled) return;
-
-      const detected = await detectFaceInFrame(video);
-      if (!cancelled) {
-        setFaceDetected(detected);
-      }
-    };
-
-    void checkFace();
-    const interval = window.setInterval(() => {
-      void checkFace();
-    }, 400);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [phase, stepIndex]);
-
-  useEffect(() => {
-    if (phase !== "guided") return;
-    const videoEl = liveVideoRef.current;
-    const stream = streamRef.current;
-    if (!videoEl || !stream) return;
-    videoEl.srcObject = stream;
-    void videoEl.play().catch(() => undefined);
-  }, [phase, stepIndex]);
-
   const finishRecording = useCallback(() => {
     const recorder = recorderRef.current;
     if (!recorder || recorder.state === "inactive") {
@@ -354,26 +366,73 @@ export default function KycVerificationPanel({
   }, [onVideoChange, stopStream, videoSrc]);
 
   useEffect(() => {
-    if (phase !== "guided" || countdown === null) return;
-
-    if (countdown <= 0) {
-      captureCurrentPose();
-      const isLastStep = stepIndex >= KYC_STEPS.length - 1;
-      if (isLastStep) {
-        finishRecording();
-        return;
-      }
-      setStepIndex((current) => current + 1);
-      setCountdown(KYC_STEPS[stepIndex + 1].duration);
+    if (phase !== "guided") {
+      setFaceDetected(false);
+      setDetectedPose("none");
+      setHoldProgress(0);
+      holdProgressRef.current = 0;
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      setCountdown((current) => (current === null ? null : current - 1));
-    }, 1000);
+    let cancelled = false;
 
-    return () => window.clearTimeout(timer);
-  }, [captureCurrentPose, countdown, finishRecording, phase, stepIndex]);
+    const checkPose = async () => {
+      const video = liveVideoRef.current;
+      if (!video || cancelled) return;
+
+      const result = await detectHeadPoseInFrame(video);
+      if (cancelled) return;
+
+      setFaceDetected(result.faceDetected);
+      setDetectedPose(result.pose);
+
+      const targetPose = KYC_STEPS[stepIndex].pose;
+      const isPoseMatch =
+        result.faceDetected &&
+        (result.pose === targetPose || (targetPose === "center" && result.pose !== "none"));
+
+      if (isPoseMatch) {
+        const next = Math.min(100, holdProgressRef.current + 25);
+        holdProgressRef.current = next;
+        setHoldProgress(next);
+
+        if (next >= 100) {
+          captureCurrentPose();
+          const isLastStep = stepIndex >= KYC_STEPS.length - 1;
+          if (isLastStep) {
+            finishRecording();
+            return;
+          }
+          setStepIndex((current) => current + 1);
+          holdProgressRef.current = 0;
+          setHoldProgress(0);
+        }
+      } else {
+        const next = Math.max(0, holdProgressRef.current - 15);
+        holdProgressRef.current = next;
+        setHoldProgress(next);
+      }
+    };
+
+    void checkPose();
+    const interval = window.setInterval(() => {
+      void checkPose();
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [captureCurrentPose, finishRecording, phase, stepIndex]);
+
+  useEffect(() => {
+    if (phase !== "guided") return;
+    const videoEl = liveVideoRef.current;
+    const stream = streamRef.current;
+    if (!videoEl || !stream) return;
+    videoEl.srcObject = stream;
+    void videoEl.play().catch(() => undefined);
+  }, [phase, stepIndex]);
 
   useEffect(() => {
     if (phase !== "processing") return;
@@ -496,24 +555,51 @@ export default function KycVerificationPanel({
                       </div>
                       <div
                         className={`${styles.faceOval} ${
-                          isScanning
-                            ? styles.faceOvalScanning
+                          detectedPose === currentStep.pose
+                            ? styles.faceOvalMatched
                             : faceDetected
-                              ? styles.faceOvalDetected
-                              : ""
+                              ? styles.faceOvalWrongPose
+                              : styles.faceOvalNotDetected
                         }`}
                       />
                     </div>
                   </div>
 
-                  {countdown !== null ? (
-                    <div className={styles.countdownWrap}>
-                      <span className={styles.countdown}>{countdown}</span>
-                      <span className={styles.countdownLabel}>
-                        {faceDetected ? "Keep still" : "Position your face in the oval"}
-                      </span>
+                  <div className={styles.countdownWrap}>
+                    <div
+                      className={`${styles.poseStatusBadge} ${
+                        detectedPose === currentStep.pose
+                          ? styles.poseStatusBadgeMatched
+                          : faceDetected
+                            ? styles.poseStatusBadgeWaiting
+                            : styles.poseStatusBadgeNone
+                      }`}
+                    >
+                      {detectedPose === currentStep.pose ? (
+                        <>
+                          <span>✓ {currentStep.pose.toUpperCase()} POSE DETECTED</span>
+                          <span>({holdProgress}%)</span>
+                        </>
+                      ) : faceDetected ? (
+                        <span>
+                          {currentStep.pose === "left"
+                            ? "Turn head to your LEFT ←"
+                            : currentStep.pose === "right"
+                              ? "Turn head to your RIGHT →"
+                              : "Look directly at camera"}
+                        </span>
+                      ) : (
+                        <span>Position face in oval</span>
+                      )}
                     </div>
-                  ) : null}
+
+                    <div className={styles.poseProgressBar}>
+                      <div
+                        className={styles.poseProgressBarFill}
+                        style={{ width: `${holdProgress}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : null}

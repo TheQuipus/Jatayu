@@ -1,0 +1,552 @@
+.calendarWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Header & Controls */
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 4px;
+}
+
+.breadcrumb {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  margin-bottom: 4px;
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--dove-gray);
+  margin: 0;
+}
+
+/* Stats / KPI Chips */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--white);
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.statIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.statVal {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.statLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--dove-gray);
+  font-weight: 500;
+}
+
+/* Filters & Navigation Toolbar */
+.toolbarCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--white);
+  border: 1px solid color-mix(in srgb, var(--mercury) 75%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  border-radius: 20px;
+  background: var(--white);
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filterChip:hover {
+  background: var(--gallery);
+  color: var(--ink);
+}
+
+.filterChipActive {
+  background: var(--ink);
+  color: var(--white);
+  border-color: var(--ink);
+  font-weight: 600;
+}
+
+.navControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todayBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.todayBtn:hover {
+  background: var(--gallery);
+}
+
+.navBtnGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.navBtn:hover {
+  background: var(--gallery);
+  border-color: var(--mercury);
+}
+
+.dateRangeText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 0 4px;
+  min-width: 140px;
+  text-align: center;
+}
+
+/* Calendar Main Shell */
+.calendarShell {
+  border: 1px solid color-mix(in srgb, var(--mercury) 72%, transparent);
+  border-radius: 14px;
+  background: var(--white);
+  overflow: hidden;
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.weekBoard {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(140px, 1fr));
+  min-width: 980px;
+  overflow-x: auto;
+}
+
+.dayColumn {
+  min-width: 0;
+  border-right: 1px solid color-mix(in srgb, var(--mercury) 68%, transparent);
+  background: var(--white);
+}
+
+.dayColumn:last-child {
+  border-right: none;
+}
+
+.dayHeader {
+  position: relative;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mercury) 68%, transparent);
+  background: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--scorpion);
+  text-align: center;
+}
+
+.dayHeaderToday {
+  background: var(--white);
+  color: var(--tango);
+  font-weight: 700;
+}
+
+.dayContent {
+  min-height: 480px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emptyDay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--mercury);
+  font-style: italic;
+}
+
+/* Event Cards */
+.bookingCard {
+  display: block;
+  border: 1px solid color-mix(in srgb, var(--mercury) 70%, transparent);
+  border-radius: 4px;
+  background: var(--white);
+  color: inherit;
+  text-decoration: none;
+  overflow: visible;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--ink) 8%, transparent);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 14px;
+}
+
+.bookingCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.bookingCardConfirmed {
+  background: linear-gradient(180deg, var(--white) 0%, color-mix(in srgb, var(--green, #22c55e) 7%, var(--white)) 100%);
+}
+
+.bookingCardPending {
+  background: linear-gradient(180deg, var(--white) 0%, color-mix(in srgb, var(--tango) 8%, var(--white)) 100%);
+}
+
+.bookingCardCancelled {
+  background: linear-gradient(180deg, var(--white) 0%, color-mix(in srgb, var(--thunderbird, #ef4444) 14%, var(--white)) 100%);
+}
+
+.bookingCardCompleted {
+  background: linear-gradient(180deg, var(--white) 0%, color-mix(in srgb, #3b82f6 8%, var(--white)) 100%);
+}
+
+.bookingMetaRow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px 10px 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--dove-gray);
+}
+
+.metaRowTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.consultationTag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.consultationIcon {
+  display: block;
+  color: var(--dove-gray);
+  flex-shrink: 0;
+}
+
+.consultationLabelText {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusBadgeWrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.badgeConfirmed {
+  color: color-mix(in srgb, var(--green, #22c55e) 72%, var(--ink));
+}
+
+.badgePending {
+  color: color-mix(in srgb, var(--tango) 84%, var(--ink));
+}
+
+.badgeCancelled {
+  color: color-mix(in srgb, var(--thunderbird, #dc2626) 84%, var(--ink));
+}
+
+.badgeCompleted {
+  color: #2563eb;
+}
+
+.bookingTime {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.bookingThumb {
+  position: relative;
+  width: calc(100% - 16px);
+  aspect-ratio: 1.35;
+  margin: 0 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--gallery);
+}
+
+.bookingImage {
+  object-fit: cover;
+  object-position: center 0%;
+}
+
+.bookingName {
+  margin: 8px 8px 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+
+.bookingType {
+  display: block;
+  margin: 4px 8px 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.1;
+  color: var(--dove-gray);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 10px;
+  border-top: 1px solid color-mix(in srgb, var(--mercury) 50%, transparent);
+}
+
+.priceTag {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.actionBtn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+  background: var(--gallery);
+  border-color: var(--scorpion);
+}
+
+.bookingTime {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.userThumbRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.avatarWrap {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--gallery);
+  flex-shrink: 0;
+  border: 1px solid var(--mercury);
+}
+
+.userName {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.userSpecialty {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--dove-gray);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--mercury) 60%, transparent);
+  margin-top: 6px;
+}
+
+.priceTag {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+  background: var(--ink);
+  color: var(--white);
+  border-color: var(--ink);
+}
+
+@media (max-width: 900px) {
+  .weekBoard {
+    min-width: 800px;
+  }
+}

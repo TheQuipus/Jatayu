@@ -1,3 +1,5 @@
+import { generateUUID } from "@/lib/uuid";
+
 export type EmploymentPosition = {
   id: string;
   jobTitle: string;
@@ -39,7 +41,7 @@ export function getCurrentMonthYear(): { month: string; year: string } {
 
 export function createEmptyEmploymentPosition(): EmploymentPosition {
   return {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     jobTitle: "",
     company: "",
     startMonth: "",
@@ -259,7 +261,7 @@ export const ACHIEVEMENT_TYPE_OPTIONS = [
 
 export function createEmptyEducationDegree(): EducationDegree {
   return {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     degree: "",
     fieldOfStudy: "",
     institution: "",
@@ -270,7 +272,7 @@ export function createEmptyEducationDegree(): EducationDegree {
 
 export function createEmptyNotableLink(): NotableLink {
   return {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     url: "",
     type: "LinkedIn",
   };
