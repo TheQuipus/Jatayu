@@ -7,12 +7,17 @@ const sharedOptions = {
   // Prefer IPv4 loopback — Windows "localhost" can fail with ECONNREFUSED on ::1.
   host: process.env.DB_HOST === 'localhost' ? '127.0.0.1' : (process.env.DB_HOST || '127.0.0.1'),
   dialect: 'mysql',
+  dialectOptions: {
+    connectTimeout: Number.parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '10000', 10),
+    enableKeepAlive: true,
+    keepAliveInitialDelay: Number.parseInt(process.env.DB_KEEP_ALIVE_DELAY_MS || '0', 10),
+  },
   logging: false,
   pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000,
+    max: Number.parseInt(process.env.DB_POOL_MAX || '5', 10),
+    min: Number.parseInt(process.env.DB_POOL_MIN || '0', 10),
+    acquire: Number.parseInt(process.env.DB_POOL_ACQUIRE_MS || '30000', 10),
+    idle: Number.parseInt(process.env.DB_POOL_IDLE_MS || '10000', 10),
   },
 };
 
