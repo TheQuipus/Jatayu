@@ -38,7 +38,11 @@ const upload = multer({
     }
     cb(new Error('Only image files (jpeg, jpg, png, webp) are allowed!'));
   },
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    fieldSize: 256 * 1024,
+    fields: 50,
+  }
 });
 
 // Profile endpoints

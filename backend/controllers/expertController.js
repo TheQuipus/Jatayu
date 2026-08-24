@@ -49,6 +49,43 @@ function parseJsonField(value) {
   return value;
 }
 
+const MAX_ONBOARDING_METADATA_BYTES = 64 * 1024;
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function decodeCharacterMap(value) {
+  if (!isPlainObject(value)) return value;
+  const keys = Object.keys(value);
+  if (keys.length === 0 || !keys.every((key, index) => key === String(index))) return value;
+  if (!keys.every((key) => typeof value[key] === 'string')) return value;
+  return keys.map((key) => value[key]).join('');
+}
+
+function normalizeOnboardingMetadata(value) {
+  if (value === undefined || value === null || value === '') return undefined;
+
+  let normalized = value;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    normalized = decodeCharacterMap(normalized);
+    if (typeof normalized !== 'string') break;
+    try {
+      normalized = JSON.parse(normalized);
+    } catch {
+      throw new TypeError('onboardingMetadata must contain valid JSON');
+    }
+  }
+
+  if (!isPlainObject(normalized)) {
+    throw new TypeError('onboardingMetadata must be a JSON object');
+  }
+  if (Buffer.byteLength(JSON.stringify(normalized), 'utf8') > MAX_ONBOARDING_METADATA_BYTES) {
+    throw new RangeError('onboardingMetadata must not exceed 64 KB');
+  }
+  return normalized;
+}
+
 export const updateProfile = async (req, res) => {
   const expertId = req.user.id;
   const body = req.body;
@@ -70,7 +107,12 @@ export const updateProfile = async (req, res) => {
   const targetAudience = parseJsonField(body.targetAudience);
   const focusAreas = parseJsonField(body.focusAreas);
   const availabilitySlots = parseJsonField(body.availabilitySlots);
-  const onboardingMetadata = parseJsonField(body.onboardingMetadata);
+  let onboardingMetadata;
+  try {
+    onboardingMetadata = normalizeOnboardingMetadata(body.onboardingMetadata);
+  } catch (error) {
+    return res.status(422).json({ message: error.message });
+  }
 
   try {
     const expertExists = await sequelize.transaction(async (transaction) => {
@@ -96,8 +138,14 @@ export const updateProfile = async (req, res) => {
       if (selectedLengths !== undefined) expert.selectedLengths = selectedLengths;
       if (formatPrices !== undefined) expert.formatPrices = formatPrices;
       if (onboardingMetadata !== undefined) {
+        let storedMetadata = {};
+        try {
+          storedMetadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+        } catch (error) {
+          console.warn(`Resetting invalid onboardingMetadata for expert ${expertId}: ${error.message}`);
+        }
         expert.onboardingMetadata = {
-          ...(expert.onboardingMetadata || {}),
+          ...storedMetadata,
           ...onboardingMetadata,
         };
       }
@@ -160,7 +208,12 @@ export const updateProfile = async (req, res) => {
       expert: updatedProfile
     });
   } catch (error) {
-    console.error('Update Profile Error:', error);
+    // Do not log the complete Sequelize error: it may contain the full SQL payload.
+    console.error('Update Profile Error:', {
+      name: error.name,
+      message: error.message,
+      code: error.parent?.code || error.code,
+    });
     const databaseUnavailable = error.name === 'SequelizeConnectionError'
       || error.name === 'SequelizeConnectionAcquireTimeoutError'
       || error.parent?.fatal === true
