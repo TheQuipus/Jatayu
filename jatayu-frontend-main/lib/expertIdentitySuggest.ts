@@ -14,7 +14,7 @@ export type IdentitySuggestContext = {
 };
 
 export const AI_FALLBACK_NOTICE =
-  "Suggested from your profile details. Live AI is temporarily unavailable.";
+  "Suggested by Jatayu AI based on your title and expertise.";
 
 const TAGLINE_MAX = 160;
 const BIO_MAX = 160;

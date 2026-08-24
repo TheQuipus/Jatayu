@@ -58,6 +58,49 @@ export function clearPendingSeekerOtpSession(): void {
   sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
 }
 
+export type SeekerOnboardingStep =
+  | "category"
+  | "needs"
+  | "format"
+  | "budget"
+  | "personalisation"
+  | "review";
+
+const SEEKER_ONBOARDING_STEPS: SeekerOnboardingStep[] = [
+  "category",
+  "needs",
+  "format",
+  "budget",
+  "personalisation",
+  "review",
+];
+
+export function resolveSeekerOnboardingStep(user: AuthUser): SeekerOnboardingStep {
+  const step = user.onboardingStep as SeekerOnboardingStep;
+  if (step && SEEKER_ONBOARDING_STEPS.includes(step)) {
+    return step;
+  }
+  return "category";
+}
+
+export function getSeekerPostAuthDestination(user: AuthUser): string | SeekerOnboardingStep {
+  if (
+    user.status === "active" ||
+    user.onboardingComplete === true ||
+    user.onboardingStep === "success" ||
+    user.onboardingStep === "completed"
+  ) {
+    return "/seeker/dashboard/";
+  }
+
+  const step = user.onboardingStep as SeekerOnboardingStep;
+  if (step && SEEKER_ONBOARDING_STEPS.includes(step)) {
+    return step;
+  }
+
+  return "category";
+}
+
 export function isSeekerAuthenticated(): boolean {
   return Boolean(getToken());
 }

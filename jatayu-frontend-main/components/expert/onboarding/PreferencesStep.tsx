@@ -7,7 +7,7 @@ import {
   Video,
   Phone,
   FileText,
-  Users,
+  MessageSquare,
   Check,
   Sparkles,
 } from "lucide-react";
@@ -42,7 +42,7 @@ const FORMAT_ICONS = {
   video: Video,
   written: FileText,
   shoutout: Phone,
-  group: Users,
+  group: MessageSquare,
 } as const;
 
 export default function PreferencesStep({
@@ -228,6 +228,8 @@ export default function PreferencesStep({
                         value={formatPrices[fmt.id] ?? ""}
                         onChange={(event) => handleFormatPriceChange(fmt.id, event.target.value)}
                         placeholder="0"
+                        spellCheck={false}
+                        autoComplete="off"
                         aria-label={`${fmt.title} rate in rupees per minute`}
                       />
                     ) : (

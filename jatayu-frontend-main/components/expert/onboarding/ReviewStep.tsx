@@ -506,8 +506,8 @@ export default function ReviewStep({
           />
           <span className={styles.termsText}>
             BY SUBMITTING, YOU AGREE TO{" "}
-            <a href="#" onClick={(e) => e.stopPropagation()}>OUR TERMS</a> AND{" "}
-            <a href="#" onClick={(e) => e.stopPropagation()}>PRIVACY POLICY</a>
+            <a href="/terms" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>OUR TERMS</a> AND{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>PRIVACY POLICY</a>
           </span>
         </label>
       </div>

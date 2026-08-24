@@ -8,6 +8,7 @@ import {
   type AuthUser,
 } from "@/lib/api";
 import { EXPERT_DASHBOARD_HREF } from "@/lib/expertDashboard";
+import { generateUUID } from "@/lib/uuid";
 
 export type ExpertOnboardingStep =
   | "register"
@@ -48,6 +49,8 @@ export function persistAuthSession(response: AuthResponse): AuthUser {
   return response.user;
 }
 
+import { clearExpertApplicationDraft } from "@/lib/expertApplicationsStore";
+
 export function clearExpertAuthOnly(): void {
   removeToken();
   removeExpertId();
@@ -56,6 +59,7 @@ export function clearExpertAuthOnly(): void {
 export function clearAuthSession(): void {
   clearExpertAuthOnly();
   clearPendingOtpSession();
+  clearExpertApplicationDraft();
 }
 
 const PENDING_OTP_SESSION_KEY = "jatayu_pending_expert_otp";
@@ -98,28 +102,35 @@ export function isAuthenticated(): boolean {
 
 export function resolveOnboardingStep(user: AuthUser): ExpertOnboardingStep {
   if (user.onboardingStep === "otp") return "otp";
-  if (user.status === "pending_review" || user.onboardingStep === "success") {
-    return "success";
-  }
-  if (user.status === "approved" && user.onboardingStep === "success") {
-    return "success";
-  }
 
   const step = user.onboardingStep as ExpertOnboardingStep;
-  if (ONBOARDING_STEPS.includes(step)) {
+  if (step && step !== "success" && ONBOARDING_STEPS.includes(step)) {
     return step;
+  }
+
+  if (
+    user.onboardingComplete === true ||
+    user.onboardingStep === "success" ||
+    user.status === "approved"
+  ) {
+    return "success";
   }
 
   return "category";
 }
 
 export function getPostAuthDestination(user: AuthUser): string | ExpertOnboardingStep {
-  if (user.status === "approved" && user.onboardingStep === "success") {
+  if (
+    user.onboardingComplete === true ||
+    user.onboardingStep === "success" ||
+    user.status === "approved"
+  ) {
     return EXPERT_DASHBOARD_HREF;
   }
 
-  if (user.status === "pending_review") {
-    return "success";
+  const step = user.onboardingStep as ExpertOnboardingStep;
+  if (step && step !== "success" && ONBOARDING_STEPS.includes(step)) {
+    return step;
   }
 
   return resolveOnboardingStep(user);
@@ -207,7 +218,7 @@ export function parseCredentialsFromProfile(credentials?: unknown): {
     const type = (item.type || "").toLowerCase();
     if (type === "employment" || type === "work" || type === "job") {
       employmentPositions.push({
-        id: item.id || `emp-${crypto.randomUUID?.() || Date.now()}`,
+        id: item.id || `emp-${generateUUID()}`,
         jobTitle: item.title || "",
         company: item.institution || "",
         startMonth: "",
@@ -221,7 +232,7 @@ export function parseCredentialsFromProfile(credentials?: unknown): {
       const desc = item.description || "";
       const parts = desc.split(" · ");
       educationDegrees.push({
-        id: item.id || `edu-${crypto.randomUUID?.() || Date.now()}`,
+        id: item.id || `edu-${generateUUID()}`,
         degree: item.title || "",
         fieldOfStudy: parts[0] || "",
         institution: item.institution || "",

@@ -56,17 +56,17 @@
 .forgotPasswordLink {
   margin-left: auto;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--white);
-  opacity: 0.75;
   text-decoration: none;
   transition: opacity 0.2s ease;
 }
 
 .forgotPasswordLink:hover {
-  opacity: 1;
   text-decoration: underline;
+  text-underline-offset: 3px;
+  color: #E53B17;
 }
 
 .passwordStrengthRow {
@@ -174,7 +174,7 @@
 
 .socialButtonsRow {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 

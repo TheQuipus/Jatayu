@@ -17,7 +17,7 @@ import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
 import { register as registerExpert, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
-import { isDuplicateRegistrationMessage } from "@/lib/expertOnboardingStatus";
+import { isDuplicateRegistrationMessage } from "@/lib/authUtils";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import {
   buildPasswordContext,
@@ -31,7 +31,7 @@ import {
 type RegisterStepProps = {
   onContinue: (data: { expertId: string; phone: string; fullName: string; email: string }) => void;
   onOAuthSuccess: (response: AuthResponse) => void;
-  onSwitchToLogin?: () => void;
+  onSwitchToLogin?: (email?: string) => void;
   loginHref?: string;
 };
 
@@ -370,7 +370,7 @@ export default function RegisterStep({
                 <p className={register.authToggle}>
                   Already registered?{" "}
                   {onSwitchToLogin ? (
-                    <button type="button" className={register.authToggleBtn} onClick={onSwitchToLogin}>
+                    <button type="button" className={register.authToggleBtn} onClick={() => onSwitchToLogin(email)}>
                       Log in to your account
                     </button>
                   ) : (
@@ -399,7 +399,7 @@ export default function RegisterStep({
           <p className={register.authToggle}>
             Already have an account?{" "}
             {onSwitchToLogin ? (
-              <button type="button" className={register.authToggleBtn} onClick={onSwitchToLogin}>
+              <button type="button" className={register.authToggleBtn} onClick={() => onSwitchToLogin(email)}>
                 Login
               </button>
             ) : (

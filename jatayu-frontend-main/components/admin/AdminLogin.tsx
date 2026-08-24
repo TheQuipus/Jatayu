@@ -183,61 +183,63 @@ export default function AdminLogin() {
               <label className={register.registerFieldLabel} htmlFor="adminLoginEmail">
                 Email Address
               </label>
-              <div className={inputWrapClass("email")}>
-                <Mail className={register.inputInnerIcon} size={16} />
-                <input
-                  id="adminLoginEmail"
-                  type="email"
-                  className={register.textFieldWithIcon}
-                  placeholder="admin@thequipus.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onBlur={() => markTouched("email")}
-                  autoComplete="username"
-                  aria-invalid={Boolean(fieldError("email"))}
-                />
+              <div className={register.inputFieldWrap}>
+                <div className={inputWrapClass("email")}>
+                  <Mail className={register.inputInnerIcon} size={16} />
+                  <input
+                    id="adminLoginEmail"
+                    type="email"
+                    className={register.textFieldWithIcon}
+                    placeholder="admin@thequipus.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onBlur={() => markTouched("email")}
+                    autoComplete="username"
+                    aria-invalid={Boolean(fieldError("email"))}
+                  />
+                </div>
+                {fieldError("email") && (
+                  <span className={register.fieldErrorBelow}>{fieldError("email")}</span>
+                )}
               </div>
-              {fieldError("email") && (
-                <span className={register.fieldErrorBelow}>{fieldError("email")}</span>
-              )}
             </div>
 
             <div className={register.fieldGroup}>
               <label className={register.registerFieldLabel} htmlFor="adminLoginPassword">
                 Password
               </label>
-              <div className={inputWrapClass("password")}>
-                <Lock className={register.inputInnerIcon} size={16} />
-                <input
-                  id="adminLoginPassword"
-                  type={showPassword ? "text" : "password"}
-                  className={`${register.textFieldWithIcon} ${formStyles.textFieldWithToggle}`}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onBlur={() => markTouched("password")}
-                  autoComplete="current-password"
-                  aria-invalid={Boolean(fieldError("password"))}
-                />
-                <button
-                  type="button"
-                  className={formStyles.passwordToggle}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowPassword((prev) => !prev);
-                  }}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showPassword}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+              <div className={register.inputFieldWrap}>
+                <div className={inputWrapClass("password")}>
+                  <Lock className={register.inputInnerIcon} size={16} />
+                  <input
+                    id="adminLoginPassword"
+                    type={showPassword ? "text" : "password"}
+                    className={`${register.textFieldWithIcon} ${formStyles.textFieldWithToggle}`}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onBlur={() => markTouched("password")}
+                    autoComplete="current-password"
+                    aria-invalid={Boolean(fieldError("password"))}
+                  />
+                  <button
+                    type="button"
+                    className={formStyles.passwordToggle}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPassword((prev) => !prev);
+                    }}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {fieldError("password") && (
+                  <span className={register.fieldErrorBelow}>{fieldError("password")}</span>
+                )}
               </div>
               <div className={formStyles.forgotPasswordRow}>
-                {fieldError("password") ? (
-                  <span className={register.fieldErrorStatic}>{fieldError("password")}</span>
-                ) : (
-                  <span />
-                )}
                 <Link href="/forgot-password?role=admin" className={formStyles.forgotPasswordLink}>
                   Forgot Password?
                 </Link>

@@ -1,0 +1,581 @@
+/* ==========================================================================
+   EDIT PROFILE FULL PAGE STYLES (MATCHING MOCKUP)
+   ========================================================================== */
+
+.editProfileView {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.editHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editPageTitle {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.editPageSubtitle {
+  font-size: 13px;
+  color: var(--dove-gray);
+  margin: 2px 0 0;
+}
+
+.btnCancelEdit {
+  padding: 9px 18px;
+  border-radius: 10px;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnCancelEdit:hover {
+  background: var(--seashell);
+}
+
+.btnSaveEditTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  background: var(--bunker);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnSaveEditTop:hover {
+  background: #181d28;
+}
+
+.editGrid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .editGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editLeftCol, .editRightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Edit Hero Card */
+.editHeroCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.editCoverBanner {
+  height: 140px;
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #ec4899 100%);
+  position: relative;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btnChangeCover {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editAvatarSection {
+  padding: 24px 24px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 0;
+}
+
+.editAvatarWrapper {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+}
+
+.editAvatarImg {
+  width: 90px;
+  height: 90px;
+  border-radius: 22px;
+  object-fit: cover;
+  border: 4px solid var(--white);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  background: var(--white);
+}
+
+.avatarCameraBtn {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bunker);
+  color: var(--white);
+  border: 2px solid var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.avatarActionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 36px;
+}
+
+.btnUploadPhoto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+.btnRemovePhoto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  color: var(--scorpion);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.avatarHelperText {
+  font-size: 11px;
+  color: var(--dove-gray);
+}
+
+/* Edit Form Cards */
+.editFormCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--sand-light);
+}
+
+.editCardHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--sand-light);
+}
+
+.formGrid2Col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.formGrid3Col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 800px) {
+  .formGrid2Col, .formGrid3Col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.fieldHelper {
+  font-size: 11px;
+  color: var(--dove-gray);
+}
+
+.inputIconWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.fieldIconLeft {
+  position: absolute;
+  left: 12px;
+  color: var(--dove-gray);
+  pointer-events: none;
+}
+
+.fieldIconRight {
+  position: absolute;
+  right: 12px;
+  color: var(--dove-gray);
+  pointer-events: none;
+}
+
+.atSymbolLeft {
+  position: absolute;
+  left: 14px;
+  font-weight: 700;
+  color: var(--dove-gray);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.formInput {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border-radius: 10px;
+  border: 1px solid var(--mercury);
+  background: #f8fafc;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.formInput:focus {
+  border-color: var(--tango);
+  background: var(--white);
+}
+
+.formSelect {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  border-radius: 10px;
+  border: 1px solid var(--mercury);
+  background: #f8fafc;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  cursor: pointer;
+}
+
+.formTextarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--mercury);
+  background: #f8fafc;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  outline: none;
+  resize: vertical;
+}
+
+.formTextarea:focus {
+  border-color: var(--tango);
+  background: var(--white);
+}
+
+/* Languages Component */
+.langPillsRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.langPillItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #eff6ff;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-size: 12px;
+}
+
+.langFlag {
+  font-size: 10px;
+  font-weight: 800;
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.15);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.langName {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.langLevel {
+  font-size: 11px;
+  color: #2563eb;
+}
+
+.langRemoveBtn {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.addLangBox {
+  background: #f8fafc;
+  border: 1px dashed var(--mercury);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 8px;
+}
+
+.addLangChipsRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.addLangChipBtn {
+  padding: 5px 12px;
+  border-radius: 16px;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--scorpion);
+  cursor: pointer;
+}
+
+.addLangChipBtn:hover {
+  background: var(--seashell);
+  color: var(--ink);
+}
+
+/* Interests Selection Grid */
+.interestsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .interestsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.interestTile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.interestTileSelected {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* Right Widgets */
+.editWidgetCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.strengthHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.strengthTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.strengthPercent {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: #6366f1;
+}
+
+.strengthSub {
+  font-size: 11px;
+  color: var(--dove-gray);
+  margin-top: 4px;
+}
+
+.strengthChecklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.strengthCheckItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.emptyCheckDot {
+  width: 15px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--dove-gray);
+}
+
+.tipsList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #1e40af;
+}
+
+.tipsList li {
+  margin-bottom: 6px;
+}
+
+.securityMiniList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.securityMiniItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--mercury);
+}
+
+.securityMiniItem:last-child {
+  border-bottom: none;
+}
+
+.secTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.secSub {
+  font-size: 11px;
+  color: var(--dove-gray);
+}
+
+.btnDangerAccount {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--white);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnDangerAccount:hover {
+  background: rgba(239, 68, 68, 0.1);
+}

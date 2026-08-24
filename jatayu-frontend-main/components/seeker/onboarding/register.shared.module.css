@@ -111,6 +111,48 @@
   color: #FF3B30;
 }
 
+.errorBannerBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 59, 48, 0.06);
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.errorBannerBox .fieldErrorBelow {
+  position: static;
+  margin-top: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.duplicateAccountBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.switchToLoginBtn {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: #E53B17;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.switchToLoginBtn:hover {
+  color: #c42d0e;
+}
+
 .inputWithIconWrap {
   position: relative;
   display: flex;
@@ -323,11 +365,11 @@
   font-weight: 500;
   color: var(--white);
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
   transition: color 0.2s ease;
 }
 
 .authToggleBtn:hover {
   color: #E53B17;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

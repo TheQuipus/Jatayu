@@ -318,11 +318,11 @@
   font-weight: 500;
   color: var(--white);
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
   transition: color 0.2s ease;
 }
 
 .authToggleBtn:hover {
   color: #E53B17;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

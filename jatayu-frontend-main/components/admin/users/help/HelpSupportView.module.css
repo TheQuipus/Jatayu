@@ -1,0 +1,755 @@
+/* ==========================================================================
+   HELP & SUPPORT FULL PAGE STYLES (MATCHING MOCKUP)
+   ========================================================================== */
+
+.helpView {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.helpHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.helpPageTitle {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.helpPageSubtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--dove-gray);
+  margin: 0;
+}
+
+.btnCreateCaseTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 0;
+  background: var(--bunker);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnCreateCaseTop:hover {
+  background: #181d28;
+}
+
+/* Dark Navy Hero Search Banner */
+.helpHeroBanner {
+  background: linear-gradient(135deg, var(--bunker) 0%, #171c2a 60%, #1e2438 100%);
+  border-radius: 0;
+  padding: 32px 36px;
+  color: var(--white);
+  box-shadow: 0 10px 30px rgba(8, 10, 16, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.helpTagline {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tango);
+}
+
+.helpHeroTitle {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--white);
+  margin: 0;
+}
+
+.helpSearchBox {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0;
+  padding: 6px 6px 6px 16px;
+  gap: 12px;
+  max-width: 680px;
+}
+
+.searchIconLeft {
+  color: rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
+}
+
+.helpSearchInput {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: var(--white);
+}
+
+.helpSearchInput::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.helpSearchBtn {
+  padding: 8px 20px;
+  border-radius: 0;
+  background: var(--white);
+  color: var(--bunker);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.helpSearchBtn:hover {
+  background: var(--seashell);
+}
+
+.popularSearchPills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.popularLabel {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+}
+
+.pillBtn {
+  padding: 4px 12px;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pillBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Your Open Cases Card */
+.openCasesCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 0;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.casesHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.casesTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.subTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.subSubtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--dove-gray);
+  margin: 0;
+}
+
+.openBadge {
+  padding: 4px 10px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--tango) 15%, var(--white));
+  color: var(--tango);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.casesList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.caseItemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 0;
+  border: 1px solid var(--sand-light);
+  background: #fdfdfd;
+}
+
+.caseLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.caseIconBox {
+  width: 38px;
+  height: 38px;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.caseTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.caseTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.caseMeta {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--dove-gray);
+  margin-top: 4px;
+}
+
+.caseSubmeta {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--dove-gray);
+  margin-top: 4px;
+}
+
+.btnViewCase {
+  padding: 6px 14px;
+  border-radius: 0;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnViewCase:hover {
+  background: var(--seashell);
+}
+
+.casesFooterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--sand-light);
+}
+
+.linkViewAll {
+  background: none;
+  border: none;
+  color: var(--tango);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Browse Help Topics */
+.topicsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionHeaderTitle {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--dove-gray);
+  margin: 0;
+}
+
+.topicsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .topicsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.topicCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.topicCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+}
+
+.topicIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.topicTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.topicDesc {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--scorpion);
+  margin: 0;
+}
+
+.topicLink {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tango);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 3 Quick Action Banners Below Topics */
+.quickBannersGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .quickBannersGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.quickBannerItem {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 0;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quickBannerItem:hover {
+  background: var(--seashell);
+}
+
+.quickBannerIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quickBannerTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.quickBannerSub {
+  font-size: 14px;
+  color: var(--dove-gray);
+}
+
+/* Lower Section: FAQs & Contact Us */
+.helpLowerGrid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+}
+
+@media (max-width: 1100px) {
+  .helpLowerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.faqCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 0;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.faqHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.btnBrowseAllFaq {
+  padding: 6px 14px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--tango) 12%, var(--white));
+  color: var(--tango);
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.faqTabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.faqTab {
+  padding: 6px 14px;
+  border-radius: 0;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dove-gray);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.faqTabActive {
+  background: var(--bunker);
+  color: var(--white);
+  border-color: var(--bunker);
+}
+
+.faqAccordionList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faqItem {
+  border-bottom: 1px solid var(--sand-light);
+  padding-bottom: 12px;
+}
+
+.faqQuestionRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  padding: 8px 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.faqQuestionText {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.faqChevron {
+  color: var(--dove-gray);
+  transition: transform 0.2s ease;
+}
+
+.faqAnswerText {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--scorpion);
+  padding: 6px 0 8px;
+}
+
+.btnViewMoreFaqs {
+  background: none;
+  border: none;
+  color: var(--tango);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Contact Us Sidebar Column */
+.contactSidebarColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.contactUsCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 0;
+  padding: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contactHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contactOptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contactOptionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 0;
+  border: 1px solid var(--mercury);
+  background: #fdfdfd;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.contactOptionItem:hover {
+  background: var(--seashell);
+}
+
+.contactWhatsapp {
+  background: color-mix(in srgb, var(--tango) 8%, var(--white));
+  border-color: color-mix(in srgb, var(--tango) 30%, transparent);
+}
+
+.contactReport {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.contactOptionLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.optionIconBox {
+  width: 32px;
+  height: 32px;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.optionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.optionSub {
+  font-size: 14px;
+  color: var(--dove-gray);
+}
+
+.supportStatusFooter {
+  font-size: 14px;
+  color: var(--dove-gray);
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--sand-light);
+}
+
+/* Ticket Status Timeline Card */
+.ticketStatusCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 0;
+  padding: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ticketStatusHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ticketCardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.ticketCardSub {
+  font-size: 14px;
+  color: var(--dove-gray);
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  padding-left: 12px;
+}
+
+.timelineStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+}
+
+.timelineDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.dotDone {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.dotActive {
+  background: var(--tango);
+  color: #ffffff;
+}
+
+.dotPending {
+  background: var(--mercury);
+  color: var(--dove-gray);
+}
+
+.timelineContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timelineTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.timelineTime {
+  font-size: 14px;
+  color: var(--dove-gray);
+}
+
+.ticketCardActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.btnTicketReply {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--tango) 12%, var(--white));
+  color: var(--tango);
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnTicketFull {
+  flex: 1;
+  padding: 8px;
+  border-radius: 0;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+

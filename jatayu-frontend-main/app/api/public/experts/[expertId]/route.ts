@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { expertSlug, featuredExperts, getExpertById, normalizeExpert } from "@/lib/experts";
+import { publicApiBase } from "@/lib/publicApiBase";
 
 export const dynamic = "force-static";
 
@@ -29,7 +30,7 @@ export async function GET(
       : decodedId;
 
   // 1. Attempt to fetch live expert data from backend API server
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const backendUrl = publicApiBase();
   try {
     const res = await fetch(`${backendUrl}/api/public/experts/${encodeURIComponent(targetId)}`, {
       headers: { "Content-Type": "application/json" },

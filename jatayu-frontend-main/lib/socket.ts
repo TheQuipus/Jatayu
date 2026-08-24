@@ -1,9 +1,7 @@
 import { io, type Socket } from "socket.io-client";
+import { publicWsBase } from "@/lib/publicApiBase";
 
-const SOCKET_URL =
-  process.env.NEXT_PUBLIC_WS_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000";
+const SOCKET_URL = publicWsBase();
 
 let socket: Socket | null = null;
 

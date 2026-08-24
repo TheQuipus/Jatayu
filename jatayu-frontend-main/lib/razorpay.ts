@@ -1,6 +1,7 @@
 import type { RazorpayCheckoutResult } from "@/lib/seekerBookingApi";
+import { publicApiBase } from "@/lib/publicApiBase";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const BASE_URL = publicApiBase();
 
 declare global {
   interface Window {

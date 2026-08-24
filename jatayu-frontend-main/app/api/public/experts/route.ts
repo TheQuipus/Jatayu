@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { featuredExperts, matchesAvailabilityFilter, getAvailableLanguages, parseReplyTimeMinutes } from "@/lib/experts";
+import { publicApiBase } from "@/lib/publicApiBase";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
   const sortBy = searchParams.get("sort") || searchParams.get("sortBy") || "popularity";
 
   // 1. Attempt to fetch live experts from backend API server
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const backendUrl = publicApiBase();
   try {
     const queryString = searchParams.toString();
     const res = await fetch(`${backendUrl}/api/public/experts?${queryString}`, {

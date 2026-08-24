@@ -135,7 +135,7 @@ export default function ApplicationReviewHero({
                   if (fmtId === "video") title = "VIDEO ANSWER";
                   else if (fmtId === "written") title = "TEXT ANSWER";
                   else if (fmtId === "shoutout") title = "PHONE CALL";
-                  else if (fmtId === "group") title = "GROUP SESSION";
+                  else if (fmtId === "group") title = "LIVE CHAT";
 
                   const price = formatFormatPriceDisplay(formatPrices[fmtId]);
                   return (

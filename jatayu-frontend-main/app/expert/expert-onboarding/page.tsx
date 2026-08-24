@@ -62,10 +62,14 @@ import {
 } from "@/lib/expertAuth";
 import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expertOnboardingStatus";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
+import { generateUUID } from "@/lib/uuid";
 import {
   deriveLocationFromTimezone,
 } from "@/lib/expertApplicationMedia";
-import { saveExpertApplicationDraft } from "@/lib/expertApplicationsStore";
+import {
+  clearExpertApplicationDraft,
+  saveExpertApplicationDraft,
+} from "@/lib/expertApplicationsStore";
 import type {
   ExpertCertificate,
   GovernmentIdData,
@@ -276,9 +280,46 @@ function ExpertOnboardingPageContent() {
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
   const [accountStatus, setAccountStatus] = useState<ExpertAccountStatus | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [initialLoginEmail, setInitialLoginEmail] = useState("");
   const otpFlowLockRef = useRef(false);
   const signupFlowRef = useRef(false);
   const loginIntentRef = useRef(false);
+
+  const resetOnboardingFormState = useCallback(() => {
+    setSelectedCategory("");
+    setSelectedSkills([]);
+    setEmploymentPositions([createEmptyEmploymentPosition()]);
+    setEducationDegrees([createEmptyEducationDegree()]);
+    setProfessionalTitle("");
+    setSelectedFormats([]);
+    setSelectedLengths([]);
+    setFormatPrices({});
+    setTagLine("");
+    setBio("");
+    setProfilePhotoSrc("/assets/img/manportrait.png");
+    setCustomSkills({});
+    setCustomCategories([]);
+    setRegisteredPhone("");
+    setRegisteredEmail("");
+    setRegisteredName("");
+    setExpertId("");
+    setProfileError(null);
+    setInternalStepComplete({});
+    setLinkedin("");
+    setPortfolio("");
+    setPortfolioSamples([]);
+    setCertificates([]);
+    setGovernmentId(null);
+    setKycVideoUrl("");
+    setLanguages([]);
+    setSelectedAudiences([]);
+    setTimezone("");
+    setAvailabilitySlots([]);
+    setAcceptCustomRequests(false);
+    setAccountStatus(null);
+    setAuthUser(null);
+    clearExpertApplicationDraft();
+  }, []);
 
   function hydrateFromProfile(profile: ExpertOnboardingProfile) {
     const user = profile;
@@ -341,7 +382,7 @@ function ExpertOnboardingPageContent() {
     if (user.availabilities?.length) {
       setAvailabilitySlots(
         user.availabilities.map((slot) => ({
-          id: slot.id || `slot-${crypto.randomUUID?.() || Date.now()}`,
+          id: slot.id || `slot-${generateUUID()}`,
           days: slot.days || [],
           from: slot.fromTime || "",
           to: slot.toTime || "",
@@ -436,7 +477,8 @@ function ExpertOnboardingPageContent() {
     [selectedCategory, selectedSkills, internalStepComplete],
   );
 
-  useLayoutEffect(() => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const flow = params.get("flow");
     const resume = params.get("resume");
@@ -458,8 +500,12 @@ function ExpertOnboardingPageContent() {
     }
 
     if (flow === "signup") {
+      if (isAuthenticated() && !loginIntentRef.current) {
+        return;
+      }
       signupFlowRef.current = true;
       clearAuthSession();
+      resetOnboardingFormState();
       setStep("register");
       return;
     }
@@ -680,9 +726,12 @@ function ExpertOnboardingPageContent() {
     setStep("register");
   };
 
-  const handleSwitchToLogin = () => {
+  const handleSwitchToLogin = (emailPrefill?: string) => {
     loginIntentRef.current = true;
     signupFlowRef.current = false;
+    if (typeof emailPrefill === "string" && emailPrefill.trim()) {
+      setInitialLoginEmail(emailPrefill.trim());
+    }
     clearAuthSession();
     setStep("login");
     router.replace(EXPERT_LOGIN_HREF);
@@ -692,6 +741,7 @@ function ExpertOnboardingPageContent() {
     loginIntentRef.current = false;
     signupFlowRef.current = true;
     clearAuthSession();
+    resetOnboardingFormState();
     setStep("register");
     router.replace("/expert/expert-onboarding/?flow=signup");
   };
@@ -735,7 +785,7 @@ function ExpertOnboardingPageContent() {
     }
   };
 
-  const handleAddCustomCategory = (label: string) => {
+  const handleAddCustomCategory = (label: string, aiSkills?: string[]) => {
     const trimmed = label.trim();
     if (!trimmed) return;
 
@@ -746,15 +796,33 @@ function ExpertOnboardingPageContent() {
       (cat) => cat.id === id || cat.label.toLowerCase() === trimmed.toLowerCase(),
     );
 
+    const cleanSkillsList = (skills?: string[]) => {
+      if (!skills || !Array.isArray(skills)) return [];
+      const catLower = trimmed.toLowerCase();
+      const prefixPattern = new RegExp(`^${catLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s:\\-_]+`, "i");
+      return skills.map((s) => {
+        let cleaned = s.replace(prefixPattern, "").trim();
+        if (cleaned) cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        return cleaned || s;
+      });
+    };
+
     if (exists) {
       const existing = [...categories, ...customCategories].find(
         (cat) => cat.id === id || cat.label.toLowerCase() === trimmed.toLowerCase(),
       );
       if (existing) {
         setSelectedCategory(existing.id);
+        if (aiSkills && aiSkills.length > 0) {
+          skillsByCategory[existing.id] = cleanSkillsList(aiSkills);
+        }
         setSelectedSkills([]);
       }
       return;
+    }
+
+    if (aiSkills && aiSkills.length > 0) {
+      skillsByCategory[id] = cleanSkillsList(aiSkills);
     }
 
     setCustomCategories((prev) => [...prev, { id, label: trimmed, icon: Briefcase }]);
@@ -1065,6 +1133,7 @@ function ExpertOnboardingPageContent() {
           onContinue={handleLoginComplete}
           onRequiresOtp={handleLoginRequiresOtp}
           onSwitchToRegister={handleSwitchToRegister}
+          initialEmail={initialLoginEmail}
         />
       )}
 

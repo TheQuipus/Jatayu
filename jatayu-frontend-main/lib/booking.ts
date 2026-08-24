@@ -37,10 +37,10 @@ export const consultationTypes: {
   },
   {
     id: "group",
-    title: "Group Session",
-    desc: "Join interactive group Q&A\nand live learning.",
+    title: "Live Chat",
+    desc: "Real-time live messaging and\ninteractive chat session.",
     multiplier: 1.2,
-    badge: "Collaborative",
+    badge: "Interactive",
     badgeVariant: "accent",
   },
 ];

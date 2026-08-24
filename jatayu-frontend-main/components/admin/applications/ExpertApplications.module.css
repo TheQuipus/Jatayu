@@ -79,6 +79,7 @@
   flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 16px;
+  width: 100%;
 }
 
 .kpiRow>* {
@@ -92,10 +93,11 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  width: 220px;
+  width: 190px !important;
   max-width: 100%;
-  min-height: 140px;
-  padding: 18px 20px;
+  min-height: 130px !important;
+  max-height: 140px;
+  padding: 16px 18px;
   border-radius: 0;
   text-align: left;
   cursor: pointer;
@@ -130,7 +132,7 @@
 
 .kpiValue {
   margin: 0;
-  margin-top: auto;
+  margin-top: 12px !important;
   font-family: var(--font-display);
   font-size: 44px;
   font-weight: 600;
@@ -440,7 +442,7 @@
 
 .submittedDate {
   font-weight: 500;
-  line-height: 1.25;
+  line-height: 1.35;
   color: var(--ink);
 }
 
@@ -462,7 +464,8 @@
 .reviewerName {
   font-size: 14px;
   font-weight: 500;
-  color: var(--scorpion);
+  line-height: 1.35;
+  color: var(--ink);
 }
 
 .reviewLink {
@@ -511,8 +514,8 @@
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
-  line-height: 1.2;
-  color: var(--scorpion);
+  line-height: 1.35;
+  color: var(--ink);
   white-space: nowrap;
 }
 
@@ -568,8 +571,8 @@
   align-items: center;
   font-family: var(--font-mono);
   font-size: 14px;
-  font-weight: 600;
-  line-height: 1.2;
+  font-weight: 500;
+  line-height: 1.35;
   letter-spacing: normal;
   text-transform: none;
   font-variant-numeric: tabular-nums;

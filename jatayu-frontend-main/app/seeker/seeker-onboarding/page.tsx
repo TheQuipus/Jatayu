@@ -33,14 +33,19 @@ import {
   type SeekerOnboardingStepKey,
 } from "@/components/seeker/onboarding/seekerOnboardingSteps";
 import {
+  getSeekerProfile,
   submitSeekerOnboarding,
   updateSeekerOnboarding,
   type AuthResponse,
+  type AuthUser,
   type UpdateSeekerOnboardingPayload,
 } from "@/lib/api";
 import {
   clearPendingSeekerOtpSession,
   clearSeekerAuthOnly,
+  clearSeekerAuthSession,
+  getSeekerPostAuthDestination,
+  isSeekerAuthenticated,
   persistSeekerAuthSession,
   readPendingSeekerOtpSession,
   savePendingSeekerOtpSession,
@@ -277,22 +282,111 @@ function SeekerOnboardingPageContent() {
   const [isSavingStep, setIsSavingStep] = useState(false);
   const [stepSaveError, setStepSaveError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const auth = new URLSearchParams(window.location.search).get("auth");
-    if (auth === "login") {
-      queueMicrotask(() => setStep("login"));
+  const [prefilledLoginEmail, setPrefilledLoginEmail] = useState("");
+
+  function hydrateSeekerFromProfile(data: Record<string, unknown>) {
+    if (data.id && typeof data.id === "string") setSeekerId(data.id);
+    if (data.fullName && typeof data.fullName === "string") setRegisteredName(data.fullName);
+    if (data.email && typeof data.email === "string") setRegisteredEmail(data.email);
+    if (data.phone && typeof data.phone === "string") setRegisteredPhone(data.phone);
+
+    if (data.selectedCategory && typeof data.selectedCategory === "string") {
+      const savedCat = data.selectedCategory;
+      const knownCat = categories.find(
+        (c) => c.id === savedCat || c.label.toLowerCase() === savedCat.toLowerCase(),
+      );
+      if (knownCat) {
+        setSelectedCategory(knownCat.id);
+      } else {
+        const customId = `custom-${savedCat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "category"}`;
+        setCustomCategories((prev) => {
+          if (prev.some((c) => c.id === customId || c.label === savedCat)) return prev;
+          return [...prev, { id: customId, label: savedCat, icon: Briefcase }];
+        });
+        setSelectedCategory(customId);
+      }
     }
 
-    const pendingOtp = readPendingSeekerOtpSession();
-    if (pendingOtp) {
-      queueMicrotask(() => {
-        setSeekerId(pendingOtp.seekerId);
-        setRegisteredEmail(pendingOtp.email);
-        setRegisteredPhone(pendingOtp.phone);
-        if (pendingOtp.fullName) setRegisteredName(pendingOtp.fullName);
-        setStep("otp");
-      });
+    if (Array.isArray(data.selectedTopics)) {
+      setSelectedTopics(data.selectedTopics.map(String));
     }
+    if (typeof data.needsText === "string") setNeedsText(data.needsText);
+    if (Array.isArray(data.selectedNeedChips)) {
+      setSelectedNeedChips(data.selectedNeedChips.map(String));
+    }
+    if (Array.isArray(data.selectedFormats)) {
+      setSelectedFormats(data.selectedFormats.map(String));
+    }
+    if (typeof data.selectedBudget === "string") setSelectedBudget(data.selectedBudget);
+    if (Array.isArray(data.selectedLanguages)) {
+      setSelectedLanguages(data.selectedLanguages.map(String));
+    }
+    if (typeof data.location === "string") setLocation(data.location);
+    if (typeof data.additionalContext === "string") setAdditionalContext(data.additionalContext);
+    if (typeof data.profilePhotoSrc === "string" && data.profilePhotoSrc) {
+      setProfilePhotoSrc(data.profilePhotoSrc);
+    }
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const auth = params.get("auth");
+    const flow = params.get("flow");
+    const resume = params.get("resume");
+
+    if (auth === "login") {
+      clearPendingSeekerOtpSession();
+      clearSeekerAuthSession();
+      queueMicrotask(() => setStep("login"));
+      return;
+    }
+
+    if (flow === "signup" || auth === "register" || auth === "signup") {
+      clearPendingSeekerOtpSession();
+      clearSeekerAuthSession();
+      queueMicrotask(() => handleSwitchToRegister());
+      return;
+    }
+
+    if (resume === "otp") {
+      const pendingOtp = readPendingSeekerOtpSession();
+      if (pendingOtp) {
+        queueMicrotask(() => {
+          setSeekerId(pendingOtp.seekerId);
+          setRegisteredEmail(pendingOtp.email);
+          setRegisteredPhone(pendingOtp.phone);
+          if (pendingOtp.fullName) setRegisteredName(pendingOtp.fullName);
+          setStep("otp");
+        });
+        return;
+      }
+    }
+
+    if (resume === "true" && isSeekerAuthenticated()) {
+      clearPendingSeekerOtpSession();
+      getSeekerProfile()
+        .then((data) => {
+          if (data && typeof data === "object") {
+            hydrateSeekerFromProfile(data);
+            const profileUser = data as unknown as AuthUser;
+            if (profileUser) {
+              const dest = getSeekerPostAuthDestination(profileUser);
+              if (typeof dest === "string" && dest.startsWith("/")) {
+                window.location.assign(dest);
+              } else {
+                setStep(dest as OnboardingStep);
+              }
+            }
+          }
+        })
+        .catch(() => undefined);
+      return;
+    }
+
+    // Default for signup / initial visit: clear any old session and show register step
+    clearSeekerAuthSession();
+    clearPendingSeekerOtpSession();
+    queueMicrotask(() => handleSwitchToRegister());
   }, []);
 
   const handleStartJourney = () => {
@@ -534,25 +628,25 @@ function SeekerOnboardingPageContent() {
 
   const handleAuthSuccess = (response: AuthResponse) => {
     persistSeekerAuthSession(response);
-    if (response.user.fullName) {
-      setRegisteredName(response.user.fullName);
-    }
+    if (response.user.fullName) setRegisteredName(response.user.fullName);
+    if (response.user.email) setRegisteredEmail(response.user.email);
+    if (response.user.phone) setRegisteredPhone(response.user.phone);
 
-    const resumeSteps: OnboardingStep[] = [
-      "category",
-      "needs",
-      "format",
-      "budget",
-      "personalisation",
-      "review",
-    ];
-    const resumeStep = response.user.onboardingStep as OnboardingStep;
-    if (resumeSteps.includes(resumeStep)) {
-      setStep(resumeStep);
+    getSeekerProfile()
+      .then((data) => {
+        if (data && typeof data === "object") {
+          hydrateSeekerFromProfile(data);
+        }
+      })
+      .catch(() => undefined);
+
+    const destination = getSeekerPostAuthDestination(response.user);
+    if (typeof destination === "string" && destination.startsWith("/")) {
+      window.location.assign(destination);
       return;
     }
 
-    window.location.assign("/seeker/dashboard/");
+    setStep(destination as OnboardingStep);
   };
 
   const handleLoginComplete = (response: AuthResponse) => {
@@ -579,10 +673,33 @@ function SeekerOnboardingPageContent() {
   };
 
   const handleSwitchToRegister = () => {
+    clearPendingSeekerOtpSession();
+    clearSeekerAuthSession();
+    setSelectedCategory("");
+    setSelectedTopics([]);
+    setNeedsText("");
+    setSelectedNeedChips([]);
+    setSelectedFormats([]);
+    setSelectedLanguages([]);
+    setProfilePhotoSrc("/assets/img/manportrait.png");
+    setSelectedBudget("");
+    setLocation("");
+    setAdditionalContext("");
+    setCustomTopics({});
+    setCustomCategories([]);
+    setRegisteredPhone("");
+    setRegisteredEmail("");
+    setRegisteredName("");
+    setSeekerId("");
+    setIsSubmitting(false);
+    setSubmissionError(null);
+    setStepSaveError(null);
     setStep("register");
   };
 
-  const handleSwitchToLogin = () => {
+  const handleSwitchToLogin = (email?: string) => {
+    clearPendingSeekerOtpSession();
+    if (email) setPrefilledLoginEmail(email);
     setStep("login");
   };
 
@@ -823,6 +940,7 @@ function SeekerOnboardingPageContent() {
           onContinue={handleLoginComplete}
           onRequiresOtp={handleLoginRequiresOtp}
           onSwitchToRegister={handleSwitchToRegister}
+          initialEmail={prefilledLoginEmail}
         />
       )}
 

@@ -180,7 +180,7 @@ export default function Contact() {
                     onChange={(e) => setAgreed(e.target.checked)}
                   />
                   <span className={styles.formTerms}>
-                    BY SUBMITTING, YOU AGREE TO <a href="#">OUR TERMS</a> AND <a href="#">PRIVACY POLICY</a>
+                    BY SUBMITTING, YOU AGREE TO <a href="/terms" target="_blank" rel="noopener noreferrer">OUR TERMS</a> AND <a href="/privacy" target="_blank" rel="noopener noreferrer">PRIVACY POLICY</a>
                   </span>
                 </label>
                 <PrimaryButton

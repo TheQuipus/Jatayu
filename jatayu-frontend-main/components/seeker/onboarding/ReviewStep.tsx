@@ -218,7 +218,7 @@ export default function ReviewStep({
                 <span className={styles.reviewDetailLabel}>Budget</span>
                 <span className={styles.reviewDetailValue}>
                   {selectedBudgetLabel}
-                  {selectedBudgetPriceText ? ` · ${selectedBudgetPriceText}/session` : ""}
+                  {selectedBudgetPriceText ? ` · ${selectedBudgetPriceText}/min` : ""}
                 </span>
               </div>
             </div>
@@ -235,8 +235,8 @@ export default function ReviewStep({
             />
             <span className={styles.termsText}>
               BY CONTINUING, YOU AGREE TO{" "}
-              <a href="#" onClick={(e) => e.preventDefault()}>OUR TERMS</a> AND{" "}
-              <a href="#" onClick={(e) => e.preventDefault()}>PRIVACY POLICY</a>
+              <a href="/terms" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>OUR TERMS</a> AND{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>PRIVACY POLICY</a>
             </span>
           </label>
         </div>

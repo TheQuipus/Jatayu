@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { X, Plus, Info } from "lucide-react";
+import { X, Plus, Info, Loader2, AlertCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
+import { recommendSkillsForCategory } from "@/lib/api";
 import shared from "./onboarding.shared.module.css";
 import styles from "./CategoryStep.module.css";
 
@@ -15,8 +16,6 @@ type CategoryOption = {
   label: string;
   icon: LucideIcon;
 };
-
-
 
 function isCustomCategory(id: string) {
   return id.startsWith("custom-");
@@ -28,7 +27,7 @@ type CategoryStepProps = {
   selectedCategory: string;
   stepCompletion: boolean[];
   onSelectCategory: (id: string) => void;
-  onAddCustomCategory: (label: string) => void;
+  onAddCustomCategory: (label: string, aiSkills?: string[]) => void;
   onRemoveCustomCategory: (id: string) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -49,31 +48,47 @@ export default function CategoryStep({
 }: CategoryStepProps) {
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [showInput, setShowInput] = useState(false);
+  const [isRecommending, setIsRecommending] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const customCategories = categories.filter((cat) => isCustomCategory(cat.id));
   const isMaxCustomReached = customCategories.length >= 1;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isMaxCustomReached) return;
+    if (isMaxCustomReached || isRecommending) return;
     const trimmed = newCategoryInput.trim();
     if (!trimmed) return;
-    onAddCustomCategory(trimmed);
-    setNewCategoryInput("");
-    setShowInput(false);
+
+    setValidationError(null);
+    setIsRecommending(true);
+
+    try {
+      const res = await recommendSkillsForCategory(trimmed);
+      if (!res.valid) {
+        setValidationError(res.message || "Please enter a valid professional category name.");
+        setIsRecommending(false);
+        return;
+      }
+
+      onAddCustomCategory(trimmed, res.skills);
+      setNewCategoryInput("");
+      setShowInput(false);
+    } catch (err) {
+      console.warn("AI category recommendation error:", err);
+      onAddCustomCategory(trimmed);
+      setNewCategoryInput("");
+      setShowInput(false);
+    } finally {
+      setIsRecommending(false);
+    }
   };
 
   const handleBlur = () => {
-    if (isMaxCustomReached) {
+    if (!newCategoryInput.trim() && !isRecommending) {
       setShowInput(false);
-      return;
+      setValidationError(null);
     }
-    const trimmed = newCategoryInput.trim();
-    if (trimmed) {
-      onAddCustomCategory(trimmed);
-      setNewCategoryInput("");
-    }
-    setShowInput(false);
   };
 
   const handleSelectCategory = (catId: string, isSelected: boolean) => {
@@ -181,9 +196,8 @@ export default function CategoryStep({
                           <button
                             type="button"
                             onClick={() => handleSelectCategory(cat.id, isSelected)}
-                            className={`${styles.categoryItem} ${
-                              isSelected ? styles.categoryItemSelected : ""
-                            }`}
+                            className={`${styles.categoryItem} ${isSelected ? styles.categoryItemSelected : ""
+                              }`}
                           >
                             <span className={styles.categoryLabelText}>{cat.label}</span>
                           </button>
@@ -197,85 +211,101 @@ export default function CategoryStep({
 
             {/* Custom Category Input Form */}
             <div className={styles.customInputContainer}>
-              {customCategories.length > 0 && (
-                <div className={styles.customChipsList}>
-                  {customCategories.map((cat) => {
-                    const isSelected = selectedCategory === cat.id;
-                    return (
-                      <div className={styles.categoryItemWrapper} key={cat.id}>
-                        <div
-                          className={`${styles.categoryItem} ${styles.categoryItemRemovable} ${
-                            isSelected ? styles.categoryItemSelected : ""
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleSelectCategory(cat.id, isSelected)}
-                            className={styles.categoryItemMain}
-                          >
-                            <span className={styles.categoryLabelText}>{cat.label}</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.categoryRemoveBtn}
-                            aria-label={`Remove ${cat.label}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRemoveCustomCategory(cat.id);
-                            }}
-                          >
-                            <X size={12} aria-hidden="true" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <h3 className={styles.customHeading}>
-                Didn&apos;t find what you&apos;re looking for?
-              </h3>
-              {!isMaxCustomReached && showInput ? (
-                <div className={`${styles.categoryItem} ${styles.categoryItemInput}`}>
-                  <form onSubmit={handleSubmit} className={styles.categoryInputForm}>
-                    <input
-                      type="text"
-                      placeholder="Add custom category..."
-                      value={newCategoryInput}
-                      onChange={(e) => setNewCategoryInput(e.target.value)}
-                      className={styles.categoryInlineInput}
-                      onBlur={handleBlur}
-                      autoFocus
-                      aria-label="Add custom category"
-                    />
-                    <button
-                      type="submit"
-                      className={styles.categoryAddBtn}
-                      onMouseDown={(e) => e.preventDefault()}
-                      aria-label="Add custom category"
-                    >
-                      <Plus size={14} aria-hidden="true" />
-                    </button>
-                  </form>
-                </div>
+              {isMaxCustomReached ? (
+                <>
+                  <h3 className={styles.customHeading}>
+                    Only one entry is allowed.
+                  </h3>
+                  {customCategories.length > 0 && (
+                    <div className={styles.customChipsList}>
+                      {customCategories.map((cat) => {
+                        const isSelected = selectedCategory === cat.id;
+                        return (
+                          <div className={styles.categoryItemWrapper} key={cat.id}>
+                            <div
+                              className={`${styles.categoryItem} ${styles.categoryItemRemovable} ${isSelected ? styles.categoryItemSelected : ""
+                                }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleSelectCategory(cat.id, isSelected)}
+                                className={styles.categoryItemMain}
+                              >
+                                <span className={styles.categoryLabelText}>{cat.label}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.categoryRemoveBtn}
+                                aria-label={`Remove ${cat.label}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRemoveCustomCategory(cat.id);
+                                }}
+                              >
+                                <X size={12} aria-hidden="true" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => !isMaxCustomReached && setShowInput(true)}
-                  disabled={isMaxCustomReached}
-                  className={`${styles.categoryItem} ${
-                    isMaxCustomReached ? styles.categoryItemDisabled : ""
-                  }`}
-                >
-                  <Plus size={14} />
-                  <span>Add custom</span>
-                </button>
-              )}
-              {isMaxCustomReached && (
-                <p className={styles.customLimitMessage}>
-                  <Info size={14} className={styles.infoIcon} aria-hidden="true" />
-                  <span>Only one entry is allowed. Delete to make another</span>
-                </p>
+                <>
+                  <h3 className={styles.customHeading}>
+                    Didn&apos;t find what you&apos;re looking for?
+                  </h3>
+                  {showInput ? (
+                    <div className={`${styles.categoryItem} ${styles.categoryItemInput}`}>
+                      <form onSubmit={handleSubmit} className={styles.categoryInputForm}>
+                        <input
+                          type="text"
+                          placeholder={isRecommending ? "Validating & recommending..." : "Add custom category..."}
+                          value={newCategoryInput}
+                          onChange={(e) => {
+                            setNewCategoryInput(e.target.value);
+                            setValidationError(null);
+                          }}
+                          disabled={isRecommending}
+                          className={styles.categoryInlineInput}
+                          onBlur={handleBlur}
+                          autoFocus
+                          aria-label="Add custom category"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isRecommending}
+                          className={styles.categoryAddBtn}
+                          onMouseDown={(e) => e.preventDefault()}
+                          aria-label="Add custom category"
+                        >
+                          {isRecommending ? (
+                            <Loader2 size={14} className={styles.spin} aria-hidden="true" />
+                          ) : (
+                            <Plus size={14} aria-hidden="true" />
+                          )}
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowInput(true)}
+                      className={styles.categoryItem}
+                    >
+                      <Plus size={14} />
+                      <span>Add custom</span>
+                    </button>
+                  )}
+
+                  {validationError && (
+                    <p className={styles.customErrorMessage}>
+                      <AlertCircle size={14} className={styles.errorIcon} aria-hidden="true" />
+                      <span>{validationError}</span>
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>

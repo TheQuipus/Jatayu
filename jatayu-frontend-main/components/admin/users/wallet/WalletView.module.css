@@ -1,0 +1,796 @@
+/* ==========================================================================
+   WALLET & CREDITS FULL PAGE STYLES (MATCHING MOCKUP)
+   ========================================================================== */
+
+.walletView {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.walletHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  margin-bottom: 4px;
+}
+
+.walletPageTitle {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.walletPageSubtitle {
+  font-size: 13px;
+  color: var(--dove-gray);
+  margin: 2px 0 0;
+}
+
+.btnAddFundsTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: var(--bunker);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnAddFundsTop:hover {
+  background: #181d28;
+}
+
+/* Top 3 Cards Grid */
+.walletTopThreeGrid {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 1100px) {
+  .walletTopThreeGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.walletJatayuCard {
+  background: linear-gradient(135deg, var(--bunker) 0%, #161b26 60%, #1e2436 100%);
+  border-radius: 18px;
+  padding: 24px;
+  color: var(--white);
+  box-shadow: 0 10px 28px rgba(8, 10, 16, 0.25);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardLabelTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--white) 75%, transparent);
+}
+
+.statusActiveTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bigBalance {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--white);
+  margin: 12px 0 2px;
+  line-height: 1;
+}
+
+.balanceSubtext {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--white) 65%, transparent);
+}
+
+.cardBtnGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.btnWhitePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--bunker);
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnWhitePill:hover {
+  background: var(--seashell);
+}
+
+.btnOutlineDark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnOutlineDark:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Pro Credits Card */
+.walletProCreditsCard {
+  background: rgba(254, 243, 199, 0.65);
+  border: 1px solid rgba(253, 230, 138, 0.9);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.proCreditsTag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  align-self: flex-end;
+}
+
+.creditValueBig {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  color: #78350f;
+  margin: 10px 0 2px;
+}
+
+.creditSub {
+  font-size: 12px;
+  color: #92400e;
+  font-weight: 500;
+}
+
+.creditExpiry {
+  font-size: 11px;
+  color: #b45309;
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Refund Credits Card */
+.walletRefundCreditsCard {
+  background: rgba(220, 252, 231, 0.65);
+  border: 1px solid rgba(187, 247, 208, 0.9);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.refundCreditsTag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803d;
+  align-self: flex-end;
+}
+
+.refundValueBig {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  color: #14532d;
+  margin: 10px 0 2px;
+}
+
+/* Middle Grid: Subscription Credit Details & Add Funds */
+.walletMidGrid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+}
+
+@media (max-width: 1100px) {
+  .walletMidGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.subscriptionCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.subHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.subTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.subTitle {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.subSubtitle {
+  font-size: 12px;
+  color: var(--dove-gray);
+  margin: 2px 0 0;
+}
+
+.progressWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--seashell);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  transition: width 0.3s ease;
+}
+
+.usageBreakdownGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.usageMiniCard {
+  background: var(--seashell);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.usageMiniHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.usageMiniVal {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.usageMiniBar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--mercury);
+  overflow: hidden;
+}
+
+.miniBarFillBlue {
+  height: 100%;
+  background: #3b82f6;
+  width: 60%;
+}
+
+.miniBarFillPurple {
+  height: 100%;
+  background: #a855f7;
+  width: 70%;
+}
+
+.miniBarFillGreen {
+  height: 100%;
+  background: #22c55e;
+  width: 40%;
+}
+
+.planRenewalBanner {
+  background: #f8fafc;
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.renewalText {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.renewalSub {
+  font-size: 11px;
+  color: var(--dove-gray);
+}
+
+/* Add Funds Card */
+.addFundsCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.addFundsHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.addFundsIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chipGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.amountChip {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.amountChip:hover {
+  background: var(--seashell);
+}
+
+.amountChipActive {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.customInputWrap {
+  width: 100%;
+}
+
+.customInput {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--mercury);
+  background: #f8fafc;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.customInput:focus {
+  border-color: var(--tango);
+  background: var(--white);
+}
+
+.paymentOptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paymentOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  transition: all 0.15s ease;
+}
+
+.paymentOptionSelected {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.payNowBtn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--bunker);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.payNowBtn:hover {
+  background: #181d28;
+}
+
+/* Lower Section: Donut Chart & Transaction History */
+.walletLowerGrid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 1000px) {
+  .walletLowerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.creditUsageCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.donutContainer {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donutCenterText {
+  position: absolute;
+  text-align: center;
+}
+
+.donutCenterVal {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.donutCenterLabel {
+  font-size: 11px;
+  color: var(--dove-gray);
+  margin-top: 2px;
+}
+
+.legendList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.legendLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--scorpion);
+}
+
+.colorDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legendVal {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Transaction History Card */
+.txCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.txHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.txTabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--seashell);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.txTab {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dove-gray);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.txTabActive {
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.txList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.txItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--sand-light);
+  background: #fdfdfd;
+  transition: background 0.15s ease;
+}
+
+.txItem:hover {
+  background: var(--seashell);
+}
+
+.txLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.txIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.txTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.txSubtitle {
+  font-size: 11px;
+  color: var(--dove-gray);
+  margin-top: 2px;
+}
+
+.txRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.txAmountNeg {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.txAmountPos {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.tagSuccess {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tagOrange {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(234, 179, 8, 0.14);
+  color: #b45309;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tagBlue {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Wallet Policies Section */
+.walletPoliciesCard {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.policiesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .policiesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.policyBox {
+  background: #f8fafc;
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.policyTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.policyDesc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--scorpion);
+}

@@ -134,7 +134,7 @@ export default function AdminSettings({ section }: { section: SettingsSection })
           <div className={styles.pageHeaderText}>
             <h1 className={styles.pageTitle}>
               {sectionMeta.label}{" "}
-              <span className={styles.accentWord}>Settings</span>
+              <span className={styles.accentWord}>SETTINGS</span>
             </h1>
             <p className={styles.pageSubtitle}>{sectionMeta.description}</p>
           </div>
@@ -147,13 +147,17 @@ export default function AdminSettings({ section }: { section: SettingsSection })
                 onClick={handleTest}
               />
             ) : null}
-            <ContinueButton
-              label="Save Changes"
-              showArrow={false}
-              leadingIcon={<Save size={14} />}
-              onClick={handleSave}
-              disabled={!isDirty}
-            />
+            {activeSection !== "templates" ? (
+              <button
+                type="button"
+                className={styles.saveBtn}
+                onClick={handleSave}
+                disabled={!isDirty}
+              >
+                <Save size={14} />
+                SAVE CHANGES
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -255,6 +259,7 @@ export default function AdminSettings({ section }: { section: SettingsSection })
                 onUpdateTemplate={handleUpdateTemplate}
                 onDeleteTemplate={handleDeleteTemplate}
                 onAddTemplate={handleAddTemplate}
+                onSaveAll={handleSave}
               />
             ) : null}
           </div>

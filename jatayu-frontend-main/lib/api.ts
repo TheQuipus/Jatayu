@@ -7,6 +7,7 @@
 import { type Expert, expertSlug, getExpertById, getTopMatchesByCategory, normalizeExpert } from "@/lib/experts";
 import type { ClientRequest, RequestStatus } from "@/lib/expertRequests";
 import { publicApiBase } from "@/lib/publicApiBase";
+import { parseUtcDate, formatUtcToLocalDate, formatUtcToLocalTime, formatUtcRelativeTime } from "@/lib/dateTimeUtils";
 
 const BASE_URL = publicApiBase();
 
@@ -23,67 +24,72 @@ export class ApiError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// Token helpers (localStorage)
+// Token & Session helpers (Tab-Isolated Session Storage with Local Storage Fallback)
 // ---------------------------------------------------------------------------
 
-export function getToken(): string | null {
+function getDualStorageItem(key: string): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("jatayu_token");
+  return sessionStorage.getItem(key) || localStorage.getItem(key);
+}
+
+function setDualStorageItem(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(key, value);
+  localStorage.setItem(key, value);
+}
+
+function removeDualStorageItem(key: string): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(key);
+  localStorage.removeItem(key);
+}
+
+export function getToken(): string | null {
+  return getDualStorageItem("jatayu_token");
 }
 
 export function setToken(token: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("jatayu_token", token);
+  setDualStorageItem("jatayu_token", token);
 }
 
 export function removeToken(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("jatayu_token");
+  removeDualStorageItem("jatayu_token");
 }
 
 export function getExpertId(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("jatayu_expert_id");
+  return getDualStorageItem("jatayu_expert_id");
 }
 
 export function setExpertId(id: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("jatayu_expert_id", id);
+  setDualStorageItem("jatayu_expert_id", id);
 }
 
 export function removeExpertId(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("jatayu_expert_id");
+  removeDualStorageItem("jatayu_expert_id");
 }
 
 export function getSeekerId(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("jatayu_seeker_id");
+  return getDualStorageItem("jatayu_seeker_id");
 }
 
 export function setSeekerId(id: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("jatayu_seeker_id", id);
+  setDualStorageItem("jatayu_seeker_id", id);
 }
 
 export function removeSeekerId(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("jatayu_seeker_id");
+  removeDualStorageItem("jatayu_seeker_id");
 }
 
 export function getAdminToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("jatayu_admin_token");
+  return getDualStorageItem("jatayu_admin_token");
 }
 
 export function setAdminToken(token: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("jatayu_admin_token", token);
+  setDualStorageItem("jatayu_admin_token", token);
 }
 
 export function removeAdminToken(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("jatayu_admin_token");
+  removeDualStorageItem("jatayu_admin_token");
 }
 
 // ---------------------------------------------------------------------------
@@ -476,6 +482,22 @@ export async function suggestOnboardingIdentityCopy(
   return apiFetch<OnboardingAiSuggestResponse>("/api/expert/onboarding/ai-suggest", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export type RecommendSkillsResponse = {
+  valid: boolean;
+  message?: string;
+  skills: string[];
+  source?: "ai" | "fallback";
+};
+
+export async function recommendSkillsForCategory(
+  category: string,
+): Promise<RecommendSkillsResponse> {
+  return apiFetch<RecommendSkillsResponse>("/api/expert/onboarding/recommend-skills", {
+    method: "POST",
+    body: JSON.stringify({ category }),
   });
 }
 
@@ -1114,26 +1136,16 @@ export function normalizeClientRequest(item: Record<string, unknown>): ClientReq
   let dateLabel = String(item.dateLabel || item.requestedDate || "");
   let durationLabel = String(item.durationLabel || item.duration || "");
 
-  if (item.scheduledStartAt && typeof item.scheduledStartAt === "string") {
-    const startDate = new Date(item.scheduledStartAt);
-    if (!isNaN(startDate.getTime())) {
-      dateLabel = startDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+  if (item.scheduledStartAt) {
+    const startDate = parseUtcDate(item.scheduledStartAt as string | Date | number);
+    if (startDate) {
+      dateLabel = formatUtcToLocalDate(startDate, { month: "short", day: "numeric", year: "numeric" });
 
-      if (item.scheduledEndAt && typeof item.scheduledEndAt === "string") {
-        const endDate = new Date(item.scheduledEndAt);
-        if (!isNaN(endDate.getTime())) {
-          const startTimeStr = startDate.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          const endTimeStr = endDate.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+      if (item.scheduledEndAt) {
+        const endDate = parseUtcDate(item.scheduledEndAt as string | Date | number);
+        if (endDate) {
+          const startTimeStr = formatUtcToLocalTime(startDate);
+          const endTimeStr = formatUtcToLocalTime(endDate);
           durationLabel = `${startTimeStr} - ${endTimeStr}`;
         }
       }
@@ -1153,6 +1165,11 @@ export function normalizeClientRequest(item: Record<string, unknown>): ClientReq
         : "Async consultation")
   );
 
+  const createdAtParsed = parseUtcDate(item.createdAt as string | Date | number);
+  const timeAgoLabel = createdAtParsed
+    ? formatUtcRelativeTime(createdAtParsed)
+    : String(item.timeAgo || "Recently");
+
   return {
     id: String(item.id || item._id || `req-${Math.random().toString(36).substring(2, 9)}`),
     clientName,
@@ -1165,16 +1182,11 @@ export function normalizeClientRequest(item: Record<string, unknown>): ClientReq
     isPoked: Boolean(item.isPoked),
     pokeCount: typeof item.pokeCount === "number" ? item.pokeCount : undefined,
     price,
-    timeAgo: String(item.timeAgo || "Recently"),
+    timeAgo: timeAgoLabel,
     dateLabel,
     durationLabel,
     formatLabel,
-    createdAt:
-      typeof item.createdAt === "string"
-        ? new Date(item.createdAt).getTime()
-        : typeof item.createdAt === "number"
-          ? item.createdAt
-          : Date.now(),
+    createdAt: createdAtParsed ? createdAtParsed.getTime() : Date.now(),
     declineReason: item.declineReasonNotes
       ? String(item.declineReasonNotes)
       : item.declineReason

@@ -73,17 +73,21 @@ export function buildExpertAccountStatus(user: AuthUser): ExpertAccountStatus {
     };
   }
 
-  if (status === "pending_review" || onboardingStep === "success") {
+  if (onboardingStep === "success" || user.onboardingComplete === true) {
     return {
       phase: "submitted",
       headline: "Application under review",
       description: "You completed onboarding. Our team is reviewing your profile and documents.",
       progressPercent: 100,
       currentStepLabel: null,
-      pendingSteps: [],
+      pendingSteps: [
+        { id: "account", label: "Account created", complete: true, current: false },
+        { id: "profile", label: "Profile & credentials submitted", complete: true, current: false },
+        { id: "review", label: "Under review by team", complete: false, current: true },
+      ],
       applicationStatus: "Pending review",
       canContinueOnboarding: false,
-      continueLabel: "View submission",
+      continueLabel: "Go to dashboard",
     };
   }
 
@@ -116,11 +120,4 @@ export function buildExpertAccountStatus(user: AuthUser): ExpertAccountStatus {
   };
 }
 
-export function isDuplicateRegistrationMessage(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("already exists") ||
-    normalized.includes("already registered") ||
-    normalized.includes("duplicate")
-  );
-}
+export { isDuplicateRegistrationMessage } from "@/lib/authUtils";

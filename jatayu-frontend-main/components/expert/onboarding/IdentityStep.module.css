@@ -445,6 +445,25 @@
   color: var(--white);
 }
 
+.taglineChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chipSparkleIcon {
+  color: #E53B17;
+  flex-shrink: 0;
+}
+
+.chipText {
+  white-space: nowrap;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .aiImproveHint {
   margin: 12px 0 0;
   font-family: var(--font-body);
