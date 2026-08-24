@@ -5,14 +5,14 @@
  */
 export function publicApiBase(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL;
-  if (raw === undefined) return "http://127.0.0.1:5000";
+  if (raw === undefined) return "https://jatayuconnect.in";
   if (raw === "" || raw === "same-origin") return "";
   return raw.replace(/\/$/, "");
 }
 
 export function publicWsBase(): string {
   const raw = process.env.NEXT_PUBLIC_WS_URL ?? process.env.NEXT_PUBLIC_API_URL;
-  if (raw === undefined) return "http://127.0.0.1:5000";
+  if (raw === undefined) return "wss://jatayuconnect.in";
   if (raw === "" || raw === "same-origin") return "";
   return raw.replace(/\/$/, "");
 }
