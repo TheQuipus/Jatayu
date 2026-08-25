@@ -21,6 +21,8 @@ export async function findExpertsForAdmin(where, options = {}) {
     include: EXPERT_INCLUDES,
     order: options.order || [['submittedAt', 'DESC'], ['updatedAt', 'DESC']],
     attributes: options.attributes,
+    limit: options.limit,
+    offset: options.offset,
   });
 }
 

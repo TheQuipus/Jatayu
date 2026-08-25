@@ -10,7 +10,7 @@ import {
   getSubmittedAgo,
 } from "@/lib/expertApplicationsStore";
 import type { ApplicationStatus } from "@/lib/expertApplicationSubmission";
-import { getAdminApplications } from "@/lib/api";
+import { getAdminApplications, getAdminApplicationStats } from "@/lib/api";
 import {
   mapBackendExpertToApplication,
   type BackendExpertApplication,
@@ -68,11 +68,24 @@ function dispatchUpdated() {
   window.dispatchEvent(new Event(APPLICATIONS_UPDATED_EVENT));
 }
 
-export function useExpertApplications() {
+export function useExpertApplications({
+  page = 1,
+  limit = 20,
+  status = "all",
+}: { page?: number; limit?: number; status?: string } = {}) {
   const [applications, setApplications] = useState<ExpertApplicationSubmission[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit,
+    total: 0,
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  });
+  const [serverCounts, setServerCounts] = useState<Record<string, number>>({});
 
   const refresh = useCallback(() => {
     setRefreshToken((value) => value + 1);
@@ -86,9 +99,12 @@ export function useExpertApplications() {
       setError(null);
 
       try {
-        const records = await getAdminApplications();
+        const [response, counts] = await Promise.all([
+          getAdminApplications({ page, limit, status }),
+          getAdminApplicationStats(),
+        ]);
         if (!active) return;
-        const mapped = (records as BackendExpertApplication[]).flatMap((record) => {
+        const mapped = (response.items as BackendExpertApplication[]).flatMap((record) => {
           try {
             return [mapBackendExpertToApplication(record)];
           } catch (err) {
@@ -97,6 +113,8 @@ export function useExpertApplications() {
           }
         });
         setApplications(mapped);
+        setPagination(response.pagination);
+        setServerCounts(counts);
       } catch (err) {
         console.warn("Failed to load applications from backend.", err);
         if (!active) return;
@@ -119,7 +137,7 @@ export function useExpertApplications() {
       active = false;
       window.removeEventListener(APPLICATIONS_UPDATED_EVENT, handleRefresh);
     };
-  }, [refreshToken]);
+  }, [refreshToken, page, limit, status]);
 
   const getByAppId = useCallback(
     (appId: string) => applications.find((application) => application.appId === appId) ?? null,
@@ -139,7 +157,7 @@ export function useExpertApplications() {
 
   const statusCounts = useMemo(() => {
     const counts = {
-      all: applications.length,
+      all: serverCounts.all ?? applications.length,
       pending: 0,
       in_review: 0,
       on_hold: 0,
@@ -147,12 +165,12 @@ export function useExpertApplications() {
       rejected: 0,
     };
 
-    for (const application of applications) {
-      counts[application.status] += 1;
+    for (const key of ["pending", "in_review", "on_hold", "approved", "rejected"] as const) {
+      counts[key] = serverCounts[key] ?? 0;
     }
 
     return counts;
-  }, [applications]);
+  }, [applications, serverCounts]);
 
   const kpis = useMemo(
     () => [
@@ -215,6 +233,7 @@ export function useExpertApplications() {
     breachedApplications,
     getByAppId,
     refresh,
+    pagination,
   };
 }
 
@@ -226,8 +245,10 @@ export function useExpertApplication(appId: string) {
   useEffect(() => {
     const cached = getByAppId(appId);
     if (cached) {
-      setApplication(cached);
-      setLoading(false);
+      queueMicrotask(() => {
+        setApplication(cached);
+        setLoading(false);
+      });
       return;
     }
 

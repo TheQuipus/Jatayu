@@ -211,7 +211,16 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
       get: operation({ tag: 'Admin', summary: 'Get expert application statistics', security: bearerSecurity }),
     },
     '/api/admin/applications': {
-      get: operation({ tag: 'Admin', summary: 'List expert applications', security: bearerSecurity }),
+      get: operation({
+        tag: 'Admin',
+        summary: 'List expert applications with server-side pagination',
+        security: bearerSecurity,
+        parameters: [
+          { in: 'query', name: 'status', schema: { type: 'string', enum: ['all', 'pending', 'in_review', 'on_hold', 'approved', 'rejected'] } },
+          { in: 'query', name: 'page', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { in: 'query', name: 'limit', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+        ],
+      }),
     },
     '/api/admin/applications/{id}': {
       get: operation({ tag: 'Admin', summary: 'Get an expert application', security: bearerSecurity, parameters: [idParameter('id', 'Application ID')] }),

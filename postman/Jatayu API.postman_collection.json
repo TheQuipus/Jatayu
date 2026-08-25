@@ -278,8 +278,8 @@
             { "name": "Application Stats", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/stats" } },
             {
               "name": "List Applications",
-              "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (Array.isArray(data) && data[0]?.id) pm.collectionVariables.set('applicationId', data[0].id);"] } }],
-              "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications?status=all" }
+              "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "pm.test('Returns a paginated applications response', () => {", "  pm.expect(data).to.have.property('items').that.is.an('array');", "  pm.expect(data).to.have.property('pagination').that.is.an('object');", "});", "if (data.items?.[0]?.id) pm.environment.set('applicationId', data.items[0].id);"] } }],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications?status={{adminApplicationStatus}}&page={{adminApplicationsPage}}&limit={{adminApplicationsLimit}}" }
             },
             { "name": "Get Application", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}" } },
             { "name": "Update Application Status", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"in_review\",\n  \"reviewerNote\": \"Reviewed through Postman\"\n}" }, "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/status" } }
