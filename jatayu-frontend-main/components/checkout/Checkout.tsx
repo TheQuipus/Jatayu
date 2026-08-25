@@ -675,7 +675,8 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         const latest = await fetchBooking(created.booking.id).catch(() => null);
         if (latest) verified = latest;
       }
-      if (verified.status !== "confirmed" && verified.status !== "payment_verified") {
+      const validVerifiedStatuses = ["confirmed", "payment_verified", "awaiting_expert", "pending", "accepted"];
+      if (!verified || !validVerifiedStatuses.includes(String(verified.status || "").toLowerCase())) {
         throw new Error("Payment verification failed. Please check My Bookings.");
       }
       setConfirmedBookingId(verified.id);

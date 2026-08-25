@@ -182,7 +182,9 @@ export async function verifyBookingPayment(bookingId: string, payment: RazorpayC
       razorpaySignature: payment.razorpay_signature,
     }) },
   );
-  return response.booking;
+  return response.booking
+    ? normalizeSeekerBooking(response.booking as unknown as Record<string, unknown>)
+    : ({} as SeekerBooking);
 }
 
 export type SeekerBookingsQueryParams = {
