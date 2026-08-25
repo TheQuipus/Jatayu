@@ -47,6 +47,7 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
 
   const google: ProviderAuthCredentials = {
     clientId: readString(map, "GOOGLE_CLIENT_ID"),
+    clientSecret: "",
     redirectUri: readString(map, "GOOGLE_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.google.redirectUri),
     authorizedDomains: readString(
       map,
@@ -59,6 +60,7 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
 
   const meta: ProviderAuthCredentials = {
     clientId: readString(map, "META_CLIENT_ID"),
+    clientSecret: "",
     redirectUri: readString(map, "META_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.meta.redirectUri),
     authorizedDomains: readString(
       map,
@@ -71,7 +73,12 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
 
   const linkedin: ProviderAuthCredentials = {
     clientId: readString(map, "LINKEDIN_CLIENT_ID"),
-    redirectUri: readString(map, "LINKEDIN_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.linkedin.redirectUri),
+    clientSecret: readString(map, "LINKEDIN_CLIENT_SECRET"),
+    redirectUri: readString(
+      map,
+      "LINKEDIN_REDIRECT_URIS",
+      readString(map, "LINKEDIN_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.linkedin.redirectUri),
+    ),
     authorizedDomains: readString(
       map,
       "LINKEDIN_AUTHORIZED_DOMAINS",
@@ -125,7 +132,8 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     GOOGLE_LOGIN_ENABLED: String(settings.auth.google.enableSignIn),
     GOOGLE_ENABLE_CALENDAR: String(settings.auth.google.enableCalendar),
     LINKEDIN_CLIENT_ID: settings.auth.linkedin.clientId,
-    LINKEDIN_REDIRECT_URI: settings.auth.linkedin.redirectUri,
+    LINKEDIN_CLIENT_SECRET: settings.auth.linkedin.clientSecret || "",
+    LINKEDIN_REDIRECT_URIS: settings.auth.linkedin.redirectUri,
     LINKEDIN_AUTHORIZED_DOMAINS: settings.auth.linkedin.authorizedDomains,
     LINKEDIN_LOGIN_ENABLED: String(settings.auth.linkedin.enableSignIn),
     AI_PROVIDER_NAME: settings.ai.name,

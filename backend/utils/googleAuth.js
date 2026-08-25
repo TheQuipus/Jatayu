@@ -1,5 +1,5 @@
 import { OAuth2Client } from 'google-auth-library';
-import { getSetting, getSettingBool } from './settingsHelper.js';
+import { getDatabaseSetting, getDatabaseSettingBool } from './settingsHelper.js';
 
 export function isRealGoogleClientId(value) {
   if (!value) return false;
@@ -31,8 +31,8 @@ function mapGoogleProfile({ googleId, email, fullName, givenName, familyName, pi
 }
 
 export async function getGoogleAuthConfig() {
-  const clientId = String((await getSetting('GOOGLE_CLIENT_ID')) || '').trim();
-  const enabledSetting = await getSettingBool('GOOGLE_LOGIN_ENABLED', true);
+  const clientId = String((await getDatabaseSetting('GOOGLE_CLIENT_ID')) || '').trim();
+  const enabledSetting = await getDatabaseSettingBool('GOOGLE_LOGIN_ENABLED', true);
   const configured = isRealGoogleClientId(clientId);
   return {
     clientId,
@@ -118,6 +118,9 @@ export async function verifyGoogleLogin({ idToken, accessToken } = {}) {
   }
   if (!profile.googleId || !profile.email) {
     throw googleAuthError('Google did not return a verified email address', 401);
+  }
+  if (!profile.emailVerified) {
+    throw googleAuthError('Google email address is not verified', 401);
   }
 
   return profile;

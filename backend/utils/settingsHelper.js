@@ -67,3 +67,28 @@ export async function getSettingBool(key, defaultValue = false) {
   if (value === '') return defaultValue;
   return value === 'true';
 }
+
+/**
+ * Read a runtime-managed setting only from the admin database.
+ * Unlike getSetting(), this intentionally has no process.env fallback.
+ */
+export async function getDatabaseSetting(key, defaultValue = '') {
+  try {
+    const keys = [key, ...(KEY_ALIASES[key] || [])];
+    for (const candidate of keys) {
+      const record = await Setting.findByPk(candidate);
+      if (record && record.value !== undefined && record.value !== null && record.value !== '') {
+        return record.value;
+      }
+    }
+  } catch (error) {
+    console.error(`Error fetching database-only setting ${key}:`, error.message);
+  }
+  return defaultValue;
+}
+
+export async function getDatabaseSettingBool(key, defaultValue = false) {
+  const value = await getDatabaseSetting(key);
+  if (value === '') return defaultValue;
+  return value === 'true';
+}

@@ -42,6 +42,7 @@ export type PaymentSettings = {
 
 export type ProviderAuthCredentials = {
   clientId: string;
+  clientSecret?: string;
   redirectUri: string;
   authorizedDomains: string;
   enableSignIn: boolean;
@@ -185,6 +186,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   auth: {
     google: {
       clientId: "",
+      clientSecret: "",
       redirectUri: "https://jatayu.com/api/auth/google/callback",
       authorizedDomains: "jatayu.com",
       enableSignIn: true,
@@ -192,6 +194,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     },
     meta: {
       clientId: "",
+      clientSecret: "",
       redirectUri: "https://jatayu.com/api/auth/meta/callback",
       authorizedDomains: "jatayu.com",
       enableSignIn: false,
@@ -199,6 +202,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     },
     linkedin: {
       clientId: "",
+      clientSecret: "",
       redirectUri: "https://jatayu.com/api/auth/linkedin/callback",
       authorizedDomains: "jatayu.com",
       enableSignIn: false,

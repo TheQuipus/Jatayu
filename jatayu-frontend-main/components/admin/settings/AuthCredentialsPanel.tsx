@@ -91,14 +91,37 @@ function AuthProviderAccordion({
             />
           </Field>
 
-          <Field label="Redirect URI" hint={`Must match an authorized redirect URI in ${label} Developer Portal.`}>
-            <input
-              className={styles.input}
-              value={draft.redirectUri || defaultRedirect}
-              onChange={(event) => onChange({ ...draft, redirectUri: event.target.value })}
-              placeholder={defaultRedirect}
-            />
-          </Field>
+          {providerKey === "linkedin" ? (
+            <Field
+              label="LinkedIn Client Secret"
+              hint="Stored in backend settings and masked in API responses. Leave unchanged to keep it."
+            >
+              <input
+                type="password"
+                className={styles.input}
+                value={draft.clientSecret || ""}
+                onChange={(event) => onChange({ ...draft, clientSecret: event.target.value })}
+                placeholder="Enter LinkedIn client secret"
+                autoComplete="new-password"
+              />
+            </Field>
+          ) : null}
+
+          {providerKey !== "google" ? (
+            <Field
+              label={providerKey === "linkedin" ? "Redirect URI(s)" : "Redirect URI"}
+              hint={providerKey === "linkedin"
+                ? "Comma-separated URLs. Each must exactly match LinkedIn Developer Portal."
+                : `Must match an authorized redirect URI in ${label} Developer Portal.`}
+            >
+              <input
+                className={styles.input}
+                value={draft.redirectUri || defaultRedirect}
+                onChange={(event) => onChange({ ...draft, redirectUri: event.target.value })}
+                placeholder={defaultRedirect}
+              />
+            </Field>
+          ) : null}
 
           {providerKey === "google" ? (
             <div className={styles.fieldRow}>
@@ -215,7 +238,7 @@ export default function AuthCredentialsPanel({
                     <td style={{ fontWeight: 600, color: "var(--ink)" }}>{config.label}</td>
                     <td>{item?.clientId ? `${item.clientId.slice(0, 16)}...` : "—"}</td>
                     <td style={{ fontSize: "12px", color: "var(--dove-gray)" }}>
-                      {item?.redirectUri || config.defaultRedirect}
+                      {config.key === "google" ? "Not required" : (item?.redirectUri || config.defaultRedirect)}
                     </td>
                     <td>
                       <span className={item?.enableSignIn ? styles.badgeActive : styles.badgeDisabled}>

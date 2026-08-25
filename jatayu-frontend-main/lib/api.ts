@@ -326,6 +326,13 @@ export async function googleLogin(payload: GoogleLoginPayload): Promise<AuthResp
   });
 }
 
+export async function seekerGoogleLogin(payload: GoogleLoginPayload): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/api/seeker-auth/google", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Expert API
 // ---------------------------------------------------------------------------
@@ -525,6 +532,13 @@ export interface LinkedinLoginPayload {
 
 export async function linkedinLogin(payload: LinkedinLoginPayload): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/api/auth/linkedin", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function seekerLinkedinLogin(payload: LinkedinLoginPayload): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/api/seeker-auth/linkedin", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -1374,6 +1388,4 @@ export async function updateExpertRequestStatusApi(
     };
   }
 }
-
-
 

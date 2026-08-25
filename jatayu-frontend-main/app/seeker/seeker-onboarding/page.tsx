@@ -923,6 +923,7 @@ function SeekerOnboardingPageContent() {
       {step === "register" && (
         <RegisterStep
           onContinue={handleRegisterComplete}
+          onSocialContinue={handleLoginComplete}
           onSwitchToLogin={handleSwitchToLogin}
         />
       )}

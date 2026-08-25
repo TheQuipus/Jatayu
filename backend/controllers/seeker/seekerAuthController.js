@@ -4,12 +4,13 @@ import { Seeker } from '../../models/index.js';
 import dotenv from 'dotenv';
 import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../../utils/smsService.js';
 import { deliverOtpChannels, handleOtpDeliveryError } from '../../utils/otpDelivery.js';
-import { getSetting, getSettingBool } from '../../utils/settingsHelper.js';
+import { getSettingBool } from '../../utils/settingsHelper.js';
 import {
   getGoogleAuthConfig,
   isDefaultProfilePhoto,
   verifyGoogleLogin,
 } from '../../utils/googleAuth.js';
+import { getLinkedinAuthConfig, verifyLinkedinLogin } from '../../utils/linkedinAuth.js';
 import {
   storeOtpOnModel,
   readOtpFromModel,
@@ -355,96 +356,31 @@ export const googleLogin = async (req, res) => {
 export const linkedinLogin = async (req, res) => {
   const { authCode, redirectUri } = req.body;
 
-  if (!authCode) {
-    return res.status(400).json({ message: 'LinkedIn authorization code is required' });
-  }
-
   try {
-    const linkedinClientId = await getSetting('LINKEDIN_CLIENT_ID');
-    const linkedinClientSecret = await getSetting('LINKEDIN_CLIENT_SECRET');
-    const linkedinRedirectUri = await getSetting('LINKEDIN_REDIRECT_URI') || redirectUri;
-    const linkedinLoginEnabled = await getSettingBool('LINKEDIN_LOGIN_ENABLED', true);
-
-    if (!linkedinLoginEnabled) {
-      return res.status(400).json({ message: 'LinkedIn Login is disabled by administrator settings' });
-    }
-
-    let payload;
-    const isMockAuth =
-      authCode === 'mock-linkedin-token' ||
-      !linkedinClientId ||
-      linkedinClientId.includes('your_linkedin_client_id');
-
-    if (isMockAuth) {
-      console.log('Using mock LinkedIn verification for seeker (development mode)');
-      payload = {
-        id: req.body.linkedinId || 'mock-linkedin-seeker-id',
-        email: req.body.email || 'linkedin-seeker@example.com',
-        name: req.body.fullName || 'LinkedIn Seeker',
-        picture: req.body.profilePhotoSrc || '/assets/img/manportrait.png',
-      };
-    } else {
-      const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: authCode,
-          client_id: linkedinClientId,
-          client_secret: linkedinClientSecret,
-          redirect_uri: linkedinRedirectUri,
-        }),
-      });
-
-      const tokenData = await tokenResponse.json();
-      if (!tokenResponse.ok) {
-        throw new Error(tokenData.error_description || 'Failed to exchange LinkedIn auth code');
-      }
-
-      const userinfoResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
-        headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
-        },
-      });
-
-      const userinfo = await userinfoResponse.json();
-      if (!userinfoResponse.ok) {
-        throw new Error('Failed to fetch LinkedIn user info');
-      }
-
-      payload = {
-        id: userinfo.sub,
-        email: userinfo.email,
-        name: `${userinfo.given_name} ${userinfo.family_name}`,
-        picture: userinfo.picture,
-      };
-    }
-
-    const { id: linkedinId, email, name, picture } = payload;
-    let seeker = await Seeker.findOne({ where: { email } });
+    const { linkedinId, email, fullName, picture, emailVerified } =
+      await verifyLinkedinLogin({ authCode, redirectUri });
+    let seeker = await Seeker.findOne({ where: { linkedinId } });
+    if (!seeker) seeker = await Seeker.findOne({ where: { email } });
 
     if (!seeker) {
       seeker = await Seeker.create({
         email,
-        fullName: name || 'LinkedIn Seeker',
+        fullName: fullName || 'LinkedIn Seeker',
         linkedinId,
-        isEmailVerified: true,
-        isPhoneVerified: true,
+        isEmailVerified: emailVerified,
+        isPhoneVerified: false,
         profilePhotoSrc: picture || '/assets/img/manportrait.png',
         onboardingStep: 'category',
         status: 'draft',
       });
     } else {
-      if (!seeker.linkedinId) {
-        seeker.linkedinId = linkedinId;
-        seeker.isEmailVerified = true;
-        if (!seeker.profilePhotoSrc && picture) {
-          seeker.profilePhotoSrc = picture;
-        }
-        await seeker.save();
+      seeker.linkedinId = seeker.linkedinId || linkedinId;
+      seeker.isEmailVerified = seeker.isEmailVerified || emailVerified;
+      if (fullName && (!seeker.fullName || seeker.fullName === 'LinkedIn Seeker')) {
+        seeker.fullName = fullName;
       }
+      if (picture && isDefaultProfilePhoto(seeker.profilePhotoSrc)) seeker.profilePhotoSrc = picture;
+      await seeker.save();
     }
 
     return res.status(200).json({
@@ -453,7 +389,7 @@ export const linkedinLogin = async (req, res) => {
     });
   } catch (error) {
     console.error('Seeker LinkedIn Auth Error:', error);
-    return res.status(401).json({ message: 'LinkedIn authentication failed', error: error.message });
+    return res.status(error.status || 401).json({ message: error.message || 'LinkedIn authentication failed' });
   }
 };
 
@@ -461,17 +397,16 @@ export const getPublicConfig = async (req, res) => {
   try {
     const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
     const smsEnabled = await getSettingBool('SMS_ENABLED', true);
-    const linkedinLoginEnabled = await getSettingBool('LINKEDIN_LOGIN_ENABLED', true);
-    const linkedinClientId = await getSetting('LINKEDIN_CLIENT_ID');
+    const linkedin = await getLinkedinAuthConfig();
     const google = await getGoogleAuthConfig();
 
     return res.status(200).json({
       emailEnabled,
       smsEnabled,
       googleLoginEnabled: google.enabled,
-      linkedinLoginEnabled,
+      linkedinLoginEnabled: linkedin.enabled,
       googleClientId: google.enabled ? google.clientId : '',
-      linkedinClientId,
+      linkedinClientId: linkedin.enabled ? linkedin.clientId : '',
     });
   } catch (error) {
     console.error('Seeker Get Public Config Error:', error);
