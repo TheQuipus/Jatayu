@@ -10,7 +10,11 @@ import {
   getSubmittedAgo,
 } from "@/lib/expertApplicationsStore";
 import type { ApplicationStatus } from "@/lib/expertApplicationSubmission";
-import { getAdminApplications, getAdminApplicationStats } from "@/lib/api";
+import {
+  getAdminApplication,
+  getAdminApplications,
+  getAdminApplicationStats,
+} from "@/lib/api";
 import {
   mapBackendExpertToApplication,
   type BackendExpertApplication,
@@ -238,32 +242,30 @@ export function useExpertApplications({
 }
 
 export function useExpertApplication(appId: string) {
-  const { ready, getByAppId, refresh, error } = useExpertApplications();
   const [application, setApplication] = useState<ExpertApplicationSubmission | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshToken((value) => value + 1);
+    dispatchUpdated();
+  }, []);
 
   useEffect(() => {
-    const cached = getByAppId(appId);
-    if (cached) {
-      queueMicrotask(() => {
-        setApplication(cached);
-        setLoading(false);
-      });
-      return;
-    }
-
     let active = true;
 
     async function loadApplication() {
       setLoading(true);
+      setError(null);
       try {
-        const { getAdminApplication } = await import("@/lib/api");
         const record = await getAdminApplication(appId);
         if (!active) return;
         setApplication(mapBackendExpertToApplication(record as BackendExpertApplication));
-      } catch {
+      } catch (err) {
         if (!active) return;
         setApplication(null);
+        setError(err instanceof Error ? err.message : "Failed to load application.");
       } finally {
         if (active) setLoading(false);
       }
@@ -274,10 +276,10 @@ export function useExpertApplication(appId: string) {
     return () => {
       active = false;
     };
-  }, [appId, getByAppId]);
+  }, [appId, refreshToken]);
 
   return {
-    ready: ready && !loading,
+    ready: !loading,
     application,
     error,
     refresh,

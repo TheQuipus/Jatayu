@@ -99,8 +99,28 @@ function buildDetailWhere(id) {
 
 function serializeExpert(expert) {
   const json = expert.toJSON();
+  let metadata = json.onboardingMetadata;
+
+  // Older profile updates could store a JSON string as an object whose keys
+  // were "0", "1", "2", etc. Decode that legacy shape before sending it;
+  // otherwise a relatively small metadata document becomes a huge response.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) break;
+    const keys = Object.keys(metadata);
+    if (keys.length === 0 || !keys.every((key, index) => key === String(index))) break;
+    if (!keys.every((key) => typeof metadata[key] === 'string')) break;
+
+    const decoded = keys.map((key) => metadata[key]).join('');
+    try {
+      metadata = JSON.parse(decoded);
+    } catch {
+      break;
+    }
+  }
+
   return {
     ...json,
+    ...(json.onboardingMetadata !== undefined ? { onboardingMetadata: metadata } : {}),
     frontendStatus: BACKEND_TO_FRONTEND_STATUS[json.status] || 'pending',
   };
 }

@@ -654,6 +654,11 @@ export interface AdminApplicationsPage {
   };
 }
 
+const adminApplicationRequests = new Map<
+  string,
+  Promise<BackendExpertApplicationRecord>
+>();
+
 export async function getAdminApplications({
   status,
   page = 1,
@@ -669,9 +674,24 @@ export async function getAdminApplications({
 export async function getAdminApplication(
   appId: string,
 ): Promise<BackendExpertApplicationRecord> {
-  return adminApiFetch<BackendExpertApplicationRecord>(`/api/admin/applications/${encodeURIComponent(appId)}`, {
-    method: "GET",
-  });
+  const requestKey = appId.trim();
+  const existingRequest = adminApplicationRequests.get(requestKey);
+  if (existingRequest) return existingRequest;
+
+  const request = adminApiFetch<BackendExpertApplicationRecord>(
+    `/api/admin/applications/${encodeURIComponent(requestKey)}`,
+    { method: "GET" },
+  );
+  adminApplicationRequests.set(requestKey, request);
+
+  const clearRequest = () => {
+    if (adminApplicationRequests.get(requestKey) === request) {
+      adminApplicationRequests.delete(requestKey);
+    }
+  };
+  void request.then(clearRequest, clearRequest);
+
+  return request;
 }
 
 export interface UpdateApplicationStatusPayload {
