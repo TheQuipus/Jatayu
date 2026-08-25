@@ -1,11 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getPublicConfig, googleLogin, type AuthResponse } from "@/lib/api";
+import {
+  getPublicConfig,
+  getSeekerPublicConfig,
+  googleLogin,
+  seekerGoogleLogin,
+  type AuthResponse,
+} from "@/lib/api";
 
 interface GoogleAuthHookOptions {
   onSuccess: (response: AuthResponse) => void;
   onError: (error: string) => void;
+  role?: "expert" | "seeker";
 }
 
 type GoogleTokenClient = {
@@ -60,7 +67,7 @@ function loadGoogleScript(): Promise<void> {
   });
 }
 
-export function useGoogleAuth({ onSuccess, onError }: GoogleAuthHookOptions) {
+export function useGoogleAuth({ onSuccess, onError, role = "expert" }: GoogleAuthHookOptions) {
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [googleEnabled, setGoogleEnabled] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -68,8 +75,10 @@ export function useGoogleAuth({ onSuccess, onError }: GoogleAuthHookOptions) {
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
 
-  onSuccessRef.current = onSuccess;
-  onErrorRef.current = onError;
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  }, [onSuccess, onError]);
 
   const handleTokenResponse = useCallback(async (response: { access_token?: string; error?: string; error_description?: string }) => {
     if (response.error) {
@@ -90,7 +99,8 @@ export function useGoogleAuth({ onSuccess, onError }: GoogleAuthHookOptions) {
 
     setIsLoading(true);
     try {
-      const authRes = await googleLogin({ accessToken: response.access_token });
+      const authenticate = role === "seeker" ? seekerGoogleLogin : googleLogin;
+      const authRes = await authenticate({ accessToken: response.access_token });
       onSuccessRef.current(authRes);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Google authentication failed.";
@@ -98,11 +108,12 @@ export function useGoogleAuth({ onSuccess, onError }: GoogleAuthHookOptions) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     let active = true;
-    getPublicConfig()
+    const loadConfig = role === "seeker" ? getSeekerPublicConfig : getPublicConfig;
+    loadConfig()
       .then((config) => {
         if (!active) return;
         const clientId = isRealGoogleClientId(config.googleClientId) ? config.googleClientId.trim() : null;
@@ -115,7 +126,7 @@ export function useGoogleAuth({ onSuccess, onError }: GoogleAuthHookOptions) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     if (!googleEnabled || !googleClientId) return;
@@ -157,6 +168,7 @@ export function useGoogleAuth({ onSuccess, onError }: GoogleAuthHookOptions) {
   return {
     signInWithGoogle,
     isLoading,
+    isAvailable: googleEnabled && Boolean(googleClientId),
   };
 }
 

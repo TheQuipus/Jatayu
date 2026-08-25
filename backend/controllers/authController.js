@@ -5,13 +5,14 @@ import dotenv from 'dotenv';
 import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
 import { isSmtpConfigured } from '../utils/emailService.js';
 import { deliverOtpChannels, handleOtpDeliveryError } from '../utils/otpDelivery.js';
-import { getSetting, getSettingBool } from '../utils/settingsHelper.js';
+import { getSettingBool } from '../utils/settingsHelper.js';
 import {
   getGoogleAuthConfig,
   isDefaultProfilePhoto,
   verifyGoogleLogin,
 } from '../utils/googleAuth.js';
 import { promoteExpertToApplicationQueue } from '../utils/expertApplicationQueue.js';
+import { getLinkedinAuthConfig, verifyLinkedinLogin } from '../utils/linkedinAuth.js';
 import {
   storeOtpOnModel,
   readOtpFromModel,
@@ -419,103 +420,33 @@ export const googleLogin = async (req, res) => {
 export const linkedinLogin = async (req, res) => {
   const { authCode, redirectUri } = req.body;
 
-  if (!authCode) {
-    return res.status(400).json({ message: 'LinkedIn authorization code is required' });
-  }
-
   try {
-    const linkedinClientId = await getSetting('LINKEDIN_CLIENT_ID');
-    const linkedinClientSecret = await getSetting('LINKEDIN_CLIENT_SECRET');
-    const linkedinRedirectUri = await getSetting('LINKEDIN_REDIRECT_URI') || redirectUri;
-    const linkedinLoginEnabled = await getSettingBool('LINKEDIN_LOGIN_ENABLED', true);
+    const { linkedinId, email, fullName, picture, emailVerified } =
+      await verifyLinkedinLogin({ authCode, redirectUri });
 
-    if (!linkedinLoginEnabled) {
-      return res.status(400).json({ message: 'LinkedIn Login is disabled by administrator settings' });
-    }
-
-    let payload;
-
-    const isMockAuth = authCode === 'mock-linkedin-token' ||
-                       !linkedinClientId ||
-                       linkedinClientId.includes('your_linkedin_client_id');
-
-    if (isMockAuth) {
-      console.log('Using mock LinkedIn verification (development mode)');
-      payload = {
-        id: req.body.linkedinId || 'mock-linkedin-id-12345',
-        email: req.body.email || 'linkedin-expert@example.com',
-        name: req.body.fullName || 'LinkedIn Expert',
-        picture: req.body.profilePhotoSrc || '/assets/img/manportrait.png'
-      };
-    } else {
-      // Exchange authorization code for access token
-      const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: authCode,
-          client_id: linkedinClientId,
-          client_secret: linkedinClientSecret,
-          redirect_uri: linkedinRedirectUri
-        })
-      });
-
-      const tokenData = await tokenResponse.json();
-      if (!tokenResponse.ok) {
-        throw new Error(tokenData.error_description || 'Failed to exchange LinkedIn auth code');
-      }
-
-      const accessToken = tokenData.access_token;
-
-      // Fetch user profile and email
-      const userinfoResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-
-      const userinfo = await userinfoResponse.json();
-      if (!userinfoResponse.ok) {
-        throw new Error('Failed to fetch LinkedIn user info');
-      }
-
-      payload = {
-        id: userinfo.sub,
-        email: userinfo.email,
-        name: `${userinfo.given_name} ${userinfo.family_name}`,
-        picture: userinfo.picture
-      };
-    }
-
-    const { id: linkedinId, email, name, picture } = payload;
-
-    // Check if user already exists
-    let expert = await Expert.findOne({ where: { email } });
+    let expert = await Expert.findOne({ where: { linkedinId } });
+    if (!expert) expert = await findExpertByEmail(email);
 
     if (!expert) {
       expert = await Expert.create({
         email,
-        fullName: name || 'LinkedIn Expert',
+        fullName: fullName || 'LinkedIn Expert',
         linkedinId,
-        isEmailVerified: true,
-        isPhoneVerified: true,
+        isEmailVerified: emailVerified,
+        isPhoneVerified: false,
         profilePhotoSrc: picture || '/assets/img/manportrait.png',
         onboardingStep: 'category',
         status: 'draft'
       });
       await promoteExpertToApplicationQueue(expert);
     } else {
-      if (!expert.linkedinId) {
-        expert.linkedinId = linkedinId;
-        expert.isEmailVerified = true;
-        if (!expert.profilePhotoSrc && picture) {
-          expert.profilePhotoSrc = picture;
-        }
-        await expert.save();
+      expert.linkedinId = expert.linkedinId || linkedinId;
+      expert.isEmailVerified = expert.isEmailVerified || emailVerified;
+      if (fullName && (!expert.fullName || expert.fullName === 'LinkedIn Expert')) {
+        expert.fullName = fullName;
       }
+      if (picture && isDefaultProfilePhoto(expert.profilePhotoSrc)) expert.profilePhotoSrc = picture;
+      await expert.save();
     }
 
     // Generate JWT
@@ -531,7 +462,7 @@ export const linkedinLogin = async (req, res) => {
     });
   } catch (error) {
     console.error('LinkedIn Auth Error:', error);
-    return res.status(401).json({ message: 'LinkedIn authentication failed', error: error.message });
+    return res.status(error.status || 401).json({ message: error.message || 'LinkedIn authentication failed' });
   }
 };
 
@@ -542,21 +473,19 @@ export const getPublicConfig = async (req, res) => {
   try {
     const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
     const smsEnabled = await getSettingBool('SMS_ENABLED', true);
-    const linkedinLoginEnabled = await getSettingBool('LINKEDIN_LOGIN_ENABLED', true);
-    const linkedinClientId = await getSetting('LINKEDIN_CLIENT_ID');
+    const linkedin = await getLinkedinAuthConfig();
     const google = await getGoogleAuthConfig();
 
     return res.status(200).json({
       emailEnabled,
       smsEnabled,
       googleLoginEnabled: google.enabled,
-      linkedinLoginEnabled,
+      linkedinLoginEnabled: linkedin.enabled,
       googleClientId: google.enabled ? google.clientId : '',
-      linkedinClientId
+      linkedinClientId: linkedin.enabled ? linkedin.clientId : ''
     });
   } catch (error) {
     console.error('Get Public Config Error:', error);
     return res.status(500).json({ message: 'Server error retrieving configuration', error: error.message });
   }
 };
-
