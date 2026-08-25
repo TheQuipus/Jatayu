@@ -31,13 +31,28 @@ function readSmsProvider(map: Record<string, string>): SmsProvider {
 }
 
 function mapSmsSettingsToBackend(sms: AdminSettings["sms"]): Record<string, string> {
+  const mappedFlows = sms.flowMappings
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .reduce<Record<string, string>>((result, line) => {
+      const separator = line.indexOf("=");
+      if (separator < 1) return result;
+      const trigger = line.slice(0, separator).trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+      const flowId = line.slice(separator + 1).trim();
+      if (trigger && flowId) result[`MSG91_FLOW_ID_${trigger}`] = flowId;
+      return result;
+    }, {});
+
   return {
     SMS_PROVIDER: sms.provider,
     SMS_AUTH_TOKEN: sms.authToken,
+    MSG91_OTP_FLOW_ID: sms.otpFlowId,
     SMS_CONTACT_NO: sms.contactNo,
     SMS_SENDER_ID: sms.senderId,
     TWILIO_ACCOUNT_SID: sms.provider === "twilio" ? sms.authToken : "",
     TWILIO_PHONE_NUMBER: sms.senderId,
+    ...mappedFlows,
   };
 }
 
@@ -92,6 +107,12 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
     sms: {
       provider: smsProvider,
       authToken: readString(map, "SMS_AUTH_TOKEN") || readString(map, "TWILIO_ACCOUNT_SID"),
+      otpFlowId: readString(map, "MSG91_OTP_FLOW_ID"),
+      flowMappings: Object.keys(map)
+        .filter((key) => key.startsWith("MSG91_FLOW_ID_"))
+        .sort()
+        .map((key) => `${key.slice("MSG91_FLOW_ID_".length)}=${map[key]}`)
+        .join("\n"),
       contactNo: readString(map, "SMS_CONTACT_NO"),
       senderId: readString(map, "SMS_SENDER_ID", DEFAULT_ADMIN_SETTINGS.sms.senderId),
     },

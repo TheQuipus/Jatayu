@@ -30,7 +30,17 @@ export default function SmsSettingsPanel({
               placeholder="Select SMS Provider"
             />
           </Field>
-          <Field label="Sender ID" hint="6-character alphanumeric ID.">
+          {draft.provider === "msg91" ? (
+            <Field label="OTP Flow ID" hint="Copy this from MSG91 → SMS → Flows.">
+              <input
+                className={styles.input}
+                value={draft.otpFlowId}
+                onChange={(event) => onChange({ ...draft, otpFlowId: event.target.value.trim() })}
+                placeholder="Enter MSG91 OTP Flow ID"
+                autoComplete="off"
+              />
+            </Field>
+          ) : <Field label="Sender ID" hint="6-character alphanumeric ID.">
             <input
               className={styles.input}
               value={draft.senderId}
@@ -38,11 +48,14 @@ export default function SmsSettingsPanel({
               placeholder="JATAYU"
               maxLength={6}
             />
-          </Field>
+          </Field>}
         </div>
 
         <div className={styles.fieldRow}>
-          <Field label="Auth Token" hint="Stored securely in your environment.">
+          <Field
+            label={draft.provider === "msg91" ? "MSG91 Auth Key" : "Auth Token"}
+            hint="Stored in backend settings and masked in API responses."
+          >
             <input
               className={styles.input}
               type="password"
@@ -52,15 +65,39 @@ export default function SmsSettingsPanel({
               autoComplete="off"
             />
           </Field>
-          <Field label="Contact No.">
+          {draft.provider === "msg91" ? <Field label="Sender ID" hint="Approved MSG91/DLT sender ID.">
+            <input
+              className={styles.input}
+              value={draft.senderId}
+              onChange={(event) => onChange({ ...draft, senderId: event.target.value.toUpperCase() })}
+              placeholder="JATAYU"
+              maxLength={6}
+            />
+          </Field> : <Field label="Contact No.">
             <input
               className={styles.input}
               value={draft.contactNo}
               onChange={(event) => onChange({ ...draft, contactNo: event.target.value })}
               placeholder="Enter contact number"
             />
-          </Field>
+          </Field>}
         </div>
+
+        {draft.provider === "msg91" ? (
+          <Field
+            label="Additional Message Flow IDs"
+            hint="One TRIGGER=FLOW_ID mapping per line. Each MSG91 flow must use variables matching the trigger data."
+          >
+            <textarea
+              className={styles.input}
+              value={draft.flowMappings}
+              onChange={(event) => onChange({ ...draft, flowMappings: event.target.value })}
+              placeholder={"EXPERT_ONBOARDING_APPROVED=flow_id_here\nEXPERT_ONBOARDING_REJECTED=flow_id_here\nSEEKER_ONBOARDING_COMPLETE=flow_id_here"}
+              rows={5}
+              spellCheck={false}
+            />
+          </Field>
+        ) : null}
       </div>
 
       <div className={styles.recordsSection}>
@@ -73,7 +110,7 @@ export default function SmsSettingsPanel({
             <thead>
               <tr>
                 <th>Provider</th>
-                <th>Sender ID</th>
+                <th>{saved.provider === "msg91" ? "OTP Flow ID" : "Sender ID"}</th>
                 <th>Contact No.</th>
                 <th>Auth Token</th>
                 <th>Status</th>
@@ -84,7 +121,7 @@ export default function SmsSettingsPanel({
                 <td style={{ fontWeight: 600, color: "var(--ink)" }}>
                   {SMS_PROVIDER_OPTIONS.find((p) => p.value === saved.provider)?.label || saved.provider}
                 </td>
-                <td>{saved.senderId || "—"}</td>
+                <td>{(saved.provider === "msg91" ? saved.otpFlowId : saved.senderId) || "—"}</td>
                 <td>{saved.contactNo || "—"}</td>
                 <td>{saved.authToken ? "••••••••" : "Not set"}</td>
                 <td>

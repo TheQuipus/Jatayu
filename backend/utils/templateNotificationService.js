@@ -1,6 +1,6 @@
 import { getSetting } from './settingsHelper.js';
 import { sendGenericEmail } from './emailService.js';
-import { sendOtpSms } from './smsService.js';
+import { sendSms } from './smsService.js';
 
 /**
  * Replace placeholders like {{name}}, {{otp}}, {{application_number}}, etc.
@@ -149,7 +149,7 @@ export async function triggerNotification(triggerKey, { email, phone, name = 'th
   const defaultTpl = DEFAULT_TEMPLATES[triggerKey];
   if (!defaultTpl) {
     console.warn(`[Trigger Error] Unknown trigger key: ${triggerKey}`);
-    return;
+    return { emailSent: false, smsSent: false, errors: ['Unknown notification trigger'] };
   }
 
   // Fetch subject and body overrides from DB settings if customized
@@ -167,6 +167,7 @@ export async function triggerNotification(triggerKey, { email, phone, name = 'th
   const formattedBody = interpolate(rawEmailBody, payloadData);
   const finalHtml = buildHtmlWrapper(finalSubject, formattedBody);
   const finalSms = interpolate(rawSmsBody, payloadData);
+  const result = { emailSent: false, smsSent: false, errors: [] };
 
   // Send Email if email is provided
   if (email) {
@@ -178,22 +179,30 @@ export async function triggerNotification(triggerKey, { email, phone, name = 'th
         htmlContent: finalHtml,
         textContent: finalSms,
       });
+      result.emailSent = true;
       console.log(`[Notification Trigger] ${triggerKey} Email sent to ${email}`);
     } catch (err) {
+      result.errors.push(err.message);
       console.error(`[Notification Trigger Error] ${triggerKey} Email failed for ${email}:`, err.message);
     }
   }
 
-  // Send SMS if phone & OTP are available (or standard notification SMS)
-  if (phone && data.otp) {
+  // SMS is provider-agnostic. MSG91 resolves an approved Flow ID per trigger.
+  if (phone) {
     try {
-      await sendOtpSms({
+      await sendSms({
         recipientPhone: phone,
-        otpCode: data.otp,
+        message: finalSms,
+        templateKey: triggerKey,
+        variables: payloadData,
       });
-      console.log(`[Notification Trigger] ${triggerKey} SMS OTP sent to ${phone}`);
+      result.smsSent = true;
+      console.log(`[Notification Trigger] ${triggerKey} SMS sent to ${phone}`);
     } catch (err) {
+      result.errors.push(err.message);
       console.error(`[Notification Trigger Error] ${triggerKey} SMS failed for ${phone}:`, err.message);
     }
   }
+
+  return result;
 }
