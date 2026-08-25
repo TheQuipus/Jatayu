@@ -48,6 +48,7 @@ async function deliverOtp(seeker, otp) {
     phone: seeker.phone,
     fullName: seeker.fullName,
     otpCode: otp,
+    triggerKey: 'SEEKER_OTP',
     logPrefix: 'Seeker OTP',
   });
 }

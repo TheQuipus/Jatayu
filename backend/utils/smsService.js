@@ -22,11 +22,25 @@ async function getSmsProvider() {
 /**
  * Returns true when SMS credentials are configured for the active provider.
  */
-export async function isSmsProviderConfigured() {
+export async function isSmsProviderConfigured({ templateKey = 'EXPERT_OTP' } = {}) {
   const smsEnabled = await getSettingBool('SMS_ENABLED', true);
   if (!smsEnabled) return false;
 
   const provider = await getSmsProvider();
+
+  if (provider === 'msg91') {
+    const authKey = await getSetting('SMS_AUTH_TOKEN');
+    const senderId = await getSetting('SMS_SENDER_ID');
+    const flowId = await getMsg91FlowId(templateKey);
+    return Boolean(
+      authKey &&
+        senderId &&
+        flowId &&
+        !hasPlaceholderCredential(authKey) &&
+        !hasPlaceholderCredential(senderId) &&
+        !hasPlaceholderCredential(flowId),
+    );
+  }
 
   if (provider === 'fast2sms') {
     const apiKey = await getSetting('SMS_API_KEY');
@@ -134,26 +148,80 @@ async function sendViaFast2Sms({ recipientPhone, message }) {
   }
 }
 
-export async function sendOtpSms({ recipientPhone, otpCode }) {
+function normalizeTemplateKey(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+}
+
+async function getMsg91FlowId(templateKey) {
+  const normalizedKey = normalizeTemplateKey(templateKey);
+  const triggerFlowId = normalizedKey
+    ? await getSetting(`MSG91_FLOW_ID_${normalizedKey}`)
+    : '';
+  if (triggerFlowId) return triggerFlowId;
+  return normalizedKey.endsWith('_OTP') ? getSetting('MSG91_OTP_FLOW_ID') : '';
+}
+
+function msg91Variables(variables) {
+  const result = {};
+  for (const [key, value] of Object.entries(variables || {})) {
+    if (/^[A-Za-z][A-Za-z0-9_]*$/.test(key) && value !== undefined && value !== null) {
+      result[key] = String(value);
+    }
+  }
+  return result;
+}
+
+async function sendViaMsg91({ normalizedPhone, message, templateKey, variables }) {
+  const authKey = await getSetting('SMS_AUTH_TOKEN');
+  const senderId = await getSetting('SMS_SENDER_ID');
+  const flowId = await getMsg91FlowId(templateKey);
+  if (!flowId) {
+    throw new Error(`MSG91 Flow ID is not configured for ${templateKey || 'this message'}`);
+  }
+  const mobile = normalizedPhone.replace(/\D/g, '');
+
+  console.log(`[SMS] Sending ${templateKey || 'message'} via MSG91 to ${mobile}`);
+  const response = await fetch('https://control.msg91.com/api/v5/flow', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      authkey: authKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      flow_id: flowId,
+      sender: senderId,
+      recipients: [{
+        mobiles: mobile,
+        ...msg91Variables(variables),
+      }],
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || data.type !== 'success') {
+    const providerMessage = data.message || data.error || `HTTP ${response.status}`;
+    throw new Error(`MSG91 SMS request failed: ${providerMessage}`);
+  }
+}
+
+export async function sendSms({ recipientPhone, message, templateKey, variables = {} }) {
   if (!recipientPhone) {
-    throw new Error('Phone number is required to send SMS OTP.');
+    throw new Error('Phone number is required to send SMS.');
   }
 
   const provider = await getSmsProvider();
-  const isConfigured = await isSmsProviderConfigured();
+  const isConfigured = await isSmsProviderConfigured({ templateKey });
   const normalizedPhone = await normalizePhone(recipientPhone);
-  const message = `Your Jatayu verification code is ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`;
 
   if (!isConfigured) {
-    console.log(`\n======================================================`);
-    console.log(`[SMS OTP Temporary] Provider not configured — using code: ${TEMP_SMS_OTP}`);
-    console.log(`To: ${normalizedPhone}`);
-    console.log(`Configure SMS in Admin → Settings → SMS to enable dynamic OTP delivery.`);
-    console.log(`======================================================\n`);
-    return;
+    throw new Error(`SMS provider is not configured for ${templateKey || 'this message'}.`);
   }
 
   switch (provider) {
+    case 'msg91':
+      await sendViaMsg91({ normalizedPhone, message, templateKey, variables });
+      break;
     case 'fast2sms':
       await sendViaFast2Sms({ recipientPhone: normalizedPhone, message });
       break;
@@ -164,4 +232,13 @@ export async function sendOtpSms({ recipientPhone, otpCode }) {
       await sendViaTwilio({ normalizedPhone, message });
       break;
   }
+}
+
+export async function sendOtpSms({ recipientPhone, otpCode, templateKey = 'EXPERT_OTP' }) {
+  return sendSms({
+    recipientPhone,
+    templateKey,
+    variables: { otp: otpCode },
+    message: `Your Jatayu verification code is ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+  });
 }

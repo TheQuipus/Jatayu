@@ -22,13 +22,14 @@ export async function deliverOtpChannels({ email, phone, fullName, otpCode, trig
 
   if (emailEnabled) {
     try {
-      await triggerNotification(triggerKey, {
+      const result = await triggerNotification(triggerKey, {
         email,
         phone: null, // send email channel
         name: fullName || 'there',
         data: { otp: otpCode },
       });
-      delivered = true;
+      if (result.emailSent) delivered = true;
+      else if (result.errors.length) lastError = new Error(result.errors[0]);
     } catch (err) {
       lastError = err;
       console.warn(`[${logPrefix} Delivery Warning] Email failed:`, err.message);
@@ -37,13 +38,14 @@ export async function deliverOtpChannels({ email, phone, fullName, otpCode, trig
 
   if (smsConfigured) {
     try {
-      await triggerNotification(triggerKey, {
+      const result = await triggerNotification(triggerKey, {
         email: null,
         phone, // send SMS channel
         name: fullName || 'there',
         data: { otp: otpCode },
       });
-      delivered = true;
+      if (result.smsSent) delivered = true;
+      else if (result.errors.length && !delivered) lastError = new Error(result.errors[0]);
     } catch (err) {
       console.warn(`[${logPrefix} Delivery Warning] SMS failed:`, err.message);
       if (!delivered) lastError = err;

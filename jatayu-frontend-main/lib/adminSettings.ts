@@ -17,6 +17,8 @@ export type MessageTemplateCategory =
 export type SmsSettings = {
   provider: SmsProvider;
   authToken: string;
+  otpFlowId: string;
+  flowMappings: string;
   contactNo: string;
   senderId: string;
 };
@@ -165,6 +167,8 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   sms: {
     provider: "msg91",
     authToken: "",
+    otpFlowId: "",
+    flowMappings: "",
     contactNo: "",
     senderId: "JATAYU",
   },
