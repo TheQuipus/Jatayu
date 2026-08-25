@@ -9,6 +9,7 @@ import path from 'path';
 import http from 'http';
 import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
+import swaggerUi from 'swagger-ui-express';
 import { connectAllDatabases, syncAllDatabases } from './config/db/index.js';
 import authRoutes from './routes/authRoutes.js';
 import expertRoutes from './routes/expertRoutes.js';
@@ -21,6 +22,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import razorpayWebhookRoutes from './routes/razorpayWebhookRoutes.js';
 import { getRazorpayClient, validateRazorpayConfig } from './config/razorpay.js';
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
+import { createOpenApiDocument } from './config/swagger.js';
 
 dotenv.config();
 
@@ -56,6 +58,18 @@ app.use(cors(corsOptions));
 app.use('/api/payments/webhooks', razorpayWebhookRoutes);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const swaggerEnabled = process.env.SWAGGER_ENABLED !== 'false';
+if (swaggerEnabled) {
+  const openApiDocument = createOpenApiDocument({
+    serverUrl: process.env.API_PUBLIC_URL || '/',
+  });
+  app.get('/api-docs.json', (req, res) => res.json(openApiDocument));
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiDocument, {
+    customSiteTitle: 'Jatayu API Documentation',
+    swaggerOptions: { persistAuthorization: true },
+  }));
+}
 
 // Serve profile uploads folder statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -129,6 +143,7 @@ const startServer = async () => {
       console.log(`Jatayu Expert Onboarding Backend is running!`);
       console.log(`Port:         ${PORT}`);
       console.log(`Health Check: http://localhost:${PORT}/health`);
+      if (swaggerEnabled) console.log(`API Docs:     http://localhost:${PORT}/api-docs`);
       console.log(`WebSocket:    ws://localhost:${PORT}/socket.io`);
       console.log(`======================================================\n`);
     });

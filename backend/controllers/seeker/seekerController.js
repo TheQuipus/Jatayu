@@ -222,36 +222,36 @@ export const updateProfile = async (req, res) => {
     return res.status(422).json({ message: 'Invalid onboarding data', errors: validationErrors });
   }
 
-  let transaction;
   try {
-    transaction = await seekerDb.transaction();
-    const seeker = await Seeker.findByPk(seekerId, {
-      transaction,
-      lock: transaction.LOCK.UPDATE,
+    const result = await seekerDb.transaction(async (transaction) => {
+      const seeker = await Seeker.findByPk(seekerId, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!seeker) return null;
+
+      applyOnboardingPayload(
+        seeker,
+        payload,
+        req.file ? `/uploads/${req.file.filename}` : undefined,
+      );
+
+      const completedStep = NEXT_STEP_TO_COMPLETED_STEP[payload.step];
+      const creditAward = await rewardOnboardingStep(seeker, completedStep, transaction);
+      await seeker.save({ transaction });
+      return { seeker, creditAward };
     });
-    if (!seeker) {
-      await transaction.rollback();
+
+    if (!result) {
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
-    applyOnboardingPayload(
-      seeker,
-      payload,
-      req.file ? `/uploads/${req.file.filename}` : undefined,
-    );
-
-    const completedStep = NEXT_STEP_TO_COMPLETED_STEP[payload.step];
-    const creditAward = await rewardOnboardingStep(seeker, completedStep, transaction);
-    await seeker.save({ transaction });
-    await transaction.commit();
-
     return res.status(200).json({
       message: 'Profile updated successfully',
-      seeker: serializeSeeker(seeker),
-      creditAward,
+      seeker: serializeSeeker(result.seeker),
+      creditAward: result.creditAward,
     });
   } catch (error) {
-    if (transaction && !transaction.finished) await transaction.rollback();
     console.error('Update Seeker Profile Error:', error);
     return res.status(500).json({ message: 'Server error updating profile', error: error.message });
   }
@@ -266,40 +266,40 @@ export const submitOnboarding = async (req, res) => {
     return res.status(422).json({ message: 'Invalid onboarding data', errors: validationErrors });
   }
 
-  let transaction;
   try {
-    transaction = await seekerDb.transaction();
-    const seeker = await Seeker.findByPk(seekerId, {
-      transaction,
-      lock: transaction.LOCK.UPDATE,
+    const result = await seekerDb.transaction(async (transaction) => {
+      const seeker = await Seeker.findByPk(seekerId, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!seeker) return null;
+
+      applyOnboardingPayload(
+        seeker,
+        payload,
+        req.file ? `/uploads/${req.file.filename}` : undefined,
+      );
+
+      const creditAward = await rewardOnboardingStep(seeker, 'review', transaction);
+
+      seeker.status = 'active';
+      seeker.onboardingStep = null;
+      seeker.termsAcceptedAt = seeker.termsAcceptedAt || new Date();
+      seeker.onboardingCompletedAt = new Date();
+      await seeker.save({ transaction });
+      return { seeker, creditAward };
     });
-    if (!seeker) {
-      await transaction.rollback();
+
+    if (!result) {
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
-    applyOnboardingPayload(
-      seeker,
-      payload,
-      req.file ? `/uploads/${req.file.filename}` : undefined,
-    );
-
-    const creditAward = await rewardOnboardingStep(seeker, 'review', transaction);
-
-    seeker.status = 'active';
-    seeker.onboardingStep = null;
-    seeker.termsAcceptedAt = seeker.termsAcceptedAt || new Date();
-    seeker.onboardingCompletedAt = new Date();
-    await seeker.save({ transaction });
-    await transaction.commit();
-
     return res.status(200).json({
       message: 'Seeker onboarding completed successfully',
-      seeker: serializeSeeker(seeker),
-      creditAward,
+      seeker: serializeSeeker(result.seeker),
+      creditAward: result.creditAward,
     });
   } catch (error) {
-    if (transaction && !transaction.finished) await transaction.rollback();
     console.error('Seeker Submit Onboarding Error:', error);
     return res.status(500).json({ message: 'Server error during submission', error: error.message });
   }
