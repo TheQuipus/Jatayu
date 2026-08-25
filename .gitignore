@@ -6,3 +6,4 @@ jatayu-frontend-main/out
 
 # Live DB dump used to seed the replica MySQL image — contains user PII and settings secrets
 docker/mysql/init/*.sql
+backend/.env
