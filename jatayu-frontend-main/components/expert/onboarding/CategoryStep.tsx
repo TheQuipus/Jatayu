@@ -65,13 +65,16 @@ export default function CategoryStep({
 
     try {
       const res = await recommendSkillsForCategory(trimmed);
-      if (!res.valid) {
+      const skills = res.skills || [];
+      const isValid = res.valid !== false && (skills.length > 0 || res.valid === true);
+
+      if (!isValid) {
         setValidationError(res.message || "Please enter a valid professional category name.");
         setIsRecommending(false);
         return;
       }
 
-      onAddCustomCategory(trimmed, res.skills);
+      onAddCustomCategory(trimmed, skills);
       setNewCategoryInput("");
       setShowInput(false);
     } catch (err) {

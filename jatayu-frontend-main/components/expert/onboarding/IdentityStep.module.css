@@ -162,6 +162,55 @@
   width: 100%;
 }
 
+.textareaWrapperBox {
+  position: relative;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-chip);
+  border-radius: 0;
+  padding: 10px 14px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.textareaWrapperBox:focus-within {
+  border-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.inputBoxHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.innerBoxTextarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--white);
+  outline: none;
+  resize: none;
+  color-scheme: dark;
+}
+
+.innerBoxTextarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.inputBoxFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 6px;
+}
+
 .textareaWithInlineCounter {
   padding-bottom: 32px;
 }
@@ -169,6 +218,24 @@
 .textareaWithBioFooter {
   min-height: 148px;
   padding-bottom: 44px;
+}
+
+.textareaHeaderInline {
+  position: absolute;
+  left: 14px;
+  top: 10px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 2;
+}
+
+.textareaWithTopHeader {
+  padding-top: 56px;
+  padding-bottom: 28px;
+  min-height: 136px;
 }
 
 .textareaCounterInline {
@@ -192,6 +259,20 @@
   justify-content: space-between;
   gap: 12px;
   min-height: 20px;
+}
+
+.inlinePillsWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  z-index: 2;
+}
+
+.inlinePill {
+  padding: 4px 10px;
+  font-size: 12px;
+  max-height: 28px;
 }
 
 .textareaFooterCounter {
@@ -405,7 +486,6 @@
 
 .aiImprovePanel {
   width: 100%;
-  margin-top: 14px;
   padding: 0;
   background: transparent;
   border: none;
@@ -422,22 +502,24 @@
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  padding: 6px 12px;
+  padding: 8px 16px;
   gap: 8px;
   width: fit-content;
   background: var(--background-chip);
-  border: 1px solid var(--border-chip);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
   cursor: pointer;
+  outline: none;
   text-align: left;
   transition: all 0.2s ease;
   color: var(--silver);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
-  max-height: 34px;
-  outline: none;
+  max-height: 36px;
+  white-space: nowrap;
 }
+
 
 .suggestedPillSelected {
   background: var(--bunker);
@@ -467,7 +549,8 @@
 .aiImproveHint {
   margin: 12px 0 0;
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.5;
   color: var(--silver-chalice);
 }

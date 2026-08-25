@@ -1,3 +1,5 @@
+import { buildScheduledStartAt } from "@/lib/seekerBookingApi";
+
 export type ConsultationType = "text" | "video" | "shoutout" | "group";
 
 export type ConsultationBadgeVariant = "green" | "purple" | "orange" | "accent";
@@ -191,19 +193,36 @@ const BASE_TIME_SLOTS: Omit<TimeSlot, "id">[] = [
   { time: "5:00 PM", status: "available" },
 ];
 
-export function getTimeSlotsForDate(dateId: string): TimeSlot[] {
+export function getTimeSlotsForDate(dateId: string, timezone = "Asia/Kolkata"): TimeSlot[] {
   const dateIndex = Number.parseInt(dateId.replace("date-", ""), 10) || 0;
+  const dateObj = new Date();
+  dateObj.setHours(0, 0, 0, 0);
+  dateObj.setDate(dateObj.getDate() + dateIndex);
 
-  return BASE_TIME_SLOTS.map((slot, index) => ({
-    ...slot,
-    id: `${dateId}-slot-${index + 1}`,
-    status:
+  const buffer12h = Date.now() + 12 * 60 * 60 * 1000;
+
+  return BASE_TIME_SLOTS.map((slot, index) => {
+    let isPastOrTooSoon = false;
+    try {
+      const instant = new Date(buildScheduledStartAt(dateObj, slot.time, timezone)).getTime();
+      isPastOrTooSoon = instant < buffer12h;
+    } catch {
+      // fallback if parsing fails
+    }
+
+    const baseStatus =
       dateIndex % 3 === 1 && index === 3
         ? "booked"
         : dateIndex % 3 === 2 && index === 8
           ? "booked"
-          : slot.status,
-  }));
+          : slot.status;
+
+    return {
+      ...slot,
+      id: `${dateId}-slot-${index + 1}`,
+      status: isPastOrTooSoon ? "booked" : baseStatus,
+    };
+  });
 }
 
 export function findTimeSlot(dateId: string, slotId: string): TimeSlot | undefined {

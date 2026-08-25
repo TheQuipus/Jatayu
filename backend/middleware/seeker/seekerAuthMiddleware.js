@@ -30,3 +30,19 @@ export const protectSeeker = async (req, res, next) => {
 
   return res.status(401).json({ message: 'Not authorized, no token provided' });
 };
+
+export const optionalProtectSeeker = async (req, res, next) => {
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    try {
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.role === 'seeker') {
+        req.user = decoded;
+      }
+    } catch {
+      // Continue without user if token invalid
+    }
+  }
+  return next();
+};
+

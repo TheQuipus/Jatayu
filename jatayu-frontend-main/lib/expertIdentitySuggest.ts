@@ -211,3 +211,60 @@ export function buildLocalIdentityCopy(context: IdentitySuggestContext = {}): Id
     avoidBio,
   );
 }
+
+export type IdentityTone = "professional" | "casual" | "concise";
+
+export type IdentityToneOptions = {
+  professional: IdentityPair;
+  casual: IdentityPair;
+  concise: IdentityPair;
+};
+
+export function buildIdentityCopyByTone(context: IdentitySuggestContext = {}): IdentityToneOptions {
+  const name = clip(context.fullName, 40);
+  const category = clip(context.category, 40);
+  const title = clip(context.professionalTitle, 70);
+  const skills = asSkills(context.skills);
+  const level = clip(context.experienceLevel, 40);
+  const role = title || (category ? `${category} expert` : "consultant");
+  const roleLower = role.toLowerCase();
+  const skillPhrase =
+    skills.length > 0 ? skills.slice(0, 3).join(", ") : category || "practical, clear advice";
+  const who = name || "I";
+  const introName = who === "I" ? "I'm" : `I'm ${who},`;
+  const levelPrefix = level ? `${level} ` : "";
+
+  return {
+    professional: {
+      tagLine: clip(
+        `${role} specializing in ${skillPhrase}. Delivering high-impact, strategic solutions.`,
+        TAGLINE_MAX,
+      ),
+      bio: clip(
+        `As a ${levelPrefix}${role}, I provide specialized expertise in ${skillPhrase}. I partner with clients to drive measurable results and make confident, strategic decisions.`,
+        BIO_MAX,
+      ),
+    },
+    casual: {
+      tagLine: clip(
+        `Friendly ${roleLower} ready to help you succeed with ${skillPhrase}.`,
+        TAGLINE_MAX,
+      ),
+      bio: clip(
+        `Hey! ${introName} a ${roleLower} who loves turning complex ${skillPhrase} challenges into simple, actionable steps. No fluff, just clear, hands-on guidance.`,
+        BIO_MAX,
+      ),
+    },
+    concise: {
+      tagLine: clip(
+        `${role} & ${skillPhrase} Specialist.`,
+        TAGLINE_MAX,
+      ),
+      bio: clip(
+        `${levelPrefix}${role} focused on ${skillPhrase}. Direct answers, actionable recommendations, and zero friction.`,
+        BIO_MAX,
+      ),
+    },
+  };
+}
+

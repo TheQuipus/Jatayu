@@ -112,14 +112,27 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const initialAvailableDateOffset = useMemo(() => {
     if (!expert.availabilities || expert.availabilities.length === 0) return 0;
     const today = new Date();
+    const buffer12h = Date.now() + 12 * 60 * 60 * 1000;
     for (let offset = 0; offset < 28; offset++) {
       const d = new Date(today);
       d.setDate(today.getDate() + offset);
       const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
-      const matches = expert.availabilities.some((rule) =>
+      const matchingRules = expert.availabilities.filter((rule) =>
         rule.days.some((day) => day.toLowerCase().slice(0, 3) === dayName.toLowerCase())
       );
-      if (matches) return offset;
+      if (matchingRules.length > 0) {
+        const hasFutureSlot = matchingRules.some((rule) => {
+          const match = rule.fromTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+          if (!match) return true;
+          let hour = Number(match[1]);
+          if (match[3].toUpperCase() === "PM" && hour !== 12) hour += 12;
+          if (match[3].toUpperCase() === "AM" && hour === 12) hour = 0;
+          const slotDate = new Date(d);
+          slotDate.setHours(hour, Number(match[2]), 0, 0);
+          return slotDate.getTime() >= buffer12h;
+        });
+        if (hasFutureSlot) return offset;
+      }
     }
     return 0;
   }, [expert.availabilities]);

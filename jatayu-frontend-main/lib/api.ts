@@ -6,6 +6,7 @@
 
 import { type Expert, expertSlug, getExpertById, getTopMatchesByCategory, normalizeExpert } from "@/lib/experts";
 import type { ClientRequest, RequestStatus } from "@/lib/expertRequests";
+import type { IdentityToneOptions } from "@/lib/expertIdentitySuggest";
 import { publicApiBase } from "@/lib/publicApiBase";
 import { parseUtcDate, formatUtcToLocalDate, formatUtcToLocalTime, formatUtcRelativeTime } from "@/lib/dateTimeUtils";
 
@@ -414,9 +415,15 @@ export async function submitOnboarding(): Promise<SubmitOnboardingResponse> {
 // ---------------------------------------------------------------------------
 
 export async function getProfile(): Promise<Record<string, unknown>> {
-  return apiFetch<Record<string, unknown>>("/api/expert/me", {
-    method: "GET",
-  });
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("jatayu_expert_user");
+      if (raw) return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      // ignore JSON parse errors
+    }
+  }
+  return Promise.resolve({});
 }
 
 export type DigilockerKycStartResponse = {
@@ -469,11 +476,14 @@ export type OnboardingAiSuggestPayload = {
 };
 
 export type OnboardingAiSuggestResponse = {
-  tagLine: string;
-  bio: string;
+  tagLine?: string;
+  bio?: string;
   briefIntroduction?: string;
   source?: "ai" | "fallback";
   notice?: string;
+  tones?: IdentityToneOptions;
+  options?: IdentityToneOptions;
+  suggestions?: IdentityToneOptions;
 };
 
 export async function suggestOnboardingIdentityCopy(
@@ -486,7 +496,7 @@ export async function suggestOnboardingIdentityCopy(
 }
 
 export type RecommendSkillsResponse = {
-  valid: boolean;
+  valid?: boolean;
   message?: string;
   skills: string[];
   source?: "ai" | "fallback";
@@ -814,9 +824,15 @@ export async function submitSeekerOnboarding(
 }
 
 export async function getSeekerProfile(): Promise<Record<string, unknown>> {
-  return apiFetch<Record<string, unknown>>("/api/seeker/me", {
-    method: "GET",
-  });
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("jatayu_seeker_user");
+      if (raw) return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      // Ignore parse error
+    }
+  }
+  return {};
 }
 
 // ---------------------------------------------------------------------------

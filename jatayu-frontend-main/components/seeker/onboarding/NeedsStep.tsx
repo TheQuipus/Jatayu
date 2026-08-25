@@ -20,7 +20,12 @@ import {
   type AiImprovementStyleId as ImprovementStyleId,
   transformTextWithAi as getImprovedText,
   getAiImprovementHint,
+  DEFAULT_AI_IMPROVE_HINT,
 } from "@/lib/aiTextImprovement";
+import {
+  callAiImproveNeeds,
+  mapChipIdsToGoalNames,
+} from "@/lib/aiImprovementApi";
 
 function getImprovementHint(
   styleId: ImprovementStyleId | null,
@@ -70,6 +75,9 @@ function detectChipsFromText(text: string): string[] {
 
 type NeedsStepProps = {
   userName: string;
+  subject?: string;
+  onChangeSubject?: (subject: string) => void;
+  step1CategoryOrTopic?: string;
   needsText: string;
   onChangeNeedsText: (text: string) => void;
   selectedNeedChips?: string[];
@@ -82,6 +90,9 @@ type NeedsStepProps = {
 
 export default function NeedsStep({
   userName,
+  subject,
+  onChangeSubject,
+  step1CategoryOrTopic,
   needsText,
   onChangeNeedsText,
   selectedNeedChips: selectedNeedChipsProp,
@@ -110,6 +121,8 @@ export default function NeedsStep({
     onSelectedNeedChipsChangeProp?.(chips);
   };
 
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiOptionsMap, setAiOptionsMap] = useState<Record<string, string> | null>(null);
   const [sourceTextForImprovement, setSourceTextForImprovement] = useState<string>("");
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -138,13 +151,41 @@ export default function NeedsStep({
     : needsText;
   const canUseAiAssist = userTypedSuffix.trim().length > 0;
 
-  const handleAiAssist = () => {
+  const handleAiAssist = async () => {
     setShowImprovementPanel(true);
     setSelectedImproveStyle("professional");
     setIsImprovementApplied(false);
     const prefix = getLockedPrefix();
     const userSuffix = prefix && needsText.startsWith(prefix) ? needsText.slice(prefix.length) : needsText;
-    setSourceTextForImprovement(userSuffix.trim() || needsText.trim());
+    const targetText = userSuffix.trim() || needsText.trim();
+    setSourceTextForImprovement(targetText);
+
+    setIsAiLoading(true);
+    try {
+      const effectiveSubject = (subject && subject.trim()) ? subject.trim() : (step1CategoryOrTopic || "");
+      const goalNames = mapChipIdsToGoalNames(selectedNeedChips);
+
+      const data = await callAiImproveNeeds(
+        {
+          subject: effectiveSubject,
+          userText: targetText,
+          selectedGoals: goalNames,
+        },
+        true
+      );
+
+      const opts = data.options || data.suggestions;
+      if (opts) {
+        setAiOptionsMap(opts);
+      }
+      if (data.subject && (!subject || !subject.trim()) && onChangeSubject) {
+        onChangeSubject(data.subject);
+      }
+    } catch (err) {
+      console.error("AI improvement request failed, using local fallback:", err);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   const handleNeedChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
@@ -239,7 +280,21 @@ export default function NeedsStep({
     }
   };
 
-  const handleImproveStyle = (styleId: ImprovementStyleId) => {
+  const getHintText = (styleId: ImprovementStyleId | null) => {
+    if (isAiLoading) return "Generating AI improvement...";
+    if (!styleId) return DEFAULT_AI_IMPROVE_HINT;
+
+    const targetText = sourceTextForImprovement || userTypedSuffix.trim() || needsText.trim();
+    if (!targetText) return DEFAULT_AI_IMPROVE_HINT;
+
+    if (aiOptionsMap && styleId in aiOptionsMap && aiOptionsMap[styleId]) {
+      return aiOptionsMap[styleId];
+    }
+    return getImprovementHint(styleId, targetText, "");
+  };
+
+  const handleApplyImprovement = () => {
+    if (!selectedImproveStyle || isImprovementApplied) return;
     const currentPrefix = getLockedPrefix();
     const targetText =
       sourceTextForImprovement ||
@@ -249,14 +304,15 @@ export default function NeedsStep({
       needsText.trim();
     if (!targetText) return;
 
-    const improvedSuffix = getImprovedText(styleId, targetText);
+    let improvedSuffix = "";
+    if (aiOptionsMap && selectedImproveStyle in aiOptionsMap && aiOptionsMap[selectedImproveStyle]) {
+      improvedSuffix = aiOptionsMap[selectedImproveStyle];
+    } else {
+      improvedSuffix = getImprovedText(selectedImproveStyle, targetText);
+    }
+
     const updatedText = currentPrefix ? `${currentPrefix}${improvedSuffix}` : improvedSuffix;
     onChangeNeedsText(updatedText.slice(0, 1000));
-  };
-
-  const handleApplyImprovement = () => {
-    if (!selectedImproveStyle || isImprovementApplied) return;
-    handleImproveStyle(selectedImproveStyle);
     setIsImprovementApplied(true);
   };
 
@@ -341,16 +397,16 @@ export default function NeedsStep({
                   type="button"
                   className={styles.aiAssistTextBtn}
                   onClick={handleAiAssist}
-                  disabled={!canUseAiAssist}
+                  disabled={!canUseAiAssist || isAiLoading}
                 >
                   <ShinyText
-                    text="Improve With Jatayu AI"
+                    text={isAiLoading ? "Improving..." : "Improve With Jatayu AI"}
                     icon="sparkles"
                     iconSize={14}
                     speed={2.5}
                     color="#E53B17"
                     shineColor="#ffffff"
-                    disabled={!canUseAiAssist}
+                    disabled={!canUseAiAssist || isAiLoading}
                     className={styles.aiAssistShinyText}
                   />
                 </button>
@@ -381,17 +437,13 @@ export default function NeedsStep({
                   })}
                 </div>
                 <p className={styles.aiImproveHint}>
-                  {getImprovementHint(
-                    selectedImproveStyle,
-                    sourceTextForImprovement || userTypedSuffix || needsText,
-                    ""
-                  )}
+                  {getHintText(selectedImproveStyle)}
                 </p>
                 <button
                   type="button"
                   className={styles.aiApplyBtn}
                   onClick={handleApplyImprovement}
-                  disabled={!selectedImproveStyle || isImprovementApplied}
+                  disabled={!selectedImproveStyle || isImprovementApplied || isAiLoading}
                 >
                   <ShinyText
                     text={isImprovementApplied ? "Applied" : "Apply"}

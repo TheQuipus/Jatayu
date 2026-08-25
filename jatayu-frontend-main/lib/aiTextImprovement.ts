@@ -6,7 +6,6 @@ export const AI_IMPROVEMENT_STYLES = [
   { id: "professional", label: "More Professional" },
   { id: "casual", label: "Casual" },
   { id: "concise", label: "More Concise" },
-  { id: "structured", label: "Key Bullet Points" },
 ] as const;
 
 export type AiImprovementStyleId = (typeof AI_IMPROVEMENT_STYLES)[number]["id"];
