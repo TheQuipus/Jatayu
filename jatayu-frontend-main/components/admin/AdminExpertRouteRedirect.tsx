@@ -18,10 +18,10 @@ export default function AdminExpertRouteRedirect({ basePath }: AdminExpertRouteR
 
     async function redirectToFirstApplication() {
       try {
-        const records = await getAdminApplications();
+        const response = await getAdminApplications({ limit: 20 });
         if (!active) return;
 
-        const applications = mapBackendExpertsToApplications(records as BackendExpertApplication[]);
+        const applications = mapBackendExpertsToApplications(response.items as BackendExpertApplication[]);
         const firstAppId = getFirstReviewAppId(applications);
 
         if (firstAppId) {

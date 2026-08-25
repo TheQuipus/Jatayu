@@ -642,11 +642,26 @@ export interface BackendExpertApplicationRecord extends Record<string, unknown> 
   reviewerNote?: string | null;
 }
 
-export async function getAdminApplications(
-  status?: string,
-): Promise<BackendExpertApplicationRecord[]> {
-  const query = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
-  return adminApiFetch<BackendExpertApplicationRecord[]>(`/api/admin/applications${query}`, {
+export interface AdminApplicationsPage {
+  items: BackendExpertApplicationRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+  };
+}
+
+export async function getAdminApplications({
+  status,
+  page = 1,
+  limit = 20,
+}: { status?: string; page?: number; limit?: number } = {}): Promise<AdminApplicationsPage> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (status && status !== "all") params.set("status", status);
+  return adminApiFetch<AdminApplicationsPage>(`/api/admin/applications?${params.toString()}`, {
     method: "GET",
   });
 }
@@ -1388,4 +1403,3 @@ export async function updateExpertRequestStatusApi(
     };
   }
 }
-

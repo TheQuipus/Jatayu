@@ -2,6 +2,7 @@ import {
   findExpertsForAdmin,
   findExpertForAdmin,
   findExpertByIdForAdmin,
+  countExpertsForAdmin,
   saveExpertForAdmin,
   Op,
 } from '../services/expertDataService.js';
@@ -31,6 +32,37 @@ const SIGNUP_COMPLETE_DRAFT_WHERE = {
   isEmailVerified: true,
   isPhoneVerified: true,
 };
+
+// Keep the queue response lightweight. Full onboarding metadata (including
+// uploaded document data) is returned only by the application detail API.
+const APPLICATION_LIST_ATTRIBUTES = [
+  'id',
+  'applicationNumber',
+  'fullName',
+  'email',
+  'phone',
+  'category',
+  'skills',
+  'experienceLevel',
+  'professionalTitle',
+  'tagLine',
+  'bio',
+  'profilePhotoSrc',
+  'targetAudience',
+  'focusAreas',
+  'timezone',
+  'selectedFormats',
+  'selectedLengths',
+  'formatPrices',
+  'onboardingStep',
+  'status',
+  'submittedAt',
+  'reviewerNote',
+  'isEmailVerified',
+  'isPhoneVerified',
+  'createdAt',
+  'updatedAt',
+];
 
 function isSignupComplete(expert) {
   return expert.status !== 'draft' || (expert.isEmailVerified && expert.isPhoneVerified);
@@ -97,15 +129,40 @@ async function ensureReviewMetadata(expert) {
 export const listApplications = async (req, res) => {
   try {
     const { status } = req.query;
+    const requestedPage = Number.parseInt(req.query.page, 10);
+    const requestedLimit = Number.parseInt(req.query.limit, 10);
+    const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const limit = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 100)
+      : 20;
     const where = buildListWhere(status);
+    const offset = (page - 1) * limit;
 
-    const experts = await findExpertsForAdmin(where);
+    const [experts, total] = await Promise.all([
+      findExpertsForAdmin(where, {
+        limit,
+        offset,
+        attributes: APPLICATION_LIST_ATTRIBUTES,
+      }),
+      countExpertsForAdmin(where),
+    ]);
 
     for (const expert of experts) {
       await ensureReviewMetadata(expert);
     }
 
-    return res.status(200).json(experts.map(serializeExpert));
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return res.status(200).json({
+      items: experts.map(serializeExpert),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasPreviousPage: page > 1,
+        hasNextPage: page < totalPages,
+      },
+    });
   } catch (error) {
     console.error('List Applications Error:', error);
     return res.status(500).json({ message: 'Server error listing applications', error: error.message });

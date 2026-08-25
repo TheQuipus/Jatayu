@@ -15,7 +15,6 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
-import { useExpertApplications } from "@/hooks/useExpertApplications";
 import {
   ADMIN_DASHBOARD_HREF,
   ADMIN_EXPERT_PATH_PREFIXES,
@@ -23,7 +22,12 @@ import {
   ADMIN_SETTINGS_HREF,
   type AdminNavItem,
 } from "@/lib/adminDashboard";
-import { getAdminMe, removeAdminToken, type AdminAuthUser } from "@/lib/api";
+import {
+  getAdminApplicationStats,
+  getAdminMe,
+  removeAdminToken,
+  type AdminAuthUser,
+} from "@/lib/api";
 import {
   SETTINGS_SECTIONS,
   getSettingsSectionHref,
@@ -202,10 +206,10 @@ function SettingsNavGroup({ pathname, isCollapsed }: { pathname: string; isColla
 
 export default function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
-  const { ready, pendingCount } = useExpertApplications();
   const [mounted, setMounted] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [adminUser, setAdminUser] = useState<AdminAuthUser | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -227,8 +231,24 @@ export default function AdminShell({ children }: AdminShellProps) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    getAdminApplicationStats()
+      .then((counts) => {
+        if (active) setPendingCount(counts.pending ?? 0);
+      })
+      .catch(() => {
+        if (active) setPendingCount(0);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const navItems = ADMIN_NAV.map((item) =>
-    item.id === "expert" && mounted && ready && pendingCount > 0
+    item.id === "expert" && mounted && pendingCount > 0
       ? { ...item, badge: pendingCount, badgeVariant: "red" as const }
       : item,
   );

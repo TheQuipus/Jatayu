@@ -198,8 +198,12 @@ function TableHeaderFilter({
 }
 
 export default function ExpertApplications() {
-  const { ready, applications, listItems, kpis } =
-    useExpertApplications();
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>(DEFAULT_COLUMN_FILTERS);
+  const [showAlert, setShowAlert] = useState(true);
+  const { ready, applications, listItems, kpis, pagination } =
+    useExpertApplications({ page, limit: 20, status: columnFilters.status });
   const slaAlert = useMemo(() => getSlaAlert(applications), [applications]);
   const slaReviewHref = useMemo(() => {
     if (slaAlert.oldestAppId) {
@@ -208,11 +212,8 @@ export default function ExpertApplications() {
     const appId = getFirstReviewAppId(applications);
     return appId ? getAdminReviewHref(appId) : "/admin/applications";
   }, [slaAlert.oldestAppId, applications]);
-  const [query, setQuery] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFilters>(DEFAULT_COLUMN_FILTERS);
-  const [showAlert, setShowAlert] = useState(true);
-
   const setColumnFilter = (key: keyof ColumnFilters, value: string) => {
+    setPage(1);
     setColumnFilters((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -429,7 +430,7 @@ export default function ExpertApplications() {
                 ) : (
                   filtered.map((app, index) => (
                     <tr key={app.id}>
-                      <td className={styles.rowNum}>{index + 1}</td>
+                      <td className={styles.rowNum}>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                       <td>
                         <div className={styles.applicantCell}>
                           <Image
@@ -498,6 +499,34 @@ export default function ExpertApplications() {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className={styles.pagination}>
+            <span className={styles.paginationSummary}>
+              {pagination.total === 0
+                ? "No applications"
+                : `Showing ${(pagination.page - 1) * pagination.limit + 1}–${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total}`}
+            </span>
+            <div className={styles.paginationActions}>
+              <button
+                type="button"
+                className={styles.paginationButton}
+                disabled={!pagination.hasPreviousPage}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                Previous
+              </button>
+              <span className={styles.paginationPage}>
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                type="button"
+                className={styles.paginationButton}
+                disabled={!pagination.hasNextPage}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>
