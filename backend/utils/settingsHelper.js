@@ -1,16 +1,13 @@
 import { Setting } from '../models/index.js';
 
 const KEY_ALIASES = {
-  // SMS (provider-agnostic keys with Twilio/MSG91 fallbacks)
-  SMS_API_KEY: ['TWILIO_ACCOUNT_SID', 'MSG91_AUTH_KEY'],
+  // SMS (provider-agnostic keys with Twilio fallbacks)
+  SMS_API_KEY: ['TWILIO_ACCOUNT_SID'],
   SMS_API_SECRET: ['TWILIO_AUTH_TOKEN'],
-  SMS_SENDER_ID: ['TWILIO_PHONE_NUMBER', 'MSG91_SENDER_ID'],
+  SMS_SENDER_ID: ['TWILIO_PHONE_NUMBER'],
   TWILIO_ACCOUNT_SID: ['SMS_API_KEY'],
   TWILIO_AUTH_TOKEN: ['SMS_API_SECRET'],
   TWILIO_PHONE_NUMBER: ['SMS_SENDER_ID'],
-  MSG91_AUTH_KEY: ['SMS_API_KEY'],
-  MSG91_TEMPLATE_ID: ['SMS_TEMPLATE_ID'],
-  MSG91_SENDER_ID: ['SMS_SENDER_ID'],
   
   // Google
   GOOGLE_LOGIN_ENABLED: ['GOOGLE_ENABLE_SIGN_IN'],
