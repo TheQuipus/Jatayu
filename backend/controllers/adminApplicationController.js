@@ -6,6 +6,8 @@ import {
   Op,
 } from '../services/expertDataService.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
+import { triggerNotification } from '../utils/templateNotificationService.js';
+import { getSetting } from '../utils/settingsHelper.js';
 
 const FRONTEND_TO_BACKEND_STATUS = {
   pending: 'pending_review',
@@ -169,6 +171,30 @@ export const updateApplicationStatus = async (req, res) => {
     await saveExpertForAdmin(expert);
 
     const updated = await findExpertByIdForAdmin(expert.id);
+    const frontendUrl = (await getSetting('FRONTEND_URL', 'http://localhost:3000')).replace(/\/$/, '');
+
+    if (backendStatus === 'approved') {
+      triggerNotification('EXPERT_ONBOARDING_APPROVED', {
+        email: updated.email,
+        phone: updated.phone,
+        name: updated.fullName,
+        data: {
+          application_number: updated.applicationNumber || id,
+          dashboard_link: `${frontendUrl}/expert/dashboard`,
+        },
+      }).catch((err) => console.error('[Notification Trigger Warning] Expert approval email failed:', err.message));
+    } else if (backendStatus === 'rejected' || backendStatus === 'on_hold') {
+      triggerNotification('EXPERT_ONBOARDING_REJECTED', {
+        email: updated.email,
+        phone: updated.phone,
+        name: updated.fullName,
+        data: {
+          application_number: updated.applicationNumber || id,
+          reason: reviewerNote || 'Please log in to review and update your profile information.',
+          dashboard_link: `${frontendUrl}/onboarding`,
+        },
+      }).catch((err) => console.error('[Notification Trigger Warning] Expert rejection email failed:', err.message));
+    }
 
     return res.status(200).json({
       message: 'Application status updated successfully',

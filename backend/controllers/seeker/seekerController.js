@@ -3,6 +3,8 @@ import {
   AiNotConfiguredError,
   improveSeekerNeedsCopy,
 } from '../../utils/aiService.js';
+import { triggerNotification } from '../../utils/templateNotificationService.js';
+import { getSetting } from '../../utils/settingsHelper.js';
 
 
 const ONBOARDING_STEPS = new Set([
@@ -293,6 +295,18 @@ export const submitOnboarding = async (req, res) => {
     if (!result) {
       return res.status(404).json({ message: 'Seeker not found' });
     }
+
+    const frontendUrl = (await getSetting('FRONTEND_URL', 'http://localhost:3000')).replace(/\/$/, '');
+
+    triggerNotification('SEEKER_ONBOARDING_COMPLETE', {
+      email: result.seeker.email,
+      phone: result.seeker.phone,
+      name: result.seeker.fullName || 'Seeker',
+      data: {
+        credits: result.seeker.creditsBalance || 25,
+        explore_link: `${frontendUrl}/experts`,
+      },
+    }).catch((err) => console.error('[Notification Trigger Warning] Seeker welcome email failed:', err.message));
 
     return res.status(200).json({
       message: 'Seeker onboarding completed successfully',

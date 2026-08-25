@@ -152,20 +152,43 @@ async function sendViaSmtp({ recipientEmail, recipientName, otpCode, fromEmail, 
   throw lastError || new Error('All SMTP delivery attempts failed.');
 }
 
-export async function sendOtpEmail({ recipientEmail, recipientName, otpCode }) {
+export async function sendGenericEmail({ recipientEmail, recipientName, subject, htmlContent, textContent }) {
   const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
   const emailProvider = await getSetting('EMAIL_PROVIDER', 'smtp');
   const fromEmail = await getSetting('FROM_EMAIL', 'noreply@jatayu.com');
   const fromName = await getSetting('EMAIL_FROM_NAME', 'Jatayu');
   const brevoApiKey = await getSetting('BREVO_API_KEY');
 
+  if (!emailEnabled) {
+    console.log(`[Email Dev Log] Email disabled. To: ${recipientEmail} | Subject: ${subject}`);
+    return;
+  }
+
   // --- Brevo API path ---
   if (emailProvider === 'brevo' && brevoApiKey && !hasPlaceholderCredential(brevoApiKey)) {
-    if (!emailEnabled) {
-      console.log(`[Email OTP Dev] Brevo disabled. To: ${recipientEmail} | Code: ${otpCode}`);
-      return;
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': brevoApiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: fromName, email: fromEmail },
+        to: [{ email: recipientEmail, name: recipientName || recipientEmail }],
+        subject,
+        htmlContent,
+        textContent: textContent || subject,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(`Brevo API error: ${error.message || response.statusText}`);
     }
-    return sendViaBrevo({ recipientEmail, recipientName, otpCode, fromEmail, brevoApiKey });
+
+    console.log(`[Email] Custom email sent via Brevo to ${recipientEmail}`);
+    return;
   }
 
   // --- SMTP path ---
@@ -177,27 +200,70 @@ export async function sendOtpEmail({ recipientEmail, recipientName, otpCode }) {
 
   const smtpConfigured = await isSmtpConfigured();
 
-  if (!smtpConfigured || !emailEnabled) {
+  if (!smtpConfigured) {
     if (process.env.NODE_ENV !== 'production') {
       console.log(`\n======================================================`);
-      console.log(`[Email OTP Dev] To: ${recipientEmail}`);
-      console.log(`Verification Code: ${otpCode}`);
+      console.log(`[Email Dev Log] To: ${recipientEmail}`);
+      console.log(`Subject: ${subject}`);
+      console.log(`HTML Body Preview:\n${htmlContent}`);
       console.log(`======================================================\n`);
       return;
     }
     throw new Error('Email is not configured. Set SMTP credentials or configure Brevo API key in admin settings.');
   }
 
-  return sendViaSmtp({
+  const smtpAddress = await resolveSmtpIpv4(smtpHost);
+  const attempts = [
+    { port: smtpPort, secure: smtpSecure },
+    { port: '465', secure: 'true' },
+    { port: '587', secure: 'false' },
+  ];
+
+  const seen = new Set();
+  let lastError;
+
+  for (const attempt of attempts) {
+    const key = `${attempt.port}-${attempt.secure}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    console.log(`[Email] Connecting to SMTP: ${smtpHost} (${smtpAddress}):${attempt.port} (secure=${attempt.secure})`);
+
+    try {
+      const client = buildSmtpTransport({
+        smtpHost: smtpAddress,
+        tlsServername: smtpHost,
+        smtpPort: attempt.port,
+        smtpUser,
+        smtpPass,
+        smtpSecure: attempt.secure,
+      });
+
+      await client.sendMail({
+        from: fromName ? `"${fromName}" <${fromEmail}>` : fromEmail,
+        to: recipientEmail,
+        subject,
+        html: htmlContent,
+        text: textContent || subject,
+      });
+
+      console.log(`[Email] Custom email sent via SMTP to ${recipientEmail}`);
+      return;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[Email] SMTP attempt failed (${smtpHost}:${attempt.port}):`, err.message);
+    }
+  }
+
+  throw lastError || new Error('All SMTP delivery attempts failed.');
+}
+
+export async function sendOtpEmail({ recipientEmail, recipientName, otpCode }) {
+  return sendGenericEmail({
     recipientEmail,
     recipientName,
-    otpCode,
-    fromEmail,
-    fromName,
-    smtpHost,
-    smtpPort,
-    smtpUser,
-    smtpPass,
-    smtpSecure,
+    subject: 'Your Jatayu verification code',
+    htmlContent: buildOtpHtml(recipientName, otpCode),
+    textContent: `Your Jatayu verification code is ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
   });
 }

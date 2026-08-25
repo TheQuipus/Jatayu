@@ -1,13 +1,16 @@
 import { Setting } from '../models/index.js';
 
 const KEY_ALIASES = {
-  // SMS (provider-agnostic keys with Twilio fallbacks)
-  SMS_API_KEY: ['TWILIO_ACCOUNT_SID'],
+  // SMS (provider-agnostic keys with Twilio/MSG91 fallbacks)
+  SMS_API_KEY: ['TWILIO_ACCOUNT_SID', 'MSG91_AUTH_KEY'],
   SMS_API_SECRET: ['TWILIO_AUTH_TOKEN'],
-  SMS_SENDER_ID: ['TWILIO_PHONE_NUMBER'],
+  SMS_SENDER_ID: ['TWILIO_PHONE_NUMBER', 'MSG91_SENDER_ID'],
   TWILIO_ACCOUNT_SID: ['SMS_API_KEY'],
   TWILIO_AUTH_TOKEN: ['SMS_API_SECRET'],
   TWILIO_PHONE_NUMBER: ['SMS_SENDER_ID'],
+  MSG91_AUTH_KEY: ['SMS_API_KEY'],
+  MSG91_TEMPLATE_ID: ['SMS_TEMPLATE_ID'],
+  MSG91_SENDER_ID: ['SMS_SENDER_ID'],
   
   // Google
   GOOGLE_LOGIN_ENABLED: ['GOOGLE_ENABLE_SIGN_IN'],
@@ -28,35 +31,35 @@ const KEY_ALIASES = {
 };
 
 export async function getSetting(key, defaultValue = '') {
+  // 1. HIGHEST PRIORITY: Check process.env primary key
+  if (process.env[key] !== undefined && process.env[key] !== null && String(process.env[key]).trim() !== '') {
+    return String(process.env[key]).trim();
+  }
+
+  // 2. HIGHEST PRIORITY: Check process.env aliases
+  const aliases = KEY_ALIASES[key] || [];
+  for (const alias of aliases) {
+    if (process.env[alias] !== undefined && process.env[alias] !== null && String(process.env[alias]).trim() !== '') {
+      return String(process.env[alias]).trim();
+    }
+  }
+
   try {
-    // 1. Try finding primary key in DB
+    // 3. Fallback: Try finding primary key in DB
     const record = await Setting.findByPk(key);
-    if (record && record.value !== undefined && record.value !== null && record.value !== '') {
+    if (record && record.value !== undefined && record.value !== null && String(record.value).trim() !== '') {
       return record.value;
     }
 
-    // 2. Try finding aliases in DB
-    const aliases = KEY_ALIASES[key] || [];
+    // 4. Fallback: Try finding aliases in DB
     for (const alias of aliases) {
       const aliasRecord = await Setting.findByPk(alias);
-      if (aliasRecord && aliasRecord.value !== undefined && aliasRecord.value !== null && aliasRecord.value !== '') {
+      if (aliasRecord && aliasRecord.value !== undefined && aliasRecord.value !== null && String(aliasRecord.value).trim() !== '') {
         return aliasRecord.value;
       }
     }
   } catch (err) {
     console.error(`Error fetching setting ${key} from DB:`, err.message);
-  }
-
-  // 3. Fallback to process.env
-  if (process.env[key]) {
-    return process.env[key];
-  }
-  
-  const aliases = KEY_ALIASES[key] || [];
-  for (const alias of aliases) {
-    if (process.env[alias]) {
-      return process.env[alias];
-    }
   }
 
   return defaultValue;
