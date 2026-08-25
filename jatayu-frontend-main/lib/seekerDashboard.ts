@@ -105,7 +105,7 @@ export const MAIN_NAV: SeekerNavItem[] = [
 export const PROFILE_NAV: SeekerNavItem = {
   id: "profile",
   label: "Profile",
-  href: "/seeker/dashboard/#profile",
+  href: "/seeker/profile/",
 };
 
 export const QUICK_LINKS: SeekerNavItem[] = [

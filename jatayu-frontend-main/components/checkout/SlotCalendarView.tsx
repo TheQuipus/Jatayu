@@ -127,6 +127,7 @@ function getSlotsForDateAndAvailabilities(
     const hour12 = hour24 % 12 || 12;
     return `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${period}`;
   };
+  const buffer12h = Date.now() + 12 * 60 * 60 * 1000;
   const occupied = new Set(occupiedSlots.map((slot) => new Date(slot.startAt).getTime()));
   const slots: TimeSlot[] = [];
   matchingRules.forEach((rule) => {
@@ -136,10 +137,11 @@ function getSlotsForDateAndAvailabilities(
     for (let minute = from; minute + slotDurationMinutes <= to; minute += slotDurationMinutes) {
       const time = formatMinutes(minute);
       const instant = new Date(buildScheduledStartAt(date, time, timezone)).getTime();
+      const isPastOrTooSoon = instant < buffer12h;
       slots.push({
         id: `${dateId}-slot-${minute}`,
         time,
-        status: occupied.has(instant) ? "booked" : "available",
+        status: (occupied.has(instant) || isPastOrTooSoon) ? "booked" : "available",
       });
     }
   });

@@ -45,6 +45,7 @@ import {
   clearSeekerAuthOnly,
   clearSeekerAuthSession,
   getSeekerPostAuthDestination,
+  getStoredSeekerUser,
   isSeekerAuthenticated,
   persistSeekerAuthSession,
   readPendingSeekerOtpSession,
@@ -263,6 +264,7 @@ function SeekerOnboardingPageContent() {
   const [editReturnStep, setEditReturnStep] = useState<OnboardingStep | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [needsSubject, setNeedsSubject] = useState<string>("");
   const [needsText, setNeedsText] = useState<string>("");
   const [selectedNeedChips, setSelectedNeedChips] = useState<string[]>([]);
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
@@ -362,28 +364,22 @@ function SeekerOnboardingPageContent() {
       }
     }
 
-    if (resume === "true" && isSeekerAuthenticated()) {
+    if (isSeekerAuthenticated()) {
       clearPendingSeekerOtpSession();
-      getSeekerProfile()
-        .then((data) => {
-          if (data && typeof data === "object") {
-            hydrateSeekerFromProfile(data);
-            const profileUser = data as unknown as AuthUser;
-            if (profileUser) {
-              const dest = getSeekerPostAuthDestination(profileUser);
-              if (typeof dest === "string" && dest.startsWith("/")) {
-                window.location.assign(dest);
-              } else {
-                setStep(dest as OnboardingStep);
-              }
-            }
-          }
-        })
-        .catch(() => undefined);
+      const storedUser = getStoredSeekerUser();
+      if (storedUser) {
+        hydrateSeekerFromProfile(storedUser as unknown as Record<string, unknown>);
+        const dest = getSeekerPostAuthDestination(storedUser);
+        if (typeof dest === "string" && dest.startsWith("/")) {
+          window.location.assign(dest);
+          return;
+        }
+        setStep(dest as OnboardingStep);
+      }
       return;
     }
 
-    // Default for signup / initial visit: clear any old session and show register step
+    // Default for unauthenticated signup / initial visit: clear any old session and show register step
     clearSeekerAuthSession();
     clearPendingSeekerOtpSession();
     queueMicrotask(() => handleSwitchToRegister());
@@ -631,14 +627,7 @@ function SeekerOnboardingPageContent() {
     if (response.user.fullName) setRegisteredName(response.user.fullName);
     if (response.user.email) setRegisteredEmail(response.user.email);
     if (response.user.phone) setRegisteredPhone(response.user.phone);
-
-    getSeekerProfile()
-      .then((data) => {
-        if (data && typeof data === "object") {
-          hydrateSeekerFromProfile(data);
-        }
-      })
-      .catch(() => undefined);
+    hydrateSeekerFromProfile(response.user as unknown as Record<string, unknown>);
 
     const destination = getSeekerPostAuthDestination(response.user);
     if (typeof destination === "string" && destination.startsWith("/")) {
@@ -849,6 +838,9 @@ function SeekerOnboardingPageContent() {
       {step === "needs" && (
         <NeedsStep
           userName={seekerDisplayName}
+          subject={needsSubject}
+          onChangeSubject={setNeedsSubject}
+          step1CategoryOrTopic={selectedTopics.length > 0 ? selectedTopics.join(", ") : (activeCategoryLabel || selectedCategory)}
           needsText={needsText}
           onChangeNeedsText={setNeedsText}
           selectedNeedChips={selectedNeedChips}

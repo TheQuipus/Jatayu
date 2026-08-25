@@ -2,7 +2,13 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { getProfile, updateProfile, submitOnboarding } from '../controllers/expertController.js';
+import {
+  getProfile,
+  updateProfile,
+  submitOnboarding,
+  suggestOnboardingIdentity,
+  recommendOnboardingSkills,
+} from '../controllers/expertController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { getRequests, updateRequestDecision } from '../controllers/expertRequestController.js';
 
@@ -49,6 +55,10 @@ const upload = multer({
 router.get('/me', protect, getProfile);
 router.put('/profile', protect, upload.single('profilePhoto'), updateProfile);
 router.post('/submit', protect, submitOnboarding);
+router.post('/onboarding/ai-suggest', protect, suggestOnboardingIdentity);
+router.post('/ai-suggest', protect, suggestOnboardingIdentity);
+router.post('/onboarding/recommend-skills', protect, recommendOnboardingSkills);
+router.post('/recommend-skills', protect, recommendOnboardingSkills);
 router.get('/requests', protect, getRequests);
 router.patch('/requests/:bookingId/decision', protect, updateRequestDecision);
 

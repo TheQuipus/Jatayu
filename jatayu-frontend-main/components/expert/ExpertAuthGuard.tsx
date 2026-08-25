@@ -13,22 +13,15 @@ export default function ExpertAuthGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    async function verifySession() {
+    function verifySession() {
       if (!isAuthenticated()) {
         router.replace(EXPERT_LOGIN_HREF);
         return;
       }
-
-      try {
-        await getProfile();
-        if (active) setReady(true);
-      } catch {
-        clearAuthSession();
-        router.replace(EXPERT_LOGIN_HREF);
-      }
+      if (active) setReady(true);
     }
 
-    void verifySession();
+    verifySession();
 
     return () => {
       active = false;

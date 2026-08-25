@@ -50,6 +50,7 @@ import {
   clearExpertAuthOnly,
   clearPendingOtpSession,
   getPostAuthDestination,
+  getStoredAuthUser,
   isAuthenticated,
   isNavigationHref,
   parseCredentialsFromProfile,
@@ -500,9 +501,6 @@ function ExpertOnboardingPageContent() {
     }
 
     if (flow === "signup") {
-      if (isAuthenticated() && !loginIntentRef.current) {
-        return;
-      }
       signupFlowRef.current = true;
       clearAuthSession();
       resetOnboardingFormState();
@@ -538,6 +536,14 @@ function ExpertOnboardingPageContent() {
     if (otpFlowLockRef.current) return;
     if (!isAuthenticated()) return;
 
+    const storedUser = getStoredAuthUser();
+    if (storedUser) {
+      hydrateFromProfile(storedUser as unknown as ExpertOnboardingProfile);
+      setAuthUser(storedUser);
+      setAccountStatus(buildExpertAccountStatus(storedUser));
+      routeAfterAuth(storedUser);
+    }
+
     let active = true;
 
     getProfile()
@@ -556,12 +562,13 @@ function ExpertOnboardingPageContent() {
         routeAfterAuth(user);
       })
       .catch(() => {
-        // A stored token that fails to resolve means the session expired or is
-        // invalid — send the user back to login (not register), since they
-        // previously had an account. Re-entering the same credentials on the
-        // register form would otherwise hit the duplicate-account block.
-        clearAuthSession();
-        setStep("login");
+        // If GET profile endpoint doesn't exist or fails, fallback to stored user from login
+        if (storedUser) {
+          routeAfterAuth(storedUser);
+        } else {
+          clearAuthSession();
+          setStep("login");
+        }
       });
 
     return () => {
@@ -589,15 +596,7 @@ function ExpertOnboardingPageContent() {
       return;
     }
 
-    void getProfile()
-      .then((profile) => {
-        const snapshot = asOnboardingProfile(profile);
-        hydrateFromProfile(snapshot);
-        routeAfterAuth(snapshot);
-      })
-      .catch(() => {
-        routeAfterAuth(user);
-      });
+    routeAfterAuth(user);
   };
 
   const handleContinueFromSignupComplete = () => {

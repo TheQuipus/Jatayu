@@ -3,6 +3,7 @@ import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import {
   AiNotConfiguredError,
   suggestExpertIdentityCopy,
+  recommendExpertSkills,
 } from '../utils/aiService.js';
 
 /**
@@ -337,13 +338,17 @@ export const suggestOnboardingIdentity = async (req, res) => {
       field: body.field === 'bio' || body.field === 'tagLine' ? body.field : undefined,
     });
 
-    return res.status(200).json({
+    const responsePayload = {
       tagLine: suggestion.tagLine,
       bio: suggestion.bio,
       briefIntroduction: suggestion.bio,
+      options: suggestion.options || suggestion.suggestions,
+      suggestions: suggestion.suggestions || suggestion.options,
       source: suggestion.source || 'ai',
       notice: suggestion.notice || undefined,
-    });
+    };
+
+    return res.status(200).json(responsePayload);
   } catch (error) {
     if (error instanceof AiNotConfiguredError || error?.code === 'AI_NOT_CONFIGURED') {
       return res.status(503).json({
@@ -359,3 +364,37 @@ export const suggestOnboardingIdentity = async (req, res) => {
     });
   }
 };
+
+/**
+ * Recommend skills for expert onboarding based on category/title/existing selections.
+ */
+export const recommendOnboardingSkills = async (req, res) => {
+  const expertId = req.user?.id;
+  const body = req.body || {};
+
+  try {
+    let expert = null;
+    if (expertId) {
+      expert = await Expert.findByPk(expertId);
+    }
+
+    const skillsResult = await recommendExpertSkills({
+      category: body.category || expert?.category,
+      professionalTitle: body.professionalTitle || expert?.professionalTitle,
+      experienceLevel: body.experienceLevel || expert?.experienceLevel,
+      skills: body.skills || body.existingSkills || expert?.skills,
+    });
+
+    return res.status(200).json({
+      skills: skillsResult.skills,
+      source: skillsResult.source,
+    });
+  } catch (error) {
+    console.error('Recommend skills error:', error.message);
+    return res.status(200).json({
+      skills: [],
+      source: 'ai',
+    });
+  }
+};
+

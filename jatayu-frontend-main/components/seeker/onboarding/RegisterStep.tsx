@@ -371,24 +371,25 @@ export default function RegisterStep({
           </div>
 
           {submitError ? (
-            <div className={register.errorBannerBox} role="alert">
+            <div role="alert">
               <p className={register.fieldErrorBelow}>{submitError}</p>
-              {isDuplicateAccountError ? (
-                <div className={register.duplicateAccountBox}>
+              {isDuplicateAccountError || isDuplicateRegistrationMessage(submitError) ? (
+                <p className={register.authToggle}>
+                  Already registered?{" "}
                   {onSwitchToLogin ? (
                     <button
                       type="button"
-                      className={register.switchToLoginBtn}
+                      className={register.authToggleBtn}
                       onClick={() => onSwitchToLogin(normalizeEmail(email))}
                     >
-                      Log in to existing account →
+                      Log in to your account
                     </button>
                   ) : (
-                    <Link href={loginHref || "/seeker/login"} className={register.switchToLoginBtn}>
-                      Log in to existing account →
+                    <Link href={loginHref || "/seeker/login"} className={register.authToggleBtn}>
+                      Log in to your account
                     </Link>
                   )}
-                </div>
+                </p>
               ) : null}
             </div>
           ) : null}

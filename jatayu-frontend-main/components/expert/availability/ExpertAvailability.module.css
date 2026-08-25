@@ -29,7 +29,12 @@
 
 .slotDaysCol {
   display: flex;
+  flex-direction: column;
   justify-content: flex-end;
+  align-items: flex-end;
+  justify-self: flex-end;
+  margin-left: auto;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -42,6 +47,7 @@
 .selectDaysLabel {
   display: block;
   text-align: left;
+  margin: 0;
 }
 
 .slotsContainer {
@@ -137,6 +143,7 @@
   border-radius: 8px;
   transition: color 0.2s ease, background 0.2s ease;
   flex-shrink: 0;
+  margin-bottom: 6px;
 }
 
 .slotCloseBtn:hover:not(:disabled) {

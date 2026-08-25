@@ -1,4 +1,9 @@
 import { Seeker, SeekerCreditTransaction, seekerDb } from '../../models/index.js';
+import {
+  AiNotConfiguredError,
+  improveSeekerNeedsCopy,
+} from '../../utils/aiService.js';
+
 
 const ONBOARDING_STEPS = new Set([
   'category',
@@ -299,3 +304,61 @@ export const submitOnboarding = async (req, res) => {
     return res.status(500).json({ message: 'Server error during submission', error: error.message });
   }
 };
+
+/**
+ * Improve seeker consultation request copy with AI across 3 tones based on subject & selected/auto-selected goals.
+ */
+export const improveSeekerNeeds = async (req, res) => {
+  const body = req.body || {};
+
+  try {
+    let subject = body.subject || body.category || body.topic;
+    let userText = body.userText || body.needsText || body.text || body.additionalContext;
+    let selectedGoals = body.selectedGoals || body.selectedNeedChips || body.goals;
+
+    if (req.user?.id) {
+      const seeker = await Seeker.findByPk(req.user.id);
+      if (seeker) {
+        if (!subject) subject = seeker.category;
+        if (!userText) userText = seeker.needsText || seeker.additionalContext;
+        if (!selectedGoals || (Array.isArray(selectedGoals) && selectedGoals.length === 0)) {
+          selectedGoals = seeker.selectedNeedChips;
+        }
+      }
+    }
+
+    const result = await improveSeekerNeedsCopy({
+      subject,
+      userText,
+      needsText: userText,
+      selectedGoals,
+    });
+
+    const responsePayload = {
+      subject: result.subject,
+      selectedGoals: result.selectedGoals,
+      autoSelected: result.autoSelected,
+      options: result.options,
+      suggestions: result.suggestions,
+      source: result.source,
+      notice: result.notice || undefined,
+    };
+
+    return res.status(200).json(responsePayload);
+  } catch (error) {
+    if (error instanceof AiNotConfiguredError || error?.code === 'AI_NOT_CONFIGURED') {
+      return res.status(503).json({
+        message: error.message,
+        code: 'AI_NOT_CONFIGURED',
+      });
+    }
+
+    console.error('Seeker AI Improve Needs Error:', error.message || error);
+    return res.status(502).json({
+      message: error.message || 'Could not improve needs copy with AI.',
+      code: error.code || 'AI_PROVIDER_ERROR',
+    });
+  }
+};
+
+

@@ -149,8 +149,12 @@ export default function ExpertAvailability({
     );
   };
 
+  const lastSlot = slots[slots.length - 1];
+  const isLastSlotFilled = Boolean(lastSlot?.from && lastSlot?.to && lastSlot?.days.length > 0);
+  const canAddSlot = slots.length < 5 && isLastSlotFilled;
+
   const handleAddSlot = () => {
-    if (slots.length >= 5) return;
+    if (!canAddSlot) return;
     setSlots((prev) => [...prev, createEmptySlot()]);
   };
 
@@ -172,9 +176,6 @@ export default function ExpertAvailability({
       <div className={styles.hoursPane}>
         <div className={styles.hoursPaneHeader}>
           <h4 className={styles.hoursPaneTitle}>{timezoneLabel}</h4>
-          <div className={styles.slotDaysCol}>
-            <span className={`${styles.hoursPaneTitle} ${styles.selectDaysLabel}`}>Select days</span>
-          </div>
         </div>
 
         <div className={styles.slotsContainer}>
@@ -211,6 +212,7 @@ export default function ExpertAvailability({
                 </div>
 
                 <div className={styles.slotDaysCol}>
+                  <span className={`${styles.hoursPaneTitle} ${styles.selectDaysLabel}`}>Select days</span>
                   <div className={styles.daysCluster}>
                     {WEEK_DAYS.map((day) => {
                       const isSelected = slot.days.includes(day);
@@ -258,12 +260,7 @@ export default function ExpertAvailability({
             </div>
           )}
 
-          {slots.length < 5 ? (
-            <button type="button" onClick={handleAddSlot} className={styles.addSlotBtn}>
-              <Plus size={14} />
-              <span>Add Time Slot</span>
-            </button>
-          ) : (
+          {slots.length >= 5 ? (
             <button
               type="button"
               className={styles.addSlotBtn}
@@ -271,6 +268,17 @@ export default function ExpertAvailability({
               style={{ opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" }}
             >
               <span>Maximum of 5 time slots reached</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAddSlot}
+              className={styles.addSlotBtn}
+              disabled={!isLastSlotFilled}
+              style={!isLastSlotFilled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+            >
+              <Plus size={14} />
+              <span>{isLastSlotFilled ? "Add Time Slot" : "Fill current slot to add another"}</span>
             </button>
           )}
         </div>

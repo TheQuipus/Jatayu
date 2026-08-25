@@ -21,6 +21,10 @@ const KEY_ALIASES = {
   FROM_EMAIL: ['EMAIL_FROM_EMAIL'],
   EMAIL_PROVIDER: ['EMAIL_PROVIDER'],
   BREVO_API_KEY: ['BREVO_API_KEY'],
+
+  // Gemini / Fallback AI
+  GEMINI_API_KEY: ['AI_FALLBACK_API_KEY'],
+  AI_FALLBACK_API_KEY: ['GEMINI_API_KEY'],
 };
 
 export async function getSetting(key, defaultValue = '') {

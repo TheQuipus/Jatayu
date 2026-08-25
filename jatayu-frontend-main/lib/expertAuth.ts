@@ -43,10 +43,30 @@ const ONBOARDING_STEPS: ExpertOnboardingStep[] = [
   "success",
 ];
 
+const EXPERT_USER_KEY = "jatayu_expert_user";
+
 export function persistAuthSession(response: AuthResponse): AuthUser {
   setToken(response.token);
   setExpertId(response.user.id);
+  if (typeof window !== "undefined" && response.user) {
+    try {
+      localStorage.setItem(EXPERT_USER_KEY, JSON.stringify(response.user));
+    } catch {
+      // Ignore quota error
+    }
+  }
   return response.user;
+}
+
+export function getStoredAuthUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(EXPERT_USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthUser;
+  } catch {
+    return null;
+  }
 }
 
 import { clearExpertApplicationDraft } from "@/lib/expertApplicationsStore";
@@ -54,6 +74,9 @@ import { clearExpertApplicationDraft } from "@/lib/expertApplicationsStore";
 export function clearExpertAuthOnly(): void {
   removeToken();
   removeExpertId();
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(EXPERT_USER_KEY);
+  }
 }
 
 export function clearAuthSession(): void {

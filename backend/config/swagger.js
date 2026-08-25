@@ -106,6 +106,12 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     '/api/expert/submit': {
       post: operation({ tag: 'Expert', summary: 'Submit expert onboarding', security: bearerSecurity, requestBody: jsonBody() }),
     },
+    '/api/expert/onboarding/ai-suggest': {
+      post: operation({ tag: 'Expert', summary: 'Generate AI suggestions for onboarding tagline and bio', security: bearerSecurity, requestBody: jsonBody() }),
+    },
+    '/api/expert/onboarding/recommend-skills': {
+      post: operation({ tag: 'Expert', summary: 'Generate AI skill recommendations for expert onboarding', security: bearerSecurity, requestBody: jsonBody() }),
+    },
     '/api/expert/requests': {
       get: operation({
         tag: 'Expert', summary: 'List and filter booking requests', security: bearerSecurity,
@@ -141,6 +147,14 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     '/api/seeker/featured-matches': {
       get: operation({ tag: 'Seeker', summary: 'Get featured expert matches', security: bearerSecurity }),
     },
+    '/api/seeker/ai-improve-needs': {
+      post: operation({
+        tag: 'Seeker',
+        summary: 'Improve seeker consultation request copy with AI across 3 tones based on subject and goals',
+        requestBody: jsonBody('Payload with subject, userText/needsText, and selectedGoals'),
+      }),
+    },
+
     '/api/seeker/experts/{expertId}/booking-options': {
       get: operation({
         tag: 'Bookings', summary: 'Get expert availability and booking options', security: bearerSecurity,

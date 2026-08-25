@@ -16,10 +16,16 @@ function hasPlaceholderCredential(value) {
 }
 
 function clip(value, max) {
-  return String(value || '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, max);
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+  if (normalized.length <= max) return normalized;
+
+  const sliced = normalized.slice(0, max);
+  const lastSpace = sliced.lastIndexOf(' ');
+  if (lastSpace > max * 0.5) {
+    const trimmedPart = sliced.slice(0, lastSpace).replace(/[,;:\-\s.]+$/, '');
+    return trimmedPart + '.';
+  }
+  return sliced;
 }
 
 function asStringList(value, limit = 12) {
@@ -52,8 +58,25 @@ export async function readAiSettings() {
   const modelOverride = await getSetting('AI_MODEL');
   const baseUrl = await getSetting('AI_API_BASE_URL');
 
-  const configured = Boolean(apiKey && !hasPlaceholderCredential(apiKey));
-  return { providerName, apiKey, modelOverride, baseUrl, configured };
+  // Fallback AI provider settings (e.g. Gemini)
+  const fallbackProviderName = await getSetting('AI_FALLBACK_PROVIDER_NAME', 'Google Gemini');
+  const fallbackApiKey = (await getSetting('GEMINI_API_KEY')) || (await getSetting('AI_FALLBACK_API_KEY'));
+  const fallbackModel = (await getSetting('GEMINI_MODEL')) || (await getSetting('AI_FALLBACK_MODEL', 'gemini-2.0-flash'));
+
+  const primaryConfigured = Boolean(apiKey && !hasPlaceholderCredential(apiKey));
+  const fallbackConfigured = Boolean(fallbackApiKey && !hasPlaceholderCredential(fallbackApiKey));
+  const configured = primaryConfigured || fallbackConfigured;
+
+  return {
+    providerName,
+    apiKey,
+    modelOverride,
+    baseUrl,
+    fallbackProviderName,
+    fallbackApiKey,
+    fallbackModel,
+    configured,
+  };
 }
 
 export async function isAiConfigured() {
@@ -82,8 +105,9 @@ function mapFriendlyModel(raw) {
     return 'gpt-4o';
   }
   if (lower.includes('gpt-3.5')) return 'gpt-3.5-turbo';
-  if (/^(gpt-|claude-|gemini-|llama)/i.test(value)) return value;
-  return '';
+  if (/^(gpt-4o|gpt-4o-mini|gpt-4-turbo|gpt-3\.5-turbo|claude-[\w.-]+|gemini-[\w.-]+|llama[\w.-]*)/i.test(value)) return value;
+  if (lower.startsWith('gpt-')) return 'gpt-4o-mini';
+  return value;
 }
 
 function resolveAiTarget(providerName, modelOverride) {
@@ -132,12 +156,42 @@ function parseJsonObject(text) {
   try {
     return JSON.parse(raw);
   } catch {
-    const start = raw.indexOf('{');
-    const end = raw.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      return JSON.parse(raw.slice(start, end + 1));
+    const objStart = raw.indexOf('{');
+    const objEnd = raw.lastIndexOf('}');
+    if (objStart >= 0 && objEnd > objStart) {
+      try {
+        return JSON.parse(raw.slice(objStart, objEnd + 1));
+      } catch {}
     }
-    throw new AiProviderError('AI returned an invalid response.');
+    const arrStart = raw.indexOf('[');
+    const arrEnd = raw.lastIndexOf(']');
+    if (arrStart >= 0 && arrEnd > arrStart) {
+      try {
+        return JSON.parse(raw.slice(arrStart, arrEnd + 1));
+      } catch {}
+    }
+
+    // Enhanced auto-repair for truncated JSON output (e.g., cut off inside a string literal)
+    if (objStart >= 0) {
+      let snippet = raw.slice(objStart).trim();
+      const unescapedQuotes = (snippet.match(/(?<!\\)"/g) || []).length;
+      if (unescapedQuotes % 2 !== 0) {
+        snippet += '"'; // Close open string
+      }
+      snippet = snippet.replace(/,\s*$/, '');
+      const openBrackets = Math.max(0, (snippet.match(/\[/g) || []).length - (snippet.match(/\]/g) || []).length);
+      const openBraces = Math.max(0, (snippet.match(/\{/g) || []).length - (snippet.match(/\}/g) || []).length);
+      for (let i = 0; i < openBrackets; i++) snippet += ']';
+      for (let i = 0; i < openBraces; i++) snippet += '}';
+      try {
+        const repaired = JSON.parse(snippet);
+        return repaired;
+      } catch (repairErr) {
+        console.warn('[AI Auto-Repair Failed]:', repairErr.message);
+      }
+    }
+
+    throw new AiProviderError(`AI returned an invalid JSON response: ${trimmed.slice(0, 200)}`);
   }
 }
 
@@ -161,7 +215,7 @@ async function completeOpenAiCompatible({ apiKey, model, baseUrl, prompt }) {
   const payload = {
     model,
     temperature: 0.7,
-    max_tokens: 400,
+    max_tokens: 1500,
     messages: [
       {
         role: 'system',
@@ -193,10 +247,12 @@ async function completeOpenAiCompatible({ apiKey, model, baseUrl, prompt }) {
 
   if (!response.ok) {
     const detail = data?.error?.message || data?.message || `HTTP ${response.status}`;
+    console.error(`[OpenAI Error ${response.status}]:`, detail);
     throw new AiProviderError(`AI provider error: ${detail}`);
   }
 
-  return data?.choices?.[0]?.message?.content || '';
+  const resultText = data?.choices?.[0]?.message?.content || '';
+  return resultText;
 }
 
 async function completeAnthropic({ apiKey, model, prompt }) {
@@ -209,7 +265,7 @@ async function completeAnthropic({ apiKey, model, prompt }) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 400,
+      max_tokens: 1500,
       temperature: 0.7,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -218,61 +274,122 @@ async function completeAnthropic({ apiKey, model, prompt }) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = data?.error?.message || data?.message || `HTTP ${response.status}`;
+    console.error(`[Anthropic Error ${response.status}]:`, detail);
     throw new AiProviderError(`AI provider error: ${detail}`);
   }
 
   const blocks = Array.isArray(data?.content) ? data.content : [];
-  return blocks.map((block) => block?.text || '').join('\n');
+  const resultText = blocks.map((block) => block?.text || '').join('\n');
+  return resultText;
 }
 
 async function completeGemini({ apiKey, model, prompt }) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const response = await fetchWithTimeout(endpoint, {
+  const modelName = model || 'gemini-2.0-flash';
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  
+  const payload = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: `${prompt}\n\nIMPORTANT: Respond strictly with valid JSON.`
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.5,
+      maxOutputTokens: 1500,
+      responseMimeType: 'application/json',
+    },
+  };
+
+  let response = await fetchWithTimeout(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 400,
-        responseMimeType: 'application/json',
-      },
-    }),
+    body: JSON.stringify(payload),
   });
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = data?.error?.message || data?.message || `HTTP ${response.status}`;
-    throw new AiProviderError(`AI provider error: ${detail}`);
+  let data = await response.json().catch(() => ({}));
+
+  if (!response.ok && String(data?.error?.message || '').toLowerCase().includes('responsemimetype')) {
+    delete payload.generationConfig.responseMimeType;
+    response = await fetchWithTimeout(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    data = await response.json().catch(() => ({}));
   }
 
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!response.ok) {
+    const detail = data?.error?.message || data?.message || `HTTP ${response.status}`;
+    console.error(`[Gemini Error ${response.status}]:`, detail);
+    throw new AiProviderError(`Gemini error: ${detail}`);
+  }
+
+  const resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return resultText;
 }
 
 async function completeChat({ settings, prompt }) {
-  const { vendor, model } = resolveAiTarget(settings.providerName, settings.modelOverride);
+  const hasPrimary = Boolean(settings.apiKey && !hasPlaceholderCredential(settings.apiKey));
+  const hasFallback = Boolean(settings.fallbackApiKey && !hasPlaceholderCredential(settings.fallbackApiKey));
 
-  if (vendor === 'anthropic') {
-    return completeAnthropic({ apiKey: settings.apiKey, model, prompt });
-  }
-  if (vendor === 'gemini') {
-    return completeGemini({ apiKey: settings.apiKey, model, prompt });
-  }
-  if (vendor === 'groq') {
-    return completeOpenAiCompatible({
-      apiKey: settings.apiKey,
-      model,
-      baseUrl: settings.baseUrl || 'https://api.groq.com/openai/v1',
+  if (!hasPrimary && hasFallback) {
+    const fallbackTarget = resolveAiTarget(
+      settings.fallbackProviderName || 'Google Gemini',
+      settings.fallbackModel || 'gemini-2.0-flash'
+    );
+    return await completeGemini({
+      apiKey: settings.fallbackApiKey,
+      model: fallbackTarget.model,
       prompt,
     });
   }
 
-  return completeOpenAiCompatible({
-    apiKey: settings.apiKey,
-    model,
-    baseUrl: settings.baseUrl || 'https://api.openai.com/v1',
-    prompt,
-  });
+  const primaryTarget = resolveAiTarget(settings.providerName, settings.modelOverride);
+
+  try {
+    if (primaryTarget.vendor === 'anthropic') {
+      return await completeAnthropic({ apiKey: settings.apiKey, model: primaryTarget.model, prompt });
+    }
+    if (primaryTarget.vendor === 'gemini') {
+      return await completeGemini({ apiKey: settings.apiKey, model: primaryTarget.model, prompt });
+    }
+    if (primaryTarget.vendor === 'groq') {
+      return await completeOpenAiCompatible({
+        apiKey: settings.apiKey,
+        model: primaryTarget.model,
+        baseUrl: settings.baseUrl || 'https://api.groq.com/openai/v1',
+        prompt,
+      });
+    }
+
+    return await completeOpenAiCompatible({
+      apiKey: settings.apiKey,
+      model: primaryTarget.model,
+      baseUrl: settings.baseUrl || 'https://api.openai.com/v1',
+      prompt,
+    });
+  } catch (primaryError) {
+    if (hasFallback) {
+      console.warn(
+        `Primary AI provider (${primaryTarget.vendor}/${primaryTarget.model}) failed: ${primaryError.message}. Falling back to Gemini...`
+      );
+      const fallbackTarget = resolveAiTarget(
+        settings.fallbackProviderName || 'Google Gemini',
+        settings.fallbackModel || 'gemini-2.0-flash'
+      );
+      return await completeGemini({
+        apiKey: settings.fallbackApiKey,
+        model: fallbackTarget.model,
+        prompt,
+      });
+    }
+    throw primaryError;
+  }
 }
 
 function formatEmployment(list) {
@@ -336,6 +453,7 @@ function buildPrompt(context) {
     field !== 'bio' ? `tagLine: one line, max ${TAGLINE_MAX} characters, no quotation marks around the whole line.` : '',
     field !== 'tagLine' ? `bio: one short paragraph, max ${BIO_MAX} characters, first person, concrete, no hype.` : '',
     'Do not invent employers, degrees, or skills that are not in the context.',
+    'Do not include internal experience level labels like "emerging" or "established" in the text.',
     field ? `Only generate the ${fieldLabel}. Do not change the other field.` : '',
     intentInstructions[intent],
     '',
@@ -343,7 +461,6 @@ function buildPrompt(context) {
     `- Name: ${clip(context.fullName, 80) || 'Expert'}`,
     `- Category: ${clip(context.category, 80) || 'Not specified'}`,
     `- Professional title: ${clip(context.professionalTitle, 80) || 'Not specified'}`,
-    `- Experience level: ${clip(context.experienceLevel, 40) || 'Not specified'}`,
     `- Skills: ${skills.join(', ') || 'Not specified'}`,
     `- Languages: ${languages.join(', ') || 'Not specified'}`,
     `- Experience: ${employment.join('; ') || 'Not specified'}`,
@@ -370,22 +487,20 @@ function identityTemplates(context) {
   const category = clip(context.category, 40);
   const title = clip(context.professionalTitle, 70);
   const skills = asStringList(context.skills, 4);
-  const level = clip(context.experienceLevel, 40);
-  const role = title || (category ? `${category} expert` : 'consultant');
+  const role = (title || (category ? `${category} expert` : 'consultant')).replace(/\.+$/, '');
   const roleLower = role.toLowerCase();
   const skillPhrase = skills.length > 0 ? skills.slice(0, 3).join(', ') : category || 'practical, clear advice';
   const who = name || 'I';
   const introName = who === 'I' ? "I'm" : `I'm ${who},`;
-  const levelPrefix = level ? `${level} ` : '';
 
   return [
     {
       tagLine: `I help people with ${skillPhrase} — practical ${roleLower} guidance that moves work forward.`,
-      bio: `${introName} a ${levelPrefix}${role}. I focus on ${skillPhrase} and help clients make confident decisions.`,
+      bio: `${introName} a ${role}. I focus on ${skillPhrase} and help clients make confident decisions.`,
     },
     {
       tagLine: `${role} focused on ${skillPhrase}. Clear next steps, not generic advice.`,
-      bio: `I work as a ${levelPrefix}${role}, with a focus on ${skillPhrase}. I keep recommendations concrete so you can act quickly.`,
+      bio: `I work as a ${role}, with a focus on ${skillPhrase}. I keep recommendations concrete so you can act quickly.`,
     },
     {
       tagLine: `Hands-on ${roleLower} support for ${skillPhrase}.`,
@@ -393,7 +508,7 @@ function identityTemplates(context) {
     },
     {
       tagLine: `I bring clarity to ${skillPhrase} so you can decide and ship with confidence.`,
-      bio: `As a ${levelPrefix}${role}, I turn ${skillPhrase} into a simple plan you can follow this week.`,
+      bio: `As a ${role}, I turn ${skillPhrase} into a simple plan you can follow this week.`,
     },
     {
       tagLine: `Specialist ${roleLower} for ${skillPhrase} — specific advice, no fluff.`,
@@ -533,56 +648,353 @@ export function buildLocalIdentityCopy(context = {}) {
   );
 }
 
+function buildMultiTonePrompt(context) {
+  const skills = asStringList(context.skills);
+  const languages = asStringList(context.languages);
+  const employment = formatEmployment(context.employment);
+  const education = formatEducation(context.education);
+
+  return [
+    'Write expert profile tagline and brief introduction suggestions for a consultation marketplace in 3 distinct tones: "professional", "casual", and "concise".',
+    'Return JSON strictly in this structure: {"professional": {"tagLine": "...", "bio": "..."}, "casual": {"tagLine": "...", "bio": "..."}, "concise": {"tagLine": "...", "bio": "..."}}',
+    'Each tone object MUST contain "tagLine" (one line, max 160 characters, no quotes) and "bio" (one short paragraph, max 160 characters, first person, concrete, no hype).',
+    'Tones guidelines:',
+    '- professional: polished, authoritative, corporate tone.',
+    '- casual: warm, friendly, approachable tone.',
+    '- concise: short, punchy, direct tone.',
+    'Do not invent employers, degrees, or skills not in the context.',
+    'DO NOT include internal experience level labels like "emerging" or "established" in the tagline or bio text.',
+    '',
+    'Context:',
+    `- Name: ${clip(context.fullName, 80) || 'Expert'}`,
+    `- Category: ${clip(context.category, 80) || 'Not specified'}`,
+    `- Professional title: ${clip(context.professionalTitle, 80) || 'Not specified'}`,
+    `- Skills: ${skills.join(', ') || 'Not specified'}`,
+    `- Languages: ${languages.join(', ') || 'Not specified'}`,
+    `- Experience: ${employment.join('; ') || 'Not specified'}`,
+    `- Education: ${education.join('; ') || 'Not specified'}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export async function suggestExpertIdentityCopy(context = {}) {
-  const local = buildLocalIdentityCopy(context);
+  const localProf = buildLocalIdentityCopy({ ...context, variantIndex: 0 });
+  const localCasual = buildLocalIdentityCopy({ ...context, variantIndex: 2 });
+  const localConcise = buildLocalIdentityCopy({ ...context, variantIndex: 4 });
+
+  const fallbackAll = {
+    professional: { tagLine: localProf.tagLine, bio: localProf.bio },
+    casual: { tagLine: localCasual.tagLine, bio: localCasual.bio },
+    concise: { tagLine: localConcise.tagLine, bio: localConcise.bio },
+  };
+
+  const requestedTone = String(context.tone || '').toLowerCase();
+  const selectedFallback = fallbackAll[requestedTone] || fallbackAll.professional;
+
   const settings = await readAiSettings();
 
   if (!settings.configured) {
-    return { ...local, source: 'fallback', notice: AI_FALLBACK_NOTICE };
+    return {
+      tagLine: selectedFallback.tagLine,
+      bio: selectedFallback.bio,
+      options: fallbackAll,
+      suggestions: fallbackAll,
+      source: 'fallback',
+      notice: AI_FALLBACK_NOTICE,
+    };
   }
 
   try {
     const raw = await completeChat({
       settings,
-      prompt: buildPrompt(context),
+      prompt: buildMultiTonePrompt(context),
     });
     const parsed = parseJsonObject(raw);
 
-    const tagLine = clip(
-      parsed.tagLine || parsed.tagline || parsed.headline || '',
-      TAGLINE_MAX,
-    );
-    const bio = clip(
-      parsed.bio || parsed.briefIntroduction || parsed.introduction || '',
-      BIO_MAX,
-    );
-    const field = context.field === 'bio' ? 'bio' : context.field === 'tagLine' ? 'tagLine' : '';
+    const profTag = clip(parsed.professional?.tagLine || parsed.professional?.tagline || localProf.tagLine, TAGLINE_MAX);
+    const profBio = clip(parsed.professional?.bio || parsed.professional?.briefIntroduction || localProf.bio, BIO_MAX);
 
-    if ((field === 'tagLine' && !tagLine) || (field === 'bio' && !bio) || (!field && !tagLine && !bio)) {
-      throw new AiProviderError('AI did not return usable copy.');
-    }
+    const casTag = clip(parsed.casual?.tagLine || parsed.casual?.tagline || localCasual.tagLine, TAGLINE_MAX);
+    const casBio = clip(parsed.casual?.bio || parsed.casual?.briefIntroduction || localCasual.bio, BIO_MAX);
 
-    const avoidTag = clip(context.currentTagLine, TAGLINE_MAX);
-    const avoidBio = clip(context.currentBio, BIO_MAX);
-    const intent = context.intent === 'improve' || context.intent === 'regenerate'
-      ? context.intent
-      : 'suggest';
+    const conTag = clip(parsed.concise?.tagLine || parsed.concise?.tagline || localConcise.tagLine, TAGLINE_MAX);
+    const conBio = clip(parsed.concise?.bio || parsed.concise?.briefIntroduction || localConcise.bio, BIO_MAX);
 
-    const next = {
-      tagLine: field === 'bio' ? avoidTag : (tagLine || local.tagLine),
-      bio: field === 'tagLine' ? avoidBio : (bio || local.bio),
+    const options = {
+      professional: { tagLine: profTag, bio: profBio },
+      casual: { tagLine: casTag, bio: casBio },
+      concise: { tagLine: conTag, bio: conBio },
     };
 
-    if (
-      (intent === 'regenerate' || intent === 'improve') &&
-      isSameCopy(next, avoidTag, avoidBio)
-    ) {
-      return { ...local, source: 'fallback', notice: AI_FALLBACK_NOTICE };
-    }
+    const selected = options[requestedTone] || options.professional;
 
-    return { ...next, source: 'ai' };
+    return {
+      tagLine: selected.tagLine,
+      bio: selected.bio,
+      options,
+      suggestions: options,
+      source: 'ai',
+    };
   } catch (error) {
-    console.warn('AI suggest falling back to local copy:', error?.message || error);
-    return { ...local, source: 'fallback', notice: AI_FALLBACK_NOTICE };
+    return {
+      tagLine: selectedFallback.tagLine,
+      bio: selectedFallback.bio,
+      options: fallbackAll,
+      suggestions: fallbackAll,
+      source: 'fallback',
+      notice: AI_FALLBACK_NOTICE,
+    };
   }
 }
+
+export async function recommendExpertSkills(context = {}) {
+  const settings = await readAiSettings();
+
+  if (!settings.configured) {
+    return { skills: [], source: 'ai' };
+  }
+
+  try {
+    const prompt = `Suggest EXACTLY 10 highly relevant, real-world professional skills directly for an expert with the following profile:
+Category: ${context.category || 'Professional Services'}
+Title: ${context.professionalTitle || 'Expert'}
+Experience Level: ${context.experienceLevel || 'Senior'}
+Existing Skills: ${(context.skills || context.existingSkills || []).join(', ') || 'None'}
+
+Return a JSON object strictly in this format:
+{
+  "skills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5", "Skill 6", "Skill 7", "Skill 8", "Skill 9", "Skill 10"]
+}`;
+
+    const raw = await completeChat({ settings, prompt });
+    const parsed = parseJsonObject(raw);
+    const skillsList = Array.isArray(parsed.skills) ? parsed.skills : Array.isArray(parsed) ? parsed : [];
+
+    const cleanedSkills = skillsList
+      .map((s) => String(s || '').trim())
+      .filter(Boolean)
+      .slice(0, 10);
+
+    return { skills: cleanedSkills, source: 'ai' };
+  } catch (error) {
+    return { skills: [], source: 'ai' };
+  }
+}
+
+export const SEEKER_GOAL_OPTIONS = [
+  'Clarity & Direction',
+  'Actionable Plan',
+  'Deep Knowledge',
+  'Help & Support',
+  'Specific Solution',
+];
+
+function autoSelectSeekerGoals(text = '', subject = '') {
+  const combined = `${subject} ${text}`.toLowerCase();
+  const selected = new Set();
+
+  if (/\b(plan|action|step|roadmap|strategy|how to|milestone)\b/i.test(combined)) {
+    selected.add('Actionable Plan');
+  }
+  if (/\b(fix|bug|issue|solution|solve|code|error|debug|implement)\b/i.test(combined)) {
+    selected.add('Specific Solution');
+  }
+  if (/\b(learn|understand|deep|knowledge|concept|architecture|explain|insight)\b/i.test(combined)) {
+    selected.add('Deep Knowledge');
+  }
+  if (/\b(help|support|assist|guidance|mentor|review|advice)\b/i.test(combined)) {
+    selected.add('Help & Support');
+  }
+  if (/\b(clarity|direction|choose|decision|path|where to|career|confused)\b/i.test(combined)) {
+    selected.add('Clarity & Direction');
+  }
+
+  if (selected.size === 0) {
+    selected.add('Clarity & Direction');
+    selected.add('Actionable Plan');
+  }
+
+  return Array.from(selected);
+}
+
+function normalizeSeekerGoals(inputGoals, userText, subject) {
+  const rawList = Array.isArray(inputGoals) ? inputGoals : typeof inputGoals === 'string' ? [inputGoals] : [];
+  const validMap = new Map(SEEKER_GOAL_OPTIONS.map((g) => [g.toLowerCase(), g]));
+  
+  const matched = rawList
+    .map((item) => validMap.get(String(item || '').trim().toLowerCase()))
+    .filter(Boolean);
+
+  const unique = [...new Set(matched)];
+  if (unique.length > 0) {
+    return { goals: unique, autoSelected: false };
+  }
+
+  return {
+    goals: autoSelectSeekerGoals(userText, subject),
+    autoSelected: true,
+  };
+}
+
+export function buildLocalSeekerNeedsCopy(context = {}) {
+  const subject = clip(context.subject, 100);
+  const text = clip(context.userText || context.needsText || context.text, 500);
+  const goalsInfo = normalizeSeekerGoals(context.selectedGoals || context.selectedNeedChips || context.goals, text, subject);
+  const goalsStr = goalsInfo.goals.join(' & ');
+
+  let rawDetail = String(text || '').trim();
+  let detail = rawDetail;
+
+  if (!detail) {
+    detail = subject ? `I need guidance regarding ${subject}.` : 'I need assistance from an expert.';
+  } else {
+    // Trim trailing prepositions or conjunctions if user input is incomplete (e.g. "I want clarity on")
+    detail = detail.replace(/\s+(on|about|for|with|to|in|of|regarding|at|from|and|or)\s*$/i, '');
+    
+    // Check if the fragment ends after removing preposition
+    if (/^(i want|i need|help with|seeking)\s*$/i.test(detail)) {
+      detail = subject ? `I need guidance on ${subject}` : 'I need expert assistance';
+    } else if (/\b(clarity|guidance|advice|direction|help|support|plan|solution)$/i.test(detail)) {
+      detail = `${detail} on my current goals and next steps`;
+    }
+
+    if (!/[.!?]$/.test(detail)) {
+      detail = `${detail}.`;
+    }
+  }
+
+  const goalPhrase = goalsStr ? `Looking for ${goalsStr.toLowerCase()}` : 'Looking for expert guidance';
+
+  // Professional tone: Formal, natural spoken/written request without labels like "Subject:"
+  const profDetail = detail.replace(/^(i need|i want|help with)\s+/i, 'I am seeking expertise for ');
+  const professional = clip(
+    subject
+      ? `I am seeking professional guidance in ${subject}. ${goalPhrase}. ${profDetail}`
+      : `I am seeking expert consultation. ${goalPhrase}. ${profDetail}`,
+    600,
+  );
+
+  // Casual tone: Warm, friendly spoken language
+  const casual = clip(
+    `${subject ? `Hey! I need help with ${subject}` : 'Hey! I need some expert help'}. ${goalPhrase}. ${detail}`,
+    600,
+  );
+
+  // Concise tone: Direct statement without metadata labels
+  const concise = clip(
+    `${subject ? `In ${subject}: ` : ''}${goalsStr}. ${detail}`,
+    600,
+  );
+
+  const options = { professional, casual, concise };
+  return {
+    subject,
+    selectedGoals: goalsInfo.goals,
+    autoSelected: goalsInfo.autoSelected,
+    options,
+    suggestions: options,
+  };
+}
+
+function buildSeekerNeedsPrompt(context = {}, goalsInfo = {}) {
+  const subject = clip(context.subject, 120);
+  const text = clip(context.userText || context.needsText || context.text, 800);
+  const goals = goalsInfo.goals;
+
+  return [
+    'You are an expert consultation request copywriter for a consultation marketplace.',
+    'A client (seeker) wants expert guidance. Rewrite and improve their request based on the subject and selected goal(s).',
+    '',
+    `Selected Goal(s): ${goals.join(', ')} (${goalsInfo.autoSelected ? 'auto-selected' : 'chosen by user'})`,
+    subject ? `Subject/Topic: ${subject}` : 'Subject/Topic: Not specified',
+    text ? `User Original Input: "${text}"` : 'User Original Input: Not specified',
+    '',
+    'Task:',
+    'Write improved versions of the consultation request in 3 distinct tones: "professional", "casual", and "concise".',
+    'Rules:',
+    '- Keep each tone description focused, natural, and concise (under 250 characters per tone).',
+    '- Incorporate the subject and selected goals naturally into human spoken/written text.',
+    '- DO NOT include metadata labels like "Subject:", "Topic:", "Goal:", or bracketed tags. Write natural sentences as a real person would say or write them when requesting a consultation.',
+    '- IMPORTANT: If the user input is partial, incomplete, or ends with a trailing phrase/preposition (e.g. "I want clarity on"), complete and expand it into full, natural, grammatically correct sentences for each tone.',
+    '',
+    'Return JSON strictly in this structure:',
+    `{"selectedGoals": ${JSON.stringify(goals)}, "professional": "...", "casual": "...", "concise": "..."}`,
+  ].join('\n');
+}
+
+
+export async function improveSeekerNeedsCopy(context = {}) {
+  const subject = clip(context.subject, 120);
+  const userText = clip(context.userText || context.needsText || context.text, 800);
+  const goalsInfo = normalizeSeekerGoals(
+    context.selectedGoals || context.selectedNeedChips || context.goals,
+    userText,
+    subject,
+  );
+
+  const fallback = buildLocalSeekerNeedsCopy({
+    subject,
+    userText,
+    selectedGoals: goalsInfo.goals,
+  });
+
+  const settings = await readAiSettings();
+
+  if (!settings.configured) {
+    return {
+      subject,
+      selectedGoals: goalsInfo.goals,
+      autoSelected: goalsInfo.autoSelected,
+      options: fallback.options,
+      suggestions: fallback.suggestions,
+      source: 'fallback',
+      notice: AI_FALLBACK_NOTICE,
+    };
+  }
+
+  try {
+    const prompt = buildSeekerNeedsPrompt(
+      { subject, userText },
+      goalsInfo,
+    );
+
+    const raw = await completeChat({ settings, prompt });
+    const parsed = parseJsonObject(raw);
+
+    const prof = clip(parsed.professional || parsed.prof || fallback.options.professional, 700);
+    const cas = clip(parsed.casual || parsed.cas || fallback.options.casual, 700);
+    const con = clip(parsed.concise || parsed.con || fallback.options.concise, 700);
+
+    const activeGoals = Array.isArray(parsed.selectedGoals) && parsed.selectedGoals.length > 0
+      ? parsed.selectedGoals
+      : goalsInfo.goals;
+
+    const options = {
+      professional: prof,
+      casual: cas,
+      concise: con,
+    };
+
+    return {
+      subject,
+      selectedGoals: activeGoals,
+      autoSelected: goalsInfo.autoSelected,
+      options,
+      suggestions: options,
+      source: 'ai',
+    };
+  } catch (error) {
+    return {
+      subject,
+      selectedGoals: goalsInfo.goals,
+      autoSelected: goalsInfo.autoSelected,
+      options: fallback.options,
+      suggestions: fallback.suggestions,
+      source: 'fallback',
+      notice: AI_FALLBACK_NOTICE,
+    };
+  }
+}
+
+

@@ -17,15 +17,38 @@ export type PendingSeekerOtpSession = {
   fullName?: string;
 };
 
+const SEEKER_USER_KEY = "jatayu_seeker_user";
+
 export function persistSeekerAuthSession(response: AuthResponse): AuthUser {
   setToken(response.token);
   setSeekerId(response.user.id);
+  if (typeof window !== "undefined" && response.user) {
+    try {
+      localStorage.setItem(SEEKER_USER_KEY, JSON.stringify(response.user));
+    } catch {
+      // Ignore quota error
+    }
+  }
   return response.user;
+}
+
+export function getStoredSeekerUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(SEEKER_USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthUser;
+  } catch {
+    return null;
+  }
 }
 
 export function clearSeekerAuthOnly(): void {
   removeToken();
   removeSeekerId();
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(SEEKER_USER_KEY);
+  }
 }
 
 export function clearSeekerAuthSession(): void {
