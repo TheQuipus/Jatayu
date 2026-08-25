@@ -1,5 +1,5 @@
-import { sendOtpEmail } from './emailService.js';
-import { sendOtpSms, isSmsProviderConfigured } from './smsService.js';
+import { triggerNotification } from './templateNotificationService.js';
+import { isSmsProviderConfigured } from './smsService.js';
 import { getSettingBool } from './settingsHelper.js';
 
 export class OtpDeliveryError extends Error {
@@ -13,7 +13,7 @@ export class OtpDeliveryError extends Error {
  * Deliver OTP via configured channels. At least one channel must succeed.
  * Unconfigured SMS is not treated as a successful delivery (avoids masking email failures).
  */
-export async function deliverOtpChannels({ email, phone, fullName, otpCode, logPrefix = 'OTP' }) {
+export async function deliverOtpChannels({ email, phone, fullName, otpCode, triggerKey = 'EXPERT_OTP', logPrefix = 'OTP' }) {
   const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
   const smsConfigured = await isSmsProviderConfigured();
 
@@ -22,10 +22,11 @@ export async function deliverOtpChannels({ email, phone, fullName, otpCode, logP
 
   if (emailEnabled) {
     try {
-      await sendOtpEmail({
-        recipientEmail: email,
-        recipientName: fullName,
-        otpCode,
+      await triggerNotification(triggerKey, {
+        email,
+        phone: null, // send email channel
+        name: fullName || 'there',
+        data: { otp: otpCode },
       });
       delivered = true;
     } catch (err) {
@@ -36,9 +37,11 @@ export async function deliverOtpChannels({ email, phone, fullName, otpCode, logP
 
   if (smsConfigured) {
     try {
-      await sendOtpSms({
-        recipientPhone: phone,
-        otpCode,
+      await triggerNotification(triggerKey, {
+        email: null,
+        phone, // send SMS channel
+        name: fullName || 'there',
+        data: { otp: otpCode },
       });
       delivered = true;
     } catch (err) {

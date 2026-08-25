@@ -5,6 +5,7 @@ import {
   suggestExpertIdentityCopy,
   recommendExpertSkills,
 } from '../utils/aiService.js';
+import { triggerNotification } from '../utils/templateNotificationService.js';
 
 /**
  * Get current expert's full profile
@@ -248,6 +249,15 @@ export const submitOnboarding = async (req, res) => {
     expert.status = 'pending_review';
     expert.onboardingStep = 'success';
     await expert.save();
+
+    triggerNotification('EXPERT_ONBOARDING_UNDER_REVIEW', {
+      email: expert.email,
+      phone: expert.phone,
+      name: expert.fullName,
+      data: {
+        application_number: expert.applicationNumber,
+      },
+    }).catch((err) => console.error('[Notification Trigger Warning] Expert under review email failed:', err.message));
 
     return res.status(200).json({
       message: 'Onboarding completed and submitted for review successfully',
