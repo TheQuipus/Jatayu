@@ -66,6 +66,14 @@ export default function ExpertDetail({ expert, seeker = false }: ExpertDetailPro
         sla: "24 Hours",
         followUp: "1 Follow-up",
       },
+      {
+        id: "shoutout",
+        title: "Video Shoutout",
+        icon: Star,
+        desc: "Get a personalized video response to your question.",
+        sla: "24 Hours",
+        followUp: "No Follow-up",
+      },
     ],
     []
   );
