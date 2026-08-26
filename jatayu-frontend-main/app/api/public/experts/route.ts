@@ -151,14 +151,7 @@ export async function GET(request: NextRequest) {
     price: exp.price,
     replyTime: exp.replyTime || null,
     replyTimeMinutes: null,
-    availabilities: [
-      {
-        id: `avail-${exp.id}`,
-        days: ["Mon", "Tue", "Wed"],
-        fromTime: "12:00 AM",
-        toTime: "01:00 AM",
-      },
-    ],
+    availabilities: exp.availabilities || [],
   }));
 
   const allCategories = Array.from(

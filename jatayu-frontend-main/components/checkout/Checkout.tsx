@@ -63,8 +63,11 @@ import {
   seekerLogin,
   setSeekerId,
   getSeekerId,
+  removeSeekerId,
   setToken,
   getToken,
+  removeToken,
+  getPublicExpert,
 } from "@/lib/api";
 import {
   fetchSeekerProfileData,
@@ -112,38 +115,49 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const initialAvailableDateOffset = useMemo(() => {
     if (!expert.availabilities || expert.availabilities.length === 0) return 0;
     const today = new Date();
-    const buffer12h = Date.now() + 12 * 60 * 60 * 1000;
+    const bufferAdvance = Date.now() + 30 * 60 * 1000;
+    const parseMinutes = (value: string) => {
+      if (!value) return null;
+      const ampmMatch = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+      if (ampmMatch) {
+        let hour = Number(ampmMatch[1]);
+        if (ampmMatch[3].toUpperCase() === "PM" && hour !== 12) hour += 12;
+        if (ampmMatch[3].toUpperCase() === "AM" && hour === 12) hour = 0;
+        return hour * 60 + Number(ampmMatch[2]);
+      }
+      const h24Match = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+      if (h24Match) {
+        return Number(h24Match[1]) * 60 + Number(h24Match[2]);
+      }
+      return null;
+    };
+
     for (let offset = 0; offset < 28; offset++) {
       const d = new Date(today);
       d.setDate(today.getDate() + offset);
       const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
       const matchingRules = expert.availabilities.filter((rule) =>
-        rule.days.some((day) => day.toLowerCase().slice(0, 3) === dayName.toLowerCase())
+        rule.days.some((day) => {
+          const cleanD = day.trim().toLowerCase();
+          return cleanD.startsWith(dayName.toLowerCase()) || dayName.toLowerCase().startsWith(cleanD.slice(0, 3));
+        })
       );
       if (matchingRules.length > 0) {
         const hasFutureSlot = matchingRules.some((rule) => {
-          const match = rule.fromTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-          if (!match) return true;
-          let hour = Number(match[1]);
-          if (match[3].toUpperCase() === "PM" && hour !== 12) hour += 12;
-          if (match[3].toUpperCase() === "AM" && hour === 12) hour = 0;
+          const minutes = parseMinutes(rule.fromTime);
+          if (minutes === null) return true;
           const slotDate = new Date(d);
-          slotDate.setHours(hour, Number(match[2]), 0, 0);
-          return slotDate.getTime() >= buffer12h;
+          slotDate.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+          return slotDate.getTime() >= bufferAdvance;
         });
         if (hasFutureSlot) return offset;
       }
     }
     return 0;
   }, [expert.availabilities]);
-
-  const [selectedDate, setSelectedDate] = useState(`date-${initialAvailableDateOffset}`);
-  const [selectedSlot, setSelectedSlot] = useState(
-    () => `date-${initialAvailableDateOffset}-slot-1`
-  );
-  const [selectedSlotTime, setSelectedSlotTime] = useState(
-    () => expert.availabilities?.[0]?.fromTime || ""
-  );
+  const [selectedDate, setSelectedDate] = useState(`date-${initialAvailableDateOffset}`);
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [selectedSlotTime, setSelectedSlotTime] = useState("");
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
   const [showContextImprovementPanel, setShowContextImprovementPanel] = useState(false);
@@ -172,10 +186,16 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
     const stored = getStoredSeekerProfile();
     applyProfile(stored);
+    if (getToken() && getSeekerId()) {
+      setRegisterOtpVerified(true);
+    }
 
     void fetchSeekerProfileData()
       .then((fetched) => {
         applyProfile(fetched);
+        if (getToken() && getSeekerId()) {
+          setRegisterOtpVerified(true);
+        }
       })
       .catch(() => {});
 
@@ -191,37 +211,76 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   }, []);
 
   const expertIdentifier = expert.id || expertSlug(expert.name);
+  const [publicExpertData, setPublicExpertData] = useState<Expert | null>(null);
 
   useEffect(() => {
-    if (!seeker) return;
     let active = true;
-    void fetchBookingOptions(expertIdentifier)
-      .then((options) => {
-        if (!active) return;
-        setBookingOptions(options);
-        if (options.formats.length > 0) {
-          setConsultationType((current) =>
-            current && options.formats.includes(current) ? current : options.formats[0] as ConsultationType,
-          );
-        }
-        const firstAvailability = options.availabilities[0];
-        if (firstAvailability) setSelectedSlotTime(firstAvailability.fromTime);
-        setSelectedSlot("");
-      })
-      .catch((error) => {
-        if (active) setBookingError(error instanceof Error ? error.message : "Unable to load booking options");
-      });
-    return () => { active = false; };
-  }, [expertIdentifier, seeker]);
+    const identifier = expert.id || expertSlug(expert.name);
+    const token = getToken();
 
-  const bookingExpert = useMemo<Expert>(() => ({
-    ...expert,
-    id: bookingOptions?.expertId || expert.id,
-    timezone: bookingOptions?.timezone || expert.timezone,
-    formats: bookingOptions?.formats || expert.formats,
-    formatPrices: bookingOptions?.formatPrices || expert.formatPrices,
-    availabilities: bookingOptions?.availabilities || expert.availabilities,
-  }), [bookingOptions, expert]);
+    if (token) {
+      void fetchBookingOptions(identifier)
+        .then((options) => {
+          if (!active) return;
+          setBookingOptions(options);
+          if (options.formats.length > 0) {
+            setConsultationType((current) =>
+              current && options.formats.includes(current) ? current : options.formats[0] as ConsultationType,
+            );
+          }
+          setSelectedSlot("");
+          setSelectedSlotTime("");
+        })
+        .catch((error) => {
+          console.warn("[Checkout] Notice fetching bookingOptions API:", error);
+          void getPublicExpert(identifier).then((pubExp) => {
+            if (active && pubExp) {
+              setPublicExpertData(pubExp);
+            }
+          });
+        });
+    } else {
+      void getPublicExpert(identifier)
+        .then((pubExp) => {
+          if (!active || !pubExp) return;
+          setPublicExpertData(pubExp);
+          const formats = pubExp.formats;
+          if (formats && formats.length > 0) {
+            setConsultationType((current) =>
+              current && formats.includes(current) ? current : formats[0] as ConsultationType,
+            );
+          }
+          setSelectedSlot("");
+          setSelectedSlotTime("");
+        })
+        .catch((error) => {
+          console.error("[Checkout] Error fetching public expert API:", error);
+        });
+    }
+
+    return () => { active = false; };
+  }, [expert, expertIdentifier, seeker]);
+
+  const bookingExpert = useMemo<Expert>(() => {
+    const source = publicExpertData || expert;
+    return {
+      ...source,
+      id: bookingOptions?.expertId || publicExpertData?.id || expert.id,
+      timezone: bookingOptions?.timezone || publicExpertData?.timezone || expert.timezone || "Asia/Kolkata",
+      formats: (bookingOptions?.formats && bookingOptions.formats.length > 0)
+        ? bookingOptions.formats
+        : (publicExpertData?.formats && publicExpertData.formats.length > 0)
+        ? publicExpertData.formats
+        : expert.formats,
+      formatPrices: bookingOptions?.formatPrices || publicExpertData?.formatPrices || expert.formatPrices,
+      availabilities: (bookingOptions?.availabilities && bookingOptions.availabilities.length > 0)
+        ? bookingOptions.availabilities
+        : (publicExpertData?.availabilities && publicExpertData.availabilities.length > 0)
+        ? publicExpertData.availabilities
+        : expert.availabilities,
+    };
+  }, [bookingOptions, publicExpertData, expert]);
+
   const [currentSeekerId, setCurrentSeekerId] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerTouched, setRegisterTouched] = useState(CHECKOUT_REGISTRATION_TOUCHED_DEFAULT);
@@ -305,7 +364,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const contextLength = context.trim().length;
   const canContinueStep2 =
     subject.trim().length >= MIN_CONTEXT_LENGTH && contextLength >= MIN_CONTEXT_LENGTH;
-  const canContinueStep3 = Boolean(selectedDate && selectedSlot);
+  const canContinueStep3 = Boolean(selectedDate && selectedSlot && selectedSlotTime);
   const registerFormValues: CheckoutRegistrationValues = {
     firstName: registerFirstName,
     lastName: registerLastName,
@@ -466,8 +525,6 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       }
       if ((response as any)?.token) {
         setToken((response as any).token);
-      } else if (!getToken()) {
-        setToken(`seeker_token_${response?.seekerId || Date.now()}`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed.";
@@ -479,9 +536,8 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         return;
       }
       console.warn("Seeker registration API notice:", err);
-      if (!getToken()) {
-        setToken(`seeker_token_${Date.now()}`);
-      }
+      setBookingError(message);
+      return;
     }
 
     setRegisterOtpSent(true);
@@ -528,18 +584,16 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       if (authRes?.user?.id) {
         setSeekerId(authRes.user.id);
       }
+      setRegisterEmail(loginEmail.trim());
+      setRegisterOtpVerified(true);
+      setTermsAccepted(true);
+      setShowAuthModal(false);
+      setCurrentStep(4);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Seeker login failed.";
       console.warn("Seeker login API notice:", err);
-      if (!getToken()) {
-        setToken(`seeker_token_${Date.now()}`);
-      }
+      setBookingError(msg);
     }
-
-    setRegisterEmail(loginEmail.trim());
-    setRegisterOtpVerified(true);
-    setTermsAccepted(true);
-    setShowAuthModal(false);
-    setCurrentStep(4);
   };
 
   const stepCanContinue =
@@ -564,6 +618,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   function selectSlotDate(dateId: string) {
     if (dateId !== selectedDate) {
       setSelectedSlot("");
+      setSelectedSlotTime("");
     }
     setSelectedDate(dateId);
   }
@@ -571,7 +626,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   function handleContinue() {
     if (!stepCanContinue) return;
     if (currentStep === 3) {
-      if (seeker || registerOtpVerified) {
+      const isSeeker = Boolean(getToken() && getSeekerId());
+      const isAuthenticated = Boolean(seeker || registerOtpVerified || isSeeker);
+      if (isAuthenticated) {
         setCurrentStep(4);
       } else {
         setShowAuthModal(true);
@@ -587,9 +644,6 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setRegisterSubmitAttempted(true);
     if (!canContinueStep5) return;
 
-    if (!getToken()) {
-      setToken(`seeker_token_${currentSeekerId || Date.now()}`);
-    }
     if (!getSeekerId() && currentSeekerId) {
       setSeekerId(currentSeekerId);
     }
@@ -618,15 +672,20 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setIsProcessingPayment(true);
     setBookingError("");
 
-    if (!getToken()) {
-      setToken(`seeker_token_${currentSeekerId || Date.now()}`);
+    const isSeeker = Boolean(getToken() && getSeekerId());
+    if (!isSeeker && !seeker && !registerOtpVerified) {
+      setIsProcessingPayment(false);
+      setShowAuthModal(true);
+      return;
     }
     if (!getSeekerId() && currentSeekerId) {
       setSeekerId(currentSeekerId);
     }
 
     try {
-      if (!consultationType || !selectedSlotTime) throw new Error("Select a consultation type and available slot");
+      if (!consultationType || !selectedSlot || !selectedSlotTime) {
+        throw new Error("Select a consultation type and available slot");
+      }
       const selectedDateValue = new Date();
       selectedDateValue.setHours(0, 0, 0, 0);
       selectedDateValue.setDate(selectedDateValue.getDate() + parseSlotDateOffset(selectedDate));
@@ -635,6 +694,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         selectedSlotTime,
         bookingOptions?.timezone || bookingExpert.timezone || "Asia/Kolkata",
       );
+
       const fingerprint = [expertIdentifier, consultationType, scheduledStartAt].join(":");
       const idempotencyKey = getBookingIdempotencyKey(fingerprint);
       const userFullName =
@@ -684,7 +744,16 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       clearBookingIdempotencyKey(fingerprint);
     } catch (err) {
       console.error("Failed to process Razorpay payment:", err);
-      setBookingError(err instanceof Error ? err.message : "Unable to complete booking");
+      const errMsg = err instanceof Error ? err.message : "Unable to complete booking";
+      if (errMsg.toLowerCase().includes("not authorized") || errMsg.toLowerCase().includes("sign in")) {
+        removeToken();
+        removeSeekerId();
+        setRegisterOtpVerified(false);
+        setBookingError("Your seeker session expired or is invalid. Please log in or register to complete booking.");
+        setShowAuthModal(true);
+      } else {
+        setBookingError(errMsg);
+      }
     } finally {
       setIsProcessingPayment(false);
     }
@@ -723,9 +792,10 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   }
 
   const completedSteps = [
-    canContinueStep1,
-    canContinueStep2,
-    canContinueStep3,
+    currentStep > 1 && canContinueStep1,
+    currentStep > 2 && canContinueStep2,
+    currentStep > 3 && canContinueStep3,
+    bookingConfirmed,
   ];
 
   return (

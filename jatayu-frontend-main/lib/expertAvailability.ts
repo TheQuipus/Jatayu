@@ -6,6 +6,25 @@ export type TimeSlot = {
 };
 
 export const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+export const MIN_SLOT_DURATION_MINUTES = 30;
+
+export function formatMinutesToTime(totalMinutes: number): string {
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  let hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  const modifier = hours >= 12 ? "PM" : "AM";
+  if (hours > 12) hours -= 12;
+  if (hours === 0) hours = 12;
+  const hoursStr = String(hours).padStart(2, "0");
+  const minutesStr = String(minutes).padStart(2, "0");
+  return `${hoursStr}:${minutesStr} ${modifier}`;
+}
+
+export function getMinEndTime(fromTimeStr: string, minDurationMinutes = MIN_SLOT_DURATION_MINUTES): string {
+  if (!fromTimeStr) return "";
+  const fromMinutes = getMinutes(fromTimeStr);
+  return formatMinutesToTime(fromMinutes + minDurationMinutes);
+}
 
 export function createEmptySlot(): TimeSlot {
   return {
@@ -49,7 +68,11 @@ export function getMinutes(timeStr: string) {
 }
 
 export function hasValidTimes(slot: TimeSlot) {
-  return Boolean(slot.from && slot.to && getMinutes(slot.to) > getMinutes(slot.from));
+  return Boolean(
+    slot.from &&
+      slot.to &&
+      getMinutes(slot.to) - getMinutes(slot.from) >= MIN_SLOT_DURATION_MINUTES
+  );
 }
 
 export function getMachineTimezone() {
@@ -82,12 +105,20 @@ export function formatTimezoneLabel(timeZone: string) {
 export function checkHasConflict(slots: TimeSlot[]): boolean {
   for (let i = 0; i < slots.length; i++) {
     const slotA = slots[i];
-    if (!slotA.from || !slotA.to || getMinutes(slotA.to) <= getMinutes(slotA.from)) {
+    if (
+      !slotA.from ||
+      !slotA.to ||
+      getMinutes(slotA.to) - getMinutes(slotA.from) < MIN_SLOT_DURATION_MINUTES
+    ) {
       continue;
     }
     for (let j = i + 1; j < slots.length; j++) {
       const slotB = slots[j];
-      if (!slotB.from || !slotB.to || getMinutes(slotB.to) <= getMinutes(slotB.from)) {
+      if (
+        !slotB.from ||
+        !slotB.to ||
+        getMinutes(slotB.to) - getMinutes(slotB.from) < MIN_SLOT_DURATION_MINUTES
+      ) {
         continue;
       }
       const shareDay = slotA.days.some((day) => slotB.days.includes(day));
@@ -112,7 +143,7 @@ export function isAvailabilityValid(timezone: string, slots: TimeSlot[]) {
       slot.days.length > 0 &&
       slot.from &&
       slot.to &&
-      getMinutes(slot.to) > getMinutes(slot.from),
+      getMinutes(slot.to) - getMinutes(slot.from) >= MIN_SLOT_DURATION_MINUTES,
   );
 
   const hasConflict = checkHasConflict(slots);

@@ -22,11 +22,11 @@ import {
 import ContinueButton from "@/components/ui/ContinueButton";
 import type { ConsultationType } from "@/lib/booking";
 import {
-  UPCOMING_BOOKINGS,
   getBookingDetailHref,
-  getBookingById,
   type CalendarBooking,
+  type BookingDetail,
 } from "@/lib/seekerDashboard";
+import { fetchSeekerBookings, toBookingDetail } from "@/lib/seekerBookingApi";
 import styles from "./BookingCalendar.module.css";
 
 const CONSULTATION_ICONS: Record<ConsultationType, typeof MessageSquare> = {
@@ -429,8 +429,28 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
     return () => clearInterval(interval);
   }, []);
 
+  const [apiBookings, setApiBookings] = useState<BookingDetail[]>([]);
+
+  useEffect(() => {
+    let isSubscribed = true;
+    fetchSeekerBookings()
+      .then((res) => {
+        if (isSubscribed && res.bookings) {
+          const mapped = res.bookings.map((b) => toBookingDetail(b));
+          setApiBookings(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch seeker bookings for dashboard calendar:", err);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
+
   const getConfirmedCountdown = (bookingId: string) => {
-    const detail = getBookingById(bookingId);
+    const detail = apiBookings.find((b) => b.id === bookingId);
     if (!detail) return null;
 
     const targetDate = new Date(currentTime);
@@ -499,10 +519,10 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
   );
 
   const bookingsByDay = useMemo(() => {
-    const map = new Map<number, CalendarBooking[]>();
+    const map = new Map<number, BookingDetail[]>();
 
     visibleDays.forEach((day, index) => {
-      const dayBookings = UPCOMING_BOOKINGS.filter((booking) => {
+      const dayBookings = apiBookings.filter((booking) => {
         return isSameDay(addDays(today, booking.dayOffset), day);
       });
 
@@ -516,7 +536,7 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
     });
 
     return map;
-  }, [today, visibleDays]);
+  }, [today, visibleDays, apiBookings]);
 
   const rangeLabel = formatRangeLabel(visibleDays);
 
@@ -692,9 +712,8 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
                 <div className={styles.dayContent}>
                   {dayBookings.length === 0 ? <span className={styles.emptyDay} /> : null}
                   {dayBookings.map((booking, index) => {
-                    const detail = getBookingById(booking.id);
-                    const consultationType = detail?.consultationType || "text";
-                    const IconComponent = CONSULTATION_ICONS[consultationType] || MessageSquare;
+                    const detail = booking;
+                    const IconComponent = (booking.consultationType && CONSULTATION_ICONS[booking.consultationType]) || MessageSquare;
 
                     if (booking.status === "cancelled") {
                       return (

@@ -87,9 +87,16 @@ function getRollingWeekStartOffset(offset: number): number {
 
 function isDayMatchingAvailabilities(date: Date, availabilities?: ExpertAvailability[]): boolean {
   if (!availabilities || availabilities.length === 0) return true;
+  const validRules = availabilities.filter(
+    (rule) => rule.days && rule.days.length > 0 && Boolean(rule.fromTime) && Boolean(rule.toTime)
+  );
+  if (validRules.length === 0) return true;
   const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()];
-  return availabilities.some((rule) =>
-    rule.days.some((d) => d.toLowerCase().slice(0, 3) === dayName.toLowerCase())
+  return validRules.some((rule) =>
+    rule.days.some((d) => {
+      const cleanD = d.trim().toLowerCase();
+      return cleanD.startsWith(dayName.toLowerCase()) || dayName.toLowerCase().startsWith(cleanD.slice(0, 3));
+    })
   );
 }
 
@@ -101,25 +108,41 @@ function getSlotsForDateAndAvailabilities(
   timezone = "Asia/Kolkata",
   slotDurationMinutes = 30,
 ): TimeSlot[] {
-  const isMatch = isDayMatchingAvailabilities(date, availabilities);
-  if (!isMatch) return [];
-
   if (!availabilities || availabilities.length === 0) {
-    return getTimeSlotsForDate(dateId);
+    return [];
+  }
+
+  const validAvailabilities = availabilities.filter(
+    (rule) => rule.days && rule.days.length > 0 && Boolean(rule.fromTime) && Boolean(rule.toTime)
+  );
+  if (validAvailabilities.length === 0) {
+    return [];
   }
 
   const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()];
-  const matchingRules = availabilities.filter((rule) =>
-    rule.days.some((d) => d.toLowerCase().slice(0, 3) === dayName.toLowerCase())
+  const matchingRules = validAvailabilities.filter((rule) =>
+    rule.days.some((d) => {
+      const cleanD = d.trim().toLowerCase();
+      return cleanD.startsWith(dayName.toLowerCase()) || dayName.toLowerCase().startsWith(cleanD.slice(0, 3));
+    })
   );
+
   const parseMinutes = (value: string) => {
-    const match = value.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (!match) return null;
-    let hour = Number(match[1]);
-    if (match[3].toUpperCase() === "PM" && hour !== 12) hour += 12;
-    if (match[3].toUpperCase() === "AM" && hour === 12) hour = 0;
-    return hour * 60 + Number(match[2]);
+    if (!value) return null;
+    const ampmMatch = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+    if (ampmMatch) {
+      let hour = Number(ampmMatch[1]);
+      if (ampmMatch[3].toUpperCase() === "PM" && hour !== 12) hour += 12;
+      if (ampmMatch[3].toUpperCase() === "AM" && hour === 12) hour = 0;
+      return hour * 60 + Number(ampmMatch[2]);
+    }
+    const h24Match = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (h24Match) {
+      return Number(h24Match[1]) * 60 + Number(h24Match[2]);
+    }
+    return null;
   };
+
   const formatMinutes = (minutes: number) => {
     const hour24 = Math.floor(minutes / 60);
     const minute = minutes % 60;
@@ -127,25 +150,104 @@ function getSlotsForDateAndAvailabilities(
     const hour12 = hour24 % 12 || 12;
     return `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${period}`;
   };
-  const buffer12h = Date.now() + 12 * 60 * 60 * 1000;
-  const occupied = new Set(occupiedSlots.map((slot) => new Date(slot.startAt).getTime()));
+
+  const occupied = occupiedSlots.flatMap((slot) => {
+    const startMs = new Date(slot.startAt).getTime();
+    const endMs = new Date(slot.endAt).getTime();
+    return Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
+      ? [{ startMs, endMs }]
+      : [];
+  });
+
+  const bufferAdvance = Date.now() + 30 * 60 * 1000;
   const slots: TimeSlot[] = [];
+
   matchingRules.forEach((rule) => {
     const from = parseMinutes(rule.fromTime);
     const to = parseMinutes(rule.toTime);
-    if (from === null || to === null) return;
-    for (let minute = from; minute + slotDurationMinutes <= to; minute += slotDurationMinutes) {
+    if (from === null || to === null || from >= to) return;
+    const duration = slotDurationMinutes || 30;
+    for (let minute = from; minute < to; minute += duration) {
       const time = formatMinutes(minute);
-      const instant = new Date(buildScheduledStartAt(date, time, timezone)).getTime();
-      const isPastOrTooSoon = instant < buffer12h;
+      let instant = 0;
+      try {
+        instant = new Date(buildScheduledStartAt(date, time, timezone)).getTime();
+      } catch {
+        const slotDateObj = new Date(date);
+        slotDateObj.setHours(Math.floor(minute / 60), minute % 60, 0, 0);
+        instant = slotDateObj.getTime();
+      }
+      const isPastOrTooSoon = instant < bufferAdvance;
+      const slotEnd = instant + duration * 60 * 1000;
+      const overlapsOccupiedSlot = occupied.some(
+        ({ startMs, endMs }) => instant < endMs && slotEnd > startMs,
+      );
       slots.push({
         id: `${dateId}-slot-${minute}`,
         time,
-        status: (occupied.has(instant) || isPastOrTooSoon) ? "booked" : "available",
+        status: (overlapsOccupiedSlot || isPastOrTooSoon) ? "booked" : "available",
       });
     }
   });
+
   return slots;
+}
+
+function getMatchingAvailableDays(
+  today: Date,
+  availabilities?: ExpertAvailability[],
+  occupiedSlots?: { startAt: string; endAt: string }[],
+  timezone?: string,
+  slotDurationMinutes?: number,
+  maxOffset = 60,
+): DayColumn[] {
+  const result: DayColumn[] = [];
+  const validRules = availabilities?.filter(
+    (rule) => rule.days && rule.days.length > 0 && Boolean(rule.fromTime) && Boolean(rule.toTime)
+  );
+  const isRuleBased = Boolean(validRules && validRules.length > 0);
+
+  for (let offset = 0; offset <= maxOffset; offset++) {
+    const date = dateFromOffset(offset);
+    const dateId = `date-${offset}`;
+    const dayMatches = isDayMatchingAvailabilities(date, availabilities);
+
+    if (isRuleBased && !dayMatches) continue;
+
+    const slots = getSlotsForDateAndAvailabilities(
+      date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+    );
+
+    const hasAvailableSlots = slots.some((s) => s.status === "available");
+    if (isRuleBased && !hasAvailableSlots) continue;
+
+    result.push({
+      date,
+      offset,
+      dateId,
+      selectable: hasAvailableSlots,
+      isToday: isSameDay(date, today),
+      slots,
+    });
+  }
+
+  if (result.length === 0) {
+    return Array.from({ length: 7 }, (_, index) => {
+      const offset = index;
+      const date = dateFromOffset(offset);
+      const dateId = `date-${offset}`;
+      return {
+        date,
+        offset,
+        dateId,
+        selectable: true,
+        isToday: isSameDay(date, today),
+        slots: [],
+      };
+    });
+  }
+
+  return result;
 }
 
 function buildWeekDays(
@@ -155,25 +257,13 @@ function buildWeekDays(
   occupiedSlots?: { startAt: string; endAt: string }[],
   timezone?: string,
   slotDurationMinutes?: number,
-): DayColumn[] {
-  return Array.from({ length: 7 }, (_, index) => {
-    const offset = weekStartOffset + index;
-    const date = dateFromOffset(offset);
-    const dateId = `date-${offset}`;
-    const dayMatches = isDayMatchingAvailabilities(date, availabilities);
-    const selectable = isSlotDateOffsetSelectable(offset) && dayMatches;
+): { weekDays: DayColumn[]; startIndex: number; totalMatching: number; allDays: DayColumn[] } {
+  const allDays = getMatchingAvailableDays(today, availabilities, occupiedSlots, timezone, slotDurationMinutes);
+  let startIndex = allDays.findIndex((d) => d.offset >= weekStartOffset);
+  if (startIndex === -1) startIndex = 0;
 
-    return {
-      date,
-      offset,
-      dateId,
-      selectable,
-      isToday: isSameDay(date, today),
-      slots: selectable ? getSlotsForDateAndAvailabilities(
-        date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes,
-      ) : [],
-    };
-  });
+  const weekDays = allDays.slice(startIndex, startIndex + 7);
+  return { weekDays, startIndex, totalMatching: allDays.length, allDays };
 }
 
 function buildMonthCells(
@@ -215,15 +305,16 @@ function buildMonthCells(
   });
 }
 
-function formatWeekRangeLabel(weekStartOffset: number): string {
-  const weekStart = dateFromOffset(weekStartOffset);
-  const weekEnd = dateFromOffset(weekStartOffset + 6);
+function formatWeekRangeLabel(days: DayColumn[]): string {
+  if (days.length === 0) return "";
+  const first = days[0].date;
+  const last = days[days.length - 1].date;
 
-  const startLabel = weekStart.toLocaleDateString("en-IN", {
+  const startLabel = first.toLocaleDateString("en-IN", {
     month: "short",
     day: "numeric",
   });
-  const endLabel = weekEnd.toLocaleDateString("en-IN", {
+  const endLabel = last.toLocaleDateString("en-IN", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -256,6 +347,8 @@ export default function SlotCalendarView({
   const [isMonthSelectOpen, setIsMonthSelectOpen] = useState(false);
   const monthSelectRef = useRef<HTMLDivElement>(null);
 
+
+
   useEffect(() => {
     if (!isMonthSelectOpen) return;
     const handleOutsideClick = (event: MouseEvent) => {
@@ -267,7 +360,7 @@ export default function SlotCalendarView({
     return () => document.removeEventListener("click", handleOutsideClick);
   }, [isMonthSelectOpen]);
 
-  const weekDays = useMemo(
+  const { weekDays, startIndex, totalMatching, allDays } = useMemo(
     () => buildWeekDays(
       weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes,
     ),
@@ -302,24 +395,25 @@ export default function SlotCalendarView({
 
   const periodLabel =
     viewMode === "week"
-      ? formatWeekRangeLabel(weekStartOffset)
+      ? formatWeekRangeLabel(weekDays)
       : viewMonth.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
   const canGoPrev =
     viewMode === "week"
-      ? weekStartOffset > 0
+      ? startIndex > 0
       : startOfMonth(viewMonth).getTime() > startOfMonth(today).getTime();
 
   const canGoNext =
     viewMode === "week"
-      ? weekStartOffset < clampWeekStartOffset(MAX_SLOT_DAY_OFFSET)
+      ? startIndex + 7 < totalMatching
       : startOfMonth(viewMonth).getTime() <
         startOfMonth(dateFromOffset(MAX_SLOT_DAY_OFFSET - 1)).getTime();
 
   const handlePrev = () => {
     if (!canGoPrev) return;
     if (viewMode === "week") {
-      setWeekStartOffset((current) => clampWeekStartOffset(current - 7));
+      const prevTarget = allDays[Math.max(0, startIndex - 7)];
+      if (prevTarget) setWeekStartOffset(prevTarget.offset);
       return;
     }
     setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
@@ -328,7 +422,8 @@ export default function SlotCalendarView({
   const handleNext = () => {
     if (!canGoNext) return;
     if (viewMode === "week") {
-      setWeekStartOffset((current) => clampWeekStartOffset(current + 7));
+      const nextTarget = allDays[Math.min(totalMatching - 1, startIndex + 7)];
+      if (nextTarget) setWeekStartOffset(nextTarget.offset);
       return;
     }
     setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
@@ -378,30 +473,27 @@ export default function SlotCalendarView({
   return (
     <div className={styles.calendar}>
       <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-
-          <div className={styles.navGroup}>
-            <button
-              type="button"
-              className={styles.navBtn}
-              aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
-              disabled={!canGoPrev}
-              onClick={handlePrev}
-            >
-              <ChevronLeft size={16} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className={styles.navBtn}
-              aria-label={viewMode === "week" ? "Next week" : "Next month"}
-              disabled={!canGoNext}
-              onClick={handleNext}
-            >
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-          </div>
-          <h2 className={styles.periodLabel}>{periodLabel}</h2>
+        <div className={styles.navGroup}>
+          <button
+            type="button"
+            className={styles.navBtn}
+            aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
+            disabled={!canGoPrev}
+            onClick={handlePrev}
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={styles.navBtn}
+            aria-label={viewMode === "week" ? "Next week" : "Next month"}
+            disabled={!canGoNext}
+            onClick={handleNext}
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
         </div>
+        <h2 className={styles.periodLabel}>{periodLabel}</h2>
 
         <div className={styles.customSelectContainer} ref={monthSelectRef}>
           <button
@@ -457,7 +549,7 @@ export default function SlotCalendarView({
                 key={day.dateId}
                 className={`${styles.weekDayHead} ${
                   day.isToday ? styles.weekDayHeadToday : ""
-                } ${!day.selectable ? styles.weekDayHeadDisabled : ""}`}
+                }`}
               >
                 <span className={styles.weekDayName}>
                   {day.isToday ? "Today" : `${DAY_LABELS[day.date.getDay()]} ${day.date.getDate()}`}
@@ -471,11 +563,9 @@ export default function SlotCalendarView({
               return (
                 <div
                   key={day.dateId}
-                  className={`${styles.weekDayColumn} ${
-                    !day.selectable ? styles.weekDayColumnDisabled : ""
-                  }`}
+                  className={styles.weekDayColumn}
                 >
-                  {!day.selectable ? null : day.slots.length === 0 ? (
+                  {day.slots.length === 0 ? (
                     <span className={styles.emptyDayNote}>No slots</span>
                   ) : (
                     <div className={styles.weekSlotList}>

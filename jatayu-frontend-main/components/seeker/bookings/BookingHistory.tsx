@@ -1,16 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { MessageSquare, Video, Clapperboard, Users, Clock } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
 import {
-  BOOKING_DETAILS,
   formatBookingDateKey,
   getBookingDateObject,
   type BookingDetail,
 } from "@/lib/seekerDashboard";
+import { fetchSeekerBookings, toBookingDetail } from "@/lib/seekerBookingApi";
 import type { ConsultationType } from "@/lib/booking";
 import styles from "./BookingHistory.module.css";
 
@@ -30,9 +30,28 @@ function formatStatus(status: BookingDetail["status"]): string {
 
 export default function BookingHistory() {
   const router = useRouter();
+  const [apiBookings, setApiBookings] = useState<BookingDetail[]>([]);
+
+  useEffect(() => {
+    let isSubscribed = true;
+    fetchSeekerBookings()
+      .then((res) => {
+        if (isSubscribed && res.bookings) {
+          const mapped = res.bookings.map((b) => toBookingDetail(b));
+          setApiBookings(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch seeker booking history:", err);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
 
   const groupedBookings = useMemo(() => {
-    const filtered = BOOKING_DETAILS.filter(
+    const filtered = apiBookings.filter(
       (booking) => booking.status === "completed" || booking.status === "cancelled"
     );
 
@@ -57,7 +76,7 @@ export default function BookingHistory() {
     groups.sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
 
     return groups;
-  }, []);
+  }, [apiBookings]);
 
   return (
     <div className={styles.historyContainer}>

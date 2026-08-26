@@ -174,13 +174,14 @@ export function createBookingOrder(input: {
 }
 
 export async function verifyBookingPayment(bookingId: string, payment: RazorpayCheckoutResult) {
+  const payload = {
+    razorpayOrderId: payment.razorpay_order_id,
+    razorpayPaymentId: payment.razorpay_payment_id,
+    razorpaySignature: payment.razorpay_signature,
+  };
   const response = await bookingFetch<{ booking: SeekerBooking }>(
     `/api/seeker/bookings/${encodeURIComponent(bookingId)}/verify-payment`,
-    { method: "POST", body: JSON.stringify({
-      razorpayOrderId: payment.razorpay_order_id,
-      razorpayPaymentId: payment.razorpay_payment_id,
-      razorpaySignature: payment.razorpay_signature,
-    }) },
+    { method: "POST", body: JSON.stringify(payload) },
   );
   return response.booking
     ? normalizeSeekerBooking(response.booking as unknown as Record<string, unknown>)
@@ -401,14 +402,15 @@ function timeParts(time: string) {
 }
 
 function partsInTimezone(date: Date, timezone: string) {
+  const resolvedTimezone = timezone || "Asia/Kolkata";
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: resolvedTimezone, year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
   }).formatToParts(date);
   return Object.fromEntries(parts.map(({ type, value }) => [type, Number(value)]));
 }
 
-export function buildScheduledStartAt(date: Date, time: string, timezone: string): string {
+export function buildScheduledStartAt(date: Date, time: string, timezone: string = "Asia/Kolkata"): string {
   const { hour, minute } = timeParts(time);
   const desiredUtc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute);
   let result = new Date(desiredUtc);
@@ -432,3 +434,4 @@ export function getBookingIdempotencyKey(fingerprint: string): string {
 export function clearBookingIdempotencyKey(fingerprint: string) {
   sessionStorage.removeItem(`booking-idempotency:${fingerprint}`);
 }
+
