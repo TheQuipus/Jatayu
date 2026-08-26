@@ -99,7 +99,7 @@ export default function TimePicker({
     if (!parsedValue) return false;
 
     // 1. Minimum time boundary check
-    if (parsedMinTime && (parsedValue.isBefore(parsedMinTime) || parsedValue.isSame(parsedMinTime))) {
+    if (parsedMinTime && parsedValue.isBefore(parsedMinTime)) {
       return true;
     }
 
@@ -166,8 +166,8 @@ export default function TimePicker({
                 size: "small",
                 error: hasError,
                 helperText: hasError
-                  ? parsedMinTime && (parsedValue?.isBefore(parsedMinTime) || parsedValue?.isSame(parsedMinTime))
-                    ? "Must be after start time"
+                  ? parsedMinTime && parsedValue?.isBefore(parsedMinTime)
+                    ? "Must be at least 30 mins after start"
                     : "Time conflict with another slot"
                   : undefined,
                 slotProps: {

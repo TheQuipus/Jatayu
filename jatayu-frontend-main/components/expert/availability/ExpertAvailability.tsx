@@ -7,6 +7,8 @@ import onboardingStyles from "@/components/expert/onboarding/AvailabilityStep.mo
 import appStyles from "./ExpertAvailability.module.css";
 import {
   WEEK_DAYS,
+  MIN_SLOT_DURATION_MINUTES,
+  getMinEndTime,
   createEmptySlot,
   createDefaultSlot,
   formatTimezoneLabel,
@@ -67,12 +69,20 @@ export default function ExpertAvailability({
     const conflictingIds = new Set<string>();
     for (let i = 0; i < currentSlots.length; i++) {
       const slotA = currentSlots[i];
-      if (!slotA.from || !slotA.to || getMinutes(slotA.to) <= getMinutes(slotA.from)) {
+      if (
+        !slotA.from ||
+        !slotA.to ||
+        getMinutes(slotA.to) - getMinutes(slotA.from) < MIN_SLOT_DURATION_MINUTES
+      ) {
         continue;
       }
       for (let j = i + 1; j < currentSlots.length; j++) {
         const slotB = currentSlots[j];
-        if (!slotB.from || !slotB.to || getMinutes(slotB.to) <= getMinutes(slotB.from)) {
+        if (
+          !slotB.from ||
+          !slotB.to ||
+          getMinutes(slotB.to) - getMinutes(slotB.from) < MIN_SLOT_DURATION_MINUTES
+        ) {
           continue;
         }
         const shareDay = slotA.days.some((day) => slotB.days.includes(day));
@@ -98,7 +108,7 @@ export default function ExpertAvailability({
     if (!from || !to || !days.length) return false;
     const proposedFrom = getMinutes(from);
     const proposedTo = getMinutes(to);
-    if (proposedTo <= proposedFrom) return false;
+    if (proposedTo - proposedFrom < MIN_SLOT_DURATION_MINUTES) return false;
 
     return slots.some((other) => {
       if (other.id === slotId) return false;
@@ -139,7 +149,7 @@ export default function ExpertAvailability({
         if (
           field === "from" &&
           updatedSlot.to &&
-          getMinutes(updatedSlot.to) <= getMinutes(value)
+          getMinutes(updatedSlot.to) - getMinutes(value) < MIN_SLOT_DURATION_MINUTES
         ) {
           updatedSlot = { ...updatedSlot, to: "" };
         }
@@ -204,10 +214,13 @@ export default function ExpertAvailability({
                     ariaLabel="End time"
                     value={slot.to}
                     theme={timePickerTheme}
-                    minTime={slot.from || undefined}
+                    minTime={getMinEndTime(slot.from)}
                     onChange={(nextValue) => handleUpdateSlot(slot.id, "to", nextValue)}
                     disabled={!slot.from}
-                    validateTime={(time) => !wouldConflict(slot.id, slot.from, time, slot.days)}
+                    validateTime={(time) =>
+                      !wouldConflict(slot.id, slot.from, time, slot.days) &&
+                      getMinutes(time) - getMinutes(slot.from) >= MIN_SLOT_DURATION_MINUTES
+                    }
                   />
                 </div>
 

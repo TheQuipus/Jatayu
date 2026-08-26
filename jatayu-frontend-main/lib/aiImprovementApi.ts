@@ -104,8 +104,6 @@ export async function callAiImproveNeeds(
     selectedGoals: payload.selectedGoals || [],
   };
 
-  console.log("[Seeker AI Improve API Request]:", requestBody);
-
   let response = await fetch(primaryEndpoint, {
     method: "POST",
     headers,
@@ -127,6 +125,5 @@ export async function callAiImproveNeeds(
   }
 
   const data = (await response.json()) as AiImproveNeedsResponse;
-  console.log("[Seeker AI Improve API Response]:", data);
   return data;
 }

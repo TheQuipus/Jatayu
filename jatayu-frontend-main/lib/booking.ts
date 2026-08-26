@@ -199,13 +199,13 @@ export function getTimeSlotsForDate(dateId: string, timezone = "Asia/Kolkata"): 
   dateObj.setHours(0, 0, 0, 0);
   dateObj.setDate(dateObj.getDate() + dateIndex);
 
-  const buffer12h = Date.now() + 12 * 60 * 60 * 1000;
+  const bufferAdvance = Date.now() + 30 * 60 * 1000;
 
   return BASE_TIME_SLOTS.map((slot, index) => {
     let isPastOrTooSoon = false;
     try {
       const instant = new Date(buildScheduledStartAt(dateObj, slot.time, timezone)).getTime();
-      isPastOrTooSoon = instant < buffer12h;
+      isPastOrTooSoon = instant < bufferAdvance;
     } catch {
       // fallback if parsing fails
     }
@@ -253,18 +253,24 @@ export function formatConfirmationSchedule(
   return `${formattedDate} at ${slotTime}`;
 }
 
-function parseTimeTo24h(time: string): { hours: number; minutes: number } {
-  const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return { hours: 11, minutes: 0 };
-
-  let hours = Number.parseInt(match[1], 10);
-  const minutes = Number.parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
-
-  return { hours, minutes };
+export function parseTimeTo24h(time: string): { hours: number; minutes: number } {
+  if (!time) return { hours: 11, minutes: 0 };
+  const ampmMatch = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+  if (ampmMatch) {
+    let hours = Number.parseInt(ampmMatch[1], 10);
+    const minutes = Number.parseInt(ampmMatch[2], 10);
+    const period = ampmMatch[3].toUpperCase();
+    if (period === "PM" && hours !== 12) hours += 12;
+    if (period === "AM" && hours === 12) hours = 0;
+    return { hours, minutes };
+  }
+  const h24Match = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (h24Match) {
+    const hours = Number.parseInt(h24Match[1], 10);
+    const minutes = Number.parseInt(h24Match[2], 10);
+    return { hours, minutes };
+  }
+  return { hours: 11, minutes: 0 };
 }
 
 function formatGoogleCalendarDate(date: Date): string {

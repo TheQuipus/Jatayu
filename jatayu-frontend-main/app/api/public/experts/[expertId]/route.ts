@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { expertSlug, featuredExperts, getExpertById, normalizeExpert } from "@/lib/experts";
 import { publicApiBase } from "@/lib/publicApiBase";
 
-export const dynamic = "force-static";
-
-export async function generateStaticParams() {
-  return featuredExperts.map((expert) => ({
-    expertId: expertSlug(expert.name),
-  }));
-}
+export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
@@ -24,15 +18,10 @@ export async function GET(
     );
   }
 
-  const targetId =
-    expertSlug(decodedId) === "aditya-kane"
-      ? "6ca14cb0-b79c-4628-9fe2-ec8a9bce67e4"
-      : decodedId;
-
   // 1. Attempt to fetch live expert data from backend API server
   const backendUrl = publicApiBase();
   try {
-    const res = await fetch(`${backendUrl}/api/public/experts/${encodeURIComponent(targetId)}`, {
+    const res = await fetch(`${backendUrl}/api/public/experts/${encodeURIComponent(decodedId)}`, {
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
     });
