@@ -200,7 +200,33 @@ export function mapBackendExpertToApplication(
       : [],
     formats: asStringArray(expert.selectedFormats),
     lengths: asStringArray(expert.selectedLengths),
-    formatPrices: expert.formatPrices || {},
+    formatPrices: (() => {
+      let parsed: Record<string, unknown> = {};
+      const rawPrices = expert.formatPrices as unknown;
+      if (typeof rawPrices === "string" && rawPrices.trim()) {
+        try {
+          parsed = JSON.parse(rawPrices) as Record<string, unknown>;
+        } catch {
+          // ignore
+        }
+      } else if (rawPrices && typeof rawPrices === "object") {
+        parsed = rawPrices as Record<string, unknown>;
+      }
+      const mapped: Record<string, string> = {};
+      for (const [key, val] of Object.entries(parsed)) {
+        mapped[key] = String(val);
+        if (key === "written") {
+          mapped["text"] = String(val);
+        } else if (key === "text") {
+          mapped["written"] = String(val);
+        } else if (key === "group") {
+          mapped["live"] = String(val);
+        } else if (key === "live") {
+          mapped["group"] = String(val);
+        }
+      }
+      return mapped;
+    })(),
     languages: languages.length > 0 ? languages : ["English"],
     audiences,
     timezone,

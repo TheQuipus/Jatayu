@@ -672,24 +672,44 @@ export function normalizeExpert(rawData: Record<string, unknown>): Expert {
     "/assets/img/team1.png"
   );
 
+  let parsedFormatPrices: Record<string, unknown> = {};
+  const srcPrices = data.formatPrices || meta.formatPrices;
+  if (typeof srcPrices === "string" && srcPrices.trim()) {
+    try {
+      parsedFormatPrices = JSON.parse(srcPrices) as Record<string, unknown>;
+    } catch {
+      // ignore
+    }
+  } else if (srcPrices && typeof srcPrices === "object") {
+    parsedFormatPrices = srcPrices as Record<string, unknown>;
+  }
+
   let price = 199;
   if (typeof data.price === "number" && !isNaN(data.price)) {
     price = data.price;
   } else if (data.price && !isNaN(Number(data.price))) {
     price = Number(data.price);
-  } else if (data.formatPrices && typeof data.formatPrices === "object") {
-    const values = Object.values(data.formatPrices as Record<string, unknown>)
+  } else if (parsedFormatPrices && Object.keys(parsedFormatPrices).length > 0) {
+    const values = Object.values(parsedFormatPrices)
       .map((val) => Number(val))
       .filter((n) => !isNaN(n) && n > 0);
     if (values.length > 0) price = values[0];
   }
 
-  const rawFormatPrices = (data.formatPrices || meta.formatPrices || {}) as Record<string, unknown>;
   const formatPrices: Record<string, string | number> = {};
-  for (const [key, val] of Object.entries(rawFormatPrices)) {
+  for (const [key, val] of Object.entries(parsedFormatPrices)) {
     const num = Number(val);
     if (!isNaN(num) && num > 0) {
       formatPrices[key] = num;
+      if (key === "written") {
+        formatPrices["text"] = num;
+      } else if (key === "text") {
+        formatPrices["written"] = num;
+      } else if (key === "group") {
+        formatPrices["live"] = num;
+      } else if (key === "live") {
+        formatPrices["group"] = num;
+      }
     }
   }
 
@@ -764,7 +784,17 @@ export function normalizeExpert(rawData: Record<string, unknown>): Expert {
     : Array.isArray(meta.selectedFormats)
     ? meta.selectedFormats
     : ["text", "video", "live"];
-  const formats = formatsRaw.map(String);
+  const formats = Array.from(
+    new Set(
+      formatsRaw.map(String).flatMap((f) => {
+        if (f === "written") return ["written", "text"];
+        if (f === "text") return ["text", "written"];
+        if (f === "group") return ["group", "live"];
+        if (f === "live") return ["live", "group"];
+        return [f];
+      })
+    )
+  );
 
   const availabilitiesRaw = Array.isArray(data.availabilities)
     ? data.availabilities
