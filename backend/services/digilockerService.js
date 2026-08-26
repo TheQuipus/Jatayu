@@ -21,6 +21,7 @@ export async function getDigilockerConfig() {
   const values = await Promise.all([
     getDatabaseSettingBool('DIGILOCKER_ENABLED', false),
     ...REQUIRED_KEYS.map((key) => getDatabaseSetting(key)),
+    getDatabaseSetting('DIGILOCKER_ACCOUNT_URL'),
     getDatabaseSetting('DIGILOCKER_ISSUED_DOCUMENTS_URL'),
     getDatabaseSetting('DIGILOCKER_SCOPES', 'openid profile'),
     getDatabaseSetting('DIGILOCKER_FRONTEND_RETURN_URL', 'http://localhost:3000/expert/expert-onboarding/'),
