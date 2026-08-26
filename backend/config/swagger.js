@@ -112,6 +112,23 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     '/api/expert/onboarding/recommend-skills': {
       post: operation({ tag: 'Expert', summary: 'Generate AI skill recommendations for expert onboarding', security: bearerSecurity, requestBody: jsonBody() }),
     },
+    '/api/expert/kyc/digilocker/start': {
+      post: operation({ tag: 'Expert', summary: 'Start DigiLocker identity verification', security: bearerSecurity }),
+    },
+    '/api/expert/kyc/digilocker/status': {
+      get: operation({ tag: 'Expert', summary: 'Get DigiLocker verification status', security: bearerSecurity }),
+    },
+    '/api/expert/kyc/digilocker/callback': {
+      get: operation({
+        tag: 'Expert',
+        summary: 'Receive DigiLocker OAuth callback',
+        parameters: [
+          { in: 'query', name: 'code', schema: { type: 'string' } },
+          { in: 'query', name: 'state', required: true, schema: { type: 'string' } },
+          { in: 'query', name: 'error', schema: { type: 'string' } },
+        ],
+      }),
+    },
     '/api/expert/requests': {
       get: operation({
         tag: 'Expert', summary: 'List and filter booking requests', security: bearerSecurity,

@@ -9,6 +9,7 @@ import SeekerCreditTransaction from './seeker/SeekerCreditTransaction.js';
 import RazorpayWebhookEvent from './seeker/RazorpayWebhookEvent.js';
 import Booking from './seeker/Booking.js';
 import BookingPayment from './seeker/BookingPayment.js';
+import DigilockerVerification from './DigilockerVerification.js';
 
 // Expert-module relationships (same database connection)
 Expert.hasMany(Credential, { foreignKey: 'expertId', as: 'credentials', onDelete: 'CASCADE' });
@@ -16,6 +17,13 @@ Credential.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
 
 Expert.hasMany(Availability, { foreignKey: 'expertId', as: 'availabilities', onDelete: 'CASCADE' });
 Availability.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
+
+Expert.hasOne(DigilockerVerification, {
+  foreignKey: 'expertId',
+  as: 'digilockerVerification',
+  onDelete: 'CASCADE',
+});
+DigilockerVerification.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
 
 Seeker.hasMany(SeekerCreditTransaction, {
   foreignKey: 'seekerId',
@@ -44,4 +52,5 @@ export {
   RazorpayWebhookEvent,
   Booking,
   BookingPayment,
+  DigilockerVerification,
 };

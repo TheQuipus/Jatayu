@@ -11,6 +11,11 @@ import {
 } from '../controllers/expertController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { getRequests, updateRequestDecision } from '../controllers/expertRequestController.js';
+import {
+  getDigilockerKycStatus,
+  handleDigilockerCallback,
+  startDigilockerKyc,
+} from '../controllers/digilockerController.js';
 
 const router = express.Router();
 
@@ -61,5 +66,8 @@ router.post('/onboarding/recommend-skills', protect, recommendOnboardingSkills);
 router.post('/recommend-skills', protect, recommendOnboardingSkills);
 router.get('/requests', protect, getRequests);
 router.patch('/requests/:bookingId/decision', protect, updateRequestDecision);
+router.post('/kyc/digilocker/start', protect, startDigilockerKyc);
+router.get('/kyc/digilocker/status', protect, getDigilockerKycStatus);
+router.get('/kyc/digilocker/callback', handleDigilockerCallback);
 
 export default router;
