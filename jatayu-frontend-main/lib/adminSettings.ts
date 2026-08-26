@@ -238,7 +238,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
       tokenUrl: "",
       accountUrl: "",
       issuedDocumentsUrl: "",
-      scopes: "openid profile",
+      scopes: "avs",
     },
   },
   ai: {

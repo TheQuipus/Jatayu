@@ -250,7 +250,7 @@ export default function AuthCredentialsPanel({
                 ["Token URL", "tokenUrl", "Provided by DigiLocker"],
                 ["Account Details URL", "accountUrl", "Optional when identity is returned in id_token"],
                 ["Issued Documents URL", "issuedDocumentsUrl", "Optional"],
-                ["OAuth Scopes", "scopes", "openid profile"],
+                ["OAuth Scopes", "scopes", "avs"],
               ] as const).map(([label, key, placeholder]) => (
                 <Field key={key} label={label}>
                   <input
