@@ -7,7 +7,6 @@ const REQUIRED_KEYS = [
   'DIGILOCKER_REDIRECT_URI',
   'DIGILOCKER_AUTHORIZATION_URL',
   'DIGILOCKER_TOKEN_URL',
-  'DIGILOCKER_ACCOUNT_URL',
 ];
 
 export class DigilockerConfigurationError extends Error {
@@ -37,7 +36,7 @@ export async function getDigilockerConfig() {
     const property = {
       DIGILOCKER_CLIENT_ID: 'clientId', DIGILOCKER_CLIENT_SECRET: 'clientSecret',
       DIGILOCKER_REDIRECT_URI: 'redirectUri', DIGILOCKER_AUTHORIZATION_URL: 'authorizationUrl',
-      DIGILOCKER_TOKEN_URL: 'tokenUrl', DIGILOCKER_ACCOUNT_URL: 'accountUrl',
+      DIGILOCKER_TOKEN_URL: 'tokenUrl',
     }[key];
     return !config[property];
   });
@@ -103,7 +102,30 @@ export async function fetchDigilockerResource(url, accessToken, operation) {
   return readJsonResponse(response, operation);
 }
 
+export function readIdTokenClaims(idToken, clientId) {
+  if (!idToken || typeof idToken !== 'string') return null;
+  const parts = idToken.split('.');
+  if (parts.length !== 3) throw new Error('DigiLocker returned an invalid ID token');
+  let claims;
+  try {
+    claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+  } catch {
+    throw new Error('DigiLocker returned unreadable ID token claims');
+  }
+  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  if (claims.aud && !audiences.includes(clientId)) {
+    throw new Error('DigiLocker ID token audience does not match this client');
+  }
+  if (claims.exp && Number(claims.exp) * 1000 <= Date.now()) {
+    throw new Error('DigiLocker returned an expired ID token');
+  }
+  return claims;
+}
+
 export function safeAccountDetails(data = {}) {
-  const allowed = ['digilockerid', 'id', 'name', 'dob', 'gender', 'eaadhaar', 'mobile', 'email'];
+  const allowed = [
+    'digilockerid', 'id', 'sub', 'name', 'given_name', 'dob', 'birthdate',
+    'gender', 'eaadhaar', 'mobile', 'phone_number', 'email',
+  ];
   return Object.fromEntries(allowed.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
 }

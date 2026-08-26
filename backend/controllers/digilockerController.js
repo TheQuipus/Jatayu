@@ -5,6 +5,7 @@ import {
   fetchDigilockerResource,
   getDigilockerConfig,
   hashState,
+  readIdTokenClaims,
   safeAccountDetails,
 } from '../services/digilockerService.js';
 
@@ -112,12 +113,15 @@ export const handleDigilockerCallback = async (req, res) => {
 
   try {
     const token = await exchangeAuthorizationCode(config, String(code), verification.codeVerifier);
-    const account = await fetchDigilockerResource(config.accountUrl, token.access_token, 'DigiLocker account lookup');
+    const idTokenClaims = readIdTokenClaims(token.id_token, config.clientId);
+    const account = config.accountUrl
+      ? await fetchDigilockerResource(config.accountUrl, token.access_token, 'DigiLocker account lookup')
+      : idTokenClaims || token;
     const issued = config.issuedDocumentsUrl
       ? await fetchDigilockerResource(config.issuedDocumentsUrl, token.access_token, 'DigiLocker issued documents lookup')
       : [];
     verification.status = 'verified';
-    verification.digilockerAccountId = account.digilockerid || account.id || null;
+    verification.digilockerAccountId = account.digilockerid || account.id || account.sub || null;
     verification.accountDetails = safeAccountDetails(account);
     verification.issuedDocuments = documentsFromResponse(issued);
     verification.consentValidTill = token.consent_valid_till

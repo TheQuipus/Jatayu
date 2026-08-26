@@ -248,7 +248,7 @@ export default function AuthCredentialsPanel({
                 ["Frontend Return URL", "frontendReturnUrl", "https://jatayuconnect.in/expert/expert-onboarding/"],
                 ["Authorization URL", "authorizationUrl", "Provided by DigiLocker"],
                 ["Token URL", "tokenUrl", "Provided by DigiLocker"],
-                ["Account Details URL", "accountUrl", "Provided by DigiLocker"],
+                ["Account Details URL", "accountUrl", "Optional when identity is returned in id_token"],
                 ["Issued Documents URL", "issuedDocumentsUrl", "Optional"],
                 ["OAuth Scopes", "scopes", "openid profile"],
               ] as const).map(([label, key, placeholder]) => (
