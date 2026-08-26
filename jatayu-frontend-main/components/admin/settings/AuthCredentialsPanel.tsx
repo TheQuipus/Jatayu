@@ -11,6 +11,7 @@ import Field from "./Field";
 import styles from "./AuthCredentialsPanel.module.css";
 
 type ProviderKey = "google" | "meta" | "linkedin";
+type OpenProviderKey = ProviderKey | "digilocker";
 
 const PROVIDER_CONFIGS: {
   key: ProviderKey;
@@ -188,7 +189,7 @@ export default function AuthCredentialsPanel({
   saved,
   onChange,
 }: AuthCredentialsPanelProps) {
-  const [openProvider, setOpenProvider] = useState<ProviderKey | null>("google");
+  const [openProvider, setOpenProvider] = useState<OpenProviderKey | null>("google");
 
   return (
     <>
@@ -213,6 +214,61 @@ export default function AuthCredentialsPanel({
             }
           />
         ))}
+        <div className={styles.accordion}>
+          <button
+            type="button"
+            className={styles.accordionHeader}
+            onClick={() => setOpenProvider((current) => current === "digilocker" ? null : "digilocker")}
+            aria-expanded={openProvider === "digilocker"}
+          >
+            <span className={styles.accordionTitle}>DigiLocker KYC Credentials</span>
+            <span className={draft.digilocker.enabled ? styles.badgeActive : styles.badgeDisabled}>
+              {draft.digilocker.enabled ? "Active" : "Disabled"}
+            </span>
+          </button>
+          {openProvider === "digilocker" ? (
+            <div className={styles.accordionBody}>
+              <label className={styles.toggleField}>
+                <span className={styles.toggleCopy}>
+                  <span className={styles.toggleLabel}>Enable DigiLocker verification</span>
+                  <span className={styles.toggleDesc}>Available only after all requester credentials and URLs are saved.</span>
+                </span>
+                <input type="checkbox" className={styles.toggle} checked={draft.digilocker.enabled}
+                  onChange={(event) => onChange({ ...draft, digilocker: { ...draft.digilocker, enabled: event.target.checked } })} />
+              </label>
+              <label className={styles.toggleField}>
+                <span className={styles.toggleCopy}><span className={styles.toggleLabel}>Sandbox mode</span></span>
+                <input type="checkbox" className={styles.toggle} checked={draft.digilocker.sandbox}
+                  onChange={(event) => onChange({ ...draft, digilocker: { ...draft.digilocker, sandbox: event.target.checked } })} />
+              </label>
+              {([
+                ["Client ID", "clientId", "DigiLocker requester client ID"],
+                ["Client Secret", "clientSecret", "Enter client secret"],
+                ["Backend Redirect URI", "redirectUri", "https://jatayuconnect.in/api/expert/kyc/digilocker/callback"],
+                ["Frontend Return URL", "frontendReturnUrl", "https://jatayuconnect.in/expert/expert-onboarding/"],
+                ["Authorization URL", "authorizationUrl", "Provided by DigiLocker"],
+                ["Token URL", "tokenUrl", "Provided by DigiLocker"],
+                ["Account Details URL", "accountUrl", "Provided by DigiLocker"],
+                ["Issued Documents URL", "issuedDocumentsUrl", "Optional"],
+                ["OAuth Scopes", "scopes", "openid profile"],
+              ] as const).map(([label, key, placeholder]) => (
+                <Field key={key} label={label}>
+                  <input
+                    type={key === "clientSecret" ? "password" : "text"}
+                    className={styles.input}
+                    value={draft.digilocker[key]}
+                    placeholder={placeholder}
+                    autoComplete={key === "clientSecret" ? "new-password" : "off"}
+                    onChange={(event) => onChange({
+                      ...draft,
+                      digilocker: { ...draft.digilocker, [key]: event.target.value },
+                    })}
+                  />
+                </Field>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className={styles.recordsSection}>

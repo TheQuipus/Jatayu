@@ -55,6 +55,21 @@ export type AuthCredentialsSettings = {
   google: ProviderAuthCredentials;
   meta: ProviderAuthCredentials;
   linkedin: ProviderAuthCredentials;
+  digilocker: DigilockerSettings;
+};
+
+export type DigilockerSettings = {
+  enabled: boolean;
+  sandbox: boolean;
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  frontendReturnUrl: string;
+  authorizationUrl: string;
+  tokenUrl: string;
+  accountUrl: string;
+  issuedDocumentsUrl: string;
+  scopes: string;
 };
 
 export type MessageTemplate = {
@@ -211,6 +226,19 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
       authorizedDomains: "jatayu.com",
       enableSignIn: false,
       enableCalendar: false,
+    },
+    digilocker: {
+      enabled: false,
+      sandbox: true,
+      clientId: "",
+      clientSecret: "",
+      redirectUri: "https://jatayuconnect.in/api/expert/kyc/digilocker/callback",
+      frontendReturnUrl: "https://jatayuconnect.in/expert/expert-onboarding/",
+      authorizationUrl: "",
+      tokenUrl: "",
+      accountUrl: "",
+      issuedDocumentsUrl: "",
+      scopes: "openid profile",
     },
   },
   ai: {
@@ -388,6 +416,7 @@ function mergeWithDefaults(partial: Partial<AdminSettings>): AdminSettings {
       google: { ...DEFAULT_ADMIN_SETTINGS.auth.google, ...partial.auth?.google },
       meta: { ...DEFAULT_ADMIN_SETTINGS.auth.meta, ...partial.auth?.meta },
       linkedin: { ...DEFAULT_ADMIN_SETTINGS.auth.linkedin, ...partial.auth?.linkedin },
+      digilocker: { ...DEFAULT_ADMIN_SETTINGS.auth.digilocker, ...partial.auth?.digilocker },
     },
     ai: { ...DEFAULT_ADMIN_SETTINGS.ai, ...partial.ai },
     templates: templates.length > 0 ? templates : DEFAULT_ADMIN_SETTINGS.templates,

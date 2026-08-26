@@ -219,7 +219,13 @@
       "item": [
         { "name": "Get Profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/me" } },
         { "name": "Update Profile", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"preferences\",\n  \"category\": \"software\",\n  \"skills\": [\"Backend Architecture\", \"API Integrations\"],\n  \"experienceLevel\": \"senior\",\n  \"professionalTitle\": \"Backend Architect\",\n  \"tagLine\": \"Building scalable systems\",\n  \"bio\": \"Experienced backend engineering mentor.\",\n  \"focusAreas\": [\"System Design\"],\n  \"selectedFormats\": [\"video\"],\n  \"selectedLengths\": [\"60\"],\n  \"formatPrices\": { \"video\": 2500 },\n  \"timezone\": \"Asia/Kolkata\"\n}" }, "url": "{{baseUrl}}/api/expert/profile" } },
-        { "name": "Submit Onboarding", "request": { "method": "POST", "url": "{{baseUrl}}/api/expert/submit" } }
+        { "name": "Submit Onboarding", "request": { "method": "POST", "url": "{{baseUrl}}/api/expert/submit" } },
+        {
+          "name": "Start DigiLocker KYC",
+          "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.authorizationUrl) pm.environment.set('digilockerAuthorizationUrl', data.authorizationUrl);"] } }],
+          "request": { "method": "POST", "description": "Returns the consent URL. Open authorizationUrl in a browser; DigiLocker OAuth cannot be completed entirely inside Postman.", "url": "{{baseUrl}}/api/expert/kyc/digilocker/start" }
+        },
+        { "name": "Get DigiLocker KYC Status", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/kyc/digilocker/status" } }
       ]
     },
     {

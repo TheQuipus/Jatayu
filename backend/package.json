@@ -9,6 +9,7 @@
     "dev": "node --watch server.js",
     "migrate:seeker-credits": "node scripts/migrateSeekerCredits.js",
     "migrate:seeker-bookings": "node scripts/migrateSeekerBookings.js"
+    ,"migrate:digilocker": "node scripts/migrateDigilockerVerification.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.2",

@@ -23,6 +23,7 @@ import type {
   GovernmentIdData,
   GovernmentIdType,
 } from "@/lib/expertApplicationSubmission";
+import { getDigilockerKycStatus, startDigilockerKyc } from "@/lib/api";
 
 type CredentialsStepProps = {
   userName: string;
@@ -156,9 +157,42 @@ export default function CredentialsStep({
     certificatesToEntries(certificates),
   );
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [digilockerConfigured, setDigilockerConfigured] = useState(false);
+  const [digilockerVerified, setDigilockerVerified] = useState(false);
+  const [digilockerLoading, setDigilockerLoading] = useState(true);
+  const [digilockerError, setDigilockerError] = useState<string | null>(null);
   const hasKycVideo = Boolean(kycVideoSrc);
   const hasGovernmentId = Boolean(selectedIdType) && Boolean(idFront);
-  const canContinue = hasGovernmentId || hasKycVideo;
+  const canContinue = hasGovernmentId || hasKycVideo || digilockerVerified;
+
+  useEffect(() => {
+    let active = true;
+    getDigilockerKycStatus()
+      .then((response) => {
+        if (!active) return;
+        setDigilockerConfigured(response.configured);
+        setDigilockerVerified(response.kyc?.status === "verified");
+      })
+      .catch(() => {
+        if (active) setDigilockerConfigured(false);
+      })
+      .finally(() => {
+        if (active) setDigilockerLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const handleDigilockerVerification = async () => {
+    setDigilockerLoading(true);
+    setDigilockerError(null);
+    try {
+      const response = await startDigilockerKyc();
+      window.location.assign(response.authorizationUrl);
+    } catch (error) {
+      setDigilockerError(error instanceof Error ? error.message : "Could not start DigiLocker verification.");
+      setDigilockerLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (canContinue) {
@@ -360,6 +394,26 @@ export default function CredentialsStep({
         </p>
 
         <div className={styles.sectionsStack}>
+          {digilockerConfigured || digilockerVerified ? (
+            <article>
+              <header className={styles.sectionCardHeader}>
+                <div className={styles.sectionCardTitleWrap}>
+                  <h2 className={styles.sectionCardTitle}>Verify with DigiLocker</h2>
+                  <p className={styles.sectionCardHint}>Securely verify government-issued identity documents.</p>
+                </div>
+              </header>
+              <button
+                type="button"
+                className={styles.idTypeBtn}
+                disabled={digilockerLoading || digilockerVerified}
+                onClick={() => void handleDigilockerVerification()}
+              >
+                <IdCard size={16} aria-hidden="true" />
+                {digilockerVerified ? "DigiLocker verified" : digilockerLoading ? "Opening DigiLocker…" : "Continue with DigiLocker"}
+              </button>
+              {digilockerError ? <p className={styles.idPrivacyNote}>{digilockerError}</p> : null}
+            </article>
+          ) : null}
           {/* 1. Identity Verification */}
           <article>
             <KycVerificationPanel videoSrc={kycVideoSrc} onVideoChange={onKycVideoChange} />
