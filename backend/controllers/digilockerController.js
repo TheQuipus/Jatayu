@@ -117,7 +117,7 @@ export const handleDigilockerCallback = async (req, res) => {
     const idTokenClaims = readIdTokenClaims(token.id_token, config.clientId);
     const account = config.accountUrl
       ? await fetchDigilockerResource(config.accountUrl, token.access_token, 'DigiLocker account lookup')
-      : idTokenClaims || token;
+      : { ...token, ...(idTokenClaims || {}) };
     const issued = config.issuedDocumentsUrl
       ? await fetchDigilockerResource(config.issuedDocumentsUrl, token.access_token, 'DigiLocker issued documents lookup')
       : [];
