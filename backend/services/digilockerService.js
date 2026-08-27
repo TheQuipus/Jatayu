@@ -17,6 +17,12 @@ export class DigilockerConfigurationError extends Error {
   }
 }
 
+function normalizeConfiguredUrl(value) {
+  const trimmed = String(value || '').trim();
+  const markdownLink = trimmed.match(/^\[[^\]]*\]\((https?:\/\/[^)]+)\)$/i);
+  return markdownLink ? markdownLink[1] : trimmed;
+}
+
 export async function getDigilockerConfig() {
   const values = await Promise.all([
     getDatabaseSettingBool('DIGILOCKER_ENABLED', false),
@@ -33,8 +39,17 @@ export async function getDigilockerConfig() {
   const [enabled, clientId, clientSecret, redirectUri, authorizationUrl, tokenUrl,
     accountUrl, issuedDocumentsUrl, scopes, frontendReturnUrl, sandbox] = values;
   const config = {
-    enabled, clientId, clientSecret, redirectUri, authorizationUrl, tokenUrl,
-    accountUrl, issuedDocumentsUrl, scopes, frontendReturnUrl, sandbox,
+    enabled,
+    clientId,
+    clientSecret,
+    redirectUri: normalizeConfiguredUrl(redirectUri),
+    authorizationUrl: normalizeConfiguredUrl(authorizationUrl),
+    tokenUrl: normalizeConfiguredUrl(tokenUrl),
+    accountUrl: normalizeConfiguredUrl(accountUrl),
+    issuedDocumentsUrl: normalizeConfiguredUrl(issuedDocumentsUrl),
+    scopes,
+    frontendReturnUrl: normalizeConfiguredUrl(frontendReturnUrl),
+    sandbox,
   };
   const missing = REQUIRED_KEYS.filter((key) => {
     const property = {
