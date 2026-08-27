@@ -49,6 +49,11 @@ import {
 import {
   updateExpertApplicationStatus,
 } from "@/lib/expertApplicationsApi";
+import {
+  getAdminDigilockerDocumentBlobUrl,
+  getAdminDigilockerDocuments,
+  type AdminDigilockerDocument,
+} from "@/lib/api";
 import styles from "./ApplicationReview.module.css";
 
 const REVIEW_STATUS_CLASS: Record<ApplicationStatus, string> = {
@@ -159,8 +164,40 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [digilockerDocuments, setDigilockerDocuments] = useState<AdminDigilockerDocument[]>([]);
+  const [digilockerDocumentsLoading, setDigilockerDocumentsLoading] = useState(true);
+  const [digilockerDocumentError, setDigilockerDocumentError] = useState<string | null>(null);
 
   const isApproved = review?.status === "approved";
+
+  useEffect(() => {
+    let active = true;
+    getAdminDigilockerDocuments(appId)
+      .then((documents) => {
+        if (active) setDigilockerDocuments(documents);
+      })
+      .catch((error) => {
+        if (active) setDigilockerDocumentError(error instanceof Error ? error.message : "Could not load DigiLocker documents.");
+      })
+      .finally(() => {
+        if (active) setDigilockerDocumentsLoading(false);
+      });
+    return () => { active = false; };
+  }, [appId]);
+
+  const openDigilockerDocument = async (document: AdminDigilockerDocument) => {
+    setDigilockerDocumentError(null);
+    try {
+      const url = await getAdminDigilockerDocumentBlobUrl(appId, document.id);
+      setPreviewDoc({
+        name: document.documentName || document.documentType || "DigiLocker document",
+        url,
+        size: document.fileSize ? `${(document.fileSize / 1024).toFixed(1)} KB` : undefined,
+      });
+    } catch (error) {
+      setDigilockerDocumentError(error instanceof Error ? error.message : "Could not open DigiLocker document.");
+    }
+  };
 
   const handleApproveConfirm = async (notes: string) => {
     if (!review || isUpdatingStatus) return;
@@ -942,6 +979,47 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                       );
                     })() : (
                       <p className={styles.emptyTabMessage}>No Government ID uploaded.</p>
+                    )}
+                  </div>
+
+                  {/* DigiLocker Documents */}
+                  <div className={styles.certificatesSection} style={{ marginTop: "24px", paddingTop: "24px", borderTop: "1px solid var(--mercury)" }}>
+                    <div className={styles.audienceSectionTitle} style={{ marginBottom: "16px" }}>
+                      DigiLocker Documents
+                    </div>
+                    {digilockerDocumentError ? <p className={styles.emptyTabMessage}>{digilockerDocumentError}</p> : null}
+                    {digilockerDocumentsLoading ? (
+                      <p className={styles.emptyTabMessage}>Loading DigiLocker documents…</p>
+                    ) : digilockerDocuments.length === 0 ? (
+                      <p className={styles.emptyTabMessage}>No DigiLocker documents fetched.</p>
+                    ) : (
+                      <div className={styles.credentialsList}>
+                        {digilockerDocuments.map((document) => (
+                          <div key={document.id} className={styles.credentialsItem}>
+                            <div className={styles.credentialsItemLeft}>
+                              <FileText size={16} className={styles.credentialsIcon} />
+                              <div className={styles.credentialsDetails}>
+                                <span className={styles.credentialsName}>
+                                  {document.documentName || document.documentType || "DigiLocker document"}
+                                </span>
+                                <span className={styles.credentialsMeta}>
+                                  {document.issuerName || "DigiLocker"}
+                                  {document.fileSize ? ` • ${(document.fileSize / 1024).toFixed(1)} KB` : ""}
+                                  {document.downloadStatus !== "downloaded" ? ` • ${document.downloadStatus}` : ""}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className={styles.credentialsAction}
+                              disabled={!document.available}
+                              onClick={() => void openDigilockerDocument(document)}
+                            >
+                              <Eye size={12} /> View Document
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
 

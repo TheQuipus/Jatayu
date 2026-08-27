@@ -1,9 +1,10 @@
-import { DigilockerVerification, expertDb } from '../models/index.js';
+import { DigilockerDocument, DigilockerVerification, expertDb } from '../models/index.js';
 
 async function migrate() {
   await expertDb.authenticate();
   await DigilockerVerification.sync();
-  console.log('DigiLocker verification table migrated successfully.');
+  await DigilockerDocument.sync();
+  console.log('DigiLocker verification and private document tables migrated successfully.');
 }
 
 migrate()

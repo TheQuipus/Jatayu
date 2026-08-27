@@ -242,6 +242,21 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     '/api/admin/applications/{id}': {
       get: operation({ tag: 'Admin', summary: 'Get an expert application', security: bearerSecurity, parameters: [idParameter('id', 'Application ID')] }),
     },
+    '/api/admin/applications/{id}/digilocker-documents': {
+      get: operation({
+        tag: 'Admin', summary: 'List privately stored DigiLocker documents', security: bearerSecurity,
+        parameters: [idParameter('id', 'Application UUID or application number')],
+      }),
+    },
+    '/api/admin/applications/{id}/digilocker-documents/{documentId}/file': {
+      get: operation({
+        tag: 'Admin', summary: 'View a private DigiLocker document', security: bearerSecurity,
+        parameters: [
+          idParameter('id', 'Application UUID or application number'),
+          idParameter('documentId', 'DigiLocker document ID'),
+        ],
+      }),
+    },
     '/api/admin/applications/{id}/status': {
       patch: operation({
         tag: 'Admin', summary: 'Update expert application status', security: bearerSecurity,

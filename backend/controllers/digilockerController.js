@@ -8,6 +8,7 @@ import {
   readIdTokenClaims,
   safeAccountDetails,
 } from '../services/digilockerService.js';
+import { downloadDigilockerDocuments } from '../services/digilockerDocumentService.js';
 
 function redirectWithResult(res, returnUrl, result) {
   const url = new URL(returnUrl);
@@ -133,6 +134,14 @@ export const handleDigilockerCallback = async (req, res) => {
     verification.stateHash = null;
     verification.codeVerifier = null;
     await verification.save();
+
+    await downloadDigilockerDocuments({
+      expertId: verification.expertId,
+      verificationId: verification.id,
+      documents: verification.issuedDocuments,
+      accessToken: token.access_token,
+      fileUrlTemplate: config.fileUrlTemplate,
+    });
 
     const expert = await Expert.findByPk(verification.expertId);
     if (expert) {
