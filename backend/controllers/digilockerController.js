@@ -71,7 +71,7 @@ export const getDigilockerKycStatus = async (req, res) => {
     ]);
     const documents = verification?.issuedDocuments || [];
     const identityDocument = documents.find((item) =>
-      /aadhaar|aadhar|pan|passport|voter|driving/i.test(String(item?.doctype || item?.type || item?.name || item?.description || ''))
+      /aadhaar|aadhar|adhar|pan|passport|voter|driving/i.test(String(item?.doctype || item?.type || item?.name || item?.description || ''))
     );
     return res.json({
       configured: config.configured,
