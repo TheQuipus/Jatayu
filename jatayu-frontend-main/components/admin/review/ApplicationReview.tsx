@@ -193,6 +193,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         name: document.documentName || document.documentType || "DigiLocker document",
         url,
         size: document.fileSize ? `${(document.fileSize / 1024).toFixed(1)} KB` : undefined,
+        mimeType: document.mimeType || undefined,
       });
     } catch (error) {
       setDigilockerDocumentError(error instanceof Error ? error.message : "Could not open DigiLocker document.");
