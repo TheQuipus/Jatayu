@@ -250,6 +250,7 @@ export default function AuthCredentialsPanel({
                 ["Token URL", "tokenUrl", "Provided by DigiLocker"],
                 ["Account Details URL", "accountUrl", "Optional when identity is returned in id_token"],
                 ["Issued Documents URL", "issuedDocumentsUrl", "https://digilocker.meripehchaan.gov.in/public/oauth2/1/files/issued"],
+                ["Document File URL Template", "fileUrlTemplate", "https://digilocker.meripehchaan.gov.in/public/oauth2/1/file/{uri}"],
                 ["OAuth Scopes", "scopes", "openid files.issueddocs"],
               ] as const).map(([label, key, placeholder]) => (
                 <Field key={key} label={label}>

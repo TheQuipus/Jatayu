@@ -69,6 +69,7 @@ export type DigilockerSettings = {
   tokenUrl: string;
   accountUrl: string;
   issuedDocumentsUrl: string;
+  fileUrlTemplate: string;
   scopes: string;
 };
 
@@ -238,6 +239,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
       tokenUrl: "",
       accountUrl: "",
       issuedDocumentsUrl: "https://digilocker.meripehchaan.gov.in/public/oauth2/1/files/issued",
+      fileUrlTemplate: "https://digilocker.meripehchaan.gov.in/public/oauth2/1/file/{uri}",
       scopes: "openid files.issueddocs",
     },
   },

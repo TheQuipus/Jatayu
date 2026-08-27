@@ -12,6 +12,7 @@
     { "key": "seekerId", "value": "" },
     { "key": "adminToken", "value": "" },
     { "key": "applicationId", "value": "" },
+    { "key": "digilockerDocumentId", "value": "" },
     { "key": "razorpayKeyId", "value": "" },
     { "key": "razorpayWebhookEventId", "value": "evt_postman_001" },
     { "key": "razorpayWebhookSecret", "value": "" },
@@ -288,6 +289,12 @@
               "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications?status={{adminApplicationStatus}}&page={{adminApplicationsPage}}&limit={{adminApplicationsLimit}}" }
             },
             { "name": "Get Application", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}" } },
+            {
+              "name": "List Application DigiLocker Documents",
+              "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.items?.[0]?.id) pm.environment.set('digilockerDocumentId', data.items[0].id);"] } }],
+              "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/digilocker-documents" }
+            },
+            { "name": "View Application DigiLocker Document", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/digilocker-documents/{{digilockerDocumentId}}/file" } },
             { "name": "Update Application Status", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"in_review\",\n  \"reviewerNote\": \"Reviewed through Postman\"\n}" }, "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/status" } }
           ]
         }

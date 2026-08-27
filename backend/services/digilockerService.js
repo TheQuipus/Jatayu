@@ -19,8 +19,9 @@ export class DigilockerConfigurationError extends Error {
 
 function normalizeConfiguredUrl(value) {
   const trimmed = String(value || '').trim();
-  const markdownLink = trimmed.match(/^\[[^\]]*\]\((https?:\/\/[^)]+)\)$/i);
-  return markdownLink ? markdownLink[1] : trimmed;
+  if (!trimmed) return '';
+  const urls = trimmed.match(/https?:\/\/[^\s\])>]+/gi);
+  return urls?.at(-1) || trimmed;
 }
 
 export async function getDigilockerConfig() {
@@ -32,12 +33,16 @@ export async function getDigilockerConfig() {
       'DIGILOCKER_ISSUED_DOCUMENTS_URL',
       'https://digilocker.meripehchaan.gov.in/public/oauth2/1/files/issued',
     ),
+    getDatabaseSetting(
+      'DIGILOCKER_FILE_URL_TEMPLATE',
+      'https://digilocker.meripehchaan.gov.in/public/oauth2/1/file/{uri}',
+    ),
     getDatabaseSetting('DIGILOCKER_SCOPES', 'openid files.issueddocs'),
     getDatabaseSetting('DIGILOCKER_FRONTEND_RETURN_URL', 'http://localhost:3000/expert/expert-onboarding/'),
     getDatabaseSettingBool('DIGILOCKER_SANDBOX', true),
   ]);
   const [enabled, clientId, clientSecret, redirectUri, authorizationUrl, tokenUrl,
-    accountUrl, issuedDocumentsUrl, scopes, frontendReturnUrl, sandbox] = values;
+    accountUrl, issuedDocumentsUrl, fileUrlTemplate, scopes, frontendReturnUrl, sandbox] = values;
   const config = {
     enabled,
     clientId,
@@ -47,6 +52,7 @@ export async function getDigilockerConfig() {
     tokenUrl: normalizeConfiguredUrl(tokenUrl),
     accountUrl: normalizeConfiguredUrl(accountUrl),
     issuedDocumentsUrl: normalizeConfiguredUrl(issuedDocumentsUrl),
+    fileUrlTemplate: normalizeConfiguredUrl(fileUrlTemplate),
     scopes,
     frontendReturnUrl: normalizeConfiguredUrl(frontendReturnUrl),
     sandbox,

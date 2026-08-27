@@ -694,6 +694,44 @@ export async function getAdminApplication(
   return request;
 }
 
+export type AdminDigilockerDocument = {
+  id: string;
+  documentType: string | null;
+  documentName: string | null;
+  issuerId: string | null;
+  issuerName: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  sha256: string | null;
+  downloadStatus: string;
+  failureDescription: string | null;
+  fetchedAt: string | null;
+  available: boolean;
+};
+
+export async function getAdminDigilockerDocuments(appId: string): Promise<AdminDigilockerDocument[]> {
+  const response = await adminApiFetch<{ items: AdminDigilockerDocument[] }>(
+    `/api/admin/applications/${encodeURIComponent(appId)}/digilocker-documents`,
+    { method: "GET" },
+  );
+  return response.items;
+}
+
+export async function getAdminDigilockerDocumentBlobUrl(
+  appId: string,
+  documentId: string,
+): Promise<string> {
+  const response = await fetch(
+    `${BASE_URL}/api/admin/applications/${encodeURIComponent(appId)}/digilocker-documents/${encodeURIComponent(documentId)}/file`,
+    { headers: { Authorization: `Bearer ${getAdminToken() || ""}` } },
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({})) as { message?: string };
+    throw new ApiError(data.message || "Could not load DigiLocker document", response.status);
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
 export interface UpdateApplicationStatusPayload {
   status: "pending" | "in_review" | "on_hold" | "approved" | "rejected";
   reviewerNote?: string;
