@@ -10,17 +10,20 @@ export type PreviewDocument = {
   name: string;
   url: string;
   size?: string;
+  mimeType?: string;
 };
 
-function isPdfDocument(name: string, url: string): boolean {
+function isPdfDocument(name: string, url: string, mimeType?: string): boolean {
   return (
+    mimeType === "application/pdf" ||
     url.startsWith("data:application/pdf") ||
     /\.pdf($|\?)/i.test(url)
   );
 }
 
-function isVideoDocument(name: string, url: string): boolean {
+function isVideoDocument(name: string, url: string, mimeType?: string): boolean {
   return (
+    Boolean(mimeType?.startsWith("video/")) ||
     url.startsWith("data:video") ||
     /\.(mp4|webm|mov)($|\?)/i.test(url) ||
     /kyc.*video/i.test(name)
@@ -36,8 +39,9 @@ export default function DocumentPreviewModal({
   document,
   onClose,
 }: DocumentPreviewModalProps) {
-  const pdf = isPdfDocument(document.name, document.url);
-  const video = isVideoDocument(document.name, document.url);
+  const pdf = isPdfDocument(document.name, document.url, document.mimeType);
+  const video = isVideoDocument(document.name, document.url, document.mimeType);
+  const image = document.mimeType?.startsWith("image/") ?? (!pdf && !video);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -87,7 +91,7 @@ export default function DocumentPreviewModal({
               controls
               className={styles.previewImage}
             />
-          ) : (
+          ) : image ? (
             <Image
               src={document.url}
               alt={document.name}
@@ -95,6 +99,12 @@ export default function DocumentPreviewModal({
               height={960}
               className={styles.previewImage}
               unoptimized={document.url.startsWith("data:") || document.url.startsWith("blob:")}
+            />
+          ) : (
+            <iframe
+              title={document.name}
+              src={document.url}
+              className={styles.previewFrame}
             />
           )}
         </div>
