@@ -22,8 +22,11 @@ export async function getDigilockerConfig() {
     getDatabaseSettingBool('DIGILOCKER_ENABLED', false),
     ...REQUIRED_KEYS.map((key) => getDatabaseSetting(key)),
     getDatabaseSetting('DIGILOCKER_ACCOUNT_URL'),
-    getDatabaseSetting('DIGILOCKER_ISSUED_DOCUMENTS_URL'),
-    getDatabaseSetting('DIGILOCKER_SCOPES', 'avs'),
+    getDatabaseSetting(
+      'DIGILOCKER_ISSUED_DOCUMENTS_URL',
+      'https://digilocker.meripehchaan.gov.in/public/oauth2/1/files/issued',
+    ),
+    getDatabaseSetting('DIGILOCKER_SCOPES', 'openid files.issueddocs'),
     getDatabaseSetting('DIGILOCKER_FRONTEND_RETURN_URL', 'http://localhost:3000/expert/expert-onboarding/'),
     getDatabaseSettingBool('DIGILOCKER_SANDBOX', true),
   ]);

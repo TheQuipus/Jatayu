@@ -237,8 +237,8 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
       authorizationUrl: "",
       tokenUrl: "",
       accountUrl: "",
-      issuedDocumentsUrl: "",
-      scopes: "avs",
+      issuedDocumentsUrl: "https://digilocker.meripehchaan.gov.in/public/oauth2/1/files/issued",
+      scopes: "openid files.issueddocs",
     },
   },
   ai: {
