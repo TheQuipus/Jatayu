@@ -175,7 +175,6 @@ export default function NotificationsView() {
       {/* Top Header Row */}
       <div className={styles.notifHeaderRow}>
         <div>
-          <div className={styles.breadcrumb}>My Account &gt; Notifications</div>
           <h2 className={styles.notifPageTitle}>Notifications</h2>
           <p className={styles.notifPageSubtitle}>Stay updated on bookings, messages, payments, and expert activity</p>
         </div>

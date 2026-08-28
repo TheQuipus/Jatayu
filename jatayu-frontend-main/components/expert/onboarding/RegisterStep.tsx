@@ -364,7 +364,7 @@ export default function RegisterStep({
           </div>
 
           {submitError ? (
-            <div role="alert">
+            <div className={register.errorBannerBox} role="alert">
               <p className={register.fieldErrorBelow}>{submitError}</p>
               {isDuplicateRegistrationMessage(submitError) ? (
                 <p className={register.authToggle}>

@@ -153,7 +153,6 @@ export default function EditProfileView({ user, isExpert }: EditProfileViewProps
       {/* 1. Header Row */}
       <div className={styles.editHeaderRow}>
         <div>
-          <div className={styles.breadcrumb}>My Account &gt; Edit Profile</div>
           <h2 className={styles.editPageTitle}>Edit Profile</h2>
           <p className={styles.editPageSubtitle}>Update your personal information and preferences</p>
         </div>

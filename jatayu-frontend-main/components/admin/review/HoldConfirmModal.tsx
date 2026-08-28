@@ -94,6 +94,11 @@ export default function HoldConfirmModal({
               />
             </div>
           )}
+
+          <p style={{ marginTop: "16px", margin: "16px 0 0 0", fontSize: "12px", color: "var(--scorpion)", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ color: "#E53B17" }}>ℹ</span>
+            <span>Note: These details will be shared with the expert in their application detail.</span>
+          </p>
         </div>
       }
     />

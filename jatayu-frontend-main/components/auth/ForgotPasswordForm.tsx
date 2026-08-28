@@ -4,17 +4,20 @@ import { useState } from "react";
 import Link from "next/link";
 import { Mail, CheckCircle2, ArrowLeft } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
-import RegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
+import SeekerRegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
+import ExpertRegisterLeftPanel from "@/components/expert/onboarding/RegisterLeftPanel";
 import register from "@/components/seeker/onboarding/register.shared.module.css";
 import formStyles from "@/components/seeker/onboarding/RegisterStep.module.css";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 
 type ForgotPasswordFormProps = {
   loginHref?: string;
+  role?: string;
 };
 
 export default function ForgotPasswordForm({
   loginHref = "/login",
+  role = "user",
 }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
@@ -40,7 +43,11 @@ export default function ForgotPasswordForm({
 
   return (
     <section className={register.registerCard}>
-      <RegisterLeftPanel variant="login" />
+      {role === "expert" ? (
+        <ExpertRegisterLeftPanel variant="login" />
+      ) : (
+        <SeekerRegisterLeftPanel variant="login" />
+      )}
 
       <div className={register.registerRight}>
         {isSent ? (

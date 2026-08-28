@@ -66,7 +66,6 @@ export default function SettingsView() {
       {/* 1. Top Header Row */}
       <div className={styles.settingsHeaderRow}>
         <div>
-          <div className={styles.breadcrumb}>My Account &gt; Settings</div>
           <h2 className={styles.settingsPageTitle}>Account Settings</h2>
           <p className={styles.settingsPageSubtitle}>
             Manage your privacy, security, language, notifications, and subscription

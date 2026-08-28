@@ -341,18 +341,18 @@
   border: 1px solid var(--mercury);
   border-radius: 12px;
   overflow: hidden;
-  margin-top: 16px;
-  margin-bottom: 16px;
+  margin-top: 0 !important;
+  margin-bottom: 16px !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
 .reviewSection {
-  min-height: calc(75vh - 40px);
+  min-height: auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  margin-top: 0;
-  margin-bottom: 28px;
+  margin-top: 0 !important;
+  margin-bottom: 16px !important;
   scroll-margin-top: calc(var(--admin-sticky-top, 56px) + 145px);
 }
 
@@ -368,18 +368,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 20px;
+  padding: 18px 24px;
   background: var(--white);
   color: var(--ink);
   border-bottom: 1px solid var(--mercury);
 }
 
 .cardHeaderTitle {
-  font-family: var(--font-mono);
-  font-size: 14px;
+  font-family: var(--font-body);
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  text-transform: none;
   color: var(--ink);
 }
 
@@ -392,7 +392,7 @@
 }
 
 .cardBody {
-  padding: 20px;
+  padding: 24px;
   background: var(--white);
 }
 
@@ -2479,10 +2479,11 @@
 /* Audience Section Styles */
 .audienceSectionTitle {
   font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--ink);
   margin-bottom: 12px;
+  letter-spacing: -0.01em;
 }
 
 .audienceList {
@@ -2520,10 +2521,11 @@
 /* Preferences Section Styles */
 .preferenceSectionTitle {
   font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--ink);
   margin-bottom: 12px;
+  letter-spacing: -0.01em;
 }
 
 .preferenceList {
@@ -2633,7 +2635,12 @@
 }
 
 .govIdLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
   color: var(--dove-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .govIdValue {
@@ -3389,7 +3396,7 @@
 .threeColumnContainer {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px;
+  gap: 32px;
   align-items: start;
   width: 100%;
   margin-top: 0;
@@ -3532,14 +3539,18 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
+  gap: 10px;
   width: 100%;
+}
+
+.sectionDecisionBoxCenterSelected {
+  gap: 0;
 }
 
 .submitContinueWrapper {
   display: flex;
   justify-content: flex-start;
-  margin-top: 8px;
+  margin-top: 12px;
   width: 100%;
 }
 
@@ -3760,16 +3771,17 @@
 }
 
 .formaFieldBoxLabel {
-  font-family: var(--font-mono);
-  font-size: 9px;
+  font-family: var(--font-body);
+  font-size: 11px;
   font-weight: 600;
   color: var(--dove-gray);
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .formaFieldBoxVal {
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--ink);
   overflow: hidden;
@@ -3786,4 +3798,106 @@
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px dashed color-mix(in srgb, var(--pomegranate) 30%, transparent);
+}
+
+.toastNotification {
+  position: fixed;
+  top: 32px;
+  right: 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  z-index: 99999;
+  min-width: 320px;
+  max-width: 420px;
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1.5px solid transparent;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.toastSuccess {
+  background-color: #e6f7f4;
+  border-color: #139a8c;
+  color: #139a8c;
+}
+
+.toastWarning {
+  background-color: #fff8ec;
+  border-color: #e28743;
+  color: #e28743;
+}
+
+.toastError {
+  background-color: #fff1f2;
+  border-color: #f43f5e;
+  color: #f43f5e;
+}
+
+.toastInfo {
+  background-color: #f0f9ff;
+  border-color: #0ea5e9;
+  color: #0ea5e9;
+}
+
+.toastIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toastText {
+  flex-grow: 1;
+  line-height: 1.4;
+}
+
+.toastCloseBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.toastCloseBtn:hover {
+  opacity: 1;
+}
+
+.inlineReasonContainer {
+  width: 100%;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease-out, margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 0;
+  text-transform: none;
+  text-align: left;
+}
+
+.inlineReasonContainerActive {
+  max-height: 180px;
+  opacity: 1;
+  margin-top: 16px;
 }

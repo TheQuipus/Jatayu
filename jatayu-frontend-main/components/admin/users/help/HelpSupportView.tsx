@@ -147,7 +147,6 @@ export default function HelpSupportView() {
       {/* 1. Header Row */}
       <div className={styles.helpHeaderRow}>
         <div>
-          <div className={styles.breadcrumb}>My Account &gt; Help &amp; Support</div>
           <h2 className={styles.helpPageTitle}>Help &amp; Support</h2>
           <p className={styles.helpPageSubtitle}>Find answers, track tickets, or contact our support team</p>
         </div>

@@ -177,7 +177,6 @@ export default function AdminBookingCalendar({ className = "" }: AdminBookingCal
       {/* 1. Page Header */}
       <div className={styles.headerRow}>
         <div className={styles.titleGroup}>
-          <div className={styles.breadcrumb}>My Account &gt; Booking History</div>
           <h2 className={styles.pageTitle}>User Booking History</h2>
           <p className={styles.pageSubtitle}>
             Calendar view of all scheduled, pending, completed, and cancelled consultation sessions

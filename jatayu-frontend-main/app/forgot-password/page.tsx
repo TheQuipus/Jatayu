@@ -28,14 +28,14 @@ function ForgotPasswordContent() {
 
   let loginHref = "/login";
   if (role === "expert") {
-    loginHref = "/expert/expert-onboarding/";
+    loginHref = "/login?role=expert";
   } else if (role === "admin") {
     loginHref = "/admin";
   }
 
   return (
     <AuthShell>
-      <ForgotPasswordForm loginHref={loginHref} />
+      <ForgotPasswordForm loginHref={loginHref} role={role || "user"} />
     </AuthShell>
   );
 }

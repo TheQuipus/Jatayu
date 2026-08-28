@@ -304,15 +304,11 @@
   font-weight: 500;
   font-size: 16px;
   line-height: 20px;
-  color: var(--silver-chalice);
+  color: #E53B17;
   text-transform: uppercase;
   transition: color 0.2s ease;
   outline: none;
   padding: 6px;
-}
-
-.textBtn:focus-visible {
-  color: var(--white);
 }
 
 @media (max-width: 600px) {
