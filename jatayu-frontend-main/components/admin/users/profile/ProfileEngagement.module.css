@@ -1,0 +1,297 @@
+/* ─── Engagement Wrapper ─── */
+.engagementWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 24px;
+}
+
+/* ─── Section ─── */
+.section {
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 14px;
+  padding: 20px 24px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.sectionHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionIcon {
+  color: var(--tango);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--tango);
+  color: var(--white);
+}
+
+/* ─── Expert Card Grid ─── */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.expertCard {
+  background: var(--wild-sand);
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.expertCard:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+.expertCardTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.expertAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--mercury);
+}
+
+.expertAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.expertInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.expertName {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expertCategory {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dove-gray);
+  letter-spacing: 0.02em;
+}
+
+.expertMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.expertRating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+.expertReviews {
+  font-weight: 400;
+  color: var(--dove-gray);
+}
+
+.expertRate {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.expertFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--mercury);
+}
+
+.savedTime {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--dove-gray);
+  font-weight: 500;
+}
+
+.bookBtn {
+  border: none;
+  background: var(--bunker);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.bookBtn:hover {
+  background: var(--tango);
+  transform: scale(1.03);
+}
+
+/* ─── Engagement Trigger List ─── */
+.triggerList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.triggerCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--wild-sand);
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  transition: box-shadow 0.2s ease;
+}
+
+.triggerCard:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.triggerIconCol {
+  flex-shrink: 0;
+}
+
+.triggerIconBox {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.triggerIconReminder {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+.triggerIconDiscount {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.triggerContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.triggerTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.triggerTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.triggerStatus {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.triggerStatusActive {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+}
+
+.triggerStatusScheduled {
+  background: rgba(234, 179, 8, 0.12);
+  color: #ca8a04;
+}
+
+.triggerDesc {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--dove-gray);
+  line-height: 1.5;
+}
+
+.triggerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.triggerTiming,
+.triggerDiscount,
+.triggerTarget {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--scorpion);
+}
+
+.triggerDiscount {
+  color: #16a34a;
+  font-weight: 700;
+}

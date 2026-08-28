@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  Ban,
   Bell,
   BookOpen,
   Calendar,
   Edit3,
   HelpCircle,
+  LineChart,
   Settings,
   Wallet,
 } from "lucide-react";
@@ -15,17 +17,23 @@ type ProfileLeftSidebarProps = {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   totalSessionsCount: number;
+  isExpert?: boolean;
+  status?: string;
+  handleToggleStatus?: () => void;
 };
 
 export default function ProfileLeftSidebar({
   activeTab,
   setActiveTab,
   totalSessionsCount,
+  isExpert = false,
+  status,
+  handleToggleStatus,
 }: ProfileLeftSidebarProps) {
   return (
     <aside className={styles.sidebarLeft}>
       <div className={styles.navCard}>
-        <div className={styles.navCardTitle}>My Account</div>
+        <div className={styles.navCardTitle}>{isExpert ? "Expert Profile Overview" : "Seeker Profile Overview"}</div>
         <ul className={styles.navList}>
           <li>
             <button
@@ -45,7 +53,7 @@ export default function ProfileLeftSidebar({
               onClick={() => setActiveTab("edit")}
             >
               <span className={styles.navItemLeft}>
-                <Edit3 size={16} /> Edit Profile
+                <Edit3 size={16} /> Profile Management
               </span>
             </button>
           </li>
@@ -68,10 +76,23 @@ export default function ProfileLeftSidebar({
               onClick={() => setActiveTab("payments")}
             >
               <span className={styles.navItemLeft}>
-                <Wallet size={16} /> Payments &amp; Invoices
+                <Wallet size={16} /> Wallet &amp; Credits
               </span>
             </button>
           </li>
+          {!isExpert && (
+            <li>
+              <button
+                type="button"
+                className={`${styles.navItem} ${activeTab === "insights" ? styles.navItemActive : ""}`}
+                onClick={() => setActiveTab("insights")}
+              >
+                <span className={styles.navItemLeft}>
+                  <LineChart size={16} /> Financial Insights
+                </span>
+              </button>
+            </li>
+          )}
           <li>
             <button
               type="button"
@@ -90,7 +111,7 @@ export default function ProfileLeftSidebar({
               onClick={() => setActiveTab("settings")}
             >
               <span className={styles.navItemLeft}>
-                <Settings size={16} /> Preferences
+                <Settings size={16} /> Settings
               </span>
             </button>
           </li>
@@ -105,6 +126,7 @@ export default function ProfileLeftSidebar({
               </span>
             </button>
           </li>
+
         </ul>
       </div>
     </aside>

@@ -44,59 +44,12 @@ export default function ProfileRightSidebar({
 
         <div className={styles.walletActions}>
           <button type="button" className={styles.walletBtnAdd} onClick={() => setActiveTab("wallet")}>
-            Add Money
-          </button>
-          <button type="button" className={styles.walletBtnHistory} onClick={() => setActiveTab("wallet")}>
-            History
+            Add Credits
           </button>
         </div>
       </div>
 
-      {/* Account Actions Card */}
-      <div className={styles.actionCard}>
-        <div className={styles.navCardTitle} style={{ paddingLeft: 0 }}>Account Actions</div>
-        <div className={styles.actionList}>
-          <div className={styles.actionRow} onClick={() => setActiveTab("settings")}>
-            <div className={styles.actionLeft}>
-              <Settings size={16} className={styles.actionIcon} />
-              <span>Settings</span>
-            </div>
-            <ChevronRight size={16} style={{ color: "var(--dove-gray)" }} />
-          </div>
 
-          <div className={styles.actionRow} onClick={() => setActiveTab("notifications")}>
-            <div className={styles.actionLeft}>
-              <Bell size={16} className={styles.actionIcon} />
-              <span>Notifications</span>
-            </div>
-            <ChevronRight size={16} style={{ color: "var(--dove-gray)" }} />
-          </div>
-
-          <div className={styles.actionRow} onClick={() => setActiveTab("settings")}>
-            <div className={styles.actionLeft}>
-              <Shield size={16} className={styles.actionIcon} />
-              <span>Privacy &amp; Security</span>
-            </div>
-            <ChevronRight size={16} style={{ color: "var(--dove-gray)" }} />
-          </div>
-
-          <div className={styles.actionRow}>
-            <div className={styles.actionLeft}>
-              <Award size={16} className={styles.actionIcon} />
-              <span>Referrals &amp; Rewards</span>
-            </div>
-            <ChevronRight size={16} style={{ color: "var(--dove-gray)" }} />
-          </div>
-
-          <div className={styles.actionRow} onClick={handleToggleStatus}>
-            <div className={styles.actionLeft} style={{ color: status === "active" ? "#dc2626" : "#16a34a" }}>
-              <Ban size={16} />
-              <span>{status === "active" ? "Suspend Account" : "Reactivate Account"}</span>
-            </div>
-            <ChevronRight size={16} style={{ color: "var(--dove-gray)" }} />
-          </div>
-        </div>
-      </div>
 
       {/* Trust & Safety Card */}
       <div className={styles.actionCard}>

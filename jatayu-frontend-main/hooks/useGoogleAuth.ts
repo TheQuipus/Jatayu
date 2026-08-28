@@ -139,6 +139,12 @@ export function useGoogleAuth({ onSuccess, onError, role = "expert" }: GoogleAut
           client_id: googleClientId,
           scope: "openid email profile",
           callback: handleTokenResponse,
+          error_callback: (error: any) => {
+            setIsLoading(false);
+            if (error && error.type !== "popup_closed") {
+              onErrorRef.current(error.message || "Google authentication failed.");
+            }
+          },
         });
       })
       .catch((err: unknown) => {
@@ -181,6 +187,7 @@ declare global {
             client_id: string;
             scope: string;
             callback: (response: { access_token?: string; error?: string; error_description?: string }) => void;
+            error_callback?: (error: { type: string; message?: string }) => void;
           }) => GoogleTokenClient;
         };
       };

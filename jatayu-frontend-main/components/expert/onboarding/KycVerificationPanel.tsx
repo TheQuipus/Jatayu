@@ -488,134 +488,131 @@ export default function KycVerificationPanel({
   const cameraModal =
     mounted && isModalOpen
       ? createPortal(
-          <div className={styles.cameraModal} role="dialog" aria-modal="true" aria-label="Identity verification camera">
-            {phase === "requesting" ? (
-              <div className={styles.modalLoading}>
-                <div className={styles.spinner} aria-hidden="true" />
-                <p className={styles.processingText}>Starting camera…</p>
-                <button type="button" className={styles.modalCloseBtn} onClick={resetVerification} aria-label="Close">
-                  <X size={18} />
-                </button>
+        <div className={styles.cameraModal} role="dialog" aria-modal="true" aria-label="Identity verification camera">
+          {phase === "requesting" ? (
+            <div className={styles.modalLoading}>
+              <div className={styles.spinner} aria-hidden="true" />
+              <p className={styles.processingText}>Starting camera…</p>
+              <button type="button" className={styles.modalCloseBtn} onClick={resetVerification} aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+          ) : null}
+
+          {phase === "denied" ? (
+            <div className={styles.modalDenied}>
+              <div className={styles.introIconWrap}>
+                <ShieldCheck size={28} strokeWidth={1.5} />
               </div>
-            ) : null}
+              <h3 className={styles.modalDeniedTitle}>Camera access required</h3>
+              <p className={styles.modalDeniedText}>
+                Allow camera access in your browser settings and try again.
+              </p>
+              <button type="button" className={styles.beginBtn} onClick={() => void beginVerification()}>
+                Try again
+              </button>
+              <button type="button" className={styles.modalCloseBtn} onClick={resetVerification} aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+          ) : null}
 
-            {phase === "denied" ? (
-              <div className={styles.modalDenied}>
-                <div className={styles.introIconWrap}>
-                  <ShieldCheck size={28} strokeWidth={1.5} />
-                </div>
-                <h3 className={styles.modalDeniedTitle}>Camera access required</h3>
-                <p className={styles.modalDeniedText}>
-                  Allow camera access in your browser settings and try again.
-                </p>
-                <button type="button" className={styles.beginBtn} onClick={() => void beginVerification()}>
-                  Try again
+          {phase === "guided" ? (
+            <div className={styles.session}>
+              <video ref={liveVideoRef} className={styles.liveVideo} muted playsInline autoPlay />
+              <div className={styles.sessionOverlay}>
+                <button
+                  type="button"
+                  className={styles.cancelBtn}
+                  onClick={resetVerification}
+                  aria-label="Cancel verification"
+                >
+                  <X size={16} />
                 </button>
-                <button type="button" className={styles.modalCloseBtn} onClick={resetVerification} aria-label="Close">
-                  <X size={18} />
-                </button>
-              </div>
-            ) : null}
 
-            {phase === "guided" ? (
-              <div className={styles.session}>
-                <video ref={liveVideoRef} className={styles.liveVideo} muted playsInline autoPlay />
-                <div className={styles.sessionOverlay}>
-                  <button
-                    type="button"
-                    className={styles.cancelBtn}
-                    onClick={resetVerification}
-                    aria-label="Cancel verification"
-                  >
-                    <X size={16} />
-                  </button>
-
-                  <div className={styles.sessionTop}>
-                    <div className={styles.stepDots}>
-                      {KYC_STEPS.map((_, index) => (
-                        <span
-                          key={index}
-                          className={`${styles.stepDot} ${
-                            index < stepIndex
-                              ? styles.stepDotDone
-                              : index === stepIndex
-                                ? styles.stepDotActive
-                                : ""
+                <div className={styles.sessionTop}>
+                  <div className={styles.stepDots}>
+                    {KYC_STEPS.map((_, index) => (
+                      <span
+                        key={index}
+                        className={`${styles.stepDot} ${index < stepIndex
+                            ? styles.stepDotDone
+                            : index === stepIndex
+                              ? styles.stepDotActive
+                              : ""
                           }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className={styles.frameArea}>
-                    <div className={styles.ovalBlock}>
-                      <div className={styles.instructionBlock}>
-                        <p className={styles.instruction}>{currentStep.instruction}</p>
-                        <p className={styles.instructionSub}>{currentStep.sub}</p>
-                      </div>
-                      <div
-                        className={`${styles.faceOval} ${
-                          detectedPose === currentStep.pose
-                            ? styles.faceOvalMatched
-                            : faceDetected
-                              ? styles.faceOvalWrongPose
-                              : styles.faceOvalNotDetected
-                        }`}
                       />
-                    </div>
+                    ))}
                   </div>
+                </div>
 
-                  <div className={styles.countdownWrap}>
+                <div className={styles.frameArea}>
+                  <div className={styles.ovalBlock}>
+                    <div className={styles.instructionBlock}>
+                      <p className={styles.instruction}>{currentStep.instruction}</p>
+                      <p className={styles.instructionSub}>{currentStep.sub}</p>
+                    </div>
                     <div
-                      className={`${styles.poseStatusBadge} ${
-                        detectedPose === currentStep.pose
-                          ? styles.poseStatusBadgeMatched
+                      className={`${styles.faceOval} ${detectedPose === currentStep.pose
+                          ? styles.faceOvalMatched
                           : faceDetected
-                            ? styles.poseStatusBadgeWaiting
-                            : styles.poseStatusBadgeNone
-                      }`}
-                    >
-                      {detectedPose === currentStep.pose ? (
-                        <>
-                          <span>✓ {currentStep.pose.toUpperCase()} POSE DETECTED</span>
-                          <span>({holdProgress}%)</span>
-                        </>
-                      ) : faceDetected ? (
-                        <span>
-                          {currentStep.pose === "left"
-                            ? "Turn head to your LEFT ←"
-                            : currentStep.pose === "right"
-                              ? "Turn head to your RIGHT →"
-                              : "Look directly at camera"}
-                        </span>
-                      ) : (
-                        <span>Position face in oval</span>
-                      )}
-                    </div>
+                            ? styles.faceOvalWrongPose
+                            : styles.faceOvalNotDetected
+                        }`}
+                    />
+                  </div>
+                </div>
 
-                    <div className={styles.poseProgressBar}>
-                      <div
-                        className={styles.poseProgressBarFill}
-                        style={{ width: `${holdProgress}%` }}
-                      />
-                    </div>
+                <div className={styles.countdownWrap}>
+                  <div
+                    className={`${styles.poseStatusBadge} ${detectedPose === currentStep.pose
+                        ? styles.poseStatusBadgeMatched
+                        : faceDetected
+                          ? styles.poseStatusBadgeWaiting
+                          : styles.poseStatusBadgeNone
+                      }`}
+                  >
+                    {detectedPose === currentStep.pose ? (
+                      <>
+                        <span>✓ {currentStep.pose.toUpperCase()} POSE DETECTED</span>
+                        <span>({holdProgress}%)</span>
+                      </>
+                    ) : faceDetected ? (
+                      <span>
+                        {currentStep.pose === "left"
+                          ? "Turn head to your LEFT ←"
+                          : currentStep.pose === "right"
+                            ? "Turn head to your RIGHT →"
+                            : "Look directly at camera"}
+                      </span>
+                    ) : (
+                      <span>Position face in oval</span>
+                    )}
+                  </div>
+
+                  <div className={styles.poseProgressBar}>
+                    <div
+                      className={styles.poseProgressBarFill}
+                      style={{ width: `${holdProgress}%` }}
+                    />
                   </div>
                 </div>
               </div>
-            ) : null}
+            </div>
+          ) : null}
 
-            {phase === "processing" ? (
-              <div className={styles.processing}>
-                <div className={styles.spinner} aria-hidden="true" />
-                <p className={styles.processingText}>Verifying your identity</p>
-                <p className={styles.processingSub}>
-                  Matching your live capture with submitted documents
-                </p>
-              </div>
-            ) : null}
-          </div>,
-          document.body,
-        )
+          {phase === "processing" ? (
+            <div className={styles.processing}>
+              <div className={styles.spinner} aria-hidden="true" />
+              <p className={styles.processingText}>Verifying your identity</p>
+              <p className={styles.processingSub}>
+                Matching your live capture with submitted documents
+              </p>
+            </div>
+          ) : null}
+        </div>,
+        document.body,
+      )
       : null;
 
   return (
@@ -634,7 +631,7 @@ export default function KycVerificationPanel({
             </p>
             <button type="button" className={styles.beginBtn} onClick={() => void beginVerification()}>
               <ShinyText
-                text="Begin verification"
+                text="BEGIN VERIFICATION"
                 iconSize={14}
                 speed={2.5}
                 color="#E53B17"

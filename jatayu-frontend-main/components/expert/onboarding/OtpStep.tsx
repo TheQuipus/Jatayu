@@ -180,9 +180,11 @@ export default function OtpStep({ expertId, phone, email, onBack, onContinue }: 
         </div>
 
         {error ? (
-          <p className={register.fieldErrorBelow} role="alert">
-            {error}
-          </p>
+          <div className={register.errorBannerBox}>
+            <p className={register.fieldErrorBelow} role="alert">
+              {error}
+            </p>
+          </div>
         ) : null}
 
         {isVerifying ? (

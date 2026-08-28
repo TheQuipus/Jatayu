@@ -229,15 +229,12 @@
   font-size: 14px;
   line-height: 20px;
   text-transform: uppercase;
-  color: var(--silver-chalice);
+  color: #E53B17;
   transition: color 0.2s ease;
   outline: none;
   padding: 6px;
 }
 
-.textBtn:focus-visible {
-  color: var(--white);
-}
 
 @media (max-width: 600px) {
   .cardHeader {

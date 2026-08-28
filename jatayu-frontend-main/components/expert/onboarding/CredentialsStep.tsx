@@ -394,26 +394,6 @@ export default function CredentialsStep({
         </p>
 
         <div className={styles.sectionsStack}>
-          {digilockerConfigured || digilockerVerified ? (
-            <article>
-              <header className={styles.sectionCardHeader}>
-                <div className={styles.sectionCardTitleWrap}>
-                  <h2 className={styles.sectionCardTitle}>Verify with DigiLocker</h2>
-                  <p className={styles.sectionCardHint}>Securely verify government-issued identity documents.</p>
-                </div>
-              </header>
-              <button
-                type="button"
-                className={styles.idTypeBtn}
-                disabled={digilockerLoading || digilockerVerified}
-                onClick={() => void handleDigilockerVerification()}
-              >
-                <IdCard size={16} aria-hidden="true" />
-                {digilockerVerified ? "DigiLocker verified" : digilockerLoading ? "Opening DigiLocker…" : "Continue with DigiLocker"}
-              </button>
-              {digilockerError ? <p className={styles.idPrivacyNote}>{digilockerError}</p> : null}
-            </article>
-          ) : null}
           {/* 1. Identity Verification */}
           <article>
             <KycVerificationPanel videoSrc={kycVideoSrc} onVideoChange={onKycVideoChange} />
@@ -442,7 +422,18 @@ export default function CredentialsStep({
                   {label}
                 </button>
               ))}
+
+              <button
+                type="button"
+                className={`${styles.idTypeBtn} ${digilockerVerified ? styles.digilockerVerified : ""}`}
+                disabled={digilockerLoading}
+                onClick={() => void handleDigilockerVerification()}
+              >
+                <IdCard size={14} aria-hidden="true" />
+                {digilockerVerified ? "DigiLocker verified" : digilockerLoading ? "Opening DigiLocker…" : "Verify with DigiLocker"}
+              </button>
             </div>
+            {digilockerError ? <p className={styles.idPrivacyNote} style={{ marginTop: "8px" }}>{digilockerError}</p> : null}
 
             <AnimatePresence initial={false}>
               {selectedIdType && (

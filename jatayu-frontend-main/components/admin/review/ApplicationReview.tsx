@@ -29,6 +29,9 @@ import {
   Store,
   Video,
   Users,
+  XCircle,
+  Info,
+  AlertTriangle,
 } from "lucide-react";
 import { ADMIN_PROFILE } from "@/lib/adminDashboard";
 import { mapToApplicationReview } from "@/lib/adminApplicationMappers";
@@ -164,6 +167,27 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "warning" | "error" | "info";
+  } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = (message: string, type: "success" | "warning" | "error" | "info" = "info") => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+    }, 4000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
   const [digilockerDocuments, setDigilockerDocuments] = useState<AdminDigilockerDocument[]>([]);
   const [digilockerDocumentsLoading, setDigilockerDocumentsLoading] = useState(true);
   const [digilockerDocumentError, setDigilockerDocumentError] = useState<string | null>(null);
@@ -261,12 +285,42 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     return titles[id] ?? id;
   };
 
+  const [sectionDecisions, setSectionDecisions] = useState<
+    Record<string, SectionReviewState>
+  >({
+    category: { decision: null, note: "" },
+    kyc: { decision: null, note: "" },
+    certifications: { decision: null, note: "" },
+    experience: { decision: null, note: "" },
+    portfolio: { decision: null, note: "" },
+    availability: { decision: null, note: "" },
+    audience: { decision: null, note: "" },
+    preferences: { decision: null, note: "" },
+    credentials: { decision: null, note: "" },
+    profile: { decision: null, note: "" },
+  });
+
+  const [submittedDecisions, setSubmittedDecisions] = useState<
+    Record<string, SectionReviewState>
+  >({
+    category: { decision: null, note: "" },
+    kyc: { decision: null, note: "" },
+    certifications: { decision: null, note: "" },
+    experience: { decision: null, note: "" },
+    portfolio: { decision: null, note: "" },
+    availability: { decision: null, note: "" },
+    audience: { decision: null, note: "" },
+    preferences: { decision: null, note: "" },
+    credentials: { decision: null, note: "" },
+    profile: { decision: null, note: "" },
+  });
+
   const getSectionDecision = (id: string): SectionDecision => {
-    return sectionDecisions[id]?.decision ?? null;
+    return submittedDecisions[id]?.decision ?? null;
   };
 
   const getSectionNote = (id: string): string => {
-    const sec = sectionDecisions[id];
+    const sec = submittedDecisions[id];
     if (!sec) return "";
     if (sec.note?.trim()) return sec.note.trim();
     if (sec.notes && sec.notes.length > 0) {
@@ -288,21 +342,6 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     return <span className={`${styles.sectionBadge} ${styles.sectionBadgeRejected}`}>Rejected</span>;
   };
 
-  const [sectionDecisions, setSectionDecisions] = useState<
-    Record<string, SectionReviewState>
-  >({
-    category: { decision: null, note: "" },
-    kyc: { decision: null, note: "" },
-    certifications: { decision: null, note: "" },
-    experience: { decision: null, note: "" },
-    portfolio: { decision: null, note: "" },
-    availability: { decision: null, note: "" },
-    audience: { decision: null, note: "" },
-    preferences: { decision: null, note: "" },
-    credentials: { decision: null, note: "" },
-    profile: { decision: null, note: "" },
-  });
-
   const unapprovedSectionsList = useMemo(() => {
     return ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"]
       .filter((id) => getSectionDecision(id) !== "approve")
@@ -311,7 +350,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         const statusLabel = dec === null ? "Pending Review" : dec === "clarification" ? "Needs Clarification" : "Rejected";
         return `${getSectionTitle(id)} (${statusLabel})`;
       });
-  }, [sectionDecisions]);
+  }, [submittedDecisions]);
 
   const clarificationSectionsList = useMemo(() => {
     return ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"]
@@ -324,7 +363,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         note: getSectionNote(id),
         decision: getSectionDecision(id),
       }));
-  }, [sectionDecisions]);
+  }, [submittedDecisions]);
 
   const rejectedSectionsList = useMemo(() => {
     return ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"]
@@ -337,17 +376,12 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         note: getSectionNote(id),
         decision: getSectionDecision(id),
       }));
-  }, [sectionDecisions]);
+  }, [submittedDecisions]);
 
   const updateSectionDecision = (
     sectionId: string,
     nextState: SectionReviewState,
   ) => {
-    if (nextState.decision === "approve") {
-      setPendingApproveSection({ id: sectionId, state: nextState });
-      return;
-    }
-
     setSectionDecisions((prev) => {
       const updated = {
         ...prev,
@@ -358,6 +392,39 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       }
       return updated;
     });
+  };
+
+  const submitSectionDecision = (
+    sectionId: string,
+    decision: SectionDecision,
+    updatedState?: SectionReviewState,
+  ) => {
+    setSubmittedDecisions((prev) => {
+      const nextState = updatedState || sectionDecisions[sectionId];
+      const updated = {
+        ...prev,
+        [sectionId]: nextState,
+      };
+      return updated;
+    });
+
+    const title = getSectionTitle(sectionId);
+    let msg = "";
+    let type: "success" | "warning" | "error" | "info" = "info";
+    if (decision === "approve") {
+      msg = `"${title}" approved successfully.`;
+      type = "success";
+    } else if (decision === "clarification") {
+      msg = `"${title}" marked as Needs Clarification.`;
+      type = "warning";
+    } else if (decision === "reject") {
+      msg = `"${title}" section rejected.`;
+      type = "error";
+    } else {
+      msg = `"${title}" decision reset.`;
+      type = "info";
+    }
+    showToast(msg, type);
   };
 
 
@@ -446,6 +513,33 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   return (
     <section className={styles.dashboard}>
       <div className={`container ${styles.dashboardInner}`}>
+        {toast ? (
+          <div className={`${styles.toastNotification} ${
+            toast.type === "success"
+              ? styles.toastSuccess
+              : toast.type === "warning"
+              ? styles.toastWarning
+              : toast.type === "error"
+              ? styles.toastError
+              : styles.toastInfo
+          }`}>
+            <div className={styles.toastIcon}>
+              {toast.type === "success" && <CheckCircle2 size={18} />}
+              {toast.type === "warning" && <AlertTriangle size={18} />}
+              {toast.type === "error" && <XCircle size={18} />}
+              {toast.type === "info" && <Info size={18} />}
+            </div>
+            <div className={styles.toastText}>{toast.message}</div>
+            <button
+              type="button"
+              className={styles.toastCloseBtn}
+              onClick={() => setToast(null)}
+              aria-label="Close notification"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : null}
         {previewDoc ? (
           <DocumentPreviewModal document={previewDoc} onClose={() => setPreviewDoc(null)} />
         ) : null}
@@ -605,6 +699,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 state={sectionDecisions.category ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("category", st)}
                 onNextSection={() => scrollToNextSection("category")}
+                onSubmitDecision={submitSectionDecision}
                 disabled={isApproved}
               />
             </div>
@@ -765,6 +860,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 state={sectionDecisions.experience ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("experience", st)}
                 onNextSection={() => scrollToNextSection("experience")}
+                onSubmitDecision={submitSectionDecision}
                 disabled={isApproved}
               />
             </div>
@@ -821,6 +917,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 state={sectionDecisions.profile ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("profile", st)}
                 onNextSection={() => scrollToNextSection("profile")}
+                onSubmitDecision={submitSectionDecision}
                 disabled={isApproved}
               />
             </div>
@@ -1075,6 +1172,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 state={sectionDecisions.credentials ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("credentials", st)}
                 onNextSection={() => scrollToNextSection("credentials")}
+                onSubmitDecision={submitSectionDecision}
                 disabled={isApproved}
               />
             </div>
@@ -1137,6 +1235,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 state={sectionDecisions.preferences ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("preferences", st)}
                 onNextSection={() => scrollToNextSection("preferences")}
+                onSubmitDecision={submitSectionDecision}
                 disabled={isApproved}
               />
             </div>
@@ -1189,6 +1288,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 state={sectionDecisions.audience ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("audience", st)}
                 onNextSection={() => scrollToNextSection("audience")}
+                onSubmitDecision={submitSectionDecision}
                 disabled={isApproved}
               />
             </div>
@@ -1259,6 +1359,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 state={sectionDecisions.availability ?? { decision: null, note: "" }}
                 onChange={(st) => updateSectionDecision("availability", st)}
                 onNextSection={() => scrollToNextSection("availability")}
+                onSubmitDecision={submitSectionDecision}
                 disabled={isApproved}
               />
             </div>

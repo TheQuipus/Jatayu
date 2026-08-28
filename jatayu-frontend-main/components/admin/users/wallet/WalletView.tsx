@@ -8,7 +8,6 @@ import {
   CreditCard,
   Crown,
   FileText,
-  History,
   Info,
   Lock,
   MessageSquare,
@@ -138,13 +137,9 @@ export default function WalletView() {
       {/* 1. Header */}
       <div className={styles.walletHeaderRow}>
         <div>
-          <div className={styles.breadcrumb}>My Account &gt; Wallet &amp; Credits</div>
           <h2 className={styles.walletPageTitle}>Wallet &amp; Credits</h2>
           <p className={styles.walletPageSubtitle}>Manage your balance, credits, and payment history</p>
         </div>
-        <button type="button" className={styles.btnAddFundsTop} onClick={() => setSelectedAmount(500)}>
-          <Plus size={16} /> Add Funds
-        </button>
       </div>
 
       {/* 2. Top 3 Summary Cards */}
@@ -163,10 +158,7 @@ export default function WalletView() {
           </div>
           <div className={styles.cardBtnGroup}>
             <button type="button" className={styles.btnWhitePill} onClick={() => setSelectedAmount(500)}>
-              <Plus size={14} /> Add Money
-            </button>
-            <button type="button" className={styles.btnOutlineDark} onClick={() => setTxFilter("all")}>
-              <History size={14} /> History
+              <Plus size={14} /> Add Credits
             </button>
           </div>
         </div>

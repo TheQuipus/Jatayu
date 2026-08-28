@@ -155,21 +155,16 @@
   right: 20px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-  background: transparent;
   display: grid;
   place-items: center;
-  color: var(--white);
+  color: #E53B17;
   transition: all 0.2s ease;
   z-index: 13;
   pointer-events: none;
 }
 
 .formatCheckboxSelected {
-  background: #E53B17;
-  border-color: #E53B17;
-  box-shadow: 0 2px 6px rgba(229, 59, 23, 0.3);
+  /* empty since we no longer render a circle container background */
 }
 
 .formatCardInner {

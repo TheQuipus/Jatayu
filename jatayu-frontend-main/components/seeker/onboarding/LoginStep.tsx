@@ -200,9 +200,11 @@ export default function LoginStep({
           </div>
 
           {submitError ? (
-            <p className={register.fieldErrorBelow} role="alert">
-              {submitError}
-            </p>
+            <div className={register.errorBannerBox}>
+              <p className={register.fieldErrorBelow} role="alert">
+                {submitError}
+              </p>
+            </div>
           ) : null}
 
           <ContinueButton

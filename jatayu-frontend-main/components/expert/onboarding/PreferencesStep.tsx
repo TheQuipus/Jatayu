@@ -14,6 +14,8 @@ import {
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
+import Lottie from "lottie-react";
+import checkmarkAnimation from "@/public/Lottie/Checkmark.json";
 import shared from "./onboarding.shared.module.css";
 import styles from "./PreferencesStep.module.css";
 import {
@@ -185,12 +187,19 @@ export default function PreferencesStep({
                   />
                 </svg>
 
-                <div
-                  className={`${styles.formatCheckbox} ${isSelected ? styles.formatCheckboxSelected : ""}`}
-                  aria-hidden="true"
-                >
-                  {isSelected && <Check size={10} strokeWidth={3} />}
-                </div>
+                {isSelected && Boolean(formatPrices[fmt.id]?.trim()) && (
+                  <div
+                    className={`${styles.formatCheckbox} ${styles.formatCheckboxSelected}`}
+                    style={{ width: 28, height: 28, top: 16, right: 16 }}
+                    aria-hidden="true"
+                  >
+                    <Lottie
+                      animationData={checkmarkAnimation}
+                      loop={false}
+                      style={{ width: "100%", height: "100%" }}
+                    />
+                  </div>
+                )}
 
                 <div className={styles.formatCardBody}>
                   <div className={styles.formatCardInner}>

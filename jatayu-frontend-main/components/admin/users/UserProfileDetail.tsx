@@ -17,6 +17,7 @@ import ProfileLeftSidebar from "./profile/ProfileLeftSidebar";
 import ProfileQuickActions from "./profile/ProfileQuickActions";
 import ProfileRecentBookings from "./profile/ProfileRecentBookings";
 import ProfileRightSidebar from "./profile/ProfileRightSidebar";
+import ProfileEngagement from "./profile/ProfileEngagement";
 
 import EditProfileView from "./editprofile/EditProfileView";
 import HelpSupportView from "./help/HelpSupportView";
@@ -24,6 +25,7 @@ import NotificationsView from "./notifications/NotificationsView";
 import SettingsView from "./settings/SettingsView";
 import WalletView from "./wallet/WalletView";
 import AdminBookingCalendar from "./bookings/AdminBookingCalendar";
+import FinancialInsightsView from "./insights/FinancialInsightsView";
 import styles from "./UserProfileDetail.module.css";
 
 type UserProfileDetailProps = {
@@ -80,6 +82,7 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
     activeTab === "activity" ||
     activeTab === "wallet" ||
     activeTab === "payments" ||
+    activeTab === "insights" ||
     activeTab === "notifications" ||
     activeTab === "help" ||
     activeTab === "settings" ||
@@ -92,21 +95,6 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
         <Link href={isExpert ? ADMIN_USERS_EXPERTS_HREF : ADMIN_USERS_SEEKERS_HREF} className={styles.backLink}>
           <ArrowLeft size={16} /> Back to {isExpert ? "Experts" : "Seekers"} List
         </Link>
-        <h1 className={styles.topTitle}>
-          {activeTab === "bookings" || activeTab === "activity"
-            ? "Booking History Calendar"
-            : activeTab === "wallet" || activeTab === "payments"
-            ? "Wallet & Payments"
-            : activeTab === "notifications"
-            ? "Notifications Center"
-            : activeTab === "help"
-            ? "Help & Support Center"
-            : activeTab === "settings"
-            ? "Account Settings"
-            : activeTab === "edit"
-            ? "Edit Profile"
-            : `${isExpert ? "Expert" : "Seeker"} Profile Overview`}
-        </h1>
       </div>
 
       {/* Main Layout Grid — Left Sidebar ALWAYS stays visible */}
@@ -116,6 +104,9 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           totalSessionsCount={totalSessionsCount}
+          isExpert={isExpert}
+          status={status}
+          handleToggleStatus={handleToggleStatus}
         />
 
         {/* Tab Content Area */}
@@ -126,6 +117,10 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
         ) : activeTab === "wallet" || activeTab === "payments" ? (
           <div className={styles.walletContentArea}>
             <WalletView />
+          </div>
+        ) : activeTab === "insights" ? (
+          <div className={styles.walletContentArea}>
+            <FinancialInsightsView userId={userId} />
           </div>
         ) : activeTab === "notifications" ? (
           <div className={styles.walletContentArea}>
@@ -166,6 +161,8 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
               />
 
               <ProfileRecentBookings isExpert={isExpert} setActiveTab={setActiveTab} />
+
+              {!isExpert && <ProfileEngagement />}
             </main>
 
             {/* Right Sidebar */}
