@@ -26,7 +26,7 @@ import {
   type CalendarBooking,
   type BookingDetail,
 } from "@/lib/seekerDashboard";
-import { fetchSeekerBookings, toBookingDetail } from "@/lib/seekerBookingApi";
+import { fetchSeekerBookings, pokeBookingExpert, toBookingDetail } from "@/lib/seekerBookingApi";
 import styles from "./BookingCalendar.module.css";
 
 const CONSULTATION_ICONS: Record<ConsultationType, typeof MessageSquare> = {
@@ -119,12 +119,20 @@ interface PendingCardPokeBoxProps {
   bookingId: string;
   placedDaysAgo?: number;
   createdAt?: number | string;
+  initialCount?: number;
+  initialLastPokedAt?: string | null;
+  maxCount?: number;
+  nextAllowedAt?: string | null;
 }
 
 const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({
   bookingId,
   placedDaysAgo = 0,
   createdAt,
+  initialCount = 0,
+  initialLastPokedAt = null,
+  maxCount = 2,
+  nextAllowedAt = null,
 }) => {
   const [pokeState, setPokeState] = useState<{
     count: number;
@@ -138,8 +146,11 @@ const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({
 
   useEffect(() => {
     setIsMounted(true);
-    setPokeState(getPokeState(bookingId));
-  }, [bookingId]);
+    setPokeState(initialCount || initialLastPokedAt ? {
+      count: initialCount,
+      lastPokedAt: initialLastPokedAt ? new Date(initialLastPokedAt).getTime() : null,
+    } : getPokeState(bookingId));
+  }, [bookingId, initialCount, initialLastPokedAt]);
 
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
@@ -157,20 +168,28 @@ const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({
       : createdAt
     : Date.now() - placedDaysAgo * 24 * 60 * 60 * 1000;
 
-  const fourHoursMs = 4 * 60 * 60 * 1000;
+  const fourHoursMs = 1 * 60 * 60 * 1000;
   const timeSinceCreationMs = currentTime - bookingTimeMs;
-  const isInitialDelayPassed = timeSinceCreationMs >= fourHoursMs || placedDaysAgo > 0;
-  const remainingInitialMs = Math.max(0, fourHoursMs - timeSinceCreationMs);
+  const serverNextAllowedMs = nextAllowedAt ? new Date(nextAllowedAt).getTime() : null;
+  const isInitialDelayPassed = serverNextAllowedMs
+    ? currentTime >= serverNextAllowedMs || pokeState.count > 0
+    : timeSinceCreationMs >= fourHoursMs || placedDaysAgo > 0;
+  const remainingInitialMs = serverNextAllowedMs
+    ? Math.max(0, serverNextAllowedMs - currentTime)
+    : Math.max(0, fourHoursMs - timeSinceCreationMs);
 
-  const cooldownDuration = 4 * 60 * 60 * 1000;
   const isCooldownActive =
     isMounted &&
     pokeState.lastPokedAt !== null &&
-    currentTime - pokeState.lastPokedAt < cooldownDuration;
+    (serverNextAllowedMs
+      ? currentTime < serverNextAllowedMs
+      : currentTime - pokeState.lastPokedAt < 4 * 60 * 60 * 1000);
 
   const remainingCooldownMs =
     pokeState.lastPokedAt !== null
-      ? Math.max(0, cooldownDuration - (currentTime - pokeState.lastPokedAt))
+      ? serverNextAllowedMs
+        ? Math.max(0, serverNextAllowedMs - currentTime)
+        : Math.max(0, 4 * 60 * 60 * 1000 - (currentTime - pokeState.lastPokedAt))
       : 0;
 
   const formatRemainingTime = (ms: number): string => {
@@ -182,18 +201,21 @@ const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({
     return `${mins}m ${secs}s`;
   };
 
-  const handlePoke = (e: React.MouseEvent) => {
+  const handlePoke = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!isInitialDelayPassed || pokeState.count >= 2 || isCooldownActive) return;
-
-    const nextCount = pokeState.count + 1;
-    const now = Date.now();
-    setPokeState({
-      count: nextCount,
-      lastPokedAt: now,
-    });
-    savePokeState(bookingId, nextCount, now);
+    if (!isInitialDelayPassed || pokeState.count >= maxCount || isCooldownActive) return;
+    try {
+      const updated = await pokeBookingExpert(bookingId);
+      const nextCount = updated.poke?.count || pokeState.count + 1;
+      const now = updated.poke?.lastPokedAt
+        ? new Date(updated.poke.lastPokedAt).getTime()
+        : Date.now();
+      setPokeState({ count: nextCount, lastPokedAt: now });
+      savePokeState(bookingId, nextCount, now);
+    } catch (error) {
+      console.error("Failed to poke expert:", error);
+    }
   };
 
   return (
@@ -202,12 +224,12 @@ const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({
         <button
           disabled
           className={styles.pokeBtnDisabled}
-          title="Poke option becomes active 4 hours after booking placement."
+          title="Poke option becomes active after the configured waiting period."
         >
           <Lock size={12} />
           <span>Poke active in {formatRemainingTime(remainingInitialMs)}</span>
         </button>
-      ) : pokeState.count >= 2 ? (
+      ) : pokeState.count >= maxCount ? (
         <button disabled className={styles.pokeBtnDisabled}>
           <CheckCircle2 size={12} />
           <span>Max pokes reached</span>
@@ -219,7 +241,7 @@ const PendingCardPokeBox: React.FC<PendingCardPokeBoxProps> = ({
         </button>
       ) : (
         <ContinueButton
-          label={`Poke ${pokeState.count}/2`}
+          label={`Poke ${pokeState.count}/${maxCount}`}
           onClick={handlePoke}
           showArrow={false}
           leadingIcon={
@@ -650,7 +672,15 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
                           <p className={styles.bookingType}>{booking.specialty}</p>
                         </Link>
                         <div className={styles.pendingDivider} />
-                        <PendingCardPokeBox bookingId={booking.id} placedDaysAgo={detail?.placedDaysAgo || 0} createdAt={(booking as any).createdAt} />
+                        <PendingCardPokeBox
+                          bookingId={booking.id}
+                          placedDaysAgo={detail?.placedDaysAgo || 0}
+                          createdAt={booking.createdAt}
+                          initialCount={booking.pokeCount}
+                          initialLastPokedAt={booking.lastPokedAt}
+                          maxCount={booking.pokeMaxCount}
+                          nextAllowedAt={booking.pokeNextAllowedAt}
+                        />
                       </div>
                     );
                   })}

@@ -42,6 +42,12 @@ export type PaymentSettings = {
   testMode: boolean;
 };
 
+export type BookingSettings = {
+  pokeInitialDelayHours: number;
+  pokeCooldownHours: number;
+  pokeMaxCount: number;
+};
+
 export type ProviderAuthCredentials = {
   clientId: string;
   clientSecret?: string;
@@ -94,6 +100,7 @@ export type AdminSettings = {
   sms: SmsSettings;
   smtp: SmtpSettings;
   payment: PaymentSettings;
+  booking: BookingSettings;
   auth: AuthCredentialsSettings;
   ai: AiSettings;
   templates: MessageTemplate[];
@@ -104,6 +111,7 @@ export type SettingsSection =
   | "smtp"
   | "auth"
   | "payment"
+  | "booking"
   | "ai"
   | "templates";
 
@@ -120,6 +128,7 @@ export const SETTINGS_SECTIONS: {
     description: "OAuth client ID, secret, and sign-in configuration",
   },
   { id: "payment", label: "Payment", description: "Gateway keys, webhooks, and payout mode" },
+  { id: "booking", label: "Booking", description: "Booking request and seeker poke controls" },
   { id: "ai", label: "AI Config", description: "AI provider model name and API credentials" },
   { id: "templates", label: "Templates", description: "SMS and email notification templates for experts and seekers" },
 ];
@@ -202,6 +211,11 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     webhookSecret: "",
     currency: "INR",
     testMode: true,
+  },
+  booking: {
+    pokeInitialDelayHours: 1,
+    pokeCooldownHours: 4,
+    pokeMaxCount: 2,
   },
   auth: {
     google: {
@@ -414,6 +428,7 @@ function mergeWithDefaults(partial: Partial<AdminSettings>): AdminSettings {
     sms: { ...DEFAULT_ADMIN_SETTINGS.sms, ...partial.sms },
     smtp: { ...DEFAULT_ADMIN_SETTINGS.smtp, ...partial.smtp },
     payment: { ...DEFAULT_ADMIN_SETTINGS.payment, ...partial.payment },
+    booking: { ...DEFAULT_ADMIN_SETTINGS.booking, ...partial.booking },
     auth: {
       google: { ...DEFAULT_ADMIN_SETTINGS.auth.google, ...partial.auth?.google },
       meta: { ...DEFAULT_ADMIN_SETTINGS.auth.meta, ...partial.auth?.meta },

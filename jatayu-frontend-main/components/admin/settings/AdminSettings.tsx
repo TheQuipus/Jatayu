@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Bot,
+  CalendarClock,
   CheckCircle2,
   CreditCard,
   KeyRound,
@@ -23,6 +24,7 @@ import {
 import AiSettingsPanel from "./AiSettingsPanel";
 import AuthCredentialsPanel from "./AuthCredentialsPanel";
 import PaymentSettingsPanel from "./PaymentSettingsPanel";
+import BookingSettingsPanel from "./BookingSettingsPanel";
 import SmsSettingsPanel from "./SmsSettingsPanel";
 import SmtpSettingsPanel from "./SmtpSettingsPanel";
 import TemplatesPanel from "./TemplatesPanel";
@@ -198,6 +200,7 @@ export default function AdminSettings({ section }: { section: SettingsSection })
                   {activeSection === "smtp" && <Mail size={18} />}
                   {activeSection === "auth" && <KeyRound size={18} />}
                   {activeSection === "payment" && <CreditCard size={18} />}
+                  {activeSection === "booking" && <CalendarClock size={18} />}
                   {activeSection === "ai" && <Bot size={18} />}
                 </div>
                 <div>
@@ -234,6 +237,13 @@ export default function AdminSettings({ section }: { section: SettingsSection })
               <PaymentSettingsPanel
                 draft={draft.payment}
                 onChange={(payment) => setDraft((current) => ({ ...current, payment }))}
+              />
+            ) : null}
+
+            {activeSection === "booking" ? (
+              <BookingSettingsPanel
+                draft={draft.booking}
+                onChange={(booking) => setDraft((current) => ({ ...current, booking }))}
               />
             ) : null}
 

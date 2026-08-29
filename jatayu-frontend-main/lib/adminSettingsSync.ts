@@ -22,6 +22,11 @@ function readString(map: Record<string, string>, key: string, fallback = ""): st
   return map[key] ?? fallback;
 }
 
+function readPositiveNumber(map: Record<string, string>, key: string, fallback: number): number {
+  const value = Number(map[key]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 function readSmsProvider(map: Record<string, string>): SmsProvider {
   const provider = readString(map, "SMS_PROVIDER", DEFAULT_ADMIN_SETTINGS.sms.provider);
   if (provider === "twilio" || provider === "msg91" || provider === "textlocal") {
@@ -124,6 +129,11 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
       encryption: smtpEncryption === "ssl" || smtpEncryption === "tls" ? smtpEncryption : "tls",
     },
     payment: DEFAULT_ADMIN_SETTINGS.payment,
+    booking: {
+      pokeInitialDelayHours: readPositiveNumber(map, "BOOKING_POKE_INITIAL_DELAY_HOURS", 1),
+      pokeCooldownHours: readPositiveNumber(map, "BOOKING_POKE_COOLDOWN_HOURS", 4),
+      pokeMaxCount: Math.floor(readPositiveNumber(map, "BOOKING_POKE_MAX_COUNT", 2)),
+    },
     auth: {
       google,
       meta,
@@ -185,6 +195,9 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     DIGILOCKER_SCOPES: settings.auth.digilocker.scopes,
     AI_PROVIDER_NAME: settings.ai.name,
     AI_API_KEY: settings.ai.apiKey,
+    BOOKING_POKE_INITIAL_DELAY_HOURS: String(settings.booking.pokeInitialDelayHours),
+    BOOKING_POKE_COOLDOWN_HOURS: String(settings.booking.pokeCooldownHours),
+    BOOKING_POKE_MAX_COUNT: String(settings.booking.pokeMaxCount),
   };
 }
 

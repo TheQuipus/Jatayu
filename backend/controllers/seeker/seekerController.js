@@ -5,6 +5,10 @@ import {
 } from '../../utils/aiService.js';
 import { triggerNotification } from '../../utils/templateNotificationService.js';
 import { getSetting } from '../../utils/settingsHelper.js';
+import {
+  getSeekerOnboardingProgress,
+  hasCompletedSeekerStep,
+} from '../../utils/seekerOnboardingProgress.js';
 
 
 const ONBOARDING_STEPS = new Set([
@@ -141,27 +145,8 @@ function applyOnboardingPayload(seeker, payload, profilePhotoPath) {
   if (payload.step) seeker.onboardingStep = payload.step;
 }
 
-function hasCompletedStep(seeker, step) {
-  switch (step) {
-    case 'category':
-      return Boolean(seeker.category?.trim());
-    case 'needs':
-      return Boolean(seeker.needsText?.trim()) || seeker.selectedNeedChips?.length > 0;
-    case 'format':
-      return seeker.selectedFormats?.length > 0;
-    case 'budget':
-      return Boolean(seeker.selectedBudget?.trim());
-    case 'personalisation':
-      return seeker.selectedLanguages?.length > 0;
-    case 'review':
-      return true;
-    default:
-      return false;
-  }
-}
-
 async function rewardOnboardingStep(seeker, step, transaction) {
-  if (!step || !hasCompletedStep(seeker, step)) return null;
+  if (!step || (step !== 'review' && !hasCompletedSeekerStep(seeker, step))) return null;
 
   const amount = getStepCreditAmount();
   const balanceAfter = Number(seeker.credits || 0) + amount;
@@ -195,7 +180,14 @@ async function rewardOnboardingStep(seeker, step, transaction) {
 function serializeSeeker(seeker) {
   const data = seeker.toJSON();
   delete data.password;
-  return data;
+  const onboarding = getSeekerOnboardingProgress(seeker);
+  return {
+    ...data,
+    completedSteps: onboarding.completedSteps,
+    resumeStep: onboarding.resumeStep,
+    onboardingComplete: onboarding.onboardingComplete,
+    onboarding,
+  };
 }
 
 export const getProfile = async (req, res) => {
@@ -374,5 +366,4 @@ export const improveSeekerNeeds = async (req, res) => {
     });
   }
 };
-
 

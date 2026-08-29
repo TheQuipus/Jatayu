@@ -59,6 +59,8 @@ export function serializeExpertRequest(booking, now = Date.now()) {
   const timing = responseTiming(data, now);
   return {
     ...data,
+    isPoked: Number(data.pokeCount || 0) > 0,
+    pokeCount: Number(data.pokeCount || 0),
     requestStatus: requestStatus(data, now),
     ...timing,
     seeker: seeker ? {
