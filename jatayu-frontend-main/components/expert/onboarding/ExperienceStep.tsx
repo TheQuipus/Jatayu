@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   Building2,
@@ -35,6 +35,8 @@ import {
   type EmploymentPosition,
 } from "@/lib/expertEmployment";
 import type { PortfolioSampleFile } from "@/lib/expertApplicationSubmission";
+import { useLinkedinProfileSync } from "@/hooks/useLinkedinProfileSync";
+import type { LinkedinConnectResponse } from "@/lib/api";
 import shared from "./onboarding.shared.module.css";
 import styles from "./ExperienceStep.module.css";
 
@@ -43,6 +45,7 @@ type ExperienceStepProps = {
   employmentPositions: EmploymentPosition[];
   educationDegrees: EducationDegree[];
   linkedin: string;
+  linkedinConnected?: boolean;
   portfolio: string;
   portfolioSamples: PortfolioSampleFile[];
   stepCompletion: boolean[];
@@ -50,6 +53,7 @@ type ExperienceStepProps = {
   onEmploymentPositionsChange: (positions: EmploymentPosition[]) => void;
   onEducationDegreesChange: (degrees: EducationDegree[]) => void;
   onLinkedinChange: (value: string) => void;
+  onLinkedinProfileFetched?: (response: LinkedinConnectResponse) => void;
   onPortfolioChange: (value: string) => void;
   onPortfolioSamplesChange: (samples: PortfolioSampleFile[]) => void;
   onBack: () => void;
@@ -62,6 +66,7 @@ export default function ExperienceStep({
   employmentPositions,
   educationDegrees,
   linkedin = "",
+  linkedinConnected = false,
   portfolio = "",
   portfolioSamples,
   stepCompletion,
@@ -69,6 +74,7 @@ export default function ExperienceStep({
   onEmploymentPositionsChange,
   onEducationDegreesChange,
   onLinkedinChange,
+  onLinkedinProfileFetched,
   onPortfolioChange,
   onPortfolioSamplesChange,
   onBack,
@@ -111,54 +117,25 @@ export default function ExperienceStep({
   const [expandedSection, setExpandedSection] = useState<
     "employment" | "education" | "portfolio" | null
   >(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isSynced, setIsSynced] = useState(false);
+  const [syncedThisSession, setSyncedThisSession] = useState(false);
+  const isSynced = linkedinConnected || syncedThisSession;
+  const [linkedinError, setLinkedinError] = useState("");
 
-  const handleLinkedinSync = () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-
-    setTimeout(() => {
-      setIsSyncing(false);
-      setIsSynced(true);
-
-      if (!linkedin.trim()) {
-        const slug = userName.trim().toLowerCase().replace(/\s+/g, "");
-        onLinkedinChange(`https://linkedin.com/in/${slug || "expert"}`);
-      }
-
-      if (employmentPositions.length === 0 || !employmentPositions.some((p) => p.jobTitle.trim())) {
-        onEmploymentPositionsChange([
-          {
-            id: Date.now().toString(),
-            jobTitle: "Senior Consultant / Specialist",
-            company: "Enterprise Solutions",
-            startMonth: "1",
-            startYear: "2020",
-            endMonth: "",
-            endYear: "",
-            currentlyWorking: true,
-            responsibilities: "Leading technical strategy, architecture design, and high-impact advisory.",
-          },
-        ]);
-      }
-
-      if (educationDegrees.length === 0 || !educationDegrees.some((d) => d.degree.trim())) {
-        onEducationDegreesChange([
-          {
-            id: Date.now().toString(),
-            institution: "State University",
-            degree: "Bachelor's Degree",
-            fieldOfStudy: "Computer Science / IT",
-            graduationYear: "2019",
-            honours: "",
-          },
-        ]);
-      }
-
-      setExpandedSection("employment");
-    }, 800);
-  };
+  const handleLinkedinSuccess = useCallback((response: LinkedinConnectResponse) => {
+    setLinkedinError("");
+    setSyncedThisSession(true);
+    onLinkedinProfileFetched?.(response);
+  }, [onLinkedinProfileFetched]);
+  const handleLinkedinError = useCallback((message: string) => {
+    setLinkedinError(message);
+  }, []);
+  const {
+    start: handleLinkedinSync,
+    isLoading: isSyncing,
+  } = useLinkedinProfileSync({
+    onSuccess: handleLinkedinSuccess,
+    onError: handleLinkedinError,
+  });
   const yearOptions = useMemo(() => getYearOptions(), []);
 
   const monthOptions = useMemo(
@@ -322,6 +299,7 @@ export default function ExperienceStep({
               {isSyncing ? "Syncing..." : isSynced ? "LinkedIn Synced" : "LinkedIn"}
             </span>
           </button>
+          {linkedinError ? <p role="alert">{linkedinError}</p> : null}
         </div>
 
         <ul className={`${styles.accordionList} ${styles.experienceAccordionRoot}`}>

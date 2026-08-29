@@ -69,6 +69,7 @@ function serializeAuthUser(expert) {
     fullName: expert.fullName,
     phone: expert.phone,
     profilePhotoSrc: expert.profilePhotoSrc,
+    linkedinId: expert.linkedinId,
     onboardingStep,
     status,
     onboardingComplete: status === 'approved' || onboardingStep === 'success',

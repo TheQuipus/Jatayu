@@ -16,6 +16,7 @@ import {
   handleDigilockerCallback,
   startDigilockerKyc,
 } from '../controllers/digilockerController.js';
+import { connectLinkedin } from '../controllers/linkedinController.js';
 
 const router = express.Router();
 
@@ -64,6 +65,7 @@ router.post('/onboarding/ai-suggest', protect, suggestOnboardingIdentity);
 router.post('/ai-suggest', protect, suggestOnboardingIdentity);
 router.post('/onboarding/recommend-skills', protect, recommendOnboardingSkills);
 router.post('/recommend-skills', protect, recommendOnboardingSkills);
+router.post('/onboarding/linkedin/connect', protect, connectLinkedin);
 router.get('/requests', protect, getRequests);
 router.patch('/requests/:bookingId/decision', protect, updateRequestDecision);
 router.post('/kyc/digilocker/start', protect, startDigilockerKyc);

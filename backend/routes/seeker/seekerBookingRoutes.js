@@ -5,6 +5,7 @@ import {
   getBooking,
   getBookingOptions,
   listBookings,
+  pokeBookingExpert,
   verifyPayment,
 } from '../../controllers/seeker/seekerBookingController.js';
 
@@ -15,6 +16,7 @@ router.get('/experts/:expertId/booking-options', getBookingOptions);
 router.get('/bookings', listBookings);
 router.post('/bookings/orders', createOrder);
 router.get('/bookings/:bookingId', getBooking);
+router.post('/bookings/:bookingId/poke', pokeBookingExpert);
 router.post('/bookings/:bookingId/verify-payment', verifyPayment);
 
 export default router;

@@ -23,6 +23,11 @@ export type CalendarBooking = {
   durationMinutes: number;
   status: "confirmed" | "pending" | "cancelled" | "completed";
   createdAt?: string | number;
+  pokeCount?: number;
+  lastPokedAt?: string | null;
+  pokeMaxCount?: number;
+  pokeNextAllowedAt?: string | null;
+  canPoke?: boolean;
 };
 
 export type BookingAttachment = {
@@ -644,4 +649,3 @@ export async function getSeekerBookingDetailAsync(bookingId: string) {
   }
   return getBookingById(bookingId);
 }
-

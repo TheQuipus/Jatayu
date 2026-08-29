@@ -81,6 +81,13 @@ export type SeekerBooking = {
   payments?: SeekerBookingPayment[];
   refundStatus?: string | null;
   amounts?: BookingAmounts;
+  poke?: {
+    count: number;
+    maxCount: number;
+    lastPokedAt: string | null;
+    nextAllowedAt: string;
+    canPoke: boolean;
+  };
 };
 
 export function normalizeSeekerBooking(item: Record<string, unknown>): SeekerBooking {
@@ -129,6 +136,9 @@ export function normalizeSeekerBooking(item: Record<string, unknown>): SeekerBoo
       currency: String(amountsObj.currency || "INR"),
       unit: String(amountsObj.unit || "paise"),
     },
+    poke: item.poke && typeof item.poke === "object"
+      ? item.poke as SeekerBooking["poke"]
+      : undefined,
   };
 }
 export type CreateBookingResponse = {
@@ -268,6 +278,14 @@ export async function fetchBooking(bookingId: string): Promise<SeekerBooking> {
   return normalizeSeekerBooking(response as Record<string, unknown>);
 }
 
+export async function pokeBookingExpert(bookingId: string): Promise<SeekerBooking> {
+  const response = await bookingFetch<{ booking: Record<string, unknown> }>(
+    `/api/seeker/bookings/${encodeURIComponent(bookingId)}/poke`,
+    { method: "POST" },
+  );
+  return normalizeSeekerBooking(response.booking);
+}
+
 export const getSeekerBookingById = fetchBooking;
 
 export function toCalendarBooking(b: SeekerBooking): CalendarBooking {
@@ -317,6 +335,11 @@ export function toCalendarBooking(b: SeekerBooking): CalendarBooking {
     durationMinutes,
     status,
     createdAt: b.createdAt,
+    pokeCount: b.poke?.count || 0,
+    lastPokedAt: b.poke?.lastPokedAt || null,
+    pokeMaxCount: b.poke?.maxCount || 2,
+    pokeNextAllowedAt: b.poke?.nextAllowedAt || null,
+    canPoke: b.poke?.canPoke || false,
   };
 }
 
@@ -434,4 +457,3 @@ export function getBookingIdempotencyKey(fingerprint: string): string {
 export function clearBookingIdempotencyKey(fingerprint: string) {
   sessionStorage.removeItem(`booking-idempotency:${fingerprint}`);
 }
-

@@ -43,6 +43,7 @@ import {
   updateProfile,
   type AuthResponse,
   type AuthUser,
+  type LinkedinConnectResponse,
 } from "@/lib/api";
 import {
   buildCredentialsPayload,
@@ -188,6 +189,7 @@ const skillsByCategory: Record<string, string[]> = {
 type OnboardingStep = ExpertOnboardingStep;
 
 type ExpertOnboardingProfile = AuthUser & {
+  linkedinId?: string;
   category?: string;
   skills?: string[];
   professionalTitle?: string;
@@ -417,6 +419,21 @@ function ExpertOnboardingPageContent() {
     setAuthUser(user);
     setAccountStatus(buildExpertAccountStatus(user));
   }
+
+  const handleLinkedinProfileFetched = useCallback((response: LinkedinConnectResponse) => {
+    const profile = asOnboardingProfile(response.expert);
+    hydrateFromProfile(profile);
+    setAuthUser((current) => ({
+      ...(current || profile),
+      id: profile.id,
+      email: profile.email,
+      fullName: profile.fullName,
+      onboardingStep: profile.onboardingStep,
+      status: profile.status,
+      profilePhotoSrc: profile.profilePhotoSrc,
+      linkedinId: profile.linkedinId,
+    }));
+  }, []);
 
   function routeAfterAuth(user: AuthUser, options?: { freshSignup?: boolean }) {
     if (options?.freshSignup) {
@@ -1217,6 +1234,7 @@ function ExpertOnboardingPageContent() {
           employmentPositions={employmentPositions}
           educationDegrees={educationDegrees}
           linkedin={linkedin}
+          linkedinConnected={Boolean(authUser?.linkedinId)}
           portfolio={portfolio}
           portfolioSamples={portfolioSamples}
           stepCompletion={stepCompletion}
@@ -1224,6 +1242,7 @@ function ExpertOnboardingPageContent() {
           onEmploymentPositionsChange={setEmploymentPositions}
           onEducationDegreesChange={setEducationDegrees}
           onLinkedinChange={setLinkedin}
+          onLinkedinProfileFetched={handleLinkedinProfileFetched}
           onPortfolioChange={setPortfolio}
           onPortfolioSamplesChange={setPortfolioSamples}
           onBack={handleBackToSkills}

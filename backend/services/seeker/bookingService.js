@@ -11,6 +11,10 @@ import {
 } from '../../models/index.js';
 import { getRazorpayClient } from '../../config/razorpay.js';
 import { verifyRazorpayPaymentSignature } from '../payment/razorpayService.js';
+import {
+  DEFAULT_BOOKING_POKE_CONFIG,
+  getBookingPokeConfig,
+} from '../../config/bookingPokes.js';
 
 const ACTIVE_BOOKING_STATUSES = ['payment_pending', 'payment_verified', 'awaiting_expert', 'confirmed'];
 const SLOT_DURATION_MINUTES = 30;
@@ -86,15 +90,29 @@ function priceFor(expert, consultationType) {
   return Number.isFinite(rupees) && rupees > 0 ? Math.round(rupees * 100) : null;
 }
 
-function serializeBooking(booking) {
+function serializeBooking(booking, pokeConfig = DEFAULT_BOOKING_POKE_CONFIG) {
   const data = booking.toJSON();
   delete data.idempotencyKey;
   delete data.activeSlotKey;
   data.payments = (data.payments || []).map(({ providerPayload, ...payment }) => payment);
   const refundStatus = data.payments[0]?.refundStatus || null;
+  const pokeCount = Number(data.pokeCount || 0);
+  const lastPokedAtMs = data.lastPokedAt ? new Date(data.lastPokedAt).getTime() : null;
+  const pokeInitialAtMs = new Date(data.expertRequestedAt || data.createdAt).getTime()
+    + pokeConfig.initialDelayMs;
+  const pokeNextAtMs = lastPokedAtMs ? lastPokedAtMs + pokeConfig.cooldownMs : pokeInitialAtMs;
   return {
     ...data,
     refundStatus,
+    poke: {
+      count: pokeCount,
+      maxCount: pokeConfig.maxCount,
+      lastPokedAt: data.lastPokedAt || null,
+      nextAllowedAt: new Date(pokeNextAtMs).toISOString(),
+      canPoke: data.status === 'awaiting_expert'
+        && pokeCount < pokeConfig.maxCount
+        && Date.now() >= pokeNextAtMs,
+    },
     amounts: {
       consultationFee: data.consultationFee,
       platformFee: data.platformFee,
@@ -106,6 +124,34 @@ function serializeBooking(booking) {
       unit: 'paise',
     },
   };
+}
+
+export async function pokeExpert(seekerId, bookingId) {
+  const pokeConfig = await getBookingPokeConfig();
+  return seekerDb.transaction(async (transaction) => {
+    const booking = await Booking.findOne({
+      where: { id: bookingId, seekerId }, transaction, lock: transaction.LOCK.UPDATE,
+    });
+    if (!booking) throw new Error('BOOKING_NOT_FOUND');
+    if (booking.status !== 'awaiting_expert') throw new Error('BOOKING_NOT_AWAITING_EXPERT');
+    if (Number(booking.pokeCount || 0) >= pokeConfig.maxCount) throw new Error('POKE_LIMIT_REACHED');
+
+    const now = Date.now();
+    const requestedAt = new Date(booking.expertRequestedAt || booking.createdAt).getTime();
+    const nextAllowedAt = booking.lastPokedAt
+      ? new Date(booking.lastPokedAt).getTime() + pokeConfig.cooldownMs
+      : requestedAt + pokeConfig.initialDelayMs;
+    if (now < nextAllowedAt) {
+      const error = new Error('POKE_TOO_EARLY');
+      error.nextAllowedAt = new Date(nextAllowedAt).toISOString();
+      throw error;
+    }
+
+    booking.pokeCount = Number(booking.pokeCount || 0) + 1;
+    booking.lastPokedAt = new Date(now);
+    await booking.save({ transaction });
+    return serializeBooking(booking, pokeConfig);
+  });
 }
 
 export async function refundBookingCredits(booking, transaction, reason) {
@@ -527,13 +573,14 @@ export async function listSeekerBookings(seekerId) {
   const bookings = await Booking.findAll({
     where: { seekerId }, include: ['payments'], order: [['createdAt', 'DESC']],
   });
-  return bookings.map(serializeBooking);
+  const pokeConfig = await getBookingPokeConfig();
+  return bookings.map((booking) => serializeBooking(booking, pokeConfig));
 }
 
 export async function getSeekerBooking(seekerId, bookingId) {
   await expirePendingBookings();
   const booking = await Booking.findOne({ where: { id: bookingId, seekerId }, include: ['payments'] });
-  return booking ? serializeBooking(booking) : null;
+  return booking ? serializeBooking(booking, await getBookingPokeConfig()) : null;
 }
 
 export { serializeBooking };
