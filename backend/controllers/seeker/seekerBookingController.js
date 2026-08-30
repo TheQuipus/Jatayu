@@ -37,6 +37,9 @@ function handleBookingError(error, res, operation) {
     message,
     code: error.message,
     ...(error.nextAllowedAt ? { nextAllowedAt: error.nextAllowedAt } : {}),
+    ...(error.minimumLeadTimeMinutes !== undefined
+      ? { minimumLeadTimeMinutes: error.minimumLeadTimeMinutes, earliestStartAt: error.earliestStartAt }
+      : {}),
   });
 }
 

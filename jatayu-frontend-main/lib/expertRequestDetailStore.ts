@@ -63,6 +63,13 @@ export type RequestDetailModel = {
   };
   attachments: RequestDetailAttachment[];
   history: RequestDetailHistoryEvent[];
+  sessionAccess?: {
+    enabled: boolean;
+    opensAt: string;
+    closesAt: string;
+    canJoin: boolean;
+    joinBeforeMinutes: number;
+  };
 };
 
 export const REQUEST_DETAIL_DATA: RequestDetailModel = {
@@ -172,6 +179,9 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
   const raw = (found.rawItem || {}) as Record<string, unknown>;
   const seeker = (raw.seeker || {}) as Record<string, unknown>;
   const amounts = (raw.amounts || {}) as Record<string, unknown>;
+  const sessionAccess = raw.sessionAccess && typeof raw.sessionAccess === "object"
+    ? raw.sessionAccess as RequestDetailModel["sessionAccess"]
+    : undefined;
 
   const clientName = String(seeker.fullName || found.clientName || "Client");
   const clientAvatar = String(seeker.profilePhotoSrc || found.clientAvatar || "/assets/img/avatar2.png");
@@ -292,5 +302,6 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
           ]
         : []),
     ],
+    sessionAccess,
   };
 }

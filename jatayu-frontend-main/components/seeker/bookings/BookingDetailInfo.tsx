@@ -446,6 +446,13 @@ export default function BookingDetailInfo({
     if (booking.status !== "confirmed") return booking.status;
     if (fastForwarded) return "active";
 
+    if (booking.sessionAccess) {
+      return currentTime >= new Date(booking.sessionAccess.opensAt).getTime()
+        && currentTime <= new Date(booking.sessionAccess.closesAt).getTime()
+        ? "active"
+        : "upcoming";
+    }
+
     const targetDate = new Date(currentTime);
     targetDate.setDate(targetDate.getDate() + booking.dayOffset);
     targetDate.setHours(booking.startHour, booking.startMinute, 0, 0);
@@ -466,13 +473,16 @@ export default function BookingDetailInfo({
       return null;
     }
 
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + booking.dayOffset);
-    targetDate.setHours(booking.startHour, booking.startMinute, 0, 0);
+    const targetDate = booking.sessionAccess
+      ? new Date(booking.sessionAccess.opensAt)
+      : new Date();
+    if (!booking.sessionAccess) {
+      targetDate.setDate(targetDate.getDate() + booking.dayOffset);
+      targetDate.setHours(booking.startHour, booking.startMinute, 0, 0);
+    }
 
     const diffMs = targetDate.getTime() - currentTime;
-    // Activate join session button 5 minutes prior to meeting start time
-    if (diffMs <= 5 * 60 * 1000) {
+    if (diffMs <= 0) {
       return null;
     }
 
@@ -918,7 +928,7 @@ export default function BookingDetailInfo({
                     <div className={styles.chewyBody}>
                       <div className={styles.countdownValueDisplay}>{countdownText}</div>
                       <div className={styles.reviewEarnNotice}>
-                        Join room activates 5m prior
+                        Join room activates {booking.sessionAccess?.joinBeforeMinutes || 5}m prior
                       </div>
                     </div>
                   </div>

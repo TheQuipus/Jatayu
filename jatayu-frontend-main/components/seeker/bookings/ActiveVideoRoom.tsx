@@ -26,6 +26,7 @@ import ContinueButton from "@/components/ui/ContinueButton";
 import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
 import { formatCurrency, type BookingDetail } from "@/lib/seekerDashboard";
 import styles from "./ActiveRoom.module.css";
+import type { AgoraRoomState } from "@/hooks/useAgoraRoom";
 
 export type ChatMessage = {
   id: string;
@@ -45,6 +46,7 @@ export type ActiveVideoRoomProps = {
   onSendMessage: (e: React.FormEvent) => void;
   onLeaveRoom: () => void;
   onFinishSession: () => void;
+  agora: AgoraRoomState;
 };
 
 export default function ActiveVideoRoom({
@@ -58,10 +60,12 @@ export default function ActiveVideoRoom({
   onSendMessage,
   onLeaveRoom,
   onFinishSession,
+  agora,
 }: ActiveVideoRoomProps) {
+  const isAudioOnly = ["audio", "shoutout"].includes(String(booking.consultationType));
   // Video toggle states
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(isAudioOnly);
   const [isTranscriptVisible, setIsTranscriptVisible] = useState(true);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -70,7 +74,16 @@ export default function ActiveVideoRoom({
   const [extendNotification, setExtendNotification] = useState<string | null>(null);
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const remoteVideoElementRef = useRef<HTMLDivElement>(null);
+  const localVideoElementRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (remoteVideoElementRef.current) agora.playRemoteVideo(remoteVideoElementRef.current);
+  }, [agora, agora.remoteVideoVersion]);
+  useEffect(() => {
+    if (localVideoElementRef.current) agora.playLocalVideo(localVideoElementRef.current);
+  }, [agora, agora.status]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -189,6 +202,7 @@ export default function ActiveVideoRoom({
                 </div>
               ) : (
                 <div className={styles.activeVideoFeed}>
+                  <div ref={remoteVideoElementRef} style={{ position: "absolute", inset: 0, zIndex: 1 }} />
                   <Image
                     src={booking.expert.image}
                     alt={booking.expert.name}
@@ -199,6 +213,7 @@ export default function ActiveVideoRoom({
                   <div className={styles.videoFeedLabel}>
                     <span>{booking.expert.name}</span>
                   </div>
+                  <div ref={localVideoElementRef} style={{ position: "absolute", right: 16, bottom: 16, width: 180, height: 110, zIndex: 3 }} />
                 </div>
               )}
 
@@ -259,7 +274,7 @@ export default function ActiveVideoRoom({
                 <button
                   type="button"
                   className={`${styles.controlBtn} ${isMuted ? styles.controlBtnDanger : ""}`}
-                  onClick={() => setIsMuted(!isMuted)}
+                  onClick={() => { void agora.toggleMute(); setIsMuted(!isMuted); }}
                   title={isMuted ? "Unmute Mic" : "Mute Mic"}
                 >
                   {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
@@ -268,7 +283,8 @@ export default function ActiveVideoRoom({
                 <button
                   type="button"
                   className={`${styles.controlBtn} ${isVideoOff ? styles.controlBtnDanger : ""}`}
-                  onClick={() => setIsVideoOff(!isVideoOff)}
+                  onClick={() => { if (!isAudioOnly) { void agora.toggleVideo(); setIsVideoOff(!isVideoOff); } }}
+                  disabled={isAudioOnly}
                   title={isVideoOff ? "Turn Video On" : "Turn Video Off"}
                 >
                   {isVideoOff ? <VideoOff size={16} /> : <Video size={16} />}

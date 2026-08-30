@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import {
   BadgeCheck,
   Bold,
@@ -28,6 +28,7 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ExpertReportForm from "@/app/expert/(app)/report/[requestId]/ExpertReportForm";
 import styles from "@/components/seeker/bookings/ActiveRoom.module.css";
+import { useAgoraRoom, type AgoraTextMessage } from "@/hooks/useAgoraRoom";
 
 export type ChatMessage = {
   id: string;
@@ -125,26 +126,22 @@ export default function ExpertActiveChatRoom({
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: "msg-1",
-      sender: "client",
-      text: `Hi! Thank you for accepting my consultation request "${title}".`,
-      timestamp: "10:30 AM",
-    },
-    {
-      id: "msg-2",
-      sender: "expert",
-      text: "Hello! Welcome to our live chat session. I have reviewed your project context and ready to address your questions.",
-      timestamp: "10:31 AM",
-    },
-    {
-      id: "msg-3",
-      sender: "client",
-      text: "Great! 👋",
-      timestamp: "10:32 AM",
-    },
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const receiveAgoraMessage = useCallback((message: AgoraTextMessage) => {
+    setChatMessages((previous) => [...previous, {
+      id: `agora-${Date.now()}-${Math.random()}`,
+      sender: message.sender === "expert" ? "expert" : "client",
+      text: message.text,
+      timestamp: message.timestamp,
+    }]);
+  }, []);
+  const agora = useAgoraRoom({
+    bookingId: requestId,
+    role: "expert",
+    enabled: true,
+    requestVideo: false,
+    onMessage: receiveAgoraMessage,
+  });
 
   const chatLogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -179,22 +176,15 @@ export default function ExpertActiveChatRoom({
     setTimeout(() => setIsNotesSaved(false), 2500);
   };
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newMessage.trim()) return;
 
-    const msg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      sender: "expert",
-      text: newMessage.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      replyTo: replyingTo ? { sender: replyingTo.sender, text: replyingTo.text } : undefined,
-    };
-
-    setChatMessages((prev) => [...prev, msg]);
-    setNewMessage("");
-    setReplyingTo(null);
-    setShowEmojiPicker(false);
+    if (await agora.sendMessage(newMessage)) {
+      setNewMessage("");
+      setReplyingTo(null);
+      setShowEmojiPicker(false);
+    }
   };
 
   const handleSendEmoji = (emoji: string) => {
@@ -258,6 +248,7 @@ export default function ExpertActiveChatRoom({
 
   return (
     <section className={styles.sessionRoom}>
+      {agora.status === "error" ? <p role="alert" style={{ textAlign: "center" }}>{agora.error}</p> : null}
       <div className="container">
         <div className={styles.roomGrid}>
           {/* Left Column: Full Height Interactive Chat Interface */}

@@ -14,9 +14,22 @@ export default function BookingSettingsPanel({ draft, onChange }: Props) {
     const value = Math.max(1, Number(raw) || 1);
     onChange({ ...draft, [key]: value });
   };
+  const updateNonNegativeNumber = (key: keyof typeof draft, raw: string) => {
+    onChange({ ...draft, [key]: Math.max(0, Number(raw) || 0) });
+  };
 
   return (
     <div className={styles.panelGrid}>
+      <Field label="Minimum booking lead time (minutes)" hint="Set 0 to allow any future slot without an additional buffer.">
+        <input
+          className={styles.input}
+          type="number"
+          min="0"
+          step="1"
+          value={draft.minimumLeadTimeMinutes}
+          onChange={(event) => updateNonNegativeNumber("minimumLeadTimeMinutes", event.target.value)}
+        />
+      </Field>
       <div className={styles.fieldRow}>
         <Field label="Poke initial delay (hours)" hint="How long a seeker must wait before the first poke.">
           <input

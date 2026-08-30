@@ -11,6 +11,8 @@ import {
 } from '../../models/index.js';
 import { getRazorpayClient } from '../../config/razorpay.js';
 import { verifyRazorpayPaymentSignature } from '../payment/razorpayService.js';
+import { getBookingRules } from '../../config/bookingRules.js';
+import { getAgoraSessionAccess } from '../agoraService.js';
 import {
   DEFAULT_BOOKING_POKE_CONFIG,
   getBookingPokeConfig,
@@ -211,10 +213,12 @@ export async function getExpertBookingOptions(expertIdentifier, from, days = 28)
     order: [['scheduledStartAt', 'ASC']],
   });
   const prices = parseJson(expert.formatPrices, {});
+  const bookingRules = await getBookingRules();
   return {
     expertId: expert.id,
     timezone: expert.timezone || 'Asia/Kolkata',
     slotDurationMinutes: SLOT_DURATION_MINUTES,
+    minimumLeadTimeMinutes: bookingRules.minimumLeadTimeMinutes,
     formats: (parseJson(expert.selectedFormats, []) || []).map(normalizeType),
     formatPrices: prices,
     availabilities: (expert.availabilities || []).map((item) => ({
@@ -240,7 +244,14 @@ export async function createBookingOrder(seekerId, input) {
     throw new Error('INVALID_BOOKING_FIELDS');
   }
   const startAt = new Date(input.scheduledStartAt);
-  if (Number.isNaN(startAt.getTime()) || startAt <= new Date()) throw new Error('INVALID_BOOKING_TIME');
+  const bookingRules = await getBookingRules();
+  const earliestStartAt = Date.now() + bookingRules.minimumLeadTimeMinutes * 60 * 1000;
+  if (Number.isNaN(startAt.getTime()) || startAt.getTime() < earliestStartAt) {
+    const error = new Error('INVALID_BOOKING_TIME');
+    error.minimumLeadTimeMinutes = bookingRules.minimumLeadTimeMinutes;
+    error.earliestStartAt = new Date(earliestStartAt).toISOString();
+    throw error;
+  }
   const endAt = new Date(startAt.getTime() + SLOT_DURATION_MINUTES * 60000);
   const expert = await resolveApprovedExpert(input.expertId);
   if (!expert) throw new Error('EXPERT_NOT_FOUND');
@@ -574,13 +585,20 @@ export async function listSeekerBookings(seekerId) {
     where: { seekerId }, include: ['payments'], order: [['createdAt', 'DESC']],
   });
   const pokeConfig = await getBookingPokeConfig();
-  return bookings.map((booking) => serializeBooking(booking, pokeConfig));
+  return Promise.all(bookings.map(async (booking) => ({
+    ...serializeBooking(booking, pokeConfig),
+    sessionAccess: await getAgoraSessionAccess(booking),
+  })));
 }
 
 export async function getSeekerBooking(seekerId, bookingId) {
   await expirePendingBookings();
   const booking = await Booking.findOne({ where: { id: bookingId, seekerId }, include: ['payments'] });
-  return booking ? serializeBooking(booking, await getBookingPokeConfig()) : null;
+  if (!booking) return null;
+  return {
+    ...serializeBooking(booking, await getBookingPokeConfig()),
+    sessionAccess: await getAgoraSessionAccess(booking),
+  };
 }
 
 export { serializeBooking };

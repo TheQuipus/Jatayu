@@ -9,6 +9,7 @@ import {
   KeyRound,
   Mail,
   MessageSquare,
+  Radio,
   Save,
   Send,
   X,
@@ -25,6 +26,7 @@ import AiSettingsPanel from "./AiSettingsPanel";
 import AuthCredentialsPanel from "./AuthCredentialsPanel";
 import PaymentSettingsPanel from "./PaymentSettingsPanel";
 import BookingSettingsPanel from "./BookingSettingsPanel";
+import CommunicationSettingsPanel from "./CommunicationSettingsPanel";
 import SmsSettingsPanel from "./SmsSettingsPanel";
 import SmtpSettingsPanel from "./SmtpSettingsPanel";
 import TemplatesPanel from "./TemplatesPanel";
@@ -201,6 +203,7 @@ export default function AdminSettings({ section }: { section: SettingsSection })
                   {activeSection === "auth" && <KeyRound size={18} />}
                   {activeSection === "payment" && <CreditCard size={18} />}
                   {activeSection === "booking" && <CalendarClock size={18} />}
+                  {activeSection === "communication" && <Radio size={18} />}
                   {activeSection === "ai" && <Bot size={18} />}
                 </div>
                 <div>
@@ -244,6 +247,13 @@ export default function AdminSettings({ section }: { section: SettingsSection })
               <BookingSettingsPanel
                 draft={draft.booking}
                 onChange={(booking) => setDraft((current) => ({ ...current, booking }))}
+              />
+            ) : null}
+
+            {activeSection === "communication" ? (
+              <CommunicationSettingsPanel
+                draft={draft.communication}
+                onChange={(communication) => setDraft((current) => ({ ...current, communication }))}
               />
             ) : null}
 
