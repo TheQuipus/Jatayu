@@ -57,6 +57,13 @@ export type BookingDetail = CalendarBooking & {
   attachments: BookingAttachment[];
   placedDaysAgo: number;
   cancellationReason?: string;
+  sessionAccess?: {
+    enabled: boolean;
+    opensAt: string;
+    closesAt: string;
+    canJoin: boolean;
+    joinBeforeMinutes: number;
+  };
 };
 
 export type UpcomingBooking = CalendarBooking;

@@ -5,7 +5,6 @@ import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import {
   getOffsetFromDate,
   getSlotDateById,
-  getTimeSlotsForDate,
   isSlotDateOffsetSelectable,
   MAX_SLOT_DAY_OFFSET,
   parseSlotDateOffset,
@@ -28,6 +27,7 @@ type SlotCalendarViewProps = {
   occupiedSlots?: { startAt: string; endAt: string }[];
   timezone?: string;
   slotDurationMinutes?: number;
+  minimumLeadTimeMinutes?: number;
 };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -107,6 +107,7 @@ function getSlotsForDateAndAvailabilities(
   occupiedSlots: { startAt: string; endAt: string }[] = [],
   timezone = "Asia/Kolkata",
   slotDurationMinutes = 30,
+  minimumLeadTimeMinutes = 30,
 ): TimeSlot[] {
   if (!availabilities || availabilities.length === 0) {
     return [];
@@ -159,7 +160,7 @@ function getSlotsForDateAndAvailabilities(
       : [];
   });
 
-  const bufferAdvance = Date.now() + 30 * 60 * 1000;
+  const bufferAdvance = Date.now() + Math.max(0, minimumLeadTimeMinutes) * 60 * 1000;
   const slots: TimeSlot[] = [];
 
   matchingRules.forEach((rule) => {
@@ -199,6 +200,7 @@ function getMatchingAvailableDays(
   occupiedSlots?: { startAt: string; endAt: string }[],
   timezone?: string,
   slotDurationMinutes?: number,
+  minimumLeadTimeMinutes?: number,
   maxOffset = 60,
 ): DayColumn[] {
   const result: DayColumn[] = [];
@@ -215,7 +217,7 @@ function getMatchingAvailableDays(
     if (isRuleBased && !dayMatches) continue;
 
     const slots = getSlotsForDateAndAvailabilities(
-      date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+      date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes,
     );
 
     const hasAvailableSlots = slots.some((s) => s.status === "available");
@@ -257,8 +259,9 @@ function buildWeekDays(
   occupiedSlots?: { startAt: string; endAt: string }[],
   timezone?: string,
   slotDurationMinutes?: number,
+  minimumLeadTimeMinutes?: number,
 ): { weekDays: DayColumn[]; startIndex: number; totalMatching: number; allDays: DayColumn[] } {
-  const allDays = getMatchingAvailableDays(today, availabilities, occupiedSlots, timezone, slotDurationMinutes);
+  const allDays = getMatchingAvailableDays(today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes);
   let startIndex = allDays.findIndex((d) => d.offset >= weekStartOffset);
   if (startIndex === -1) startIndex = 0;
 
@@ -273,6 +276,7 @@ function buildMonthCells(
   occupiedSlots?: { startAt: string; endAt: string }[],
   timezone?: string,
   slotDurationMinutes?: number,
+  minimumLeadTimeMinutes?: number,
 ): MonthCell[] {
   const firstOfMonth = startOfMonth(viewMonth);
   const gridStart = new Date(firstOfMonth);
@@ -287,7 +291,7 @@ function buildMonthCells(
     const selectable = isSlotDateOffsetSelectable(offset) && dayMatches;
     const availableCount = selectable
       ? getSlotsForDateAndAvailabilities(
-          date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+          date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes,
         ).filter(
           (slot) => slot.status === "available"
         ).length
@@ -333,6 +337,7 @@ export default function SlotCalendarView({
   occupiedSlots,
   timezone,
   slotDurationMinutes,
+  minimumLeadTimeMinutes,
 }: SlotCalendarViewProps) {
   const today = useMemo(() => startOfDay(new Date()), []);
   const selectedOffset = parseSlotDateOffset(selectedDate);
@@ -362,15 +367,15 @@ export default function SlotCalendarView({
 
   const { weekDays, startIndex, totalMatching, allDays } = useMemo(
     () => buildWeekDays(
-      weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+      weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes,
     ),
-    [weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes],
+    [weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes],
   );
   const monthCells = useMemo(
     () => buildMonthCells(
-      viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes,
+      viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes,
     ),
-    [viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes],
+    [viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes],
   );
 
   const availableMonths = useMemo(() => {
@@ -454,7 +459,7 @@ export default function SlotCalendarView({
   const selectedDateMeta = getSlotDateById(selectedDate);
   const selectedDaySlots = getSlotsForDateAndAvailabilities(
     dateFromOffset(selectedOffset), selectedDate, availabilities,
-    occupiedSlots, timezone, slotDurationMinutes,
+    occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes,
   );
 
 

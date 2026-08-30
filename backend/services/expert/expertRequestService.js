@@ -14,6 +14,7 @@ import {
   EXPERT_REQUEST_NEW_WINDOW_MS,
   EXPERT_REQUEST_RESPONSE_WINDOW_MS,
 } from '../../config/expertRequests.js';
+import { getAgoraSessionAccess } from '../agoraService.js';
 
 const DECLINE_REASON_CODES = new Set([
   'scheduling_conflict',
@@ -131,7 +132,10 @@ export async function listExpertRequests(expertId, options) {
     Booking.count({ where: whereForStatus(expertId, 'declined', cutoff) }),
   ]);
   return {
-    requests: rows.map((booking) => serializeExpertRequest(booking, now)),
+    requests: await Promise.all(rows.map(async (booking) => ({
+      ...serializeExpertRequest(booking, now),
+      sessionAccess: await getAgoraSessionAccess(booking),
+    }))),
     counts: {
       all: newCount + pendingCount + acceptedCount + declinedCount,
       new: newCount,
@@ -218,7 +222,10 @@ export async function decideExpertRequest(expertId, bookingId, input) {
 
   if (shouldRequestRefund) await requestBookingRefund(bookingId);
   const booking = await loadExpertRequest(expertId, bookingId);
-  return serializeExpertRequest(booking);
+  return {
+    ...serializeExpertRequest(booking),
+    sessionAccess: await getAgoraSessionAccess(booking),
+  };
 }
 
 export { DECLINE_REASON_CODES };

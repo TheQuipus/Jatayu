@@ -115,7 +115,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const initialAvailableDateOffset = useMemo(() => {
     if (!expert.availabilities || expert.availabilities.length === 0) return 0;
     const today = new Date();
-    const bufferAdvance = Date.now() + 30 * 60 * 1000;
+    // The server-provided booking rule is applied by SlotCalendarView once
+    // booking options load. This initial choice only excludes past slots.
+    const bufferAdvance = Date.now();
     const parseMinutes = (value: string) => {
       if (!value) return null;
       const ampmMatch = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
@@ -848,6 +850,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   occupiedSlots={bookingOptions?.occupiedSlots}
                   timezone={bookingOptions?.timezone}
                   slotDurationMinutes={bookingOptions?.slotDurationMinutes}
+                  minimumLeadTimeMinutes={bookingOptions?.minimumLeadTimeMinutes}
                 />
               )}
 

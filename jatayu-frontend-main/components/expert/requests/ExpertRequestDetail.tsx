@@ -120,6 +120,9 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
   }, [requestStatus]);
 
   const targetTimeMs = useMemo(() => {
+    if (data.sessionAccess?.opensAt) {
+      return new Date(data.sessionAccess.opensAt).getTime();
+    }
     const text = data.sessionDetails.requestedDate;
     if (text.includes("Tomorrow")) {
       const d = new Date();
@@ -146,7 +149,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
     }
 
     const diffMs = targetTimeMs - currentTime;
-    if (diffMs <= 5 * 60 * 1000) {
+    if (diffMs <= 0) {
       return null;
     }
 
@@ -392,7 +395,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                     <div className={styles.chewyBody}>
                       <div className={styles.countdownValueDisplay}>{countdownText}</div>
                       <div className={styles.reviewEarnNotice}>
-                        Join room activates 5m prior
+                        Join room activates {data.sessionAccess?.joinBeforeMinutes || 5}m prior
                       </div>
                     </div>
                   </div>

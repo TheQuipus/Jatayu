@@ -8,6 +8,7 @@ import {
   pokeBookingExpert,
   verifyPayment,
 } from '../../controllers/seeker/seekerBookingController.js';
+import { getSeekerAgoraSession } from '../../controllers/agoraSessionController.js';
 
 const router = express.Router();
 
@@ -17,6 +18,7 @@ router.get('/bookings', listBookings);
 router.post('/bookings/orders', createOrder);
 router.get('/bookings/:bookingId', getBooking);
 router.post('/bookings/:bookingId/poke', pokeBookingExpert);
+router.post('/bookings/:bookingId/session/token', getSeekerAgoraSession);
 router.post('/bookings/:bookingId/verify-payment', verifyPayment);
 
 export default router;

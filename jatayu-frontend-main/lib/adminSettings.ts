@@ -43,9 +43,19 @@ export type PaymentSettings = {
 };
 
 export type BookingSettings = {
+  minimumLeadTimeMinutes: number;
   pokeInitialDelayHours: number;
   pokeCooldownHours: number;
   pokeMaxCount: number;
+};
+
+export type CommunicationSettings = {
+  agoraEnabled: boolean;
+  agoraAppId: string;
+  agoraAppCertificate: string;
+  tokenTtlSeconds: number;
+  joinBeforeMinutes: number;
+  joinAfterMinutes: number;
 };
 
 export type ProviderAuthCredentials = {
@@ -101,6 +111,7 @@ export type AdminSettings = {
   smtp: SmtpSettings;
   payment: PaymentSettings;
   booking: BookingSettings;
+  communication: CommunicationSettings;
   auth: AuthCredentialsSettings;
   ai: AiSettings;
   templates: MessageTemplate[];
@@ -112,6 +123,7 @@ export type SettingsSection =
   | "auth"
   | "payment"
   | "booking"
+  | "communication"
   | "ai"
   | "templates";
 
@@ -129,6 +141,7 @@ export const SETTINGS_SECTIONS: {
   },
   { id: "payment", label: "Payment", description: "Gateway keys, webhooks, and payout mode" },
   { id: "booking", label: "Booking", description: "Booking request and seeker poke controls" },
+  { id: "communication", label: "Communication", description: "Agora voice, video, and live chat configuration" },
   { id: "ai", label: "AI Config", description: "AI provider model name and API credentials" },
   { id: "templates", label: "Templates", description: "SMS and email notification templates for experts and seekers" },
 ];
@@ -213,9 +226,18 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     testMode: true,
   },
   booking: {
+    minimumLeadTimeMinutes: 30,
     pokeInitialDelayHours: 1,
     pokeCooldownHours: 4,
     pokeMaxCount: 2,
+  },
+  communication: {
+    agoraEnabled: false,
+    agoraAppId: "",
+    agoraAppCertificate: "",
+    tokenTtlSeconds: 3600,
+    joinBeforeMinutes: 15,
+    joinAfterMinutes: 30,
   },
   auth: {
     google: {
@@ -429,6 +451,7 @@ function mergeWithDefaults(partial: Partial<AdminSettings>): AdminSettings {
     smtp: { ...DEFAULT_ADMIN_SETTINGS.smtp, ...partial.smtp },
     payment: { ...DEFAULT_ADMIN_SETTINGS.payment, ...partial.payment },
     booking: { ...DEFAULT_ADMIN_SETTINGS.booking, ...partial.booking },
+    communication: { ...DEFAULT_ADMIN_SETTINGS.communication, ...partial.communication },
     auth: {
       google: { ...DEFAULT_ADMIN_SETTINGS.auth.google, ...partial.auth?.google },
       meta: { ...DEFAULT_ADMIN_SETTINGS.auth.meta, ...partial.auth?.meta },

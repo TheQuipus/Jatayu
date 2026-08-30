@@ -13,6 +13,7 @@ export type BookingOptions = {
   expertId: string;
   timezone: string;
   slotDurationMinutes: number;
+  minimumLeadTimeMinutes: number;
   formats: string[];
   formatPrices: Record<string, string | number>;
   availabilities: BookingAvailability[];
@@ -88,6 +89,13 @@ export type SeekerBooking = {
     nextAllowedAt: string;
     canPoke: boolean;
   };
+  sessionAccess?: {
+    enabled: boolean;
+    opensAt: string;
+    closesAt: string;
+    canJoin: boolean;
+    joinBeforeMinutes: number;
+  };
 };
 
 export function normalizeSeekerBooking(item: Record<string, unknown>): SeekerBooking {
@@ -138,6 +146,9 @@ export function normalizeSeekerBooking(item: Record<string, unknown>): SeekerBoo
     },
     poke: item.poke && typeof item.poke === "object"
       ? item.poke as SeekerBooking["poke"]
+      : undefined,
+    sessionAccess: item.sessionAccess && typeof item.sessionAccess === "object"
+      ? item.sessionAccess as SeekerBooking["sessionAccess"]
       : undefined,
   };
 }
@@ -397,6 +408,7 @@ export function toBookingDetail(b: SeekerBooking): BookingDetail {
     attachments: [],
     placedDaysAgo,
     cancellationReason: b.declineReasonNotes || b.declineReasonCode || undefined,
+    sessionAccess: b.sessionAccess,
   };
 }
 
