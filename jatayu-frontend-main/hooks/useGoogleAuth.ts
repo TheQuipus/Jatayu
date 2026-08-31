@@ -168,7 +168,26 @@ export function useGoogleAuth({ onSuccess, onError, role = "expert" }: GoogleAut
     }
 
     setIsLoading(true);
-    tokenClientRef.current.requestAccessToken({ prompt: "select_account" });
+    try {
+      tokenClientRef.current.requestAccessToken({ prompt: "select_account" });
+    } catch (err: unknown) {
+      setIsLoading(false);
+      onError(err instanceof Error ? err.message : "Failed to open Google Sign-In.");
+      return;
+    }
+
+    // Safety recovery: when the user refocuses this tab (e.g. closed or cancelled Google popup)
+    const handleWindowFocus = () => {
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 1500);
+    };
+
+    window.addEventListener("focus", handleWindowFocus, { once: true });
+    // Safety fallback timeout in case focus event isn't triggered
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 45000);
   }, [googleEnabled, googleClientId, onError]);
 
   return {

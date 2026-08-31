@@ -35,7 +35,6 @@ function getFieldError(
       return getEmailValidationError(email);
     case "password":
       if (!password) return "Required";
-      if (password.length < 8) return "Min 8 characters";
       return null;
     default:
       return null;

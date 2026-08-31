@@ -48,6 +48,13 @@ export function clearSeekerAuthOnly(): void {
   removeSeekerId();
   if (typeof window !== "undefined") {
     localStorage.removeItem(SEEKER_USER_KEY);
+    localStorage.removeItem("jatayu_token");
+    localStorage.removeItem("jatayu_seeker_id");
+    localStorage.removeItem("jatayu_seeker_profile");
+    sessionStorage.removeItem("jatayu_token");
+    sessionStorage.removeItem("jatayu_seeker_id");
+    sessionStorage.removeItem("jatayu_seeker_profile");
+    sessionStorage.removeItem("jatayu_seeker_category");
   }
 }
 

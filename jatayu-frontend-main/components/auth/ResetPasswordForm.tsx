@@ -4,20 +4,31 @@ import { useState } from "react";
 import Link from "next/link";
 import { Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
-import RegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
+import SeekerRegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
+import ExpertRegisterLeftPanel from "@/components/expert/onboarding/RegisterLeftPanel";
 import register from "@/components/seeker/onboarding/register.shared.module.css";
 import formStyles from "@/components/seeker/onboarding/RegisterStep.module.css";
 
 type ResetPasswordFormProps = {
   email?: string;
   loginHref?: string;
+  role?: string;
 };
 
 type FieldKey = "password" | "confirmPassword";
 
 export default function ResetPasswordForm({
-  loginHref = "/login",
+  loginHref,
+  role = "user",
 }: ResetPasswordFormProps) {
+  const isExpert = role?.toLowerCase() === "expert";
+  const effectiveLoginHref =
+    loginHref ||
+    (isExpert
+      ? "/login?role=expert"
+      : role?.toLowerCase() === "admin"
+      ? "/admin"
+      : "/login?role=user");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -68,7 +79,11 @@ export default function ResetPasswordForm({
 
   return (
     <section className={register.registerCard}>
-      <RegisterLeftPanel variant="login" />
+      {isExpert ? (
+        <ExpertRegisterLeftPanel variant="login" />
+      ) : (
+        <SeekerRegisterLeftPanel variant="login" />
+      )}
 
       <div className={register.registerRight}>
         {isSuccess ? (
@@ -97,7 +112,7 @@ export default function ResetPasswordForm({
               Your password has been updated. You can now log in with your new password.
             </p>
 
-            <Link href={loginHref} style={{ textDecoration: "none" }}>
+            <Link href={effectiveLoginHref} style={{ textDecoration: "none" }}>
               <ContinueButton
                 label="Back to Login"
                 className={formStyles.registerSubmitBtn}
@@ -197,7 +212,7 @@ export default function ResetPasswordForm({
               />
 
               <p className={register.authToggle}>
-                <Link href={loginHref} className={register.authToggleBtn}>
+                <Link href={effectiveLoginHref} className={register.authToggleBtn}>
                   Back to Login
                 </Link>
               </p>

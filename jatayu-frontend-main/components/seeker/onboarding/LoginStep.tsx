@@ -188,24 +188,18 @@ export default function LoginStep({
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {fieldError("password") && (
-                <span className={register.fieldErrorBelow}>{fieldError("password")}</span>
-              )}
             </div>
             <div className={styles.forgotPasswordRow}>
-              <Link href="/forgot-password" className={styles.forgotPasswordLink}>
+              {(fieldError("password") || submitError) ? (
+                <span className={styles.forgotPasswordError} role="alert">
+                  {fieldError("password") || submitError}
+                </span>
+              ) : <span />}
+              <Link href="/forgot-password?role=user" className={styles.forgotPasswordLink}>
                 Forgot Password?
               </Link>
             </div>
           </div>
-
-          {submitError ? (
-            <div className={register.errorBannerBox}>
-              <p className={register.fieldErrorBelow} role="alert">
-                {submitError}
-              </p>
-            </div>
-          ) : null}
 
           <ContinueButton
             type="submit"

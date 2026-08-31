@@ -295,18 +295,14 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
     });
   }
 
-  if (response.status === 401) {
-    throw new ApiError("incorrect credentials", 401);
-  }
-
   if (!response.ok) {
-    const message =
+    let message =
       (data as { message?: string }).message ||
-      `Request failed with status ${response.status}`;
-    const code = (data as { code?: string }).code;
+      (response.status === 401 ? "Invalid email or password" : `Request failed with status ${response.status}`);
     if (isIncorrectCredentialsMessage(message)) {
-      throw new ApiError("incorrect credentials", response.status, code);
+      message = "Invalid email or password";
     }
+    const code = (data as { code?: string }).code;
     throw new ApiError(message, response.status, code);
   }
 
@@ -593,9 +589,9 @@ export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthR
       body: JSON.stringify(payload),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "incorrect credentials";
+    const message = error instanceof Error ? error.message : "Invalid email or password";
     if (isIncorrectCredentialsMessage(message)) {
-      throw new Error("incorrect credentials");
+      throw new Error("Invalid email or password");
     }
     throw error instanceof Error ? error : new Error(message);
   }
@@ -861,9 +857,12 @@ export async function seekerLogin(payload: LoginPayload): Promise<AuthResponse> 
   }
 
   if (!response.ok) {
-    const message =
+    let message =
       (data as { message?: string }).message ||
-      `Request failed with status ${response.status}`;
+      (response.status === 401 ? "Invalid email or password" : `Request failed with status ${response.status}`);
+    if (isIncorrectCredentialsMessage(message)) {
+      message = "Invalid email or password";
+    }
     throw new Error(message);
   }
 

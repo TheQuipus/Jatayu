@@ -16,9 +16,18 @@ type ForgotPasswordFormProps = {
 };
 
 export default function ForgotPasswordForm({
-  loginHref = "/login",
+  loginHref,
   role = "user",
 }: ForgotPasswordFormProps) {
+  const isExpert = role?.toLowerCase() === "expert";
+  const effectiveLoginHref =
+    loginHref ||
+    (isExpert
+      ? "/login?role=expert"
+      : role?.toLowerCase() === "admin"
+      ? "/admin"
+      : "/login?role=user");
+
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -43,7 +52,7 @@ export default function ForgotPasswordForm({
 
   return (
     <section className={register.registerCard}>
-      {role === "expert" ? (
+      {isExpert ? (
         <ExpertRegisterLeftPanel variant="login" />
       ) : (
         <SeekerRegisterLeftPanel variant="login" />
@@ -92,7 +101,7 @@ export default function ForgotPasswordForm({
                 Demo Environment: Click below to simulate opening the reset email link.
               </p>
               <Link
-                href={`/reset-password?email=${encodeURIComponent(normalizeEmail(email))}&token=demo-token`}
+                href={`/reset-password?email=${encodeURIComponent(normalizeEmail(email))}&token=demo-token&role=${role || "user"}`}
                 style={{ textDecoration: "none" }}
               >
                 <ContinueButton
@@ -103,7 +112,7 @@ export default function ForgotPasswordForm({
               </Link>
             </div>
 
-            <Link href={loginHref} style={{ textDecoration: "none" }}>
+            <Link href={effectiveLoginHref} style={{ textDecoration: "none" }}>
               <button
                 type="button"
                 className={register.authToggleBtn}
@@ -147,7 +156,7 @@ export default function ForgotPasswordForm({
                       id="forgotEmail"
                       type="email"
                       className={register.textFieldWithIcon}
-                      placeholder="admin@thequipus.com"
+                      placeholder="Aryan23@gmail.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       onBlur={() => setTouched(true)}
@@ -172,7 +181,7 @@ export default function ForgotPasswordForm({
               />
 
               <p className={register.authToggle}>
-                <Link href={loginHref} className={register.authToggleBtn}>
+                <Link href={effectiveLoginHref} className={register.authToggleBtn}>
                   Back to Login
                 </Link>
               </p>
