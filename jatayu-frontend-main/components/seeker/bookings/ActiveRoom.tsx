@@ -1,8 +1,9 @@
 "use client";
 
-import ActiveVideoRoom, { type ActiveVideoRoomProps } from "./ActiveVideoRoom";
+import ActiveVideoRoom from "./ActiveVideoRoom";
 import ActiveChatRoom from "./ActiveChatRoom";
 import type { BookingDetail } from "@/lib/seekerDashboard";
+import type { AgoraRoomState } from "@/hooks/useAgoraRoom";
 
 export type ChatMessage = {
   id: string;
@@ -22,10 +23,14 @@ export type ActiveRoomProps = {
   onSendMessage: (e: React.FormEvent) => void;
   onLeaveRoom: () => void;
   onFinishSession: () => void;
+  agora: AgoraRoomState;
 };
 
 export default function ActiveRoom(props: ActiveRoomProps) {
-  if (props.booking.consultationType === "video") {
+  if (props.agora.status === "error") {
+    return <p role="alert" style={{ padding: "2rem", textAlign: "center" }}>{props.agora.error}</p>;
+  }
+  if (["video", "audio", "shoutout"].includes(props.booking.consultationType)) {
     return <ActiveVideoRoom {...props} />;
   }
 

@@ -193,13 +193,17 @@ const BASE_TIME_SLOTS: Omit<TimeSlot, "id">[] = [
   { time: "5:00 PM", status: "available" },
 ];
 
-export function getTimeSlotsForDate(dateId: string, timezone = "Asia/Kolkata"): TimeSlot[] {
+export function getTimeSlotsForDate(
+  dateId: string,
+  timezone = "Asia/Kolkata",
+  minimumLeadTimeMinutes = 0,
+): TimeSlot[] {
   const dateIndex = Number.parseInt(dateId.replace("date-", ""), 10) || 0;
   const dateObj = new Date();
   dateObj.setHours(0, 0, 0, 0);
   dateObj.setDate(dateObj.getDate() + dateIndex);
 
-  const bufferAdvance = Date.now() + 30 * 60 * 1000;
+  const bufferAdvance = Date.now() + Math.max(0, minimumLeadTimeMinutes) * 60 * 1000;
 
   return BASE_TIME_SLOTS.map((slot, index) => {
     let isPastOrTooSoon = false;

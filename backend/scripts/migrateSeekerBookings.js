@@ -28,6 +28,8 @@ async function migrate() {
     expertRespondedAt: { type: DataTypes.DATE, allowNull: true },
     declineReasonCode: { type: DataTypes.STRING(50), allowNull: true },
     declineReasonNotes: { type: DataTypes.TEXT, allowNull: true },
+    pokeCount: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+    lastPokedAt: { type: DataTypes.DATE, allowNull: true },
   };
   for (const [column, definition] of Object.entries(bookingAdditions)) {
     if (Object.keys(bookingColumns).length > 0 && !bookingColumns[column]) {

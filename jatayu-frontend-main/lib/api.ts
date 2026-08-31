@@ -189,6 +189,7 @@ export interface AuthUser {
   fullName: string;
   phone?: string;
   profilePhotoSrc?: string;
+  linkedinId?: string;
   onboardingStep: string;
   status: string;
   role?: string;
@@ -532,6 +533,25 @@ export interface LinkedinLoginPayload {
 
 export async function linkedinLogin(payload: LinkedinLoginPayload): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/api/auth/linkedin", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface LinkedinConnectResponse {
+  message: string;
+  linkedinProfile: {
+    fullName: string;
+    email: string;
+    picture: string;
+  };
+  expert: Record<string, unknown>;
+}
+
+export async function connectExpertLinkedin(
+  payload: Pick<LinkedinLoginPayload, "authCode" | "redirectUri">,
+): Promise<LinkedinConnectResponse> {
+  return apiFetch<LinkedinConnectResponse>("/api/expert/onboarding/linkedin/connect", {
     method: "POST",
     body: JSON.stringify(payload),
   });

@@ -36,6 +36,8 @@ const Booking = seekerDb.define('Booking', {
   declineReasonNotes: { type: DataTypes.TEXT, allowNull: true },
   confirmedAt: { type: DataTypes.DATE, allowNull: true },
   expiresAt: { type: DataTypes.DATE, allowNull: true },
+  pokeCount: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+  lastPokedAt: { type: DataTypes.DATE, allowNull: true },
 }, {
   timestamps: true,
   indexes: [

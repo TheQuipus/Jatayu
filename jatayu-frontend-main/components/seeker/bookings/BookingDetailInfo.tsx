@@ -43,6 +43,7 @@ import coinAnimation from "@/public/Lottie/coin_p.json";
 import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
 import { formatCurrency, getPokeState, savePokeState, type BookingDetail } from "@/lib/seekerDashboard";
 import type { ConsultationType } from "@/lib/booking";
+import { pokeBookingExpert } from "@/lib/seekerBookingApi";
 import styles from "./BookingDetailInfo.module.css";
 
 type BookingDetailInfoProps = {
@@ -258,8 +259,11 @@ ${notes || `1. Valuation & Cap Table:
   };
 
   useEffect(() => {
-    setPokeState(getPokeState(booking.id));
-  }, [booking.id]);
+    setPokeState(booking.pokeCount !== undefined ? {
+      count: booking.pokeCount,
+      lastPokedAt: booking.lastPokedAt ? new Date(booking.lastPokedAt).getTime() : null,
+    } : getPokeState(booking.id));
+  }, [booking.id, booking.lastPokedAt, booking.pokeCount]);
 
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [pokeFeedback, setPokeFeedback] = useState<string | null>(null);
@@ -324,8 +328,9 @@ ${notes || `1. Valuation & Cap Table:
   };
 
   useEffect(() => {
+    const maxPokes = booking.pokeMaxCount || 2;
     const shouldRunInterval =
-      (booking.status === "pending" && pokeState.lastPokedAt !== null && pokeState.count < 2) ||
+      (booking.status === "pending" && pokeState.count < maxPokes) ||
       (booking.status === "confirmed" && sessionState !== "completed");
 
     if (!shouldRunInterval) {
@@ -337,22 +342,34 @@ ${notes || `1. Valuation & Cap Table:
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [pokeState.lastPokedAt, pokeState.count, booking.status, sessionState]);
+  }, [pokeState.lastPokedAt, pokeState.count, booking.status, booking.pokeMaxCount, sessionState]);
 
   const cooldownSeconds = (() => {
-    if (pokeState.lastPokedAt === null || pokeState.count >= 2) {
+    if (pokeState.lastPokedAt === null || pokeState.count >= (booking.pokeMaxCount || 2)) {
       return 0;
+    }
+    if (booking.pokeNextAllowedAt) {
+      return Math.max(0, Math.ceil((new Date(booking.pokeNextAllowedAt).getTime() - currentTime) / 1000));
     }
     const elapsedMs = currentTime - pokeState.lastPokedAt;
     const remainingMs = (4 * 60 * 60 * 1000) - elapsedMs;
     return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
   })();
 
-  const isOneHourPassed = booking.placedDaysAgo > 0 || booking.placedDaysAgo === undefined;
+  const isOneHourPassed = booking.pokeNextAllowedAt
+    ? currentTime >= new Date(booking.pokeNextAllowedAt).getTime() || pokeState.count > 0
+    : booking.placedDaysAgo > 0 || booking.placedDaysAgo === undefined;
 
   const timeStatus = useMemo(() => {
     if (booking.status !== "confirmed") return booking.status;
     if (fastForwarded) return "active";
+
+    if (booking.sessionAccess) {
+      return currentTime >= new Date(booking.sessionAccess.opensAt).getTime()
+        && currentTime <= new Date(booking.sessionAccess.closesAt).getTime()
+        ? "active"
+        : "upcoming";
+    }
 
     const targetDate = new Date(currentTime);
     targetDate.setDate(targetDate.getDate() + booking.dayOffset);
@@ -374,13 +391,16 @@ ${notes || `1. Valuation & Cap Table:
       return null;
     }
 
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + booking.dayOffset);
-    targetDate.setHours(booking.startHour, booking.startMinute, 0, 0);
+    const targetDate = booking.sessionAccess
+      ? new Date(booking.sessionAccess.opensAt)
+      : new Date();
+    if (!booking.sessionAccess) {
+      targetDate.setDate(targetDate.getDate() + booking.dayOffset);
+      targetDate.setHours(booking.startHour, booking.startMinute, 0, 0);
+    }
 
     const diffMs = targetDate.getTime() - currentTime;
-    // Activate join session button 5 minutes prior to meeting start time
-    if (diffMs <= 5 * 60 * 1000) {
+    if (diffMs <= 0) {
       return null;
     }
 
@@ -409,21 +429,23 @@ ${notes || `1. Valuation & Cap Table:
     return `${hrs}h ${mins}m ${secs}s`;
   };
 
-  const handlePoke = () => {
-    if (pokeState.count >= 2) return;
+  const handlePoke = async () => {
+    if (pokeState.count >= (booking.pokeMaxCount || 2)) return;
     if (!isOneHourPassed) return;
     if (cooldownSeconds > 0) return;
 
-    const nextCount = pokeState.count + 1;
-    const now = Date.now();
-
-    setPokeState({
-      count: nextCount,
-      lastPokedAt: now,
-    });
-    savePokeState(booking.id, nextCount, now);
-
-    setPokeFeedback("Expert poked successfully! A priority alert has been sent.");
+    try {
+      const updated = await pokeBookingExpert(booking.id);
+      const nextCount = updated.poke?.count || pokeState.count + 1;
+      const lastPokedAt = updated.poke?.lastPokedAt
+        ? new Date(updated.poke.lastPokedAt).getTime()
+        : Date.now();
+      setPokeState({ count: nextCount, lastPokedAt });
+      savePokeState(booking.id, nextCount, lastPokedAt);
+      setPokeFeedback("Expert poked successfully! A priority alert has been sent.");
+    } catch (error) {
+      setPokeFeedback(error instanceof Error ? error.message : "Unable to poke expert.");
+    }
     setTimeout(() => {
       setPokeFeedback(null);
     }, 4000);
@@ -762,7 +784,7 @@ ${notes || `1. Valuation & Cap Table:
                       </div>
 
                       <div className={styles.chewyBody}>
-                        <h3 className={styles.chewyTitle}>We'd love to hear about your recent session.</h3>
+                        <h3 className={styles.chewyTitle}>We&apos;d love to hear about your recent session.</h3>
 
                         <p className={styles.chewyDesc}>
                           Help other seekers choose <br />the right expert.
@@ -770,7 +792,6 @@ ${notes || `1. Valuation & Cap Table:
 
                         {!submittedReview ? (
                           <>
-
                             {/* <ContinueButton
                               label="Review now and earn 15 credits"
                               onClick={() => setIsReviewModalOpen(true)}
@@ -781,7 +802,8 @@ ${notes || `1. Valuation & Cap Table:
                           <span className={styles.chewyReviewedTag}>
                             <CheckCircle2 size={14} /> Reviewed
                           </span>
-                        )}                          <div className={styles.reviewEarnNotice}>
+                        )}
+                        <div className={styles.reviewEarnNotice}>
                           Review now and earn 15 credits
                           <span className={styles.coinLottieWrap}>
                             <Lottie
@@ -825,7 +847,7 @@ ${notes || `1. Valuation & Cap Table:
                       <div className={styles.chewyBody}>
                         <div className={styles.countdownValueDisplay}>{countdownText}</div>
                         <div className={styles.reviewEarnNotice}>
-                          Join room activates 5m prior
+                          Join room activates {booking.sessionAccess?.joinBeforeMinutes || 5}m prior
                         </div>
                       </div>
                     </div>
@@ -856,12 +878,12 @@ ${notes || `1. Valuation & Cap Table:
                                   aria-hidden="true"
                                 />
                               }
-                              label={`Poke ${pokeState.count}/2`}
+                              label={`Poke ${pokeState.count}/${booking.pokeMaxCount || 2}`}
                               disabled
                               title="Poke option will be active 1 hour after booking placement."
                               className={styles.sessionPokeBtn}
                             />
-                          ) : pokeState.count === 0 ? (
+                          ) : pokeState.count >= (booking.pokeMaxCount || 2) ? (
                             <ContinueButton
                               showArrow={false}
                               leadingIcon={
@@ -874,11 +896,11 @@ ${notes || `1. Valuation & Cap Table:
                                   aria-hidden="true"
                                 />
                               }
-                              label={`Poke ${pokeState.count}/2`}
-                              onClick={handlePoke}
+                              label="Max pokes reached"
+                              disabled
                               className={styles.sessionPokeBtn}
                             />
-                          ) : pokeState.count === 1 && cooldownSeconds > 0 ? (
+                          ) : pokeState.count > 0 && cooldownSeconds > 0 ? (
                             <ContinueButton
                               showArrow={false}
                               leadingIcon={
@@ -895,23 +917,6 @@ ${notes || `1. Valuation & Cap Table:
                               disabled
                               className={styles.sessionPokeBtn}
                             />
-                          ) : pokeState.count === 1 && cooldownSeconds === 0 ? (
-                            <ContinueButton
-                              showArrow={false}
-                              leadingIcon={
-                                <Image
-                                  src="/pointright.svg"
-                                  alt=""
-                                  width={16}
-                                  height={16}
-                                  className={styles.pokeIconSvg}
-                                  aria-hidden="true"
-                                />
-                              }
-                              label={`Poke ${pokeState.count}/2`}
-                              onClick={handlePoke}
-                              className={styles.sessionPokeBtn}
-                            />
                           ) : (
                             <ContinueButton
                               showArrow={false}
@@ -925,8 +930,8 @@ ${notes || `1. Valuation & Cap Table:
                                   aria-hidden="true"
                                 />
                               }
-                              label="Max pokes reached"
-                              disabled
+                              label={`Poke ${pokeState.count}/${booking.pokeMaxCount || 2}`}
+                              onClick={handlePoke}
                               className={styles.sessionPokeBtn}
                             />
                           )}

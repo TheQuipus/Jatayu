@@ -23,6 +23,11 @@ export type CalendarBooking = {
   durationMinutes: number;
   status: "confirmed" | "pending" | "cancelled" | "completed";
   createdAt?: string | number;
+  pokeCount?: number;
+  lastPokedAt?: string | null;
+  pokeMaxCount?: number;
+  pokeNextAllowedAt?: string | null;
+  canPoke?: boolean;
 };
 
 export type BookingAttachment = {
@@ -52,6 +57,13 @@ export type BookingDetail = CalendarBooking & {
   attachments: BookingAttachment[];
   placedDaysAgo: number;
   cancellationReason?: string;
+  sessionAccess?: {
+    enabled: boolean;
+    opensAt: string;
+    closesAt: string;
+    canJoin: boolean;
+    joinBeforeMinutes: number;
+  };
 };
 
 export type UpcomingBooking = CalendarBooking;
@@ -644,4 +656,3 @@ export async function getSeekerBookingDetailAsync(bookingId: string) {
   }
   return getBookingById(bookingId);
 }
-

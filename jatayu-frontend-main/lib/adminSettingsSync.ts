@@ -22,6 +22,11 @@ function readString(map: Record<string, string>, key: string, fallback = ""): st
   return map[key] ?? fallback;
 }
 
+function readPositiveNumber(map: Record<string, string>, key: string, fallback: number): number {
+  const value = Number(map[key]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 function readSmsProvider(map: Record<string, string>): SmsProvider {
   const provider = readString(map, "SMS_PROVIDER", DEFAULT_ADMIN_SETTINGS.sms.provider);
   if (provider === "twilio" || provider === "msg91" || provider === "textlocal") {
@@ -124,6 +129,20 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
       encryption: smtpEncryption === "ssl" || smtpEncryption === "tls" ? smtpEncryption : "tls",
     },
     payment: DEFAULT_ADMIN_SETTINGS.payment,
+    booking: {
+      minimumLeadTimeMinutes: Math.max(0, Number(map.BOOKING_MINIMUM_LEAD_TIME_MINUTES ?? 30) || 0),
+      pokeInitialDelayHours: readPositiveNumber(map, "BOOKING_POKE_INITIAL_DELAY_HOURS", 1),
+      pokeCooldownHours: readPositiveNumber(map, "BOOKING_POKE_COOLDOWN_HOURS", 4),
+      pokeMaxCount: Math.floor(readPositiveNumber(map, "BOOKING_POKE_MAX_COUNT", 2)),
+    },
+    communication: {
+      agoraEnabled: readBool(map, "AGORA_ENABLED", false),
+      agoraAppId: readString(map, "AGORA_APP_ID"),
+      agoraAppCertificate: readString(map, "AGORA_APP_CERTIFICATE"),
+      tokenTtlSeconds: readPositiveNumber(map, "AGORA_TOKEN_TTL_SECONDS", 3600),
+      joinBeforeMinutes: readPositiveNumber(map, "AGORA_JOIN_BEFORE_MINUTES", 15),
+      joinAfterMinutes: readPositiveNumber(map, "AGORA_JOIN_AFTER_MINUTES", 30),
+    },
     auth: {
       google,
       meta,
@@ -185,6 +204,16 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     DIGILOCKER_SCOPES: settings.auth.digilocker.scopes,
     AI_PROVIDER_NAME: settings.ai.name,
     AI_API_KEY: settings.ai.apiKey,
+    BOOKING_POKE_INITIAL_DELAY_HOURS: String(settings.booking.pokeInitialDelayHours),
+    BOOKING_MINIMUM_LEAD_TIME_MINUTES: String(settings.booking.minimumLeadTimeMinutes),
+    BOOKING_POKE_COOLDOWN_HOURS: String(settings.booking.pokeCooldownHours),
+    BOOKING_POKE_MAX_COUNT: String(settings.booking.pokeMaxCount),
+    AGORA_ENABLED: String(settings.communication.agoraEnabled),
+    AGORA_APP_ID: settings.communication.agoraAppId,
+    AGORA_APP_CERTIFICATE: settings.communication.agoraAppCertificate,
+    AGORA_TOKEN_TTL_SECONDS: String(settings.communication.tokenTtlSeconds),
+    AGORA_JOIN_BEFORE_MINUTES: String(settings.communication.joinBeforeMinutes),
+    AGORA_JOIN_AFTER_MINUTES: String(settings.communication.joinAfterMinutes),
   };
 }
 

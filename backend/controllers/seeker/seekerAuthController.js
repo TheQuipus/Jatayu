@@ -11,6 +11,7 @@ import {
   verifyGoogleLogin,
 } from '../../utils/googleAuth.js';
 import { getLinkedinAuthConfig, verifyLinkedinLogin } from '../../utils/linkedinAuth.js';
+import { getSeekerOnboardingProgress } from '../../utils/seekerOnboardingProgress.js';
 import {
   storeOtpOnModel,
   readOtpFromModel,
@@ -84,6 +85,7 @@ function buildSeekerToken(seeker) {
 }
 
 function buildSeekerUser(seeker) {
+  const onboarding = getSeekerOnboardingProgress(seeker);
   return {
     id: seeker.id,
     email: seeker.email,
@@ -93,6 +95,10 @@ function buildSeekerUser(seeker) {
     onboardingStep: seeker.onboardingStep,
     status: seeker.status,
     role: 'seeker',
+    completedSteps: onboarding.completedSteps,
+    resumeStep: onboarding.resumeStep,
+    onboardingComplete: onboarding.onboardingComplete,
+    onboarding,
   };
 }
 

@@ -3,9 +3,11 @@ import {
   getExpertBookingOptions,
   getSeekerBooking,
   listSeekerBookings,
+  pokeExpert,
   serializeBooking,
   verifyBookingPayment,
 } from '../../services/seeker/bookingService.js';
+import { getBookingPokeConfig } from '../../config/bookingPokes.js';
 
 const ERROR_RESPONSES = {
   MISSING_BOOKING_FIELDS: [400, 'expertId, idempotencyKey, subject, context, and scheduledStartAt are required'],
@@ -23,12 +25,22 @@ const ERROR_RESPONSES = {
   INVALID_PAYMENT_SIGNATURE: [400, 'Invalid Razorpay payment signature'],
   PAYMENT_MISMATCH: [409, 'Payment does not match this booking'],
   PAYMENT_ORDER_FAILED: [502, 'Unable to create Razorpay payment order'],
+  BOOKING_NOT_AWAITING_EXPERT: [409, 'This booking is no longer awaiting the expert response'],
+  POKE_LIMIT_REACHED: [409, 'Maximum number of pokes reached for this booking'],
+  POKE_TOO_EARLY: [429, 'Please wait before poking the expert again'],
 };
 
 function handleBookingError(error, res, operation) {
   const [status, message] = ERROR_RESPONSES[error.message] || [500, `Unable to ${operation}`];
   if (status === 500) console.error(`Seeker Booking ${operation} Error:`, error);
-  return res.status(status).json({ message, code: error.message });
+  return res.status(status).json({
+    message,
+    code: error.message,
+    ...(error.nextAllowedAt ? { nextAllowedAt: error.nextAllowedAt } : {}),
+    ...(error.minimumLeadTimeMinutes !== undefined
+      ? { minimumLeadTimeMinutes: error.minimumLeadTimeMinutes, earliestStartAt: error.earliestStartAt }
+      : {}),
+  });
 }
 
 export async function getBookingOptions(req, res) {
@@ -50,7 +62,7 @@ export async function createOrder(req, res) {
     const result = await createBookingOrder(req.user.id, req.body);
     const payment = result.payment;
     return res.status(result.reused ? 200 : 201).json({
-      booking: serializeBooking(result.booking),
+      booking: serializeBooking(result.booking, await getBookingPokeConfig()),
       checkoutRequired: result.booking.payableAmount > 0
         && !['paid', 'paid_with_credits'].includes(result.booking.paymentStatus),
       razorpayOrder: payment ? {
@@ -72,7 +84,7 @@ export async function verifyPayment(req, res) {
       message: booking.status === 'awaiting_expert'
         ? 'Payment confirmed and booking request sent to the expert'
         : 'Payment verified and awaiting capture confirmation',
-      booking: serializeBooking(booking),
+      booking: serializeBooking(booking, await getBookingPokeConfig()),
     });
   } catch (error) {
     return handleBookingError(error, res, 'verify payment');
@@ -94,5 +106,14 @@ export async function getBooking(req, res) {
     return res.status(200).json({ booking });
   } catch (error) {
     return handleBookingError(error, res, 'retrieve booking');
+  }
+}
+
+export async function pokeBookingExpert(req, res) {
+  try {
+    const booking = await pokeExpert(req.user.id, req.params.bookingId);
+    return res.status(200).json({ message: 'Expert poked successfully', booking });
+  } catch (error) {
+    return handleBookingError(error, res, 'poke expert');
   }
 }
