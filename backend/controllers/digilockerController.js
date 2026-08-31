@@ -18,18 +18,35 @@ function redirectWithResult(res, returnUrl, result) {
 
 function documentsFromResponse(data) {
   if (Array.isArray(data)) return data;
+  if (typeof data === 'string') {
+    try {
+      return documentsFromResponse(JSON.parse(data));
+    } catch {
+      return [];
+    }
+  }
   for (const key of ['items', 'documents', 'issued_documents', 'issuedDocuments']) {
-    if (Array.isArray(data?.[key])) return data[key];
+    if (data?.[key] !== undefined) {
+      const documents = documentsFromResponse(data[key]);
+      if (documents.length > 0 || Array.isArray(data[key])) return documents;
+    }
+  }
+  if (data && typeof data === 'object') {
+    const keys = Object.keys(data);
+    if (keys.length > 0 && keys.every((key) => /^\d+$/.test(key))) {
+      return Object.values(data);
+    }
   }
   return [];
 }
 
 function publicVerification(record) {
   if (!record) return null;
+  const issuedDocuments = documentsFromResponse(record.issuedDocuments);
   return {
     status: record.status,
     accountDetails: record.accountDetails,
-    issuedDocuments: record.issuedDocuments || [],
+    issuedDocuments,
     consentValidTill: record.consentValidTill,
     verifiedAt: record.verifiedAt,
     failureCode: record.failureCode,
@@ -70,7 +87,7 @@ export const getDigilockerKycStatus = async (req, res) => {
       getDigilockerConfig(),
       DigilockerVerification.findOne({ where: { expertId: req.user.id } }),
     ]);
-    const documents = verification?.issuedDocuments || [];
+    const documents = documentsFromResponse(verification?.issuedDocuments);
     const identityDocument = documents.find((item) =>
       /aadhaar|aadhar|adhar|pan|passport|voter|driving/i.test(String(item?.doctype || item?.type || item?.name || item?.description || ''))
     );
@@ -138,7 +155,7 @@ export const handleDigilockerCallback = async (req, res) => {
     await downloadDigilockerDocuments({
       expertId: verification.expertId,
       verificationId: verification.id,
-      documents: verification.issuedDocuments,
+      documents: documentsFromResponse(verification.issuedDocuments),
       accessToken: token.access_token,
       fileUrlTemplate: config.fileUrlTemplate,
     });
