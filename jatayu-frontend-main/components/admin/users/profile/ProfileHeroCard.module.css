@@ -39,13 +39,23 @@
 .profileHeroBody {
   padding: 24px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.heroTopRow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .avatarWrapper {
   position: relative;
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: 0;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .heroAvatar {
@@ -73,10 +83,23 @@
   border: 2px solid var(--white);
 }
 
+.heroHeaderInfo {
+  flex: 1;
+  min-width: 0;
+}
+
 .heroDetails {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .heroTopRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
 }
 
 .heroNameRow {

@@ -79,28 +79,24 @@
 }
 
 .breakdownRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+  margin-top: 10px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--dove-gray);
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .breakdownItem {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .breakdownItem strong {
   color: var(--ink);
   font-weight: 700;
-}
-
-.breakdownSep {
-  color: var(--mercury);
-  font-weight: bold;
-}
+}

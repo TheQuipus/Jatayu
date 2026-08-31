@@ -56,6 +56,7 @@ type BookingDetailInfoProps = {
     date: string;
   } | null;
   notes: string;
+  isAdmin?: boolean;
 };
 
 const CONSULTATION_ICONS: Record<ConsultationType, typeof MessageSquare> = {
@@ -104,10 +105,12 @@ export default function BookingDetailInfo({
   onSubmitReview,
   submittedReview,
   notes,
+  isAdmin = false,
 }: BookingDetailInfoProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isEffectiveAdmin = Boolean(isAdmin || pathname?.startsWith("/admin"));
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -142,6 +145,10 @@ export default function BookingDetailInfo({
   }, [searchParams]);
 
   const [openAccIndex, setOpenAccIndex] = useState<number | null>(0);
+  const [activeContentTab, setActiveContentTab] = useState<"transcript" | "video" | "chat" | "notes">("transcript");
+  const [copiedNotes, setCopiedNotes] = useState(false);
+  const [copiedTranscript, setCopiedTranscript] = useState(false);
+
   const [pokeState, setPokeState] = useState<{
     count: number;
     lastPokedAt: number | null;
@@ -162,182 +169,93 @@ export default function BookingDetailInfo({
     booking.consultationType === "shoutout" ||
     booking.consultationType === "group";
 
-  const accordionItems = useMemo(() => {
-    if (isVideoCall) {
-      return [
-        {
-          id: "transcript",
-          title: "Session Transcript",
-          content: (
-            <div className={styles.accContentInner}>
-              <div className={styles.transcriptBox}>
-                <div className={styles.transcriptLine}>
-                  <span className={styles.transcriptTime}>00:01</span>
-                  <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
-                  <span>Hello! Thanks for joining today's session. I've reviewed your context on "{booking.subject || 'your question'}". Let me share my screen and walk through the details.</span>
-                </div>
-                <div className={styles.transcriptLine}>
-                  <span className={styles.transcriptTime}>00:03</span>
-                  <strong className={styles.transcriptSpeaker}>You:</strong>
-                  <span>Hi! Yes, I'm excited. I specifically want to focus on cap table structure and valuation benchmarks.</span>
-                </div>
-                <div className={styles.transcriptLine}>
-                  <span className={styles.transcriptTime}>00:07</span>
-                  <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
-                  <span>Great question. For early-stage funding rounds, your primary focus should be keeping dilution bounded to 15-20% rather than optimizing solely for valuation.</span>
-                </div>
-              </div>
-            </div>
-          ),
-        },
-        {
-          id: "recordings",
-          title: "Recorded Videos",
-          content: (
-            <div className={styles.accContentInner}>
-              <div className={styles.videoGrid}>
-                <div className={styles.videoCard}>
-                  <div className={styles.videoThumbWrap}>
-                    <Image
-                      src={booking.expert.image}
-                      alt="Session Video Recording"
-                      fill
-                      className={styles.videoThumbImg}
-                    />
-                    <div
-                      className={styles.videoPlayOverlay}
-                      onClick={() => alert("Playing session recording video...")}
-                    >
-                      <Play size={28} color="#ffffff" fill="#ffffff" />
-                    </div>
-                    <span className={styles.videoDurationTag}>45:12</span>
-                  </div>
-                  <div className={styles.videoInfo}>
-                    <div className={styles.videoTitleRow}>
-                      <strong className={styles.videoTitle}>Full Session Recording</strong>
-                      <button
-                        type="button"
-                        className={styles.videoDownloadIconBtn}
-                        onClick={() => {
-                          alert("Downloading full session video MP4...");
-                        }}
-                        aria-label="Download Full Session Recording"
-                        title="Download Video"
-                      >
-                        <Download size={20} />
-                      </button>
-                    </div>
-                    <span className={styles.videoMeta}>1080p MP4 • 320 MB</span>
-                  </div>
-                </div>
+  const handleDownloadTranscript = () => {
+    const text = `SESSION TRANSCRIPT - ${booking.referenceId}
+Consultation: ${booking.consultationLabel} with ${booking.expert.name}
+Date: ${booking.scheduledDateLabel}, ${booking.scheduledTimeLabel}
+Topic: ${booking.subject || "General Consultation"}
 
-                <div className={styles.videoCard}>
-                  <div className={styles.videoThumbWrap}>
-                    <Image
-                      src={booking.expert.image}
-                      alt="Session Highlight Clip"
-                      fill
-                      className={styles.videoThumbImg}
-                    />
-                    <div
-                      className={styles.videoPlayOverlay}
-                      onClick={() => alert("Playing highlight clip...")}
-                    >
-                      <Play size={28} color="#ffffff" fill="#ffffff" />
-                    </div>
-                    <span className={styles.videoDurationTag}>05:15</span>
-                  </div>
-                  <div className={styles.videoInfo}>
-                    <div className={styles.videoTitleRow}>
-                      <strong className={styles.videoTitle}>Session Highlight Clip</strong>
-                      <button
-                        type="button"
-                        className={styles.videoDownloadIconBtn}
-                        onClick={() => {
-                          alert("Downloading highlight clip MP4...");
-                        }}
-                        aria-label="Download Session Highlight Clip"
-                        title="Download Clip"
-                      >
-                        <Download size={20} />
-                      </button>
-                    </div>
-                    <span className={styles.videoMeta}>MP4 Video • 42 MB</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ),
-        },
-        {
-          id: "notes",
-          title: "Session Notes",
-          content: (
-            <div className={styles.accContentInner}>
-              <div className={styles.notesBox}>
-                <pre className={styles.notesText}>
-                  {notes ||
-                    `1. Valuation & Cap Table:\n   - Dilution target: 15-20% max for seed round.\n   - Ensure clean anti-dilution terms.\n2. Action Items:\n   - Refine financial projections slide.\n   - Prepare target investor list for warm intros.`}
-                </pre>
-              </div>
-            </div>
-          ),
-        },
-      ];
-    }
+[00:01] ${booking.expert.name}: Hello! Thanks for joining today's session. I've reviewed your context on "${booking.subject || 'your question'}". Let me share my screen and walk through the details.
+[00:03] You: Hi! Yes, I'm excited. I specifically want to focus on cap table structure, valuation benchmarks, and key execution steps.
+[00:07] ${booking.expert.name}: Great question. For early-stage funding rounds, your primary focus should be keeping dilution bounded to 15-20% rather than optimizing solely for valuation.
+[00:15] ${booking.expert.name}: Let's break this down into three core milestones for your investor decks.
+[00:28] You: That makes complete sense. How do we structure the convertible notes in this scenario?
+[00:35] ${booking.expert.name}: I recommend using a standard post-money SAFE with a valuation cap aligned with current revenue multiples in your sector.
+[00:45] ${booking.expert.name}: I have listed the checklist of documents you will need in the session notes.`;
 
-    // For Chat / Text consultation
-    return [
-      {
-        id: "download-chat",
-        title: "Download Chat",
-        content: (
-          <div className={styles.accContentInner}>
-            <div className={styles.chatExportCard}>
-              <div className={styles.chatExportHeader}>
-                <MessageSquare size={18} className={styles.chatExportIcon} />
-                <div>
-                  <strong className={styles.chatExportTitle}>Complete Chat Log</strong>
-                  <span className={styles.chatExportSub}>Exported in UTF-8 text format</span>
-                </div>
-              </div>
-              <div className={styles.accActionRow} style={{ marginTop: 12 }}>
-                <SecondaryCTA
-                  label="Download Chat Log (.txt)"
-                  showArrow={false}
-                  leadingIcon={<Download size={13} />}
-                  onClick={() => {
-                    const text = `CHAT LOG - ${booking.referenceId}\nExpert: ${booking.expert.name}\nDate: ${booking.scheduledDateLabel}\n\n[12:00 PM] ${booking.expert.name}: Hello! Thanks for scheduling our session.\n[12:01 PM] You: Hi, yes! I want to dive into the specifics.\n[12:02 PM] ${booking.expert.name}: Sure thing, let's review your question: "${booking.subject}".`;
-                    const blob = new Blob([text], { type: "text/plain" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `Chat_Log_${booking.referenceId}.txt`;
-                    a.click();
-                  }}
-                  className={styles.accDownloadBtn}
-                />
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: "notes",
-        title: "Session Notes",
-        content: (
-          <div className={styles.accContentInner}>
-            <div className={styles.notesBox}>
-              <pre className={styles.notesText}>
-                {notes ||
-                  `1. Key Points Addressed:\n   - Strategy for creator GST & income filing.\n   - Mixing personal & business expenses guidance.\n2. Recommended Next Steps:\n   - Consult CA before quarterly filing deadline.`}
-              </pre>
-            </div>
-          </div>
-        ),
-      },
-    ];
-  }, [booking, isVideoCall, notes]);
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Transcript_${booking.referenceId}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadChatLog = () => {
+    const text = `SAVED CHAT LOG - ${booking.referenceId}
+Expert: ${booking.expert.name}
+Date: ${booking.scheduledDateLabel}, ${booking.scheduledTimeLabel}
+Subject: ${booking.subject || "Consultation Chat"}
+
+[12:00 PM] ${booking.expert.name}: Hello! Thanks for scheduling our session.
+[12:01 PM] You: Hi! Excited for this discussion.
+[12:02 PM] ${booking.expert.name}: Sure thing, let's review your question: "${booking.subject || "Consultation"}".
+[12:05 PM] ${booking.expert.name}: I have uploaded the financial projection template in the shared workspace.
+[12:12 PM] You: Received! Looking through the cap table assumptions now.
+[12:20 PM] ${booking.expert.name}: Let me know if you need help with any specific formulas.
+[12:35 PM] You: This is super helpful, thank you so much!`;
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Chat_Log_${booking.referenceId}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadNotes = () => {
+    const text = `SAVED SESSION NOTES - ${booking.referenceId}
+Expert: ${booking.expert.name}
+Date: ${booking.scheduledDateLabel}, ${booking.scheduledTimeLabel}
+Topic: ${booking.subject || "Consultation"}
+
+${notes || `1. Valuation & Cap Table:
+   - Dilution target: 15-20% max for seed round.
+   - Ensure clean anti-dilution terms & post-money SAFE standard.
+
+2. Financial Model & Projections:
+   - Separate SaaS recurring revenue from one-off setup fees.
+   - Refine gross margin calculations factoring in cloud hosting & customer success.
+
+3. Action Items & Next Steps:
+   - Refine financial projections slide with 3-year scenario analysis.
+   - Prepare target investor list for warm introductions.
+   - Complete trademark & IP assignment documentation.`}`;
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Session_Notes_${booking.referenceId}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyNotes = () => {
+    const text = notes || `1. Valuation & Cap Table:\n   - Dilution target: 15-20% max for seed round.\n   - Ensure clean anti-dilution terms.\n2. Action Items:\n   - Refine financial projections slide.\n   - Prepare target investor list for warm intros.`;
+    navigator.clipboard.writeText(text);
+    setCopiedNotes(true);
+    setTimeout(() => setCopiedNotes(false), 2000);
+  };
+
+  const handleCopyTranscript = () => {
+    const text = `[00:01] ${booking.expert.name}: Hello! Thanks for joining today's session.\n[00:03] You: Hi! I want to focus on cap table structure.\n[00:07] ${booking.expert.name}: Dilution bounded to 15-20% is recommended.`;
+    navigator.clipboard.writeText(text);
+    setCopiedTranscript(true);
+    setTimeout(() => setCopiedTranscript(false), 2000);
+  };
 
   useEffect(() => {
     setPokeState(getPokeState(booking.id));
@@ -799,224 +717,226 @@ export default function BookingDetailInfo({
               </div>
             </div>
 
-            <div className={styles.badgeFloatAnchor}>
-              {booking.status === "cancelled" ? (
-                <div className={styles.completedBadgeWrap}>
-                  <div className={styles.chewyCard}>
-                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderRed}`}>
-                      <span>Session Cancelled</span>
-                    </div>
-
-                    <div className={styles.chewyBody}>
-                      <p className={styles.chewyDesc}>
-                        Reason: {booking.cancellationReason || "Cancelled due to an unforeseen schedule conflict by the expert."}
-                      </p>
-
-                      {!submittedReview && (
-                        <>
-                          <div className={styles.reviewEarnNotice}>
-                            Review now and earn 15 credits
-                            <span className={styles.coinLottieWrap}>
-                              <Lottie
-                                animationData={coinAnimation}
-                                loop={true}
-                                autoplay={true}
-                                style={{ width: 28, height: 28 }}
-                              />
-                            </span>
-                          </div>
-                          <ContinueButton
-                            label="Review now and earn 15 credits"
-                            onClick={() => setIsReviewModalOpen(true)}
-                            className={styles.giveReviewBtn}
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (isCompletedSession || submittedReview) ? (
-                <div className={styles.completedBadgeWrap}>
-                  <div className={styles.chewyCard}>
-                    <div className={styles.chewyTopHeader}>
-                      <span>Session Completed</span>
-                    </div>
-
-                    <div className={styles.chewyBody}>
-                      <h3 className={styles.chewyTitle}>We'd love to hear about your recent session.</h3>
-
-                      <p className={styles.chewyDesc}>
-                        Help other seekers choose <br />the right expert.
-                      </p>
-
-                      {!submittedReview ? (
-                        <>
-
-                          {/* <ContinueButton
-                            label="Review now and earn 15 credits"
-                            onClick={() => setIsReviewModalOpen(true)}
-                            className={styles.giveReviewBtn}
-                          /> */}
-                        </>
-                      ) : (
-                        <span className={styles.chewyReviewedTag}>
-                          <CheckCircle2 size={14} /> Reviewed
-                        </span>
-                      )}                          <div className={styles.reviewEarnNotice}>
-                        Review now and earn 15 credits
-                        <span className={styles.coinLottieWrap}>
-                          <Lottie
-                            animationData={coinAnimation}
-                            loop={true}
-                            autoplay={true}
-                            style={{ width: 28, height: 28 }}
-                          />
-                        </span>
+            {!isEffectiveAdmin && (
+              <div className={styles.badgeFloatAnchor}>
+                {booking.status === "cancelled" ? (
+                  <div className={styles.completedBadgeWrap}>
+                    <div className={styles.chewyCard}>
+                      <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderRed}`}>
+                        <span>Session Cancelled</span>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              ) : timeStatus === "active" ? (
-                <div className={styles.completedBadgeWrap}>
-                  <div className={styles.chewyCard}>
-                    <div className={styles.chewyTopHeader}>
-                      <span>Session Active</span>
-                    </div>
 
-                    <div className={styles.chewyBody}>
-                      <h3 className={styles.chewyTitle}>Your Session Is Live</h3>
-                      <p className={styles.chewyDesc}>
-                        Your expert is waiting in the room. Click below to join now.
-                      </p>
-                      <ContinueButton
-                        label="Join Session"
-                        onClick={onJoinSession}
-                        className={styles.giveReviewBtn}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : timeStatus === "upcoming" && countdownText ? (
-                <div className={styles.completedBadgeWrap}>
-                  <div className={styles.chewyCard}>
-                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderBlue}`}>
-                      <span>Your Session Starts In</span>
-                    </div>
+                      <div className={styles.chewyBody}>
+                        <p className={styles.chewyDesc}>
+                          Reason: {booking.cancellationReason || "Cancelled due to an unforeseen schedule conflict by the expert."}
+                        </p>
 
-                    <div className={styles.chewyBody}>
-                      <div className={styles.countdownValueDisplay}>{countdownText}</div>
-                      <div className={styles.reviewEarnNotice}>
-                        Join room activates 5m prior
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : booking.status === "pending" ? (
-                <div className={styles.completedBadgeWrap}>
-                  <div className={styles.chewyCard}>
-                    <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderAmber}`}>
-                      <span>Awaiting Acceptance</span>
-                    </div>
-
-                    <div className={styles.chewyBody}>
-                      <h3 className={styles.chewyTitle}>Request Pending</h3>
-                      <p className={styles.chewyDesc}>
-                        We have notified {booking.expert.name}. You will be notified when accepted.
-                      </p>
-                      <div style={{ marginTop: "12px", width: "100%" }}>
-                        {!isOneHourPassed ? (
-                          <ContinueButton
-                            showArrow={false}
-                            leadingIcon={
-                              <Image
-                                src="/pointright.svg"
-                                alt=""
-                                width={16}
-                                height={16}
-                                className={styles.pokeIconSvg}
-                                aria-hidden="true"
-                              />
-                            }
-                            label={`Poke ${pokeState.count}/2`}
-                            disabled
-                            title="Poke option will be active 1 hour after booking placement."
-                            className={styles.sessionPokeBtn}
-                          />
-                        ) : pokeState.count === 0 ? (
-                          <ContinueButton
-                            showArrow={false}
-                            leadingIcon={
-                              <Image
-                                src="/pointright.svg"
-                                alt=""
-                                width={16}
-                                height={16}
-                                className={styles.pokeIconSvg}
-                                aria-hidden="true"
-                              />
-                            }
-                            label={`Poke ${pokeState.count}/2`}
-                            onClick={handlePoke}
-                            className={styles.sessionPokeBtn}
-                          />
-                        ) : pokeState.count === 1 && cooldownSeconds > 0 ? (
-                          <ContinueButton
-                            showArrow={false}
-                            leadingIcon={
-                              <Image
-                                src="/pointright.svg"
-                                alt=""
-                                width={16}
-                                height={16}
-                                className={styles.pokeIconSvg}
-                                aria-hidden="true"
-                              />
-                            }
-                            label={`Next poke: ${formatCooldown(cooldownSeconds)}`}
-                            disabled
-                            className={styles.sessionPokeBtn}
-                          />
-                        ) : pokeState.count === 1 && cooldownSeconds === 0 ? (
-                          <ContinueButton
-                            showArrow={false}
-                            leadingIcon={
-                              <Image
-                                src="/pointright.svg"
-                                alt=""
-                                width={16}
-                                height={16}
-                                className={styles.pokeIconSvg}
-                                aria-hidden="true"
-                              />
-                            }
-                            label={`Poke ${pokeState.count}/2`}
-                            onClick={handlePoke}
-                            className={styles.sessionPokeBtn}
-                          />
-                        ) : (
-                          <ContinueButton
-                            showArrow={false}
-                            leadingIcon={
-                              <Image
-                                src="/pointright.svg"
-                                alt=""
-                                width={16}
-                                height={16}
-                                className={styles.pokeIconSvg}
-                                aria-hidden="true"
-                              />
-                            }
-                            label="Max pokes reached"
-                            disabled
-                            className={styles.sessionPokeBtn}
-                          />
+                        {!submittedReview && (
+                          <>
+                            <div className={styles.reviewEarnNotice}>
+                              Review now and earn 15 credits
+                              <span className={styles.coinLottieWrap}>
+                                <Lottie
+                                  animationData={coinAnimation}
+                                  loop={true}
+                                  autoplay={true}
+                                  style={{ width: 28, height: 28 }}
+                                />
+                              </span>
+                            </div>
+                            <ContinueButton
+                              label="Review now and earn 15 credits"
+                              onClick={() => setIsReviewModalOpen(true)}
+                              className={styles.giveReviewBtn}
+                            />
+                          </>
                         )}
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : null}
-            </div>
+                ) : (isCompletedSession || submittedReview) ? (
+                  <div className={styles.completedBadgeWrap}>
+                    <div className={styles.chewyCard}>
+                      <div className={styles.chewyTopHeader}>
+                        <span>Session Completed</span>
+                      </div>
+
+                      <div className={styles.chewyBody}>
+                        <h3 className={styles.chewyTitle}>We'd love to hear about your recent session.</h3>
+
+                        <p className={styles.chewyDesc}>
+                          Help other seekers choose <br />the right expert.
+                        </p>
+
+                        {!submittedReview ? (
+                          <>
+
+                            {/* <ContinueButton
+                              label="Review now and earn 15 credits"
+                              onClick={() => setIsReviewModalOpen(true)}
+                              className={styles.giveReviewBtn}
+                            /> */}
+                          </>
+                        ) : (
+                          <span className={styles.chewyReviewedTag}>
+                            <CheckCircle2 size={14} /> Reviewed
+                          </span>
+                        )}                          <div className={styles.reviewEarnNotice}>
+                          Review now and earn 15 credits
+                          <span className={styles.coinLottieWrap}>
+                            <Lottie
+                              animationData={coinAnimation}
+                              loop={true}
+                              autoplay={true}
+                              style={{ width: 28, height: 28 }}
+                            />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : timeStatus === "active" ? (
+                  <div className={styles.completedBadgeWrap}>
+                    <div className={styles.chewyCard}>
+                      <div className={styles.chewyTopHeader}>
+                        <span>Session Active</span>
+                      </div>
+
+                      <div className={styles.chewyBody}>
+                        <h3 className={styles.chewyTitle}>Your Session Is Live</h3>
+                        <p className={styles.chewyDesc}>
+                          Your expert is waiting in the room. Click below to join now.
+                        </p>
+                        <ContinueButton
+                          label="Join Session"
+                          onClick={onJoinSession}
+                          className={styles.giveReviewBtn}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : timeStatus === "upcoming" && countdownText ? (
+                  <div className={styles.completedBadgeWrap}>
+                    <div className={styles.chewyCard}>
+                      <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderBlue}`}>
+                        <span>Your Session Starts In</span>
+                      </div>
+
+                      <div className={styles.chewyBody}>
+                        <div className={styles.countdownValueDisplay}>{countdownText}</div>
+                        <div className={styles.reviewEarnNotice}>
+                          Join room activates 5m prior
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : booking.status === "pending" ? (
+                  <div className={styles.completedBadgeWrap}>
+                    <div className={styles.chewyCard}>
+                      <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderAmber}`}>
+                        <span>Awaiting Acceptance</span>
+                      </div>
+
+                      <div className={styles.chewyBody}>
+                        <h3 className={styles.chewyTitle}>Request Pending</h3>
+                        <p className={styles.chewyDesc}>
+                          We have notified {booking.expert.name}. You will be notified when accepted.
+                        </p>
+                        <div style={{ marginTop: "12px", width: "100%" }}>
+                          {!isOneHourPassed ? (
+                            <ContinueButton
+                              showArrow={false}
+                              leadingIcon={
+                                <Image
+                                  src="/pointright.svg"
+                                  alt=""
+                                  width={16}
+                                  height={16}
+                                  className={styles.pokeIconSvg}
+                                  aria-hidden="true"
+                                />
+                              }
+                              label={`Poke ${pokeState.count}/2`}
+                              disabled
+                              title="Poke option will be active 1 hour after booking placement."
+                              className={styles.sessionPokeBtn}
+                            />
+                          ) : pokeState.count === 0 ? (
+                            <ContinueButton
+                              showArrow={false}
+                              leadingIcon={
+                                <Image
+                                  src="/pointright.svg"
+                                  alt=""
+                                  width={16}
+                                  height={16}
+                                  className={styles.pokeIconSvg}
+                                  aria-hidden="true"
+                                />
+                              }
+                              label={`Poke ${pokeState.count}/2`}
+                              onClick={handlePoke}
+                              className={styles.sessionPokeBtn}
+                            />
+                          ) : pokeState.count === 1 && cooldownSeconds > 0 ? (
+                            <ContinueButton
+                              showArrow={false}
+                              leadingIcon={
+                                <Image
+                                  src="/pointright.svg"
+                                  alt=""
+                                  width={16}
+                                  height={16}
+                                  className={styles.pokeIconSvg}
+                                  aria-hidden="true"
+                                />
+                              }
+                              label={`Next poke: ${formatCooldown(cooldownSeconds)}`}
+                              disabled
+                              className={styles.sessionPokeBtn}
+                            />
+                          ) : pokeState.count === 1 && cooldownSeconds === 0 ? (
+                            <ContinueButton
+                              showArrow={false}
+                              leadingIcon={
+                                <Image
+                                  src="/pointright.svg"
+                                  alt=""
+                                  width={16}
+                                  height={16}
+                                  className={styles.pokeIconSvg}
+                                  aria-hidden="true"
+                                />
+                              }
+                              label={`Poke ${pokeState.count}/2`}
+                              onClick={handlePoke}
+                              className={styles.sessionPokeBtn}
+                            />
+                          ) : (
+                            <ContinueButton
+                              showArrow={false}
+                              leadingIcon={
+                                <Image
+                                  src="/pointright.svg"
+                                  alt=""
+                                  width={16}
+                                  height={16}
+                                  className={styles.pokeIconSvg}
+                                  aria-hidden="true"
+                                />
+                              }
+                              label="Max pokes reached"
+                              disabled
+                              className={styles.sessionPokeBtn}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
 
             <article className={styles.sessionCard}>
               <div className={styles.sectionHead}>
@@ -1063,40 +983,364 @@ export default function BookingDetailInfo({
               </div>
             </article>
 
-            {/* Session Resources & Artifacts Section (Shown only after session is completed) */}
-            {(isCompletedSession || submittedReview) && (
-              <>
+            {/* Admin-only Session Content & Artifacts Toggle Panel */}
+            {isEffectiveAdmin ? (
+              <article className={styles.artifactsCard}>
+                <div className={styles.artifactsHeader}>
+                  <div className={styles.artifactsHeaderLeft}>
+                    <ClipboardList size={18} className={styles.artifactsHeaderIcon} />
+                    <h3 className={styles.artifactsTitle}>Session Recordings &amp; Notes</h3>
+                  </div>
 
-                <div className={styles.accContainer}>
-                  {accordionItems.map((item, idx) => {
-                    const isOpen = openAccIndex === idx;
-                    return (
-                      <article key={item.id} className={`${styles.accCardItem} ${isOpen ? styles.isOpen : ""}`}>
-                        <button
-                          type="button"
-                          className={styles.accBtn}
-                          onClick={() => setOpenAccIndex(isOpen ? null : idx)}
-                          aria-expanded={isOpen}
-                        >
-                          <span className={styles.accTitle}>{item.title}</span>
-                          <span className={styles.accPlus}>
-                            <Image
-                              src="/assets/plusicon.svg"
-                              alt=""
-                              width={34}
-                              height={34}
-                            />
-                          </span>
-                        </button>
-                        <div className={styles.accPanel}>
-                          {item.content}
-                        </div>
-                      </article>
-                    );
-                  })}
+                  {/* Content Toggle Buttons (Visible only to Admin) */}
+                  <div className={styles.contentToggleBar} role="tablist" aria-label="Session content toggle">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeContentTab === "transcript"}
+                      className={`${styles.contentToggleBtn} ${activeContentTab === "transcript" ? styles.contentToggleBtnActive : ""}`}
+                      onClick={() => setActiveContentTab("transcript")}
+                    >
+                      <FileText size={14} />
+                      <span>Transcript</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeContentTab === "video"}
+                      className={`${styles.contentToggleBtn} ${activeContentTab === "video" ? styles.contentToggleBtnActive : ""}`}
+                      onClick={() => setActiveContentTab("video")}
+                    >
+                      <Video size={14} />
+                      <span>Save Video</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeContentTab === "chat"}
+                      className={`${styles.contentToggleBtn} ${activeContentTab === "chat" ? styles.contentToggleBtnActive : ""}`}
+                      onClick={() => setActiveContentTab("chat")}
+                    >
+                      <MessageSquare size={14} />
+                      <span>Saved Chat</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeContentTab === "notes"}
+                      className={`${styles.contentToggleBtn} ${activeContentTab === "notes" ? styles.contentToggleBtnActive : ""}`}
+                      onClick={() => setActiveContentTab("notes")}
+                    >
+                      <ClipboardList size={14} />
+                      <span>Save Notes</span>
+                    </button>
+                  </div>
                 </div>
-              </>
-            )}
+
+                <div className={styles.artifactsContentPanel}>
+                  {/* 1. Transcript Tab Content */}
+                  {activeContentTab === "transcript" && (
+                    <div className={styles.tabContentFadeIn}>
+                      <div className={styles.tabContentTopBar}>
+                        <div className={styles.tabContentMeta}>
+                          <strong>Full Conversation Transcript</strong>
+                          <span>Auto-generated speaker-diarized transcript</span>
+                        </div>
+                        <div className={styles.tabActionGroup}>
+                          <button
+                            type="button"
+                            className={styles.tabActionSecondaryBtn}
+                            onClick={handleCopyTranscript}
+                          >
+                            {copiedTranscript ? <Check size={13} /> : <FileText size={13} />}
+                            <span>{copiedTranscript ? "Copied" : "Copy"}</span>
+                          </button>
+                          <SecondaryCTA
+                            label="Download (.txt)"
+                            showArrow={false}
+                            leadingIcon={<Download size={13} />}
+                            onClick={handleDownloadTranscript}
+                            className={styles.tabDownloadCTA}
+                          />
+                        </div>
+                      </div>
+
+                      <div className={styles.transcriptBox}>
+                        <div className={styles.transcriptLine}>
+                          <span className={styles.transcriptTime}>00:01</span>
+                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
+                          <span>Hello! Thanks for joining today's session. I've reviewed your context on &quot;{booking.subject || 'your question'}&quot;. Let me share my screen and walk through the details.</span>
+                        </div>
+                        <div className={styles.transcriptLine}>
+                          <span className={styles.transcriptTime}>00:03</span>
+                          <strong className={styles.transcriptSpeaker}>You:</strong>
+                          <span>Hi! Yes, I&apos;m excited. I specifically want to focus on cap table structure, valuation benchmarks, and key execution steps.</span>
+                        </div>
+                        <div className={styles.transcriptLine}>
+                          <span className={styles.transcriptTime}>00:07</span>
+                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
+                          <span>Great question. For early-stage funding rounds, your primary focus should be keeping dilution bounded to 15-20% rather than optimizing solely for valuation.</span>
+                        </div>
+                        <div className={styles.transcriptLine}>
+                          <span className={styles.transcriptTime}>00:15</span>
+                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
+                          <span>Let&apos;s break this down into three core milestones for your investor decks and cap table assumptions.</span>
+                        </div>
+                        <div className={styles.transcriptLine}>
+                          <span className={styles.transcriptTime}>00:28</span>
+                          <strong className={styles.transcriptSpeaker}>You:</strong>
+                          <span>That makes complete sense. How do we structure the convertible notes in this scenario?</span>
+                        </div>
+                        <div className={styles.transcriptLine}>
+                          <span className={styles.transcriptTime}>00:35</span>
+                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
+                          <span>I recommend using a standard post-money SAFE with a valuation cap aligned with current revenue multiples in your sector.</span>
+                        </div>
+                        <div className={styles.transcriptLine}>
+                          <span className={styles.transcriptTime}>00:45</span>
+                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
+                          <span>I have listed the checklist of documents you will need in the session notes.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Save Video / Recorded Videos Tab Content */}
+                  {activeContentTab === "video" && (
+                    <div className={styles.tabContentFadeIn}>
+                      <div className={styles.tabContentTopBar}>
+                        <div className={styles.tabContentMeta}>
+                          <strong>Recorded Videos &amp; Clips</strong>
+                          <span>High-definition video captures available for offline playback</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.videoGrid}>
+                        <div className={styles.videoCard}>
+                          <div className={styles.videoThumbWrap}>
+                            <Image
+                              src={booking.expert.image}
+                              alt="Session Video Recording"
+                              fill
+                              className={styles.videoThumbImg}
+                            />
+                            <div
+                              className={styles.videoPlayOverlay}
+                              onClick={() => alert("Playing session recording video...")}
+                            >
+                              <Play size={28} color="#ffffff" fill="#ffffff" />
+                            </div>
+                            <span className={styles.videoDurationTag}>45:12</span>
+                          </div>
+                          <div className={styles.videoInfo}>
+                            <div className={styles.videoTitleRow}>
+                              <strong className={styles.videoTitle}>Full Session Recording</strong>
+                              <button
+                                type="button"
+                                className={styles.videoDownloadIconBtn}
+                                onClick={() => {
+                                  alert("Downloading full session video MP4...");
+                                }}
+                                aria-label="Download Full Session Recording"
+                                title="Download Video"
+                              >
+                                <Download size={18} />
+                              </button>
+                            </div>
+                            <span className={styles.videoMeta}>1080p MP4 Video • 320 MB</span>
+                          </div>
+                        </div>
+
+                        <div className={styles.videoCard}>
+                          <div className={styles.videoThumbWrap}>
+                            <Image
+                              src={booking.expert.image}
+                              alt="Session Highlight Clip"
+                              fill
+                              className={styles.videoThumbImg}
+                            />
+                            <div
+                              className={styles.videoPlayOverlay}
+                              onClick={() => alert("Playing highlight clip...")}
+                            >
+                              <Play size={28} color="#ffffff" fill="#ffffff" />
+                            </div>
+                            <span className={styles.videoDurationTag}>05:15</span>
+                          </div>
+                          <div className={styles.videoInfo}>
+                            <div className={styles.videoTitleRow}>
+                              <strong className={styles.videoTitle}>Key Highlights &amp; Summary Clip</strong>
+                              <button
+                                type="button"
+                                className={styles.videoDownloadIconBtn}
+                                onClick={() => {
+                                  alert("Downloading highlight clip MP4...");
+                                }}
+                                aria-label="Download Session Highlight Clip"
+                                title="Download Clip"
+                              >
+                                <Download size={18} />
+                              </button>
+                            </div>
+                            <span className={styles.videoMeta}>MP4 Video • 42 MB</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. Saved Chat Tab Content */}
+                  {activeContentTab === "chat" && (
+                    <div className={styles.tabContentFadeIn}>
+                      <div className={styles.tabContentTopBar}>
+                        <div className={styles.tabContentMeta}>
+                          <strong>Saved Chat History</strong>
+                          <span>Complete session conversation &amp; resources shared</span>
+                        </div>
+                        <SecondaryCTA
+                          label="Download Chat Log (.txt)"
+                          showArrow={false}
+                          leadingIcon={<Download size={13} />}
+                          onClick={handleDownloadChatLog}
+                          className={styles.tabDownloadCTA}
+                        />
+                      </div>
+
+                      <div className={styles.chatLogContainer}>
+                        <div className={styles.chatMessageItem}>
+                          <div className={styles.chatMsgAvatar}>
+                            <Image src={booking.expert.image} alt={booking.expert.name} fill className={styles.chatAvatarImg} />
+                          </div>
+                          <div className={styles.chatMsgBubble}>
+                            <div className={styles.chatMsgHeader}>
+                              <strong>{booking.expert.name}</strong>
+                              <span className={styles.chatMsgTime}>12:00 PM</span>
+                            </div>
+                            <p className={styles.chatMsgText}>
+                              Hello! Thanks for scheduling our session. I&apos;ve reviewed your question: &quot;{booking.subject || "Consultation"}&quot;.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className={`${styles.chatMessageItem} ${styles.chatMessageItemSeeker}`}>
+                          <div className={styles.chatMsgBubble}>
+                            <div className={styles.chatMsgHeader}>
+                              <strong>You</strong>
+                              <span className={styles.chatMsgTime}>12:01 PM</span>
+                            </div>
+                            <p className={styles.chatMsgText}>
+                              Hi, yes! I&apos;m ready. I want to dive into the specifics.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className={styles.chatMessageItem}>
+                          <div className={styles.chatMsgAvatar}>
+                            <Image src={booking.expert.image} alt={booking.expert.name} fill className={styles.chatAvatarImg} />
+                          </div>
+                          <div className={styles.chatMsgBubble}>
+                            <div className={styles.chatMsgHeader}>
+                              <strong>{booking.expert.name}</strong>
+                              <span className={styles.chatMsgTime}>12:05 PM</span>
+                            </div>
+                            <p className={styles.chatMsgText}>
+                              I have uploaded the valuation framework and templates in our shared call notes for you.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className={`${styles.chatMessageItem} ${styles.chatMessageItemSeeker}`}>
+                          <div className={styles.chatMsgBubble}>
+                            <div className={styles.chatMsgHeader}>
+                              <strong>You</strong>
+                              <span className={styles.chatMsgTime}>12:12 PM</span>
+                            </div>
+                            <p className={styles.chatMsgText}>
+                              Thank you! This is very helpful.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Save Notes Tab Content */}
+                  {activeContentTab === "notes" && (
+                    <div className={styles.tabContentFadeIn}>
+                      <div className={styles.tabContentTopBar}>
+                        <div className={styles.tabContentMeta}>
+                          <strong>Saved Session Notes &amp; Action Items</strong>
+                          <span>Key decisions, recommendations, and next steps</span>
+                        </div>
+                        <div className={styles.tabActionGroup}>
+                          <button
+                            type="button"
+                            className={styles.tabActionSecondaryBtn}
+                            onClick={handleCopyNotes}
+                          >
+                            {copiedNotes ? <Check size={13} /> : <FileText size={13} />}
+                            <span>{copiedNotes ? "Copied" : "Copy"}</span>
+                          </button>
+                          <SecondaryCTA
+                            label="Download Notes (.txt)"
+                            showArrow={false}
+                            leadingIcon={<Download size={13} />}
+                            onClick={handleDownloadNotes}
+                            className={styles.tabDownloadCTA}
+                          />
+                        </div>
+                      </div>
+
+                      <div className={styles.notesBox}>
+                        <pre className={styles.notesText}>
+                          {notes ||
+                            `1. Valuation & Cap Table Strategy:\n   - Target equity dilution: 15-20% maximum for seed stage.\n   - Ensure clean anti-dilution terms & post-money SAFE standard.\n\n2. Financial Model & Unit Economics:\n   - Segregate SaaS recurring subscriptions from custom onboarding fees.\n   - Calculate gross margins factoring in cloud compute and 3rd party AI API costs.\n\n3. Action Items & Next Steps:\n   - Refine financial deck slide with 3-year scenario analysis.\n   - Prepare target investor list for warm introductions.\n   - Complete IP assignment and founder vesting schedule documentation.`}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ) : (isCompletedSession || submittedReview) ? (
+              <div className={styles.tabContentFadeIn} style={{ marginTop: 24 }}>
+                {isVideoCall ? (
+                  <div className={styles.videoGrid}>
+                    <div className={styles.videoCard}>
+                      <div className={styles.videoThumbWrap}>
+                        <Image
+                          src={booking.expert.image}
+                          alt="Session Video Recording"
+                          fill
+                          className={styles.videoThumbImg}
+                        />
+                        <div
+                          className={styles.videoPlayOverlay}
+                          onClick={() => alert("Playing session recording video...")}
+                        >
+                          <Play size={28} color="#ffffff" fill="#ffffff" />
+                        </div>
+                        <span className={styles.videoDurationTag}>45:12</span>
+                      </div>
+                      <div className={styles.videoInfo}>
+                        <div className={styles.videoTitleRow}>
+                          <strong className={styles.videoTitle}>Full Session Recording</strong>
+                          <button
+                            type="button"
+                            className={styles.videoDownloadIconBtn}
+                            onClick={() => alert("Downloading full session video MP4...")}
+                            aria-label="Download Full Session Recording"
+                            title="Download Video"
+                          >
+                            <Download size={18} />
+                          </button>
+                        </div>
+                        <span className={styles.videoMeta}>1080p MP4 Video • 320 MB</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
           </div>
 

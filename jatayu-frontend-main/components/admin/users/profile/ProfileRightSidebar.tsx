@@ -29,6 +29,12 @@ export default function ProfileRightSidebar({
   setActiveTab,
   handleToggleStatus,
 }: ProfileRightSidebarProps) {
+  const isSeeker = "preferredCategory" in user || "totalSpent" in user;
+  const seeker = isSeeker ? (user as SeekerUser) : undefined;
+  const walletAmount = seeker?.walletBalance !== undefined
+    ? `₹${seeker.walletBalance.toLocaleString("en-IN")}`
+    : "₹2,450";
+
   return (
     <aside className={styles.sidebarRight}>
       {/* Wallet Balance Card */}
@@ -39,7 +45,7 @@ export default function ProfileRightSidebar({
             <Wallet size={16} />
           </div>
         </div>
-        <h2 className={styles.walletAmount}>₹2,450</h2>
+        <h2 className={styles.walletAmount}>{walletAmount}</h2>
         <p className={styles.walletSub}>+ 120 credits available</p>
 
         <div className={styles.walletActions}>
@@ -49,7 +55,42 @@ export default function ProfileRightSidebar({
         </div>
       </div>
 
+      {/* Seeker Onboarding Quick Snapshot (For Seekers) */}
+      {isSeeker && seeker && (
+        <div className={styles.actionCard}>
+          <div className={styles.navCardTitle} style={{ paddingLeft: 0 }}>Onboarding Snapshot</div>
+          <div className={styles.trustList}>
+            <div className={styles.trustItem}>
+              <div className={styles.trustMeta}>
+                <div className={styles.trustIcon} style={{ background: "rgba(16, 185, 129, 0.1)", color: "#059669" }}>
+                  <Award size={14} />
+                </div>
+                <div>
+                  <div className={styles.trustTitle}>Onboarding Status</div>
+                  <div className={styles.trustDetail}>
+                    {seeker.onboardingComplete !== false ? "Complete & Verified" : "In Progress"}
+                  </div>
+                </div>
+              </div>
+              <CheckCircle2 size={16} className={styles.trustCheck} />
+            </div>
 
+            {seeker.budgetTier && (
+              <div className={styles.trustItem}>
+                <div className={styles.trustMeta}>
+                  <div className={styles.trustIcon} style={{ background: "rgba(230, 81, 0, 0.1)", color: "var(--tango)" }}>
+                    <Wallet size={14} />
+                  </div>
+                  <div>
+                    <div className={styles.trustTitle}>Budget Preference</div>
+                    <div className={styles.trustDetail}>{seeker.budgetTier} ({seeker.budgetRange || "Standard"})</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Trust & Safety Card */}
       <div className={styles.actionCard}>

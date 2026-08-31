@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   GraduationCap,
@@ -172,6 +173,12 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     type: "success" | "warning" | "error" | "info";
   } | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const showToast = (message: string, type: "success" | "warning" | "error" | "info" = "info") => {
     if (toastTimeoutRef.current) {
@@ -513,7 +520,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   return (
     <section className={styles.dashboard}>
       <div className={`container ${styles.dashboardInner}`}>
-        {toast ? (
+        {toast && mounted ? createPortal(
           <div className={`${styles.toastNotification} ${
             toast.type === "success"
               ? styles.toastSuccess
@@ -538,7 +545,8 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             >
               <X size={14} />
             </button>
-          </div>
+          </div>,
+          document.body
         ) : null}
         {previewDoc ? (
           <DocumentPreviewModal document={previewDoc} onClose={() => setPreviewDoc(null)} />
@@ -669,7 +677,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 {/* Left Column: Category */}
                 <div className={styles.governmentIdBlock}>
                   <div className={styles.audienceSectionTitle}>Primary Category</div>
-                  <div className={styles.govIdContent} style={{ marginTop: "12px" }}>
+                  <div className={styles.govIdContent}>
                     <span className={styles.profileReviewTextValue}>{application.categoryLabel || "—"}</span>
                   </div>
                 </div>
@@ -682,13 +690,13 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                   {!Array.isArray(application.skills) || application.skills.length === 0 ? (
                     <p className={styles.emptyTabMessage}>No skills selected.</p>
                   ) : (
-                    <div className={styles.tagRow}>
+                    <ul className={styles.bulletList}>
                       {(Array.isArray(application.skills) ? application.skills : []).map((skill) => (
-                        <span key={skill} className={styles.categoryTag}>
+                        <li key={skill} className={styles.bulletListItem}>
                           {skill}
-                        </span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   )}
                 </div>
               </div>
@@ -697,6 +705,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionId="category"
                 sectionTitle="Category & Skills"
                 state={sectionDecisions.category ?? { decision: null, note: "" }}
+                submittedDecision={submittedDecisions.category?.decision ?? null}
                 onChange={(st) => updateSectionDecision("category", st)}
                 onNextSection={() => scrollToNextSection("category")}
                 onSubmitDecision={submitSectionDecision}
@@ -858,6 +867,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionId="experience"
                 sectionTitle="Work Experience & Portfolio"
                 state={sectionDecisions.experience ?? { decision: null, note: "" }}
+                submittedDecision={submittedDecisions.experience?.decision ?? null}
                 onChange={(st) => updateSectionDecision("experience", st)}
                 onNextSection={() => scrollToNextSection("experience")}
                 onSubmitDecision={submitSectionDecision}
@@ -915,6 +925,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionId="profile"
                 sectionTitle="Profile Details"
                 state={sectionDecisions.profile ?? { decision: null, note: "" }}
+                submittedDecision={submittedDecisions.profile?.decision ?? null}
                 onChange={(st) => updateSectionDecision("profile", st)}
                 onNextSection={() => scrollToNextSection("profile")}
                 onSubmitDecision={submitSectionDecision}
@@ -1170,6 +1181,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionId="credentials"
                 sectionTitle="Credentials & KYC"
                 state={sectionDecisions.credentials ?? { decision: null, note: "" }}
+                submittedDecision={submittedDecisions.credentials?.decision ?? null}
                 onChange={(st) => updateSectionDecision("credentials", st)}
                 onNextSection={() => scrollToNextSection("credentials")}
                 onSubmitDecision={submitSectionDecision}
@@ -1233,6 +1245,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionId="preferences"
                 sectionTitle="Consultation Preferences"
                 state={sectionDecisions.preferences ?? { decision: null, note: "" }}
+                submittedDecision={submittedDecisions.preferences?.decision ?? null}
                 onChange={(st) => updateSectionDecision("preferences", st)}
                 onNextSection={() => scrollToNextSection("preferences")}
                 onSubmitDecision={submitSectionDecision}
@@ -1286,6 +1299,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionId="audience"
                 sectionTitle="Target Audience & Languages"
                 state={sectionDecisions.audience ?? { decision: null, note: "" }}
+                submittedDecision={submittedDecisions.audience?.decision ?? null}
                 onChange={(st) => updateSectionDecision("audience", st)}
                 onNextSection={() => scrollToNextSection("audience")}
                 onSubmitDecision={submitSectionDecision}
@@ -1357,6 +1371,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 sectionId="availability"
                 sectionTitle="Availability & Schedule"
                 state={sectionDecisions.availability ?? { decision: null, note: "" }}
+                submittedDecision={submittedDecisions.availability?.decision ?? null}
                 onChange={(st) => updateSectionDecision("availability", st)}
                 onNextSection={() => scrollToNextSection("availability")}
                 onSubmitDecision={submitSectionDecision}

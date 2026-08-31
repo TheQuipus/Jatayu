@@ -3,21 +3,23 @@
 import { useState, useMemo } from "react";
 import {
   Calendar,
+  CheckCircle,
+  Clock,
+  Copy,
   Gift,
   Info,
   LineChart,
+  Monitor,
   Percent,
   Plus,
+  RotateCcw,
   Send,
+  SlidersHorizontal,
+  Sparkles,
+  Tag,
   TrendingUp,
   UserCheck,
   Zap,
-  Tag,
-  CheckCircle,
-  Copy,
-  Clock,
-  Sparkles,
-  ArrowRight
 } from "lucide-react";
 import { getSeekerById } from "@/lib/adminUserManagement";
 import styles from "./FinancialInsightsView.module.css";
@@ -143,23 +145,22 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
       if (selectedSessionType === "video") return d.video;
       if (selectedSessionType === "text") return d.text;
       return d.call + d.video + d.text; // all
+      return d.call + d.video + d.text;
     });
   }, [monthlyData, selectedSessionType]);
 
   const maxVal = useMemo(() => {
     const val = Math.max(...activeSeries, 100);
-    return Math.ceil(val / 500) * 500; // Round to nearest 500
+    return Math.ceil(val / 500) * 500;
   }, [activeSeries]);
 
-  // SVG dimensions
-  const svgW = 600;
+  const svgW = 800;
   const svgH = 220;
-  const paddingX = 45;
+  const paddingX = 50;
   const paddingY = 25;
   const chartW = svgW - paddingX * 2;
   const chartH = svgH - paddingY * 2;
 
-  // Chart coordinates
   const points = useMemo(() => {
     if (activeSeries.length === 0) return [];
     return activeSeries.map((val, idx) => {
@@ -170,7 +171,6 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
     });
   }, [activeSeries, maxVal, chartW, chartH]);
 
-  // SVG Area path string
   const areaPathString = useMemo(() => {
     if (points.length === 0) return "";
     let str = `M ${points[0].x} ${svgH - paddingY}`;
@@ -181,7 +181,6 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
     return str;
   }, [points]);
 
-  // SVG Line path string (Curved smooth line)
   const linePathString = useMemo(() => {
     if (points.length === 0) return "";
     let str = `M ${points[0].x} ${points[0].y}`;
@@ -197,60 +196,31 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
     return str;
   }, [points]);
 
-  // Advanced Insights Calculations
   const averageOrderValue = useMemo(() => {
-    if (!seeker || seeker.totalBookings === 0) return 0;
-    return Math.round(seeker.totalSpent / seeker.totalBookings);
-  }, [seeker]);
+    if (!seeker?.totalBookings || seeker.totalBookings === 0) return 0;
+    return Math.round(totalSpent / seeker.totalBookings);
+  }, [totalSpent, seeker]);
 
-  // Churn Risk Score Based on Total Bookings & last active status
   const churnRisk = useMemo(() => {
     if (!seeker || seeker.totalBookings === 0) return { score: "Critical", class: styles.riskHigh, label: "High Risk (Inactive)" };
     if (seeker.status === "suspended") return { score: "N/A", class: styles.riskMuted, label: "Account Suspended" };
-    
-    // Aarav and Sneha are active, Rohan Verma (1 booking) is inactive
-    if (seeker.totalBookings < 3) {
-      return { score: "High", class: styles.riskHigh, label: "High Risk (Low Engagement)" };
-    }
-    if (seeker.totalBookings < 8) {
-      return { score: "Medium", class: styles.riskMedium, label: "Moderate Risk" };
-    }
+    if (seeker.totalBookings < 3) return { score: "High", class: styles.riskHigh, label: "High Risk (Low Engagement)" };
+    if (seeker.totalBookings < 8) return { score: "Medium", class: styles.riskMedium, label: "Moderate Risk" };
     return { score: "Low", class: styles.riskLow, label: "Healthy Retention" };
   }, [seeker]);
 
-  // Category Distribution & Wallet Share
-  const categorySplit = useMemo(() => {
-    if (userId === "skr-1") {
-      return [
-        { name: "Vedic Astrology", pct: 65, amount: "₹12,025", color: "#3b82f6" },
-        { name: "Tarot Reading", pct: 20, amount: "₹3,700", color: "#a855f7" },
-        { name: "Vastu Shastra", pct: 15, amount: "₹2,775", color: "#22c55e" },
-      ];
-    }
-    if (userId === "skr-4") {
-      return [
-        { name: "Numerology & Tarot", pct: 70, amount: "₹23,800", color: "#a855f7" },
-        { name: "Vedic Astrology", pct: 20, amount: "₹6,800", color: "#3b82f6" },
-        { name: "Vastu Shastra", pct: 10, amount: "₹3,400", color: "#22c55e" },
-      ];
-    }
-    // Fallback default
-    return [
-      { name: seeker?.preferredCategory || "Unspecified", pct: 75, amount: `₹${Math.round(totalSpent * 0.75)}`, color: "#3b82f6" },
-      { name: "Other Consulting", pct: 25, amount: `₹${Math.round(totalSpent * 0.25)}`, color: "#cbd5e1" },
-    ];
-  }, [userId, seeker, totalSpent]);
-
-  // Price tier distribution
   const priceTierAffinity = useMemo(() => {
-    if (userId === "skr-1") {
-      return { budget: 20, standard: 50, premium: 30 };
-    }
-    if (userId === "skr-4") {
-      return { budget: 10, standard: 40, premium: 50 };
-    }
+    if (userId === "skr-1") return { budget: 20, standard: 50, premium: 30 };
+    if (userId === "skr-4") return { budget: 10, standard: 40, premium: 50 };
     return { budget: 40, standard: 40, premium: 20 };
   }, [userId]);
+
+  const themeColor = useMemo(() => {
+    if (selectedSessionType === "call") return "#22c55e";
+    if (selectedSessionType === "video") return "#a855f7";
+    if (selectedSessionType === "text") return "#3b82f6";
+    return "#e9681e";
+  }, [selectedSessionType]);
 
   // Set preset configs
   const handleSelectPreset = (preset: string) => {
@@ -327,7 +297,7 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
       setCouponCode("");
       setOfferMsg("");
       setOfferPreset("custom");
-    }, 800); // Small animation delay
+    }, 800);
   };
 
   const handleCopyCode = (id: string, code: string) => {
@@ -336,344 +306,339 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
     setTimeout(() => setCopiedCodeId(null), 1500);
   };
 
-  // Get current color token for line based on session type
-  const themeColor = useMemo(() => {
-    if (selectedSessionType === "call") return "#22c55e";
-    if (selectedSessionType === "video") return "#a855f7";
-    if (selectedSessionType === "text") return "#3b82f6";
-    return "#e9681e"; // tango
-  }, [selectedSessionType]);
-
   return (
     <div className={styles.insightsView}>
-      {/* Top row with graph and main metrics */}
-      <div className={styles.mainGrid}>
-        
-        {/* Spending Graph Card */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <div>
-              <h3 className={styles.cardTitle}>Session Spending Timeline</h3>
-              <p className={styles.cardSubtitle}>Monthly financial value generated by seeker</p>
-            </div>
-            
-            <div className={styles.filterRow}>
-              {/* Session Type Select */}
-              <div className={styles.selectWrapper}>
-                <select
-                  value={selectedSessionType}
-                  onChange={(e) => setSelectedSessionType(e.target.value as SessionType)}
-                  className={styles.dropdown}
-                >
-                  <option value="all">All Session Types</option>
-                  <option value="call">📞 Live Calls</option>
-                  <option value="video">🎥 Video Messages</option>
-                  <option value="text">💬 Text Sessions</option>
-                </select>
-              </div>
-
-              {/* Months Frame */}
-              <div className={styles.timeToggler}>
-                <button
-                  type="button"
-                  onClick={() => setTimeframe("3")}
-                  className={`${styles.timeBtn} ${timeframe === "3" ? styles.timeBtnActive : ""}`}
-                >
-                  3M
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTimeframe("6")}
-                  className={`${styles.timeBtn} ${timeframe === "6" ? styles.timeBtnActive : ""}`}
-                >
-                  6M
-                </button>
-              </div>
-            </div>
+      <div className={styles.kpiGrid}>
+        <div className={styles.kpiBox}>
+          <div className={styles.kpiHeadRow}>
+            <span className={styles.kpiLabel}>Average Order Value (AOV)</span>
+            <span className={styles.iconTag} style={{ background: "rgba(59, 130, 246, 0.1)", color: "#3b82f6" }}>
+              <TrendingUp size={14} />
+            </span>
           </div>
-
-          <div className={styles.chartWrapper}>
-            <svg width="100%" height={svgH} className={styles.svgContainer}>
-              <defs>
-                <linearGradient id="gradient-all" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#e9681e" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#e9681e" stopOpacity="0.00" />
-                </linearGradient>
-                <linearGradient id="gradient-call" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#22c55e" stopOpacity="0.00" />
-                </linearGradient>
-                <linearGradient id="gradient-video" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#a855f7" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#a855f7" stopOpacity="0.00" />
-                </linearGradient>
-                <linearGradient id="gradient-text" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.00" />
-                </linearGradient>
-              </defs>
-
-              {/* Grid Y lines */}
-              {[0, 0.25, 0.5, 0.75, 1].map((r, i) => {
-                const y = paddingY + r * chartH;
-                const value = Math.round(maxVal * (1 - r));
-                return (
-                  <g key={i} className={styles.gridGroup}>
-                    <line x1={paddingX} y1={y} x2={svgW - paddingX} y2={y} className={styles.gridLine} />
-                    <text x={paddingX - 10} y={y + 4} textAnchor="end" className={styles.yAxisLabel}>
-                      ₹{value}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {/* Area Under Curve */}
-              <path
-                d={areaPathString}
-                fill={`url(#gradient-${selectedSessionType})`}
-                className={styles.areaPath}
-              />
-
-              {/* Main Line */}
-              <path
-                d={linePathString}
-                stroke={themeColor}
-                strokeWidth="3.5"
-                fill="none"
-                strokeLinecap="round"
-                className={styles.linePath}
-              />
-
-              {/* Data Points */}
-              {points.map((p, idx) => (
-                <g key={idx}>
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={activeTooltipIndex === idx ? "7" : "5"}
-                    fill={themeColor}
-                    stroke="#ffffff"
-                    strokeWidth="2.5"
-                    className={styles.chartDot}
-                    onMouseEnter={() => setActiveTooltipIndex(idx)}
-                    onMouseLeave={() => setActiveTooltipIndex(null)}
-                  />
-                  {activeTooltipIndex === idx && (
-                    <g>
-                      <rect
-                        x={p.x - 45}
-                        y={p.y - 38}
-                        width="90"
-                        height="26"
-                        rx="6"
-                        fill="#080a10"
-                        className={styles.tooltipBg}
-                      />
-                      <text
-                        x={p.x}
-                        y={p.y - 21}
-                        textAnchor="middle"
-                        fill="#ffffff"
-                        fontSize="11"
-                        fontWeight="700"
-                        fontFamily="var(--font-ibm-plex-mono)"
-                      >
-                        ₹{p.val.toLocaleString()}
-                      </text>
-                    </g>
-                  )}
-                </g>
-              ))}
-
-              {/* X Axis Labels */}
-              {monthlyData.map((d, idx) => {
-                const x = paddingX + (idx / (monthlyData.length - 1)) * chartW;
-                return (
-                  <text
-                    key={idx}
-                    x={x}
-                    y={svgH - paddingY + 16}
-                    textAnchor="middle"
-                    className={styles.xAxisLabel}
-                  >
-                    {d.name}
-                  </text>
-                );
-              })}
-            </svg>
-          </div>
-
-          <div className={styles.legendGrid}>
-            <div className={styles.legendDotItem}>
-              <span className={styles.dot} style={{ background: "#e9681e" }} />
-              <span className={styles.legendText}>Combined Spend (Total: ₹{totalSpent.toLocaleString("en-IN")})</span>
-            </div>
-            <div className={styles.legendDotGroup}>
-              <div className={styles.legendDotItem}>
-                <span className={styles.dot} style={{ background: "#22c55e" }} />
-                <span>Calls</span>
-              </div>
-              <div className={styles.legendDotItem}>
-                <span className={styles.dot} style={{ background: "#a855f7" }} />
-                <span>Video</span>
-              </div>
-              <div className={styles.legendDotItem}>
-                <span className={styles.dot} style={{ background: "#3b82f6" }} />
-                <span>Text</span>
-              </div>
-            </div>
+          <h2 className={styles.kpiNumber}>₹{averageOrderValue.toLocaleString("en-IN")}</h2>
+          <div className={styles.kpiDetailRow}>
+            <span>Per Consultation</span>
+            <span style={{ color: "#16a34a", fontWeight: 600 }}>Healthy ticket size</span>
           </div>
         </div>
 
-        {/* 4 KPI Metrics Sidebar */}
-        <div className={styles.kpiContainer}>
-          
-          {/* Average Order Value (AOV) */}
-          <div className={styles.kpiBox}>
-            <div className={styles.kpiHeadRow}>
-              <span className={styles.kpiLabel}>Average Order Value (AOV)</span>
-              <span className={styles.iconTag} style={{ background: "rgba(59, 130, 246, 0.1)", color: "#3b82f6" }}>
-                <TrendingUp size={14} />
-              </span>
-            </div>
-            <h2 className={styles.kpiNumber}>₹{averageOrderValue.toLocaleString("en-IN")}</h2>
-            <div className={styles.kpiDetailRow}>
-              <span>Per Consultation</span>
-              <span style={{ color: "#16a34a", fontWeight: 600 }}>Healthy ticket size</span>
-            </div>
+        <div className={styles.kpiBox}>
+          <div className={styles.kpiHeadRow}>
+            <span className={styles.kpiLabel}>Churn &amp; Drop-off Risk</span>
+            <span className={styles.iconTag} style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444" }}>
+              <UserCheck size={14} />
+            </span>
           </div>
-
-          {/* Retention & Churn Risk */}
-          <div className={styles.kpiBox}>
-            <div className={styles.kpiHeadRow}>
-              <span className={styles.kpiLabel}>Churn &amp; Drop-off Risk</span>
-              <span className={styles.iconTag} style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444" }}>
-                <UserCheck size={14} />
-              </span>
-            </div>
-            <h2 className={`${styles.kpiNumber} ${churnRisk.class}`}>{churnRisk.score}</h2>
-            <div className={styles.kpiDetailRow}>
-              <span>{churnRisk.label}</span>
-              <span>Avg. 14 days gap</span>
-            </div>
+          <h2 className={`${styles.kpiNumber} ${churnRisk.class}`}>{churnRisk.score}</h2>
+          <div className={styles.kpiDetailRow}>
+            <span>{churnRisk.label}</span>
+            <span>Avg. 14 days gap</span>
           </div>
-
-          {/* Tier Affinity */}
-          <div className={styles.kpiBox}>
-            <div className={styles.kpiHeadRow}>
-              <span className={styles.kpiLabel}>Consultant Tier Preference</span>
-              <span className={styles.iconTag} style={{ background: "rgba(168, 85, 247, 0.1)", color: "#a855f7" }}>
-                <Zap size={14} />
-              </span>
-            </div>
-            <div className={styles.tierSplitBar}>
-              <div className={styles.tierBudget} style={{ width: `${priceTierAffinity.budget}%` }} title={`Budget: ${priceTierAffinity.budget}%`} />
-              <div className={styles.tierStandard} style={{ width: `${priceTierAffinity.standard}%` }} title={`Standard: ${priceTierAffinity.standard}%`} />
-              <div className={styles.tierPremium} style={{ width: `${priceTierAffinity.premium}%` }} title={`Premium: ${priceTierAffinity.premium}%`} />
-            </div>
-            <div className={styles.tierLegendRow}>
-              <span className={styles.tierText}><span className={`${styles.miniDot} ${styles.colorBudget}`} /> Budget ({priceTierAffinity.budget}%)</span>
-              <span className={styles.tierText}><span className={`${styles.miniDot} ${styles.colorStandard}`} /> Standard ({priceTierAffinity.standard}%)</span>
-              <span className={styles.tierText}><span className={`${styles.miniDot} ${styles.colorPremium}`} /> Premium ({priceTierAffinity.premium}%)</span>
-            </div>
-          </div>
-
-          {/* Wallet Stickiness Ratio */}
-          <div className={styles.kpiBox}>
-            <div className={styles.kpiHeadRow}>
-              <span className={styles.kpiLabel}>Wallet Top-up Affinity</span>
-              <span className={styles.iconTag} style={{ background: "rgba(34, 197, 94, 0.1)", color: "#22c55e" }}>
-                <Gift size={14} />
-              </span>
-            </div>
-            <h2 className={styles.kpiNumber}>{seeker?.totalBookings && seeker.totalBookings > 4 ? "82%" : "40%"}</h2>
-            <div className={styles.kpiDetailRow}>
-              <span>Of orders paid via Wallet credits</span>
-              <span style={{ color: "#2563eb", fontWeight: 600 }}>High loyalty</span>
-            </div>
-          </div>
-
         </div>
 
+        <div className={styles.kpiBox}>
+          <div className={styles.kpiHeadRow}>
+            <span className={styles.kpiLabel}>Consultant Tier Preference</span>
+            <span className={styles.iconTag} style={{ background: "rgba(168, 85, 247, 0.1)", color: "#a855f7" }}>
+              <Zap size={14} />
+            </span>
+          </div>
+          <div className={styles.tierSplitBar}>
+            <div className={styles.tierBudget} style={{ width: `${priceTierAffinity.budget}%` }} title={`Budget: ${priceTierAffinity.budget}%`} />
+            <div className={styles.tierStandard} style={{ width: `${priceTierAffinity.standard}%` }} title={`Standard: ${priceTierAffinity.standard}%`} />
+            <div className={styles.tierPremium} style={{ width: `${priceTierAffinity.premium}%` }} title={`Premium: ${priceTierAffinity.premium}%`} />
+          </div>
+          <div className={styles.tierLegendRow}>
+            <span className={styles.tierText}><span className={`${styles.miniDot} ${styles.colorBudget}`} /> Budget ({priceTierAffinity.budget}%)</span>
+            <span className={styles.tierText}><span className={`${styles.miniDot} ${styles.colorStandard}`} /> Standard ({priceTierAffinity.standard}%)</span>
+            <span className={styles.tierText}><span className={`${styles.miniDot} ${styles.colorPremium}`} /> Premium ({priceTierAffinity.premium}%)</span>
+          </div>
+        </div>
+
+        <div className={styles.kpiBox}>
+          <div className={styles.kpiHeadRow}>
+            <span className={styles.kpiLabel}>Wallet Top-up Affinity</span>
+            <span className={styles.iconTag} style={{ background: "rgba(34, 197, 94, 0.1)", color: "#22c55e" }}>
+              <Gift size={14} />
+            </span>
+          </div>
+          <h2 className={styles.kpiNumber}>{seeker?.totalBookings && seeker.totalBookings > 4 ? "82%" : "40%"}</h2>
+          <div className={styles.kpiDetailRow}>
+            <span>Of orders paid via Wallet</span>
+            <span style={{ color: "#2563eb", fontWeight: 600 }}>High loyalty</span>
+          </div>
+        </div>
       </div>
 
-      {/* Domain split and personalized offers generator */}
-      <div className={styles.secondaryGrid}>
-        
-        {/* Domain Wallet Share List */}
-        <div className={styles.domainCard}>
-          <h3 className={styles.sectionTitle}>Domain Wallet Share</h3>
-          <p className={styles.cardSubtitle} style={{ marginBottom: "20px" }}>Seeker spending distribution by consultation category</p>
-          
-          <div className={styles.domainList}>
-            {categorySplit.map((cat, idx) => (
-              <div key={idx} className={styles.domainItem}>
-                <div className={styles.domainMetaRow}>
-                  <span className={styles.domainName} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className={styles.domainColorMarker} style={{ background: cat.color }} />
-                    {cat.name}
-                  </span>
-                  <span className={styles.domainValue}>{cat.amount} ({cat.pct}%)</span>
-                </div>
-                <div className={styles.domainProgressBar}>
-                  <div className={styles.domainProgressFill} style={{ width: `${cat.pct}%`, background: cat.color }} />
-                </div>
-              </div>
-            ))}
+      <div className={styles.card}>
+        <div className={styles.cardHeader}>
+          <div>
+            <h3 className={styles.cardTitle}>Session Spending Timeline</h3>
+            <p className={styles.cardSubtitle}>Monthly financial value generated by seeker</p>
           </div>
-
-          <div className={styles.insightAlert}>
-            <div className={styles.alertIconBox}>
-              <Info size={16} />
+          
+          <div className={styles.filterRow}>
+            <div className={styles.selectWrapper}>
+              <select
+                value={selectedSessionType}
+                onChange={(e) => setSelectedSessionType(e.target.value as SessionType)}
+                className={styles.dropdown}
+              >
+                <option value="all">All Session Types</option>
+                <option value="call">Live Calls</option>
+                <option value="video">Video Messages</option>
+                <option value="text">Text Sessions</option>
+              </select>
             </div>
-            <div className={styles.alertText}>
-              <strong>Recommendation:</strong> Seeker spends heavily on <strong>{categorySplit[0]?.name}</strong>. Offer discounts in <strong>{categorySplit[1]?.name || "other categories"}</strong> to cross-sell platform services.
+
+            <div className={styles.timeToggler}>
+              <button
+                type="button"
+                onClick={() => setTimeframe("3")}
+                className={`${styles.timeBtn} ${timeframe === "3" ? styles.timeBtnActive : ""}`}
+              >
+                3M
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimeframe("6")}
+                className={`${styles.timeBtn} ${timeframe === "6" ? styles.timeBtnActive : ""}`}
+              >
+                6M
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Offer Generator Form */}
-        <div className={styles.offerCard}>
-          <div className={styles.offerHeader}>
-            <Sparkles size={18} style={{ color: "var(--tango)" }} />
-            <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Personalized Offer Generator</h3>
+        <div className={styles.chartWrapper}>
+          <svg
+            width="100%"
+            height={svgH}
+            viewBox={`0 0 ${svgW} ${svgH}`}
+            className={styles.svgContainer}
+          >
+            <defs>
+              <linearGradient id="gradient-all" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#e9681e" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#e9681e" stopOpacity="0.00" />
+              </linearGradient>
+              <linearGradient id="gradient-call" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#22c55e" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#22c55e" stopOpacity="0.00" />
+              </linearGradient>
+              <linearGradient id="gradient-video" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#a855f7" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#a855f7" stopOpacity="0.00" />
+              </linearGradient>
+              <linearGradient id="gradient-text" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.00" />
+              </linearGradient>
+            </defs>
+
+            {[0, 0.25, 0.5, 0.75, 1].map((r, i) => {
+              const y = paddingY + r * chartH;
+              const value = Math.round(maxVal * (1 - r));
+              return (
+                <g key={i} className={styles.gridGroup}>
+                  <line x1={paddingX} y1={y} x2={svgW - paddingX} y2={y} className={styles.gridLine} />
+                  <text x={paddingX - 10} y={y + 4} textAnchor="end" className={styles.yAxisLabel}>
+                    ₹{value}
+                  </text>
+                </g>
+              );
+            })}
+
+            <path
+              d={areaPathString}
+              fill={`url(#gradient-${selectedSessionType})`}
+              className={styles.areaPath}
+            />
+
+            <path
+              d={linePathString}
+              stroke={themeColor}
+              strokeWidth="3.5"
+              fill="none"
+              strokeLinecap="round"
+              className={styles.linePath}
+            />
+
+            {points.map((p, idx) => (
+              <g key={idx}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={activeTooltipIndex === idx ? "7" : "5"}
+                  fill={themeColor}
+                  stroke="#ffffff"
+                  strokeWidth="2.5"
+                  className={styles.chartDot}
+                  onMouseEnter={() => setActiveTooltipIndex(idx)}
+                  onMouseLeave={() => setActiveTooltipIndex(null)}
+                />
+                {activeTooltipIndex === idx && (
+                  <g>
+                    <rect
+                      x={p.x - 45}
+                      y={p.y - 38}
+                      width="90"
+                      height="26"
+                      rx="6"
+                      fill="#080a10"
+                      className={styles.tooltipBg}
+                    />
+                    <text
+                      x={p.x}
+                      y={p.y - 21}
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      fontSize="11"
+                      fontWeight="700"
+                      fontFamily="var(--font-ibm-plex-mono)"
+                    >
+                      ₹{p.val.toLocaleString()}
+                    </text>
+                  </g>
+                )}
+              </g>
+            ))}
+
+            {monthlyData.map((d, idx) => {
+              const x = paddingX + (idx / (monthlyData.length - 1)) * chartW;
+              return (
+                <text
+                  key={idx}
+                  x={x}
+                  y={svgH - paddingY + 16}
+                  textAnchor="middle"
+                  className={styles.xAxisLabel}
+                >
+                  {d.name}
+                </text>
+              );
+            })}
+          </svg>
+        </div>
+
+        <div className={styles.legendGrid}>
+          <div className={styles.legendDotItem}>
+            <span className={styles.dot} style={{ background: "#e9681e" }} />
+            <span className={styles.legendText}>Combined Spend (Total: ₹{totalSpent.toLocaleString("en-IN")})</span>
           </div>
-          <p className={styles.cardSubtitle} style={{ marginBottom: "16px" }}>Create coupon codes or wallet bonuses tailored to seeker behavior</p>
+          <div className={styles.legendDotGroup}>
+            <div className={styles.legendDotItem}>
+              <span className={styles.dot} style={{ background: "#22c55e" }} />
+              <span>Calls</span>
+            </div>
+            <div className={styles.legendDotItem}>
+              <span className={styles.dot} style={{ background: "#a855f7" }} />
+              <span>Video</span>
+            </div>
+            <div className={styles.legendDotItem}>
+              <span className={styles.dot} style={{ background: "#3b82f6" }} />
+              <span>Text</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.offerCard}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardHeaderLeft}>
+              <div className={styles.offerIconWrap}>
+                <Gift size={20} />
+              </div>
+              <div>
+                <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Personalized Offer Generator</h3>
+                <p className={styles.cardSubtitle} style={{ marginTop: "2px" }}>
+                  Create coupon codes or wallet bonuses tailored to seeker behavior
+                </p>
+              </div>
+            </div>
+          </div>
 
           <form onSubmit={handleGenerateOffer} className={styles.offerForm}>
             
-            {/* Presets */}
+            {/* Presets Segmented Selector */}
             <div className={styles.formGroup}>
-              <label className={styles.fieldLabel}>Select Smart Preset</label>
+              <label className={styles.fieldLabel}>Smart Preset Strategy</label>
               <div className={styles.presetButtons}>
                 <button
                   type="button"
                   onClick={() => handleSelectPreset("reengage")}
                   className={`${styles.presetBtn} ${offerPreset === "reengage" ? styles.presetBtnActive : ""}`}
                 >
-                  🔄 Re-engage
+                  <RotateCcw size={14} />
+                  <span>Re-engage</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectPreset("upgrade")}
                   className={`${styles.presetBtn} ${offerPreset === "upgrade" ? styles.presetBtnActive : ""}`}
                 >
-                  🚀 Live Upgrade
+                  <Zap size={14} />
+                  <span>Live Upgrade</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectPreset("cross_sell")}
                   className={`${styles.presetBtn} ${offerPreset === "cross_sell" ? styles.presetBtnActive : ""}`}
                 >
-                  🎯 Cross-sell
+                  <TrendingUp size={14} />
+                  <span>Cross-sell</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectPreset("custom")}
                   className={`${styles.presetBtn} ${offerPreset === "custom" ? styles.presetBtnActive : ""}`}
                 >
-                  🛠️ Custom
+                  <SlidersHorizontal size={14} />
+                  <span>Custom</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Offer Model Type Selection */}
+            <div className={styles.formGroup}>
+              <label className={styles.fieldLabel}>Offer Model Type</label>
+              <div className={styles.typeRadioGroup}>
+                <label className={`${styles.typeRadioLabel} ${offerType === "percent" ? styles.radioSelected : ""}`}>
+                  <input
+                    type="radio"
+                    name="offerType"
+                    checked={offerType === "percent"}
+                    onChange={() => setOfferType("percent")}
+                    className={styles.hiddenRadio}
+                  />
+                  <Percent size={15} />
+                  <span>Percentage</span>
+                </label>
+
+                <label className={`${styles.typeRadioLabel} ${offerType === "flat" ? styles.radioSelected : ""}`}>
+                  <input
+                    type="radio"
+                    name="offerType"
+                    checked={offerType === "flat"}
+                    onChange={() => setOfferType("flat")}
+                    className={styles.hiddenRadio}
+                  />
+                  <Tag size={15} />
+                  <span>Flat Discount</span>
+                </label>
+
+                <label className={`${styles.typeRadioLabel} ${offerType === "cashback" ? styles.radioSelected : ""}`}>
+                  <input
+                    type="radio"
+                    name="offerType"
+                    checked={offerType === "cashback"}
+                    onChange={() => setOfferType("cashback")}
+                    className={styles.hiddenRadio}
+                  />
+                  <Gift size={15} />
+                  <span>Cashback</span>
+                </label>
               </div>
             </div>
 
@@ -682,11 +647,11 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
               <div className={styles.formCol}>
                 <label className={styles.fieldLabel}>Promo Coupon Code</label>
                 <div className={styles.codeWrap}>
-                  <Tag size={14} className={styles.inputLeftIcon} />
+                  <Tag size={15} className={styles.inputLeftIcon} />
                   <input
                     type="text"
                     required
-                    placeholder="E.g. EXTRA500"
+                    placeholder="E.g. JTY-PREMIUM"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                     className={styles.formInput}
@@ -701,13 +666,15 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
                     className={styles.btnGenerateCode}
                     title="Generate random code"
                   >
-                    Auto
+                    Auto Generate
                   </button>
                 </div>
               </div>
 
-              <div className={styles.formCol} style={{ maxWidth: "160px" }}>
-                <label className={styles.fieldLabel}>Discount Value</label>
+              <div className={styles.formCol}>
+                <label className={styles.fieldLabel}>
+                  {offerType === "percent" ? "Discount Percentage" : "Discount Value"}
+                </label>
                 <div className={styles.valueInputWrap}>
                   <input
                     type="number"
@@ -716,51 +683,12 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
                     value={offerValue}
                     onChange={(e) => setOfferValue(parseInt(e.target.value) || 0)}
                     className={styles.formInput}
-                    style={{ paddingRight: "35px" }}
+                    style={{ paddingRight: "36px" }}
                   />
                   <span className={styles.valueTypeSuffix}>
                     {offerType === "percent" ? "%" : "₹"}
                   </span>
                 </div>
-              </div>
-            </div>
-
-            {/* Offer Type Selection */}
-            <div className={styles.formGroup}>
-              <label className={styles.fieldLabel}>Offer Model Type</label>
-              <div className={styles.typeRadioGroup}>
-                <label className={`${styles.typeRadioLabel} ${offerType === "percent" ? styles.radioSelected : ""}`}>
-                  <input
-                    type="radio"
-                    name="offerType"
-                    checked={offerType === "percent"}
-                    onChange={() => setOfferType("percent")}
-                    className={styles.hiddenRadio}
-                  />
-                  <Percent size={14} /> Percentage Discount
-                </label>
-
-                <label className={`${styles.typeRadioLabel} ${offerType === "flat" ? styles.radioSelected : ""}`}>
-                  <input
-                    type="radio"
-                    name="offerType"
-                    checked={offerType === "flat"}
-                    onChange={() => setOfferType("flat")}
-                    className={styles.hiddenRadio}
-                  />
-                  ₹ Flat Discount
-                </label>
-
-                <label className={`${styles.typeRadioLabel} ${offerType === "cashback" ? styles.radioSelected : ""}`}>
-                  <input
-                    type="radio"
-                    name="offerType"
-                    checked={offerType === "cashback"}
-                    onChange={() => setOfferType("cashback")}
-                    className={styles.hiddenRadio}
-                  />
-                  💳 Wallet Cashback
-                </label>
               </div>
             </div>
 
@@ -782,7 +710,7 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
               </div>
 
               <div className={styles.formCol}>
-                <label className={styles.fieldLabel}>Expiry Timeframe</label>
+                <label className={styles.fieldLabel}>Validity Window</label>
                 <select
                   value={expiryDays}
                   onChange={(e) => setExpiryDays(parseInt(e.target.value))}
@@ -798,7 +726,7 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
 
             {/* Custom description */}
             <div className={styles.formGroup}>
-              <label className={styles.fieldLabel}>Personalized Offer Message</label>
+              <label className={styles.fieldLabel}>Personalized Notification Message</label>
               <textarea
                 rows={2}
                 placeholder="Write a custom notification message to show the seeker..."
@@ -808,26 +736,44 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
               />
             </div>
 
+            {/* Live Voucher Preview */}
+            {couponCode && (
+              <div className={styles.voucherPreview}>
+                <div className={styles.voucherPreviewHeader}>
+                  <span className={styles.voucherPreviewLabel}>VOUCHER PREVIEW</span>
+                  <span className={styles.voucherCodeBadge}>{couponCode}</span>
+                </div>
+                <div className={styles.voucherPreviewDesc}>
+                  <strong>
+                    {offerType === "percent" ? `${offerValue}% OFF` : `₹${offerValue} OFF`}
+                  </strong>
+                  <span> • </span>
+                  <span>{targetCategory}</span>
+                  <span> • </span>
+                  <span>Valid for {expiryDays} days</span>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isGenerating || !couponCode}
               className={styles.btnSubmitOffer}
             >
               {isGenerating ? (
-                <span>Generating offer...</span>
+                <span>Generating and Dispatching...</span>
               ) : (
                 <>
-                  <Send size={14} /> Send Personalized Offer
+                  <Send size={15} />
+                  <span>Issue Personalized Offer</span>
                 </>
               )}
             </button>
           </form>
         </div>
 
-      </div>
-
-      {/* Offers Table List */}
-      <div className={styles.card} style={{ marginTop: "24px" }}>
+        {/* Offers Table List */}
+        <div className={styles.card} style={{ marginTop: "24px" }}>
         <div className={styles.offersHeaderRow}>
           <div>
             <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Active Targeted Offers</h3>
@@ -865,18 +811,24 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
                     </span>
                   </td>
                   <td>
-                    <div style={{ fontSize: "12px", fontWeight: 500 }}>
-                      <div>🏷️ {offer.targetCategory}</div>
-                      <div className="text-gray-500 font-normal">💻 {offer.targetSessionType}</div>
+                    <div style={{ fontSize: "14px", fontWeight: 500, display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <Tag size={12} style={{ color: "var(--dove-gray)" }} />
+                        <span>{offer.targetCategory}</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px", color: "var(--dove-gray)", fontSize: "13px" }}>
+                        <Monitor size={12} style={{ color: "var(--dove-gray)" }} />
+                        <span>{offer.targetSessionType}</span>
+                      </div>
                     </div>
                   </td>
-                  <td style={{ maxWidth: "250px", fontSize: "12px", color: "var(--dove-gray)" }}>
+                  <td style={{ maxWidth: "250px", fontSize: "14px", color: "var(--dove-gray)" }}>
                     {offer.description}
                   </td>
-                  <td style={{ fontSize: "12px" }}>{offer.dateCreated}</td>
-                  <td style={{ fontSize: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      <Clock size={12} style={{ color: "var(--dove-gray)" }} />
+                  <td style={{ fontSize: "14px" }}>{offer.dateCreated}</td>
+                  <td style={{ fontSize: "14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Clock size={14} style={{ color: "var(--dove-gray)" }} />
                       {offer.expiryDate}
                     </div>
                   </td>

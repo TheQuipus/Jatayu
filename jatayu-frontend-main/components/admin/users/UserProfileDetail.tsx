@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import {
   ADMIN_USERS_EXPERTS_HREF,
@@ -34,13 +35,39 @@ type UserProfileDetailProps = {
 };
 
 export default function UserProfileDetail({ userId, userType }: UserProfileDetailProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const expert = userType === "expert" ? getExpertById(userId) : undefined;
   const seeker = userType === "seeker" ? getSeekerById(userId) : undefined;
 
   const user = expert || seeker;
 
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const normalizeTab = (t: string | null) => {
+    if (!t) return "overview";
+    if (t === "profile-management" || t === "edit") return "edit";
+    if (t === "session-history" || t === "bookings" || t === "activity") return "activity";
+    if (t === "wallet-credits" || t === "wallet" || t === "payments") return "payments";
+    if (t === "financial-insights" || t === "insights") return "insights";
+    if (t === "notifications") return "notifications";
+    if (t === "settings") return "settings";
+    if (t === "help-support" || t === "help") return "help";
+    return t;
+  };
+
+  const activeTab = normalizeTab(searchParams.get("tab"));
   const [status, setStatus] = useState<string>(user?.status || "active");
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+
+  const handleSelectTab = (tab: string) => {
+    if (tab !== "activity" && tab !== "bookings") {
+      setSelectedBookingId(null);
+    }
+    const currentParams = new URLSearchParams(searchParams.toString());
+    currentParams.set("tab", tab);
+    router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false });
+  };
 
   if (!user) {
     return (
@@ -65,13 +92,13 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   const expertUser = user as ExpertUser;
   const seekerUser = user as SeekerUser;
 
-  const userLocation = isExpert ? (expertUser.location || "Mumbai, India") : `${seekerUser.city || "Mumbai"}, India`;
+  const userLocation = isExpert ? (expertUser.location || "Mumbai, India") : (seekerUser.location || `${seekerUser.city || "Mumbai"}, India`);
   const joinedDate = user.joinedDate || "Jan 2025";
   const lastActive = user.lastActive || "Recently active";
 
   const totalSessionsCount = isExpert ? expertUser.totalSessions : seekerUser.totalBookings;
   const moneyValue = isExpert ? expertUser.totalEarnings : seekerUser.totalSpent;
-  const categoryName = isExpert ? expertUser.category : seekerUser.preferredCategory;
+  const categoryName = isExpert ? expertUser.category : (seekerUser.category || seekerUser.preferredCategory);
 
   const handleToggleStatus = () => {
     setStatus((prev) => (prev === "active" ? "suspended" : "active"));
@@ -102,7 +129,7 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
         {/* Left Navigation Sidebar — Persistent Across All Tabs */}
         <ProfileLeftSidebar
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleSelectTab}
           totalSessionsCount={totalSessionsCount}
           isExpert={isExpert}
           status={status}
@@ -112,7 +139,12 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
         {/* Tab Content Area */}
         {activeTab === "bookings" || activeTab === "activity" ? (
           <div className={styles.walletContentArea}>
-            <AdminBookingCalendar />
+            <AdminBookingCalendar
+              selectedBookingId={selectedBookingId}
+              onSelectBooking={setSelectedBookingId}
+              user={user}
+              isExpert={isExpert}
+            />
           </div>
         ) : activeTab === "wallet" || activeTab === "payments" ? (
           <div className={styles.walletContentArea}>
@@ -160,7 +192,11 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
                 moneyValue={moneyValue}
               />
 
-              <ProfileRecentBookings isExpert={isExpert} setActiveTab={setActiveTab} />
+              <ProfileRecentBookings
+                isExpert={isExpert}
+                setActiveTab={handleSelectTab}
+                onSelectBooking={setSelectedBookingId}
+              />
 
               {!isExpert && <ProfileEngagement />}
             </main>
@@ -169,7 +205,7 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
             <ProfileRightSidebar
               user={user}
               status={status}
-              setActiveTab={setActiveTab}
+              setActiveTab={handleSelectTab}
               handleToggleStatus={handleToggleStatus}
             />
           </>

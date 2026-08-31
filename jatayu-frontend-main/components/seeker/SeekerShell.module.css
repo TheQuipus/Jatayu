@@ -229,7 +229,7 @@
 
 .topBar {
   position: relative;
-  z-index: 20;
+  z-index: 100;
   padding: 24px 0 0;
   background: linear-gradient(to bottom,
       var(--gallery) 70%,
@@ -237,6 +237,8 @@
 }
 
 .topBarInner {
+  position: relative;
+  z-index: 100;
   display: flex;
   justify-content: space-between;
   align-items: center;

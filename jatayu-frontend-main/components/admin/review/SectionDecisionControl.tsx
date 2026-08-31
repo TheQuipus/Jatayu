@@ -25,6 +25,7 @@ interface SectionDecisionControlProps {
   sectionId: string;
   sectionTitle: string;
   state: SectionReviewState;
+  submittedDecision?: SectionDecision;
   onChange: (nextState: SectionReviewState) => void;
   onNextSection?: () => void;
   onSubmitDecision?: (sectionId: string, decision: SectionDecision, updatedState?: SectionReviewState) => void;
@@ -35,6 +36,7 @@ export default function SectionDecisionControl({
   sectionId,
   sectionTitle,
   state,
+  submittedDecision,
   onChange,
   onNextSection,
   onSubmitDecision,
@@ -62,11 +64,20 @@ export default function SectionDecisionControl({
     });
   };
 
+  const isAlreadySubmitted = Boolean(
+    submittedDecision !== undefined &&
+    submittedDecision !== null &&
+    submittedDecision === currentDecision &&
+    (!state?.note || !state.note.trim())
+  );
+
   const isSubmitDisabled =
     disabled ||
     !currentDecision ||
+    isAlreadySubmitted ||
     ((currentDecision === "clarification" || currentDecision === "reject") &&
-      !state?.note?.trim());
+      !state?.note?.trim() &&
+      !isAlreadySubmitted);
 
   const handleSubmitContinueClick = () => {
     if (isSubmitDisabled) return;
@@ -107,9 +118,7 @@ export default function SectionDecisionControl({
   };
 
   return (
-    <div className={`${styles.sectionDecisionBoxCenter} ${
-      currentDecision !== null ? styles.sectionDecisionBoxCenterSelected : ""
-    }`}>
+    <div className={styles.sectionDecisionBoxCenter}>
       <div
         className={styles.sectionRadioGroup}
         role="radiogroup"
@@ -120,14 +129,18 @@ export default function SectionDecisionControl({
           className={`${styles.radioLabel} ${
             currentDecision === "approve" ? styles.radioLabelActiveApprove : ""
           }`}
+          onClick={(e) => {
+            e.preventDefault();
+            handleSelectClick("approve");
+          }}
         >
           <input
             type="radio"
             name={`decision-${sectionId}`}
             value="approve"
             checked={currentDecision === "approve"}
-            onClick={() => handleSelectClick("approve")}
-            onChange={() => handleSelectClick("approve")}
+            readOnly
+            tabIndex={-1}
             disabled={disabled}
           />
           <span>Approve</span>
@@ -139,14 +152,18 @@ export default function SectionDecisionControl({
               ? styles.radioLabelActiveClarification
               : ""
           }`}
+          onClick={(e) => {
+            e.preventDefault();
+            handleSelectClick("clarification");
+          }}
         >
           <input
             type="radio"
             name={`decision-${sectionId}`}
             value="clarification"
             checked={currentDecision === "clarification"}
-            onClick={() => handleSelectClick("clarification")}
-            onChange={() => handleSelectClick("clarification")}
+            readOnly
+            tabIndex={-1}
             disabled={disabled}
           />
           <span>Need Clarification</span>
@@ -156,14 +173,18 @@ export default function SectionDecisionControl({
           className={`${styles.radioLabel} ${
             currentDecision === "reject" ? styles.radioLabelActiveReject : ""
           }`}
+          onClick={(e) => {
+            e.preventDefault();
+            handleSelectClick("reject");
+          }}
         >
           <input
             type="radio"
             name={`decision-${sectionId}`}
             value="reject"
             checked={currentDecision === "reject"}
-            onClick={() => handleSelectClick("reject")}
-            onChange={() => handleSelectClick("reject")}
+            readOnly
+            tabIndex={-1}
             disabled={disabled}
           />
           <span>Reject</span>
@@ -173,7 +194,7 @@ export default function SectionDecisionControl({
       <div className={`${styles.inlineReasonContainer} ${
         (currentDecision === "clarification" || currentDecision === "reject") ? styles.inlineReasonContainerActive : ""
       }`}>
-        <p style={{ marginBottom: "8px", fontSize: "13px", color: "var(--scorpion)", fontWeight: 600 }}>
+        <p style={{ marginBottom: "8px", fontSize: "13px", color: "var(--dove-gray)", fontWeight: 600 }}>
           {currentDecision === "reject"
             ? `Reason for Rejection (Required):`
             : `Clarification Details Required (Required):`}
