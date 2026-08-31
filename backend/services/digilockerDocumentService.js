@@ -41,7 +41,7 @@ export async function downloadDigilockerDocuments({
   fileUrlTemplate,
 }) {
   if (!fileUrlTemplate) return [];
-  const identityDocuments = documents.filter(isIdentityDocument);
+  const identityDocuments = (Array.isArray(documents) ? documents : []).filter(isIdentityDocument);
   await fs.mkdir(path.join(PRIVATE_ROOT, expertId), { recursive: true, mode: 0o700 });
 
   return Promise.all(identityDocuments.map(async (item) => {
