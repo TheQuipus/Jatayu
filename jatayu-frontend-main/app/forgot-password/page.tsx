@@ -24,9 +24,10 @@ function AuthShell({ children }: { children?: React.ReactNode }) {
 
 function ForgotPasswordContent() {
   const searchParams = useSearchParams();
-  const role = searchParams.get("role");
+  const rawRole = searchParams.get("role");
+  const role = rawRole?.toLowerCase() === "expert" ? "expert" : (rawRole?.toLowerCase() === "admin" ? "admin" : "user");
 
-  let loginHref = "/login";
+  let loginHref = "/login?role=user";
   if (role === "expert") {
     loginHref = "/login?role=expert";
   } else if (role === "admin") {
@@ -35,7 +36,7 @@ function ForgotPasswordContent() {
 
   return (
     <AuthShell>
-      <ForgotPasswordForm loginHref={loginHref} role={role || "user"} />
+      <ForgotPasswordForm loginHref={loginHref} role={role} />
     </AuthShell>
   );
 }

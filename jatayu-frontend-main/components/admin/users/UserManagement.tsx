@@ -27,12 +27,10 @@ import problemStyles from "@/components/homepage/Problem.module.css";
 import {
   useUserManagement,
 } from "@/hooks/useUserManagement";
-import {
-  ADMIN_USERS_EXPERTS_HREF,
-  ADMIN_USERS_SEEKERS_HREF,
-  type ExpertUser,
-  type SeekerUser,
-  type UserStatus,
+import type {
+  ExpertUser,
+  SeekerUser,
+  UserStatus,
 } from "@/lib/adminUserManagement";
 import styles from "./UserManagement.module.css";
 
@@ -116,34 +114,14 @@ export default function UserManagement({ subSection }: UserManagementProps) {
     <section className={styles.dashboard}>
       <div className={`container ${styles.dashboardInner}`}>
         {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.titleGroup}>
-          <h1 className={styles.title}>User Management</h1>
-          <p className={styles.subtitle}>
-            Manage system users, expert providers, seeker accounts, and access permissions.
-          </p>
+        <div className={styles.header}>
+          <div className={styles.titleGroup}>
+            <h1 className={styles.title}>User Management</h1>
+            <p className={styles.subtitle}>
+              Manage system users, expert providers, seeker accounts, and access permissions.
+            </p>
+          </div>
         </div>
-
-        {/* Tab Switcher */}
-        <div className={styles.tabBar} role="tablist">
-          <Link
-            href={ADMIN_USERS_EXPERTS_HREF}
-            className={`${styles.tabBtn} ${subSection === "experts" ? styles.tabBtnActive : ""}`}
-            role="tab"
-          >
-            <UserCheck size={16} />
-            Experts ({totalExperts})
-          </Link>
-          <Link
-            href={ADMIN_USERS_SEEKERS_HREF}
-            className={`${styles.tabBtn} ${subSection === "seekers" ? styles.tabBtnActive : ""}`}
-            role="tab"
-          >
-            <Users size={16} />
-            Seekers ({totalSeekers})
-          </Link>
-        </div>
-      </div>
 
       {/* KPI Metrics Bar */}
       {subSection === "experts" ? (

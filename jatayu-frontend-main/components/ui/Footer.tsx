@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUp } from "lucide-react";
 import styles from "./Footer.module.css";
 
@@ -25,9 +26,9 @@ export default function Footer() {
                 <span className={styles.linkHeading}>Navigation</span>
                 <a href="#top">Home</a>
                 <a href="#">About</a>
-                <a href="/expert/">Expert</a>
+                <Link href="/expert/">Expert</Link>
                 <a href="#">Blog</a>
-                <a href="#">Terms of Service</a>
+                <Link href="/terms">Terms of Service</Link>
               </nav>
 
               <div className={`${styles.linkGroup} ${styles.socialGroup}`}>
@@ -38,9 +39,8 @@ export default function Footer() {
                 </div>
                 <span className={styles.linkHeading}>Social</span>
                 <a href="#">Instagram ↗</a>
-                <a href="#">Dribbble ↗</a>
                 <a href="#">Twitter ↗</a>
-                <a href="#">Privacy Policy</a>
+                <Link href="/privacy">Privacy Policy</Link>
               </div>
             </div>
 

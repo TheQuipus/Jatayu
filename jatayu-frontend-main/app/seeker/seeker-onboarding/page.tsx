@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Briefcase,
   Lightbulb,
@@ -260,6 +261,7 @@ type OnboardingStep =
   | "success";
 
 function SeekerOnboardingPageContent() {
+  const router = useRouter();
   const [step, setStep] = useState<OnboardingStep>("register");
   const [editReturnStep, setEditReturnStep] = useState<OnboardingStep | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -364,7 +366,7 @@ function SeekerOnboardingPageContent() {
       }
     }
 
-    if (isSeekerAuthenticated()) {
+    if (resume === "category" && isSeekerAuthenticated()) {
       clearPendingSeekerOtpSession();
       const storedUser = getStoredSeekerUser();
       if (storedUser) {
@@ -379,11 +381,40 @@ function SeekerOnboardingPageContent() {
       return;
     }
 
+    const stepParam = params.get("step");
+    if (stepParam && isSeekerAuthenticated()) {
+      clearPendingSeekerOtpSession();
+      const storedUser = getStoredSeekerUser();
+      if (storedUser) {
+        hydrateSeekerFromProfile(storedUser as unknown as Record<string, unknown>);
+      }
+      setStep(stepParam as OnboardingStep);
+      return;
+    }
+
     // Default for unauthenticated signup / initial visit: clear any old session and show register step
     clearSeekerAuthSession();
     clearPendingSeekerOtpSession();
     queueMicrotask(() => handleSwitchToRegister());
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let targetQuery = "";
+    if (step === "register") {
+      targetQuery = "?flow=signup";
+    } else if (step === "login") {
+      return; // login redirects to /login?role=user
+    } else if (step === "otp") {
+      targetQuery = "?resume=otp";
+    } else {
+      targetQuery = `?step=${encodeURIComponent(step)}`;
+    }
+    const targetUrl = `/seeker/seeker-onboarding/${targetQuery}`;
+    if (window.location.pathname + window.location.search !== targetUrl) {
+      window.history.replaceState(null, "", targetUrl);
+    }
+  }, [step]);
 
   const handleStartJourney = () => {
     setStep("register");
@@ -650,6 +681,7 @@ function SeekerOnboardingPageContent() {
 
   const handleBackToRegister = () => {
     setStep("register");
+    router.replace("/seeker/seeker-onboarding/?flow=signup");
   };
 
   const handleBackFromCategory = () => {
@@ -659,6 +691,7 @@ function SeekerOnboardingPageContent() {
     }
 
     setStep("register");
+    router.replace("/seeker/seeker-onboarding/?flow=signup");
   };
 
   const handleSwitchToRegister = () => {
@@ -684,12 +717,15 @@ function SeekerOnboardingPageContent() {
     setSubmissionError(null);
     setStepSaveError(null);
     setStep("register");
+    router.replace("/seeker/seeker-onboarding/?flow=signup");
   };
 
   const handleSwitchToLogin = (email?: string) => {
     clearPendingSeekerOtpSession();
-    if (email) setPrefilledLoginEmail(email);
-    setStep("login");
+    const loginUrl = email
+      ? `/login?role=user&email=${encodeURIComponent(email)}`
+      : "/login?role=user";
+    router.push(loginUrl);
   };
 
   const handleToggleTopic = (topic: string) => {

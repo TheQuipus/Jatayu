@@ -19,9 +19,10 @@ export default function ProfileKpiRow({
 }: ProfileKpiRowProps) {
   const expertUser = isExpert ? (user as ExpertUser) : undefined;
 
-  const textCount = Math.floor(totalSessionsCount * 0.4);
-  const videoCount = Math.floor(totalSessionsCount * 0.35);
-  const callCount = Math.max(0, totalSessionsCount - textCount - videoCount);
+  const videoCount = Math.floor(totalSessionsCount * 0.5);
+  const liveChatCount = Math.floor(totalSessionsCount * 0.25);
+  const audioCount = Math.floor(totalSessionsCount * 0.15);
+  const messagingCount = Math.max(0, totalSessionsCount - videoCount - liveChatCount - audioCount);
 
   return (
     <div className={styles.kpiRow}>
@@ -35,15 +36,16 @@ export default function ProfileKpiRow({
         <h3 className={styles.kpiValue}>{totalSessionsCount}</h3>
         <div className={styles.breakdownRow}>
           <span className={styles.breakdownItem}>
-            <strong>{textCount}</strong> Text
+            <strong>{videoCount}</strong> Video Call
           </span>
-          <span className={styles.breakdownSep}>·</span>
           <span className={styles.breakdownItem}>
-            <strong>{videoCount}</strong> Video
+            <strong>{liveChatCount}</strong> Live Chat
           </span>
-          <span className={styles.breakdownSep}>·</span>
           <span className={styles.breakdownItem}>
-            <strong>{callCount}</strong> Call
+            <strong>{audioCount}</strong> Audio Call
+          </span>
+          <span className={styles.breakdownItem}>
+            <strong>{messagingCount}</strong> Messaging
           </span>
         </div>
       </div>

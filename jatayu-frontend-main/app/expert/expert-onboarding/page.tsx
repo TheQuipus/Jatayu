@@ -544,7 +544,31 @@ function ExpertOnboardingPageContent() {
       setRegisteredName((prev) => prev || "Expert");
       return;
     }
+
+    const stepParam = params.get("step");
+    if (stepParam && isAuthenticated()) {
+      setStep(stepParam as ExpertOnboardingStep);
+      return;
+    }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let targetQuery = "";
+    if (step === "register") {
+      targetQuery = "?flow=signup";
+    } else if (step === "login") {
+      targetQuery = "?auth=login";
+    } else if (step === "otp") {
+      targetQuery = "?resume=otp";
+    } else {
+      targetQuery = `?step=${encodeURIComponent(step)}`;
+    }
+    const targetUrl = `/expert/expert-onboarding/${targetQuery}`;
+    if (window.location.pathname + window.location.search !== targetUrl) {
+      window.history.replaceState(null, "", targetUrl);
+    }
+  }, [step]);
 
   useEffect(() => {
     if (loginIntentRef.current) return;

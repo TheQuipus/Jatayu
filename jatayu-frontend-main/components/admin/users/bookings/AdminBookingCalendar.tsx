@@ -15,13 +15,16 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  ArrowLeft,
 } from "lucide-react";
 import type { ConsultationType } from "@/lib/booking";
 import {
   UPCOMING_BOOKINGS,
-  getBookingDetailHref,
+  getBookingById,
   type CalendarBooking,
 } from "@/lib/seekerDashboard";
+import type { ExpertUser, SeekerUser } from "@/lib/adminUserManagement";
+import AdminBookingDetailInfo from "./AdminBookingDetailInfo";
 import styles from "./AdminBookingCalendar.module.css";
 
 const CONSULTATION_ICONS: Record<ConsultationType, typeof MessageSquare> = {
@@ -98,10 +101,31 @@ type StatusFilter = "all" | "confirmed" | "pending" | "completed" | "cancelled";
 
 type AdminBookingCalendarProps = {
   className?: string;
+  selectedBookingId?: string | null;
+  onSelectBooking?: (id: string | null) => void;
+  user?: ExpertUser | SeekerUser;
+  isExpert?: boolean;
 };
 
-export default function AdminBookingCalendar({ className = "" }: AdminBookingCalendarProps) {
+export default function AdminBookingCalendar({
+  className = "",
+  selectedBookingId,
+  onSelectBooking,
+  user,
+  isExpert = false,
+}: AdminBookingCalendarProps) {
   const router = useRouter();
+  const [internalSelectedBookingId, setInternalSelectedBookingId] = useState<string | null>(null);
+
+  const activeBookingId = selectedBookingId !== undefined ? selectedBookingId : internalSelectedBookingId;
+
+  const handleSelectBooking = (id: string | null) => {
+    if (onSelectBooking) {
+      onSelectBooking(id);
+    } else {
+      setInternalSelectedBookingId(id);
+    }
+  };
 
   const today = useMemo(() => {
     return startOfDay(new Date());
@@ -164,6 +188,29 @@ export default function AdminBookingCalendar({ className = "" }: AdminBookingCal
 
     return map;
   }, [today, filteredBookings, visibleDays]);
+
+  // If a booking is selected, render the Session Detail view directly inside Admin Panel
+  if (activeBookingId) {
+    const booking = getBookingById(activeBookingId);
+    if (booking) {
+      return (
+        <div className={`${styles.calendarWrapper} ${className}`.trim()}>
+          <AdminBookingDetailInfo
+            booking={booking}
+            sessionState={booking.status === "completed" ? "completed" : "detail"}
+            onJoinSession={() => alert("Admin Monitoring: Session room")}
+            onSubmitReview={() => {}}
+            submittedReview={null}
+            notes=""
+            isAdmin={true}
+            onBack={() => handleSelectBooking(null)}
+            user={user}
+            isExpert={isExpert}
+          />
+        </div>
+      );
+    }
+  }
 
   // KPI Stats
   const totalCount = allBookings.length;
@@ -307,7 +354,7 @@ export default function AdminBookingCalendar({ className = "" }: AdminBookingCal
                         <div
                           key={booking.id}
                           className={`${styles.bookingCard} ${cardClass}`}
-                          onClick={() => router.push(getBookingDetailHref(booking.id))}
+                          onClick={() => handleSelectBooking(booking.id)}
                           style={{ cursor: "pointer" }}
                         >
                           <div className={styles.bookingMetaRow}>

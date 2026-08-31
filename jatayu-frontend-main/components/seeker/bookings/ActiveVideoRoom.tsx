@@ -210,9 +210,6 @@ export default function ActiveVideoRoom({
                     className={styles.videoFeedImage}
                     priority
                   />
-                  <div className={styles.videoFeedLabel}>
-                    <span>{booking.expert.name}</span>
-                  </div>
                   <div ref={localVideoElementRef} style={{ position: "absolute", right: 16, bottom: 16, width: 180, height: 110, zIndex: 3 }} />
                 </div>
               )}
@@ -258,16 +255,6 @@ export default function ActiveVideoRoom({
                 </div>
               )}
 
-              {/* Picture-in-picture preview */}
-              <div className={styles.pipContainer}>
-                <div className={styles.pipInner}>
-                  {isMuted ? (
-                    <span className={styles.pipMuteIndicator}>Mic Off</span>
-                  ) : (
-                    <span className={styles.pipLabel}>You (Seeker)</span>
-                  )}
-                </div>
-              </div>
 
               {/* Google Meet style Video Call Controls Overlay */}
               <div className={styles.videoControls}>

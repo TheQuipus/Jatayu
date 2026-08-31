@@ -5,20 +5,21 @@
   width: 100%;
 }
 
-.mainGrid {
+.kpiGrid {
   display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 24px;
-}
-
-.secondaryGrid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  width: 100%;
 }
 
 @media (max-width: 1100px) {
-  .mainGrid, .secondaryGrid {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .kpiGrid {
     grid-template-columns: 1fr;
   }
 }
@@ -47,9 +48,27 @@
   flex-wrap: wrap;
 }
 
+.cardHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.offerIconWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(233, 104, 30, 0.1);
+  color: var(--tango);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .cardTitle {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--ink);
   margin: 0 0 4px;
@@ -57,14 +76,14 @@
 
 .sectionTitle {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--ink);
   margin: 0 0 6px;
 }
 
 .cardSubtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dove-gray);
   margin: 0;
 }
@@ -86,7 +105,7 @@
   border: 1px solid var(--mercury);
   border-radius: 8px;
   padding: 8px 32px 8px 12px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
@@ -105,7 +124,7 @@
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--dove-gray);
   pointer-events: none;
 }
@@ -121,9 +140,9 @@
 .timeBtn {
   border: none;
   background: transparent;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--dove-gray);
   cursor: pointer;
@@ -155,7 +174,7 @@
 
 .yAxisLabel, .xAxisLabel {
   font-family: var(--font-ibm-plex-mono);
-  font-size: 10px;
+  font-size: 14px;
   fill: var(--silver-chalice);
   font-weight: 500;
 }
@@ -186,7 +205,7 @@
   border-top: 1px solid var(--seashell);
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .legendDotGroup {
@@ -199,7 +218,7 @@
   align-items: center;
   gap: 6px;
   font-weight: 600;
-  color: var(--scorpion);
+  color: var(--dove-gray);
 }
 
 .dot {
@@ -215,12 +234,6 @@
 }
 
 /* KPI metric boxes */
-.kpiContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .kpiBox {
   background: var(--white);
   border: 1px solid var(--mercury);
@@ -240,7 +253,7 @@
 }
 
 .kpiLabel {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -248,8 +261,8 @@
 }
 
 .iconTag {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
@@ -258,7 +271,7 @@
 
 .kpiNumber {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--ink);
   margin: 4px 0 0;
@@ -267,7 +280,7 @@
 .kpiDetailRow {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--silver-chalice);
   margin-top: 2px;
 }
@@ -319,8 +332,8 @@
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 10px;
-  color: var(--scorpion);
+  font-size: 14px;
+  color: var(--dove-gray);
 }
 
 .tierText {
@@ -331,8 +344,8 @@
 }
 
 .miniDot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -340,96 +353,6 @@
 .colorBudget { background: #3b82f6; }
 .colorStandard { background: #a855f7; }
 .colorPremium { background: var(--tango); }
-
-/* Domain Split Card */
-.domainCard {
-  background: var(--white);
-  border: 1px solid var(--mercury);
-  border-radius: 16px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-}
-
-.domainList {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  flex-grow: 1;
-}
-
-.domainItem {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.domainMetaRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-}
-
-.domainName {
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.domainColorMarker {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.domainValue {
-  font-family: var(--font-ibm-plex-mono);
-  font-weight: 700;
-  color: var(--scorpion);
-  font-size: 12px;
-}
-
-.domainProgressBar {
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--seashell);
-  overflow: hidden;
-}
-
-.domainProgressFill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.4s ease-out;
-}
-
-/* Insight Alerts */
-.insightAlert {
-  display: flex;
-  gap: 12px;
-  background: rgba(233, 104, 30, 0.06);
-  border: 1px solid rgba(233, 104, 30, 0.15);
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-top: 24px;
-}
-
-.alertIconBox {
-  color: var(--tango);
-  display: flex;
-  align-items: flex-start;
-  margin-top: 2px;
-}
-
-.alertText {
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--scorpion);
-}
-
-.alertText strong {
-  color: var(--ink);
-}
 
 /* Offer Generator Form Card */
 .offerCard {
@@ -441,17 +364,14 @@
 }
 
 .offerHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+  display: none;
 }
 
 .offerForm {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .formGroup {
@@ -466,6 +386,12 @@
   gap: 16px;
 }
 
+@media (max-width: 600px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+}
+
 .formCol {
   display: flex;
   flex-direction: column;
@@ -473,40 +399,56 @@
 }
 
 .fieldLabel {
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--dove-gray);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .presetButtons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  background: var(--seashell);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--mercury);
+}
+
+@media (max-width: 600px) {
+  .presetButtons {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .presetBtn {
-  border: 1px solid var(--mercury);
-  background: var(--white);
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--scorpion);
+  color: var(--dove-gray);
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .presetBtn:hover {
-  border-color: var(--silver-chalice);
-  background: var(--seashell);
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .presetBtnActive {
-  background: var(--bunker);
-  color: var(--white);
-  border-color: var(--bunker);
+  background: var(--ink) !important;
+  color: var(--white) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .codeWrap {
@@ -518,7 +460,8 @@
 .inputLeftIcon {
   position: absolute;
   left: 12px;
-  color: var(--silver-chalice);
+  color: var(--dove-gray);
+  pointer-events: none;
 }
 
 .formInput {
@@ -526,37 +469,40 @@
   background: var(--seashell);
   border: 1px solid var(--mercury);
   border-radius: 8px;
-  padding: 8px 12px 8px 32px;
-  font-size: 13px;
+  padding: 10px 14px 10px 36px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   outline: none;
   font-family: var(--font-ibm-plex-mono);
+  transition: all 0.15s ease;
 }
 
 .formInput:focus {
   border-color: var(--tango);
   background: var(--white);
+  box-shadow: 0 0 0 3px rgba(233, 104, 30, 0.1);
 }
 
 .btnGenerateCode {
   position: absolute;
-  right: 6px;
+  right: 5px;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--bunker);
-  color: var(--white);
-  border: none;
-  padding: 4px 8px;
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--mercury);
+  padding: 5px 10px;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .btnGenerateCode:hover {
-  background: #1c2230;
+  background: var(--seashell);
+  border-color: var(--silver-chalice);
 }
 
 .valueInputWrap {
@@ -572,10 +518,10 @@
 
 .valueTypeSuffix {
   position: absolute;
-  right: 12px;
+  right: 14px;
   font-weight: 700;
   color: var(--dove-gray);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .typeRadioGroup {
@@ -591,11 +537,11 @@
   gap: 6px;
   border: 1px solid var(--mercury);
   background: var(--white);
-  padding: 8px;
+  padding: 10px 8px;
   border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--scorpion);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dove-gray);
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: center;
@@ -603,12 +549,14 @@
 
 .typeRadioLabel:hover {
   border-color: var(--silver-chalice);
+  color: var(--ink);
 }
 
 .radioSelected {
-  border-color: var(--tango);
-  background: rgba(233, 104, 30, 0.05);
-  color: var(--tango);
+  border-color: var(--tango) !important;
+  background: rgba(233, 104, 30, 0.08) !important;
+  color: var(--tango) !important;
+  font-weight: 700;
 }
 
 .hiddenRadio {
@@ -619,35 +567,84 @@
   background: var(--seashell);
   border: 1px solid var(--mercury);
   border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 10px 14px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
   outline: none;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .formSelect:focus {
   border-color: var(--tango);
   background: var(--white);
+  box-shadow: 0 0 0 3px rgba(233, 104, 30, 0.1);
 }
 
 .formTextarea {
   background: var(--seashell);
   border: 1px solid var(--mercury);
   border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12.5px;
+  padding: 10px 14px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink);
   outline: none;
   resize: none;
   font-family: var(--font-body);
+  transition: all 0.15s ease;
 }
 
 .formTextarea:focus {
   border-color: var(--tango);
   background: var(--white);
+  box-shadow: 0 0 0 3px rgba(233, 104, 30, 0.1);
+}
+
+/* Voucher Live Preview */
+.voucherPreview {
+  background: rgba(233, 104, 30, 0.04);
+  border: 1.5px dashed rgba(233, 104, 30, 0.35);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voucherPreviewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.voucherPreviewLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--tango);
+}
+
+.voucherCodeBadge {
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--white);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(233, 104, 30, 0.2);
+}
+
+.voucherPreviewDesc {
+  font-size: 13px;
+  color: var(--dove-gray);
+  line-height: 1.4;
+}
+
+.voucherPreviewDesc strong {
+  color: var(--ink);
 }
 
 .btnSubmitOffer {
@@ -655,28 +652,31 @@
   color: var(--white);
   border: none;
   border-radius: 8px;
-  padding: 10px;
-  font-size: 13px;
+  padding: 13px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 6px;
-  transition: background 0.15s ease, transform 0.1s ease;
+  margin-top: 4px;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(233, 104, 30, 0.25);
 }
 
 .btnSubmitOffer:hover {
   background: var(--pomegranate);
+  box-shadow: 0 4px 12px rgba(233, 104, 30, 0.35);
 }
 
 .btnSubmitOffer:active {
-  transform: scale(0.98);
+  transform: scale(0.99);
 }
 
 .btnSubmitOffer:disabled {
   background: var(--silver-chalice);
+  box-shadow: none;
   cursor: not-allowed;
 }
 
@@ -691,11 +691,11 @@
 }
 
 .activeOffersCount {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--tango);
   background: rgba(233, 104, 30, 0.1);
-  padding: 4px 10px;
+  padding: 4px 12px;
   border-radius: 12px;
   border: 1px solid rgba(233, 104, 30, 0.2);
 }
@@ -711,7 +711,7 @@
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .offersTable th {
@@ -722,7 +722,7 @@
   padding: 12px 16px;
   border-bottom: 2px solid var(--mercury);
   text-transform: uppercase;
-  font-size: 10.5px;
+  font-size: 14px;
   letter-spacing: 0.05em;
 }
 
@@ -744,26 +744,23 @@
 .code {
   font-family: var(--font-mono);
   background: var(--seashell);
-  padding: 3px 6px;
+  padding: 4px 8px;
   border-radius: 4px;
   border: 1px solid var(--mercury);
   color: var(--bunker);
+  font-size: 14px;
 }
 
 .badgeValue {
-  background: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
+  color: var(--ink);
   font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  display: inline-block;
+  font-size: 14px;
 }
 
 .statusBadge {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
   display: inline-block;
   text-align: center;

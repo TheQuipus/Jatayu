@@ -1637,99 +1637,247 @@
   gap: 14px;
 }
 
-.accCardItem {
+/* ==========================================================================
+   Session Content & Artifacts Toggle Card
+   ========================================================================== */
+.artifactsCard {
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  border-radius: 12px;
   background: var(--white);
-  margin-left: calc(var(--grid-col) + 0px);
-  padding: 22px 22px;
-  overflow: hidden;
-  clip-path: polygon(0% 5.063%,
-      1.727% 0%,
-      68.633% 0%,
-      70.647% 5.063%,
-      97.914% 5.063%,
-      100% 18.354%,
-      100% 84.81%,
-      98.489% 90.506%,
-      95.683% 90.823%,
-      90.36% 100%,
-      0% 100%,
-      0% 5.063%);
-  -webkit-clip-path: polygon(0% 5.063%,
-      1.727% 0%,
-      68.633% 0%,
-      70.647% 5.063%,
-      97.914% 5.063%,
-      100% 18.354%,
-      100% 84.81%,
-      98.489% 90.506%,
-      95.683% 90.823%,
-      90.36% 100%,
-      0% 100%,
-      0% 5.063%);
+  padding: 24px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--ink) 4%, transparent);
+  margin-top: 24px;
 }
 
-.accBtn {
-  width: 100%;
-  background: none;
-  border: none;
-  cursor: pointer;
+.artifactsHeader {
   display: flex;
-  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mercury) 70%, transparent);
+}
+
+.artifactsHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.artifactsHeaderIcon {
+  color: var(--tango);
+}
+
+.artifactsTitle {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Segmented Content Toggle Bar */
+.contentToggleBar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--gallery) 80%, var(--mercury) 20%);
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  border-radius: 10px;
+}
+
+.contentToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.contentToggleBtn:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.contentToggleBtnActive {
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.artifactsContentPanel {
+  padding-top: 18px;
+}
+
+.tabContentFadeIn {
+  animation: tabFade 0.25s ease-out;
+}
+
+@keyframes tabFade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tabContentTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--mercury) 80%, transparent);
+}
+
+.tabContentMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tabContentMeta strong {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.tabContentMeta span {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--dove-gray);
+}
+
+.tabActionGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tabActionSecondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--mercury);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tabActionSecondaryBtn:hover {
+  background: var(--gallery);
+  border-color: var(--scorpion);
+}
+
+.tabDownloadCTA {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.chatLogContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--gallery);
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--mercury) 70%, transparent);
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.chatMessageItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 80%;
+}
+
+.chatMessageItemSeeker {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.chatMsgAvatar {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--mercury);
+}
+
+.chatAvatarImg {
+  object-fit: cover;
+}
+
+.chatMsgBubble {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--white);
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.chatMessageItemSeeker .chatMsgBubble {
+  background: color-mix(in srgb, var(--tango) 10%, var(--white));
+  border-color: color-mix(in srgb, var(--tango) 30%, transparent);
+}
+
+.chatMsgHeader {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0;
-  margin-top: 5px;
-  text-align: left;
-  color: var(--bunker);
 }
 
-.accTitle {
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -.02em;
-  color: var(--bunker);
-}
-
-.accPlus {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  transition: transform 0.3s ease;
-}
-
-.accPanel {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s ease, opacity 0.25s ease;
-  opacity: 0;
-}
-
-.accCardItem.isOpen .accPanel {
-  max-height: 800px;
-  opacity: 1;
-}
-
-.accCardItem.isOpen .accPlus {
-  transform: rotate(45deg);
-}
-
-.accContentInner {
-  margin-top: 14px;
-}
-
-
-.accActionRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.accDownloadBtn {
+.chatMsgHeader strong {
+  font-family: var(--font-body);
   font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.chatMsgTime {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dove-gray);
+}
+
+.chatMsgText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--bunker);
 }
 
 /* Transcript styling */

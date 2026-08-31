@@ -160,7 +160,7 @@ export default function SettingsView() {
                   <div className={styles.settingLabel}>Blocked Users</div>
                   <div className={styles.settingDesc}>Manage users you&apos;ve blocked from contacting you</div>
                 </div>
-                <button type="button" className={styles.btnSecondary} style={{ fontSize: "12px", padding: "6px 12px" }}>
+                <button type="button" className={styles.btnSecondary}>
                   View List →
                 </button>
               </div>
@@ -171,8 +171,8 @@ export default function SettingsView() {
                   <div className={styles.settingLabel}>Download My Data</div>
                   <div className={styles.settingDesc}>Export a copy of all your Jatayu data</div>
                 </div>
-                <button type="button" className={styles.btnSecondary} style={{ fontSize: "12px", padding: "6px 12px" }}>
-                  <Download size={13} /> Request Export
+                <button type="button" className={styles.btnSecondary}>
+                  <Download size={14} /> Request Export
                 </button>
               </div>
             </div>
@@ -201,7 +201,7 @@ export default function SettingsView() {
                     <span className={styles.tagVerified}>Verified</span>
                   </div>
                 </div>
-                <button type="button" className={styles.btnSecondary} style={{ fontSize: "12px", padding: "6px 12px" }}>
+                <button type="button" className={styles.btnSecondary}>
                   Change Number
                 </button>
               </div>
@@ -215,7 +215,7 @@ export default function SettingsView() {
                     <span className={styles.tagOrange}>Unverified</span>
                   </div>
                 </div>
-                <button type="button" className={styles.btnSecondary} style={{ fontSize: "12px", padding: "6px 12px", color: "#2563eb" }}>
+                <button type="button" className={styles.btnSecondary} style={{ color: "#2563eb", borderColor: "rgba(37, 99, 235, 0.25)" }}>
                   Verify
                 </button>
               </div>
@@ -280,7 +280,7 @@ export default function SettingsView() {
                   <div className={styles.settingLabel}>Login History</div>
                   <div className={styles.settingDesc}>View recent sign-in activity for your account</div>
                 </div>
-                <button type="button" className={styles.btnSecondary} style={{ fontSize: "12px", padding: "6px 12px" }}>
+                <button type="button" className={styles.btnSecondary}>
                   View History →
                 </button>
               </div>
@@ -329,7 +329,7 @@ export default function SettingsView() {
                     </button>
                   </div>
                 </div>
-                <button type="button" className={styles.btnSecondary} style={{ fontSize: "12px", padding: "6px 12px" }}>
+                <button type="button" className={styles.btnSecondary}>
                   Edit
                 </button>
               </div>

@@ -216,9 +216,6 @@ export default function ExpertActiveVideoRoom({
                     className={styles.videoFeedImage}
                     priority
                   />
-                  <div className={styles.videoFeedLabel}>
-                    <span>{clientName}</span>
-                  </div>
                   <div ref={localVideoElementRef} style={{ position: "absolute", right: 16, bottom: 16, width: 180, height: 110, zIndex: 3 }} />
                 </div>
               )}
@@ -265,25 +262,6 @@ export default function ExpertActiveVideoRoom({
                 </div>
               )}
 
-              {/* Picture-in-picture preview (Expert Self Feed) */}
-              <div className={styles.pipContainer}>
-                <div className={styles.pipInner}>
-                  {isMuted ? (
-                    <span className={styles.pipMuteIndicator}>Mic Off</span>
-                  ) : (
-                    <>
-                      <Image
-                        src="/assets/img/Man.png"
-                        alt="You (Expert)"
-                        fill
-                        className={styles.pipImage}
-                        sizes="120px"
-                      />
-                      <span className={styles.pipLabel}>You (Expert)</span>
-                    </>
-                  )}
-                </div>
-              </div>
 
               {/* Video Call Controls Overlay */}
               <div className={styles.videoControls}>

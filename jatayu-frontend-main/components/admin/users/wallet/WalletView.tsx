@@ -5,20 +5,16 @@ import {
   ArrowDownLeft,
   Calendar,
   Clock,
-  CreditCard,
   Crown,
   FileText,
   Info,
-  Lock,
   MessageSquare,
   PhoneCall,
   Plus,
-  QrCode,
   RotateCcw,
   ShieldCheck,
   Video,
   Wallet,
-  Zap,
 } from "lucide-react";
 import styles from "./WalletView.module.css";
 
@@ -40,7 +36,6 @@ export default function WalletView() {
   // Wallet State
   const [selectedAmount, setSelectedAmount] = useState<number>(500);
   const [customAmount, setCustomAmount] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<"upi" | "card">("upi");
   const [txFilter, setTxFilter] = useState<"all" | "added" | "spent" | "refunds">("all");
 
   const finalAmount = customAmount ? parseFloat(customAmount) || 0 : selectedAmount;
@@ -213,7 +208,7 @@ export default function WalletView() {
             <div className={styles.progressBar}>
               <div className={styles.progressFill} style={{ width: "68%" }} />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--dove-gray)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "var(--dove-gray)" }}>
               <span>320 credits remaining this cycle</span>
               <span>Resets Jul 1, 2025</span>
             </div>
@@ -222,9 +217,9 @@ export default function WalletView() {
           <div className={styles.usageBreakdownGrid}>
             <div className={styles.usageMiniCard}>
               <div className={styles.usageMiniHeader}>
-                <MessageSquare size={14} style={{ color: "#3b82f6" }} /> Text Sessions
+                <MessageSquare size={16} style={{ color: "#3b82f6" }} /> Text Sessions
               </div>
-              <div className={styles.usageMiniVal}>250 <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--dove-gray)" }}>used</span></div>
+              <div className={styles.usageMiniVal}>250 <span style={{ fontSize: "14px", fontWeight: 500, color: "var(--dove-gray)" }}>used</span></div>
               <div className={styles.usageMiniBar}>
                 <div className={styles.miniBarFillBlue} />
               </div>
@@ -232,9 +227,9 @@ export default function WalletView() {
 
             <div className={styles.usageMiniCard}>
               <div className={styles.usageMiniHeader}>
-                <Video size={14} style={{ color: "#a855f7" }} /> Video Messages
+                <Video size={16} style={{ color: "#a855f7" }} /> Video Messages
               </div>
-              <div className={styles.usageMiniVal}>280 <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--dove-gray)" }}>used</span></div>
+              <div className={styles.usageMiniVal}>280 <span style={{ fontSize: "14px", fontWeight: 500, color: "var(--dove-gray)" }}>used</span></div>
               <div className={styles.usageMiniBar}>
                 <div className={styles.miniBarFillPurple} />
               </div>
@@ -242,9 +237,9 @@ export default function WalletView() {
 
             <div className={styles.usageMiniCard}>
               <div className={styles.usageMiniHeader}>
-                <PhoneCall size={14} style={{ color: "#22c55e" }} /> Live Calls
+                <PhoneCall size={16} style={{ color: "#22c55e" }} /> Live Calls
               </div>
-              <div className={styles.usageMiniVal}>150 <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--dove-gray)" }}>used</span></div>
+              <div className={styles.usageMiniVal}>150 <span style={{ fontSize: "14px", fontWeight: 500, color: "var(--dove-gray)" }}>used</span></div>
               <div className={styles.usageMiniBar}>
                 <div className={styles.miniBarFillGreen} />
               </div>
@@ -256,21 +251,21 @@ export default function WalletView() {
               <div className={styles.renewalText}>Plan renews on July 1, 2025</div>
               <div className={styles.renewalSub}>₹999/month · Auto-renewal enabled</div>
             </div>
-            <button type="button" className={styles.btnSecondary} style={{ fontSize: "12px", padding: "6px 12px" }}>
+            <button type="button" className={styles.btnSecondary} style={{ fontSize: "14px", padding: "8px 16px" }}>
               Manage Plan
             </button>
           </div>
         </div>
 
-        {/* Add Funds Form Card */}
+        {/* Add Credits Form Card */}
         <div className={styles.addFundsCard}>
           <div className={styles.addFundsHeader}>
             <div className={styles.addFundsIcon}>
               <Plus size={16} />
             </div>
             <div>
-              <h3 className={styles.subTitle}>Add Funds</h3>
-              <p className={styles.subSubtitle}>Top up your wallet instantly</p>
+              <h3 className={styles.subTitle}>Add Credits</h3>
+              <p className={styles.subSubtitle}>Allocate or top up credits for this user</p>
             </div>
           </div>
 
@@ -285,7 +280,7 @@ export default function WalletView() {
                   setCustomAmount("");
                 }}
               >
-                ₹{amt}
+                +{amt}
               </button>
             ))}
           </div>
@@ -294,43 +289,15 @@ export default function WalletView() {
             <input
               type="number"
               className={styles.customInput}
-              placeholder="₹ Enter custom amount"
+              placeholder="Enter custom credit amount"
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
             />
           </div>
 
-          <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--dove-gray)", marginTop: "4px" }}>
-            Payment Method
-          </div>
-
-          <div className={styles.paymentOptionList}>
-            <div
-              className={`${styles.paymentOption} ${paymentMethod === "upi" ? styles.paymentOptionSelected : ""}`}
-              onClick={() => setPaymentMethod("upi")}
-            >
-              <input type="radio" checked={paymentMethod === "upi"} readOnly />
-              <QrCode size={16} style={{ color: "#2563eb" }} />
-              <span>UPI / QR Code</span>
-            </div>
-
-            <div
-              className={`${styles.paymentOption} ${paymentMethod === "card" ? styles.paymentOptionSelected : ""}`}
-              onClick={() => setPaymentMethod("card")}
-            >
-              <input type="radio" checked={paymentMethod === "card"} readOnly />
-              <CreditCard size={16} style={{ color: "#7c3aed" }} />
-              <span>Card / Net Banking</span>
-            </div>
-          </div>
-
           <button type="button" className={styles.payNowBtn}>
-            <Zap size={16} /> Pay ₹{finalAmount.toLocaleString("en-IN")} Now
+            <Plus size={16} /> Add {finalAmount.toLocaleString("en-IN")} Credits
           </button>
-
-          <div style={{ fontSize: "11px", color: "var(--dove-gray)", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}>
-            <Lock size={12} /> Secured by Razorpay · GST as applicable
-          </div>
         </div>
       </div>
 
@@ -427,7 +394,7 @@ export default function WalletView() {
                     <div>
                       <div className={styles.txTitle}>{tx.title}</div>
                       <div className={styles.txSubtitle}>
-                        <Calendar size={11} style={{ display: "inline", verticalAlign: "middle" }} /> {tx.date} · {tx.ref}
+                        <Calendar size={13} style={{ display: "inline", verticalAlign: "middle" }} /> {tx.date} · {tx.ref}
                       </div>
                     </div>
                   </div>
@@ -444,8 +411,8 @@ export default function WalletView() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "16px", paddingTop: "12px", borderTop: "1px solid var(--sand-light)" }}>
-            <span style={{ fontSize: "12px", color: "var(--dove-gray)" }}>Showing {filteredTxs.length} of 24 transactions</span>
-            <button type="button" style={{ background: "none", border: "none", color: "var(--tango)", fontWeight: 600, fontSize: "12px", cursor: "pointer" }}>
+            <span style={{ fontSize: "14px", color: "var(--dove-gray)" }}>Showing {filteredTxs.length} of 24 transactions</span>
+            <button type="button" style={{ background: "none", border: "none", color: "var(--tango)", fontWeight: 600, fontSize: "14px", cursor: "pointer" }}>
               View All Transactions →
             </button>
           </div>

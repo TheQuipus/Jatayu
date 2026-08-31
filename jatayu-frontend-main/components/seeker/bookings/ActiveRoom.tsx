@@ -27,9 +27,6 @@ export type ActiveRoomProps = {
 };
 
 export default function ActiveRoom(props: ActiveRoomProps) {
-  if (props.agora.status === "error") {
-    return <p role="alert" style={{ padding: "2rem", textAlign: "center" }}>{props.agora.error}</p>;
-  }
   if (["video", "audio", "shoutout"].includes(props.booking.consultationType)) {
     return <ActiveVideoRoom {...props} />;
   }

@@ -17,6 +17,8 @@ function isOnboardingPath(pathname: string | null) {
     pathname?.startsWith("/expert/expert-onboarding") ||
     pathname?.startsWith("/seeker/seeker-onboarding") ||
     pathname?.startsWith("/login") ||
+    pathname?.startsWith("/forgot-password") ||
+    pathname?.startsWith("/reset-password") ||
     isAdminLoginPage(pathname)
   );
 }

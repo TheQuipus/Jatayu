@@ -25,18 +25,19 @@ function AuthShell({ children }: { children?: React.ReactNode }) {
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
-  const role = searchParams.get("role");
+  const rawRole = searchParams.get("role");
+  const role = rawRole?.toLowerCase() === "expert" ? "expert" : (rawRole?.toLowerCase() === "admin" ? "admin" : "user");
 
-  let loginHref = "/login";
+  let loginHref = "/login?role=user";
   if (role === "expert") {
-    loginHref = "/expert/expert-onboarding/";
+    loginHref = "/login?role=expert";
   } else if (role === "admin") {
     loginHref = "/admin";
   }
 
   return (
     <AuthShell>
-      <ResetPasswordForm email={email} loginHref={loginHref} />
+      <ResetPasswordForm email={email} loginHref={loginHref} role={role} />
     </AuthShell>
   );
 }
