@@ -45,7 +45,11 @@ const SUMMARY_CARDS = [
   { id: "declined", label: "Declined", icon: XCircle },
 ] as const;
 
-function getTargetTimeMs(dateLabel: string): number {
+function getTargetTimeMs(dateLabel: string, scheduledStartAt?: string): number {
+  if (scheduledStartAt) {
+    const scheduled = new Date(scheduledStartAt).getTime();
+    if (Number.isFinite(scheduled)) return scheduled;
+  }
   if (dateLabel.includes("Tomorrow")) {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -59,11 +63,19 @@ function getTargetTimeMs(dateLabel: string): number {
   return Date.now() + (1 * 60 * 60 + 45 * 60) * 1000;
 }
 
-function getCountdownTextForRequest(dateLabel: string, currentTime: number): string | null {
-  const targetMs = getTargetTimeMs(dateLabel);
+function getCountdownTextForRequest(
+  dateLabel: string,
+  currentTime: number,
+  scheduledStartAt?: string,
+  opensAt?: string,
+): string | null {
+  const accessOpenMs = opensAt ? new Date(opensAt).getTime() : Number.NaN;
+  const targetMs = Number.isFinite(accessOpenMs)
+    ? accessOpenMs
+    : getTargetTimeMs(dateLabel, scheduledStartAt) - 5 * 60 * 1000;
   const diffMs = targetMs - currentTime;
 
-  if (diffMs <= 5 * 60 * 1000) {
+  if (diffMs <= 0) {
     return null;
   }
 
@@ -327,7 +339,13 @@ export default function ExpertRequests() {
                 <div className={styles.cardActions}>
                   {request.status === "accepted" ? (
                     (() => {
-                      const countdown = getCountdownTextForRequest(request.dateLabel, currentTime);
+                      const sessionAccess = request.rawItem?.sessionAccess as { opensAt?: string } | undefined;
+                      const countdown = getCountdownTextForRequest(
+                        request.dateLabel,
+                        currentTime,
+                        request.scheduledStartAt,
+                        sessionAccess?.opensAt,
+                      );
                       if (countdown) {
                         return (
                           <Link href={`/expert/requests/${request.id}/`}>

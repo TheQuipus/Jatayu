@@ -1246,11 +1246,13 @@ export function normalizeClientRequest(item: Record<string, unknown>): ClientReq
 
   let price = 0;
   if (typeof amountsObj.total === "number") {
-    price = amountsObj.unit === "paise" ? Math.round(amountsObj.total / 100) : amountsObj.total;
+    price = String(amountsObj.unit || "paise").toLowerCase() === "paise"
+      ? amountsObj.total / 100
+      : amountsObj.total;
   } else if (typeof item.totalAmount === "number") {
-    price = item.totalAmount > 1000 ? Math.round(item.totalAmount / 100) : item.totalAmount;
+    price = item.totalAmount / 100;
   } else if (typeof item.payableAmount === "number") {
-    price = item.payableAmount > 1000 ? Math.round(item.payableAmount / 100) : item.payableAmount;
+    price = item.payableAmount / 100;
   } else if (typeof item.price === "number") {
     price = item.price;
   }
@@ -1324,6 +1326,8 @@ export function normalizeClientRequest(item: Record<string, unknown>): ClientReq
       : seekerObj.category
         ? String(seekerObj.category)
         : undefined,
+    scheduledStartAt: item.scheduledStartAt ? String(item.scheduledStartAt) : undefined,
+    scheduledEndAt: item.scheduledEndAt ? String(item.scheduledEndAt) : undefined,
     rawItem: item,
   };
 }

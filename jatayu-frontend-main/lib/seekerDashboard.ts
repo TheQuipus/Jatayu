@@ -28,6 +28,8 @@ export type CalendarBooking = {
   pokeMaxCount?: number;
   pokeNextAllowedAt?: string | null;
   canPoke?: boolean;
+  scheduledStartAt?: string;
+  scheduledEndAt?: string;
 };
 
 export type BookingAttachment = {
