@@ -309,13 +309,18 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
     const detail = apiBookings.find((b) => b.id === bookingId);
     if (!detail) return null;
 
-    const targetDate = new Date(currentTime);
-    targetDate.setDate(targetDate.getDate() + detail.dayOffset);
-    targetDate.setHours(detail.startHour, detail.startMinute, 0, 0);
+    const targetDate = detail.sessionAccess?.opensAt
+      ? new Date(detail.sessionAccess.opensAt)
+      : detail.scheduledStartAt
+        ? new Date(detail.scheduledStartAt)
+        : new Date(currentTime);
+    if (!detail.sessionAccess?.opensAt && !detail.scheduledStartAt) {
+      targetDate.setDate(targetDate.getDate() + detail.dayOffset);
+      targetDate.setHours(detail.startHour, detail.startMinute, 0, 0);
+    }
 
     const diffMs = targetDate.getTime() - currentTime;
-    // Hide countdown timer 5 minutes prior to meeting start time
-    if (diffMs <= 5 * 60 * 1000) {
+    if (diffMs <= 0) {
       return null;
     }
 
@@ -398,7 +403,7 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
 
   const allBookingOffsets = useMemo(() => {
     const offsetsWithBookings = Array.from(
-      new Set(upcomingBookings.map((b) => Math.max(0, b.dayOffset)))
+      new Set(upcomingBookings.map((b) => b.dayOffset))
     ).sort((a, b) => a - b);
 
     if (!offsetsWithBookings.includes(0)) {

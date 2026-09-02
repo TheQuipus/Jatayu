@@ -20,6 +20,8 @@ export type ClientRequest = {
   declineReason?: string;
   declineNotes?: string;
   expertProfessionalTitle?: string;
+  scheduledStartAt?: string;
+  scheduledEndAt?: string;
   rawItem?: Record<string, unknown>;
 };
 
@@ -351,5 +353,4 @@ export async function acceptExpertBookingRequest(bookingId: string): Promise<Cli
 
   return updateStoredRequestStatus(bookingId, "accepted");
 }
-
 

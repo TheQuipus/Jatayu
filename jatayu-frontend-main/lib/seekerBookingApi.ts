@@ -304,8 +304,10 @@ export function toCalendarBooking(b: SeekerBooking): CalendarBooking {
   const endDate = parseUtcDate(b.scheduledEndAt) || new Date(startDate.getTime() + 30 * 60000);
   const now = new Date();
 
+  const localStartDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dayOffset = Math.round(
-    (startDate.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
+    (localStartDay.getTime() - localToday.getTime()) /
       (24 * 60 * 60 * 1000)
   );
   const durationMinutes =
@@ -331,7 +333,7 @@ export function toCalendarBooking(b: SeekerBooking): CalendarBooking {
       role: b.expertProfessionalTitle || "Expert Advisor",
       image: b.expertProfilePhotoSrc || "/assets/img/avatar1.png",
       rating: 4.9,
-      price: b.totalAmount || 500,
+      price: amountInRupees(b.amounts?.total ?? b.totalAmount ?? 0, b.amounts?.unit) || 500,
       replyTime: "Within 2 hours",
       reviewsCount: 24,
       desc: b.context || "",
@@ -351,7 +353,13 @@ export function toCalendarBooking(b: SeekerBooking): CalendarBooking {
     pokeMaxCount: b.poke?.maxCount || 2,
     pokeNextAllowedAt: b.poke?.nextAllowedAt || null,
     canPoke: b.poke?.canPoke || false,
+    scheduledStartAt: b.scheduledStartAt,
+    scheduledEndAt: b.scheduledEndAt,
   };
+}
+
+function amountInRupees(amount: number, unit?: string): number {
+  return String(unit || "paise").toLowerCase() === "paise" ? amount / 100 : amount;
 }
 
 export function toBookingDetail(b: SeekerBooking): BookingDetail {
@@ -386,6 +394,19 @@ export function toBookingDetail(b: SeekerBooking): BookingDetail {
       ? "Video Shoutout"
       : "Video Call";
 
+  const amountUnit = b.amounts?.unit;
+  const consultationFee = amountInRupees(
+    b.amounts?.consultationFee ?? b.consultationFee ?? b.totalAmount ?? 0,
+    amountUnit,
+  );
+  const platformFee = amountInRupees(b.amounts?.platformFee ?? b.platformFee ?? 0, amountUnit);
+  const gst = amountInRupees(b.amounts?.gst ?? b.gst ?? 0, amountUnit);
+  const walletApplied = amountInRupees(b.amounts?.creditAmount ?? b.creditAmount ?? 0, amountUnit);
+  const totalPaid = amountInRupees(
+    b.amounts?.payable ?? b.payableAmount ?? b.totalAmount ?? 0,
+    amountUnit,
+  );
+
   return {
     ...baseCalendar,
     referenceId: `REF-${b.id.slice(0, 8).toUpperCase()}`,
@@ -396,11 +417,11 @@ export function toBookingDetail(b: SeekerBooking): BookingDetail {
     scheduledTimeLabel: formattedTime,
     durationLabel: `${baseCalendar.durationMinutes} minutes`,
     paymentStatus: b.paymentStatus === "paid" ? "paid" : "pending",
-    consultationFee: b.consultationFee || b.totalAmount || 0,
-    platformFee: b.platformFee || 0,
-    gst: b.gst || 0,
-    walletApplied: b.creditAmount || b.creditsUsed || 0,
-    totalPaid: b.payableAmount || b.totalAmount || 0,
+    consultationFee,
+    platformFee,
+    gst,
+    walletApplied,
+    totalPaid,
     invoiceId: `INV-${b.id.slice(0, 8).toUpperCase()}`,
     calendarUrl: "#",
     subject: b.subject || "Consultation Request",
