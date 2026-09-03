@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import {
   X,
   CalendarDays,
@@ -11,22 +12,22 @@ import {
   CheckCircle2,
   Sparkles,
 } from "lucide-react";
-import { type ClientRequest, formatRequestPrice } from "@/lib/expertRequests";
+import type { BookingDetail } from "@/lib/seekerDashboard";
 import { getAvailable48hSlots } from "@/lib/rescheduleSlots";
 import ContinueButton from "@/components/ui/ContinueButton";
-import styles from "./RescheduleRequestModal.module.css";
+import styles from "./SeekerRescheduleModal.module.css";
 
-interface RescheduleRequestModalProps {
-  request: ClientRequest;
+interface SeekerRescheduleModalProps {
+  booking: BookingDetail;
   onClose: () => void;
-  onConfirmReschedule?: (requestId: string, slotLabel: string, note: string) => void;
+  onConfirmReschedule?: (bookingId: string, slotLabel: string, note: string) => void;
 }
 
-export default function RescheduleRequestModal({
-  request,
+export default function SeekerRescheduleModal({
+  booking,
   onClose,
   onConfirmReschedule,
-}: RescheduleRequestModalProps) {
+}: SeekerRescheduleModalProps) {
   const [selectedSlot, setSelectedSlot] = useState<string>("");
   const [customNote, setCustomNote] = useState<string>("");
   const [mounted, setMounted] = useState<boolean>(false);
@@ -64,7 +65,7 @@ export default function RescheduleRequestModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSlot) {
-      setError("Please select an available 48-hour time slot to propose.");
+      setError("Please select an available 48-hour time slot for your expert.");
       return;
     }
     setError("");
@@ -73,7 +74,7 @@ export default function RescheduleRequestModal({
     const chosenSlot = slots.find((s) => s.id === selectedSlot)?.label || selectedSlot;
 
     if (onConfirmReschedule) {
-      onConfirmReschedule(request.id, chosenSlot, customNote);
+      onConfirmReschedule(booking.id, chosenSlot, customNote);
     }
 
     setIsSuccess(true);
@@ -96,7 +97,7 @@ export default function RescheduleRequestModal({
         <div className={styles.modalHeader}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <CalendarClock size={18} />
-            <span className={styles.modalHeaderTitle}>RESCHEDULE REQUEST</span>
+            <span className={styles.modalHeaderTitle}>RESCHEDULE CONSULTATION</span>
           </div>
           <button
             type="button"
@@ -115,10 +116,10 @@ export default function RescheduleRequestModal({
               <div style={{ textAlign: "center", padding: "28px 0" }}>
                 <CheckCircle2 size={46} style={{ color: "var(--green)", marginBottom: "12px" }} />
                 <h4 style={{ margin: "0 0 8px", fontFamily: "var(--font-display)", fontSize: "19px" }}>
-                  Reschedule Proposal Sent!
+                  Reschedule Request Sent!
                 </h4>
                 <p style={{ margin: 0, fontSize: "14px", color: "var(--dove-gray)" }}>
-                  We have notified <strong>{request.clientName}</strong> of your proposed alternative slot.
+                  We have notified <strong>{booking.expert.name}</strong> of your requested new session time.
                 </p>
               </div>
             ) : (
@@ -128,36 +129,40 @@ export default function RescheduleRequestModal({
                 </div>
 
                 <p className={styles.modalIntroText}>
-                  Propose alternative time slot for <strong>{request.clientName}</strong>
+                  Choose from <strong>{booking.expert.name}&apos;s</strong> available slots in the next 48 hours.
                 </p>
 
                 {/* Summary Box */}
                 <div className={styles.modalSummaryBox}>
-                  <h4 className={styles.summaryTitle}>
-                    <span className={styles.summaryPrefix}>Subject: </span>
-                    {request.title}
-                  </h4>
-                  <p className={styles.summaryDescription}>
-                    <span className={styles.summaryPrefix}>Seeking advice on: </span>
-                    {request.description}
-                  </p>
+                  <div className={styles.expertInfoRow}>
+                    <div className={styles.expertAvatarWrap}>
+                      <Image
+                        src={booking.expert.image || "/assets/img/avatar1.png"}
+                        alt={booking.expert.name}
+                        fill
+                        className="object-cover"
+                        sizes="42px"
+                      />
+                    </div>
+                    <div className={styles.expertMeta}>
+                      <h4 className={styles.expertName}>{booking.expert.name}</h4>
+                      <p className={styles.expertRole}>{booking.expert.role} • {booking.consultationLabel}</p>
+                    </div>
+                  </div>
+
                   <div className={styles.summaryGrid}>
                     <div className={styles.summaryItem}>
                       <CalendarDays size={14} />
-                      <span>{request.dateLabel}</span>
+                      <span>Current: {booking.scheduledDateLabel}</span>
                     </div>
                     <div className={styles.summaryItem}>
                       <Clock size={14} />
-                      <span>{request.durationLabel}</span>
+                      <span>{booking.scheduledTimeLabel} ({booking.durationLabel})</span>
                     </div>
                     <div className={styles.summaryItem}>
                       <Video size={14} />
-                      <span>{request.formatLabel}</span>
+                      <span>{booking.consultationLabel}</span>
                     </div>
-                  </div>
-                  <div className={styles.summaryPriceRow}>
-                    <span>Total Session Payout</span>
-                    <strong>{formatRequestPrice(request.price)}</strong>
                   </div>
                 </div>
 
@@ -165,7 +170,7 @@ export default function RescheduleRequestModal({
                 <div className={styles.rescheduleNotice}>
                   <Sparkles size={16} className={styles.noticeIcon} />
                   <p>
-                    Rescheduling allows you to propose an alternative time slot within the next 48 hours without degrading your profile rating.
+                    Free reschedule up to 24 hours before session. Choose any verified available slot within the next 48 hours.
                   </p>
                 </div>
 
@@ -173,10 +178,10 @@ export default function RescheduleRequestModal({
                 <div className={styles.slotsSection}>
                   <span className={styles.sectionTitle}>
                     <Clock size={15} />
-                    Next 48 Hours Available Slots
+                    Available 48-Hour Slots
                   </span>
                   <p className={styles.slotsSubtitle}>
-                    Select a convenient slot to propose to {request.clientName}:
+                    Select an alternative slot that fits your schedule:
                   </p>
                   <div className={styles.slotsGrid}>
                     {getAvailable48hSlots().map((slot) => (
@@ -188,8 +193,11 @@ export default function RescheduleRequestModal({
                         }`}
                         onClick={() => handleSelectSlot(slot.id)}
                       >
-                        <Clock size={12} />
-                        <span>{slot.label}</span>
+                        <span className={styles.slotDay}>{slot.dayLabel}</span>
+                        <span className={styles.slotTime}>
+                          <Clock size={11} />
+                          {slot.timeLabel}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -197,10 +205,10 @@ export default function RescheduleRequestModal({
 
                 {/* Custom Note Input */}
                 <div className={styles.customMessageGroup}>
-                  <label className={styles.formLabel}>Note to Client (Optional)</label>
+                  <label className={styles.formLabel}>Message for {booking.expert.name} (Optional)</label>
                   <textarea
                     className={styles.notesInput}
-                    placeholder="e.g. Please let me know if this proposed slot works for you..."
+                    placeholder="Let the expert know why you are moving the time..."
                     value={customNote}
                     onChange={(e) => setCustomNote(e.target.value)}
                   />
@@ -214,9 +222,9 @@ export default function RescheduleRequestModal({
           {!isSuccess && (
             <div className={styles.modalFooter}>
               <button type="button" className={styles.cancelBtn} onClick={onClose}>
-                CANCEL
+                KEEP CURRENT TIME
               </button>
-              <ContinueButton label="PROPOSE RESCHEDULE" />
+              <ContinueButton label="CONFIRM RESCHEDULE" />
             </div>
           )}
         </form>

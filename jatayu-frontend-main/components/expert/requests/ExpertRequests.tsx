@@ -38,7 +38,7 @@ import styles from "./ExpertRequests.module.css";
 
 const SUMMARY_CARDS = [
   { id: "all", label: "All", icon: Layers },
-  { id: "urgent", label: "Urgent", icon: Zap },
+  { id: "urgent", label: "Priority", icon: Zap },
   { id: "new", label: "New", icon: Inbox },
   { id: "pending", label: "Pending", icon: Hourglass },
   { id: "accepted", label: "Accepted", icon: CheckCircle2 },
@@ -297,7 +297,7 @@ export default function ExpertRequests() {
                       {request.status === "new" && <span className={styles.badgeNew}>• New</span>}
                       {request.urgent && (
                         <span className={styles.badgeUrgent}>
-                          <Zap size={11} aria-hidden="true" /> Urgent
+                          <Zap size={11} aria-hidden="true" /> Priority
                         </span>
                       )}
                       {request.repeatClient && (

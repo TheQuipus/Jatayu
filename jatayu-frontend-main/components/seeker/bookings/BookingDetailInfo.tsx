@@ -41,6 +41,7 @@ import ReviewScreen from "./ReviewScreen";
 import Lottie from "lottie-react";
 import coinAnimation from "@/public/Lottie/coin_p.json";
 import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
+import SeekerRescheduleModal from "./SeekerRescheduleModal";
 import { formatCurrency, getPokeState, savePokeState, type BookingDetail } from "@/lib/seekerDashboard";
 import type { ConsultationType } from "@/lib/booking";
 import { pokeBookingExpert } from "@/lib/seekerBookingApi";
@@ -113,6 +114,8 @@ export default function BookingDetailInfo({
   const searchParams = useSearchParams();
   const isEffectiveAdmin = Boolean(isAdmin || pathname?.startsWith("/admin"));
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduledSlotNotice, setRescheduledSlotNotice] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   const [fastForwarded, setFastForwarded] = useState<boolean>(() => {
@@ -409,18 +412,21 @@ ${notes || `1. Valuation & Cap Table:
     const totalHours = Math.floor(totalMinutes / 60);
     const totalDays = Math.floor(totalHours / 24);
 
+    const remainingSecs = totalSeconds % 60;
+    const remainingMins = totalMinutes % 60;
+    const remainingHrs = totalHours % 24;
+
+    const dd = String(totalDays).padStart(2, "0");
+    const hh = String(totalDays > 0 ? remainingHrs : totalHours).padStart(2, "0");
+    const mm = String(remainingMins).padStart(2, "0");
+    const ss = String(remainingSecs).padStart(2, "0");
+
     if (totalDays > 0) {
-      const remainingHours = totalHours % 24;
-      const dd = String(totalDays).padStart(2, "0");
-      const hh = String(remainingHours).padStart(2, "0");
-      return `${dd}D:${hh}H`;
+      return `${dd}D:${hh}H:${mm}M:${ss}S`;
     } else {
-      const remainingMinutes = totalMinutes % 60;
-      const hh = String(totalHours).padStart(2, "0");
-      const mm = String(remainingMinutes).padStart(2, "0");
-      return `${hh}H:${mm}M`;
+      return `${hh}H:${mm}M:${ss}S`;
     }
-  }, [booking, currentTime, sessionState]);
+  }, [booking, currentTime, sessionState, isCompletedSession, timeStatus, fastForwarded]);
 
   const formatCooldown = (totalSecs: number): string => {
     const hrs = Math.floor(totalSecs / 3600);
@@ -1431,13 +1437,17 @@ ${notes || `1. Valuation & Cap Table:
 
                   <div className={styles.panelBody}>
                     <div className={styles.manageActions}>
-                      <button type="button" className={styles.manageAction}>
+                      <button
+                        type="button"
+                        className={styles.manageAction}
+                        onClick={() => setShowRescheduleModal(true)}
+                      >
                         <span className={styles.manageActionIcon} aria-hidden="true">
                           <CalendarClock size={18} />
                         </span>
                         <span className={styles.manageActionCopy}>
                           <strong>Reschedule Session</strong>
-                          <span>Change date or time (Free up to 24h before)</span>
+                          <span>{rescheduledSlotNotice ? `Proposed: ${rescheduledSlotNotice}` : "Change date or time (48h slots available)"}</span>
                         </span>
                       </button>
                       {booking.status !== "cancelled" && (
@@ -1529,6 +1539,16 @@ ${notes || `1. Valuation & Cap Table:
         <ReportForm
           booking={booking}
           onClose={() => setIsReportModalOpen(false)}
+        />
+      )}
+
+      {showRescheduleModal && (
+        <SeekerRescheduleModal
+          booking={booking}
+          onClose={() => setShowRescheduleModal(false)}
+          onConfirmReschedule={(_id, slotLabel) => {
+            setRescheduledSlotNotice(slotLabel);
+          }}
         />
       )}
 

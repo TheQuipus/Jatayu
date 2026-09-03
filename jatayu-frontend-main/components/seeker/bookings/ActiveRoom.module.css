@@ -263,8 +263,8 @@
   top: 16px;
   right: 16px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-end;
   z-index: 5;
 }
 
@@ -350,6 +350,15 @@
   transform: translateY(-1px);
 }
 
+.extendSessionBtnPrimary {
+  min-height: 34px !important;
+  padding: 0 14px !important;
+  font-size: 11px !important;
+  font-family: var(--font-mono) !important;
+  letter-spacing: 0.05em !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
 /* Top Left Recording Badge (Jatayu Style) */
 .recordingBadge {
   position: absolute;
@@ -423,6 +432,407 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* In-Video Pure Transparent Extension Screen */
+.extendChatOverlay {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+  animation: chatFadeIn 0.2s ease-out;
+  overflow: hidden;
+}
+
+.extendChatOverlay>* {
+  pointer-events: auto;
+}
+
+@keyframes chatFadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.extendChatOverlayFadingOut {
+  animation: chatFadeOut 0.5s ease-out forwards !important;
+}
+
+@keyframes chatFadeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.extendChatFloatingClose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(8, 10, 16, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.extendChatFloatingClose:hover {
+  background: var(--pomegranate, #ea4335);
+  border-color: var(--pomegranate, #ea4335);
+}
+
+.extendChatLog {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100% - 110px);
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.extendChatSystemBanner {
+  background: rgba(8, 10, 16, 0.85);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  padding: 8px 14px;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  align-self: flex-start;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.extendChatMsgRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 82%;
+}
+
+.extendChatMsgRowSeeker {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.extendChatMsgRowExpert {
+  align-self: flex-start;
+  flex-direction: row;
+}
+
+.extendChatMsgAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  margin-top: 2px;
+  position: relative;
+}
+
+.extendChatMsgContent {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.extendChatMsgRowSeeker .extendChatMsgContent {
+  align-items: flex-end;
+}
+
+.extendChatMsgRowExpert .extendChatMsgContent {
+  align-items: flex-start;
+}
+
+.extendChatMsgMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.extendChatMsgBubbleExpert {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-radius: 0px 14px 0px 14px !important;
+  border: 1px solid #e2e8f0;
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.extendChatMsgBubbleSeeker {
+  background: #ffffff;
+  color: var(--ink, #080a10);
+  border-radius: 14px 0px 14px 0px !important;
+  border: 1px solid var(--mercury, #e5e7eb);
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.extendChatMsgBubbleSystem {
+  background: #ffffff;
+  color: var(--ink, #080a10);
+  border-radius: 0px 14px 0px 14px !important;
+  border: 1px solid #e2e8f0;
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.extendChatSystemAvatar {
+  background: #0f172a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+}
+
+/* Smooth Morph Animations for Chat Bubbles */
+@keyframes chatMorphIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+
+  65% {
+    opacity: 0.95;
+    transform: translateY(-2px) scale(1.01);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes replySlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.extendChatMsgRowAnimated {
+  animation: chatMorphIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.extendChatMsgRowReply {
+  animation: replySlideIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
+}
+
+.extendChatWaitingIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  color: #f8fafc;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.extendChatWaitingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  animation: pulseWaitingDot 1.4s ease-in-out infinite;
+}
+
+@keyframes pulseWaitingDot {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* In-Chat Duration Radio Selector Card */
+.extendChatRadioCard {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #e2e8f0;
+  border-radius: 0px 14px 0px 14px;
+  padding: 14px 16px;
+  max-width: 380px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.extendChatRadioCardRight {
+  align-self: flex-end;
+  border-radius: 14px 0px 14px 0px;
+}
+
+.extendChatRadioTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #080a10);
+  margin-bottom: 2px;
+}
+
+.extendChatSummaryNote {
+  font-family: var(--font-body);
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.extendChatRadioList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.extendChatRadioItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.extendChatRadioItem:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.extendChatRadioItemActive {
+  background: rgba(234, 67, 53, 0.08);
+  border-color: var(--pomegranate, #ea4335);
+}
+
+.extendChatRadioItemDisabled {
+  cursor: default !important;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.extendChatRadioItemDisabled.extendChatRadioItemActive {
+  opacity: 1 !important;
+  pointer-events: auto;
+}
+
+.extendChatRadioLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.extendChatRadioCustomCircle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.extendChatRadioItemActive .extendChatRadioCustomCircle {
+  border-color: var(--pomegranate, #ea4335);
+}
+
+.extendChatRadioCustomDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pomegranate, #ea4335);
+}
+
+.extendChatRadioLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #080a10);
+}
+
+.extendChatRadioPrice {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.extendChatRadioItemActive .extendChatRadioPrice {
+  color: var(--pomegranate, #ea4335);
+}
+
+/* Expert In-Chat Extension Request Decision Single Bar */
+.expertActionSingleBar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #e2e8f0;
+  border-radius: 0px 14px 0px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 /* Google Meet style Controls Bar */

@@ -27,6 +27,7 @@ import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
 import { formatCurrency, type BookingDetail } from "@/lib/seekerDashboard";
 import styles from "./ActiveRoom.module.css";
 import type { AgoraRoomState } from "@/hooks/useAgoraRoom";
+import ExtendSessionChatOverlay from "@/components/demo/ExtendSessionChatOverlay";
 
 export type ChatMessage = {
   id: string;
@@ -71,7 +72,7 @@ export default function ActiveVideoRoom({
   const [isRecording, setIsRecording] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(115);
-  const [extendNotification, setExtendNotification] = useState<string | null>(null);
+  const [isExtendChatOpen, setIsExtendChatOpen] = useState(false);
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const remoteVideoElementRef = useRef<HTMLDivElement>(null);
@@ -99,11 +100,7 @@ export default function ActiveVideoRoom({
   };
 
   const handleExtendSession = () => {
-    setSecondsRemaining((prev) => prev + 900);
-    setExtendNotification("Session successfully extended by 15 minutes!");
-    setTimeout(() => {
-      setExtendNotification(null);
-    }, 4000);
+    setIsExtendChatOpen(true);
   };
 
   const toggleFullscreen = () => {
@@ -236,24 +233,28 @@ export default function ActiveVideoRoom({
                   <span>{formatTimer(secondsRemaining)} remaining</span>
                 </div>
 
-                {secondsRemaining <= 120 && (
-                  <button
-                    type="button"
-                    className={styles.extendSessionBtn}
+                {secondsRemaining <= 300 && (
+                  <ContinueButton
+                    label="Extend Session"
+                    showArrow={false}
                     onClick={handleExtendSession}
+                    className={styles.extendSessionBtnPrimary}
                     title="Extend session by 15 minutes"
-                  >
-                    <PlusCircle size={14} />
-                    Extend Session (+15m)
-                  </button>
+                  />
                 )}
               </div>
 
-              {extendNotification && (
-                <div className={styles.extendToast}>
-                  {extendNotification}
-                </div>
-              )}
+              {/* In-Video Pure Transparent Extension Screen */}
+              <ExtendSessionChatOverlay
+                role="seeker"
+                isOpen={isExtendChatOpen}
+                expertName={booking.expert.name}
+                expertImage={booking.expert.image}
+                clientName="You"
+                clientImage="/assets/img/manportrait.png"
+                onExtendSessionAdded={(secs) => setSecondsRemaining((prev) => prev + secs)}
+                channelName={`jatayu_session_${booking.id || "agora"}`}
+              />
 
 
               {/* Google Meet style Video Call Controls Overlay */}

@@ -26,6 +26,7 @@ import ContinueButton from "@/components/ui/ContinueButton";
 import ExpertReportForm from "@/app/expert/(app)/report/[requestId]/ExpertReportForm";
 import styles from "@/components/seeker/bookings/ActiveRoom.module.css";
 import { useAgoraRoom } from "@/hooks/useAgoraRoom";
+import ExtendSessionChatOverlay from "@/components/demo/ExtendSessionChatOverlay";
 
 export type ChatMessage = {
   id: string;
@@ -144,7 +145,7 @@ export default function ExpertActiveVideoRoom({
     confirmText: "",
     cancelText: "",
     variant: "default",
-    onConfirmAction: () => {},
+    onConfirmAction: () => { },
   });
 
   const handleSaveNotes = () => {
@@ -207,7 +208,7 @@ export default function ExpertActiveVideoRoom({
                   <Image
                     src={
                       clientAvatar &&
-                      !clientAvatar.includes("avatar")
+                        !clientAvatar.includes("avatar")
                         ? clientAvatar
                         : "/assets/img/manportrait.png"
                     }
@@ -231,36 +232,28 @@ export default function ExpertActiveVideoRoom({
               {/* Top Right Timer Badge & Extend Session Button */}
               <div className={styles.videoTopRightBar}>
                 <div
-                  className={`${styles.timerBadge} ${
-                    secondsRemaining > 300
-                      ? styles.timerGreen
-                      : secondsRemaining > 120
+                  className={`${styles.timerBadge} ${secondsRemaining > 300
+                    ? styles.timerGreen
+                    : secondsRemaining > 120
                       ? styles.timerYellow
                       : styles.timerRed
-                  }`}
+                    }`}
                 >
                   <Clock size={18} className={styles.timerIcon} />
                   <span>{formatTimer(secondsRemaining)} remaining</span>
                 </div>
-
-                {secondsRemaining <= 120 && (
-                  <button
-                    type="button"
-                    className={styles.extendSessionBtn}
-                    onClick={handleExtendSession}
-                    title="Extend session by 15 minutes"
-                  >
-                    <PlusCircle size={14} />
-                    Extend Session (+15m)
-                  </button>
-                )}
               </div>
 
-              {extendNotification && (
-                <div className={styles.extendToast}>
-                  {extendNotification}
-                </div>
-              )}
+              {/* In-Video Pure Transparent Extension Decision Screen (Expert) */}
+              <ExtendSessionChatOverlay
+                role="expert"
+                expertName="You (Expert)"
+                expertImage="/assets/img/team1.png"
+                clientName={clientName}
+                clientImage={clientAvatar || "/assets/img/manportrait.png"}
+                onExtendSessionAdded={(secs) => setSecondsRemaining((prev) => prev + secs)}
+                channelName={`jatayu_session_${requestId || "agora"}`}
+              />
 
 
               {/* Video Call Controls Overlay */}
