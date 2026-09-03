@@ -102,6 +102,8 @@ export default function TopNavbar() {
     pathname?.startsWith("/serene-scene") ||
     (pathname?.startsWith("/admin") && !isAdminLogin) ||
     pathname?.includes("/report") ||
+    pathname?.includes("video-demo") ||
+    pathname?.startsWith("/demo") ||
     isSeekerAppPath(pathname) ||
     isExpertPortalPath(pathname)
   ) {

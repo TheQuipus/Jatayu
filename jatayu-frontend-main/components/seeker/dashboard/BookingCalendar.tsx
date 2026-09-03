@@ -468,16 +468,19 @@ export default function BookingCalendar({ className = "" }: BookingCalendarProps
     const totalHours = Math.floor(totalMinutes / 60);
     const totalDays = Math.floor(totalHours / 24);
 
+    const remainingSecs = totalSeconds % 60;
+    const remainingMins = totalMinutes % 60;
+    const remainingHrs = totalHours % 24;
+
+    const dd = String(totalDays).padStart(2, "0");
+    const hh = String(totalDays > 0 ? remainingHrs : totalHours).padStart(2, "0");
+    const mm = String(remainingMins).padStart(2, "0");
+    const ss = String(remainingSecs).padStart(2, "0");
+
     if (totalDays > 0) {
-      const remainingHours = totalHours % 24;
-      const dd = String(totalDays).padStart(2, "0");
-      const hh = String(remainingHours).padStart(2, "0");
-      return `${dd}D::${hh}H`;
+      return `${dd}D:${hh}H:${mm}M:${ss}S`;
     } else {
-      const remainingMinutes = totalMinutes % 60;
-      const hh = String(totalHours).padStart(2, "0");
-      const mm = String(remainingMinutes).padStart(2, "0");
-      return `${hh}H:${mm}M`;
+      return `${hh}H:${mm}M:${ss}S`;
     }
   };
 

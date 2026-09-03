@@ -27,6 +27,7 @@ import { getRequestDetailById, type RequestDetailModel } from "@/lib/expertReque
 import ExpertReportForm from "@/app/expert/(app)/report/[requestId]/ExpertReportForm";
 import AcceptRequestModal from "./AcceptRequestModal";
 import DeclineRequestModal from "./DeclineRequestModal";
+import RescheduleRequestModal from "./RescheduleRequestModal";
 import ExpertActiveRoom from "./ExpertActiveRoom";
 import ContinueButton from "@/components/ui/ContinueButton";
 import SecondaryCTA from "@/components/ui/SecondaryCTA";
@@ -691,16 +692,12 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
       )}
 
       {showRescheduleModal && (
-        <ConfirmModal
-          isOpen={showRescheduleModal}
+        <RescheduleRequestModal
+          request={clientRequestAdapter}
           onClose={() => setShowRescheduleModal(false)}
-          onConfirm={() => {
+          onConfirmReschedule={(_reqId, slotLabel, _note) => {
             setShowRescheduleModal(false);
           }}
-          title="Reschedule Session"
-          message={`Propose a new date or time for the session with ${data.client.name}? A request notification will be sent to the client.`}
-          confirmText="Send Reschedule Request"
-          cancelText="Keep Original Time"
         />
       )}
 
