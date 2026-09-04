@@ -56,6 +56,11 @@ export type CommunicationSettings = {
   tokenTtlSeconds: number;
   joinBeforeMinutes: number;
   joinAfterMinutes: number;
+  transcriptionEnabled: boolean;
+  agoraCustomerId: string;
+  agoraCustomerSecret: string;
+  transcriptionLanguages: string;
+  transcriptionMaxIdleSeconds: number;
 };
 
 export type ProviderAuthCredentials = {
@@ -238,6 +243,11 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     tokenTtlSeconds: 3600,
     joinBeforeMinutes: 15,
     joinAfterMinutes: 30,
+    transcriptionEnabled: false,
+    agoraCustomerId: "",
+    agoraCustomerSecret: "",
+    transcriptionLanguages: "en-US",
+    transcriptionMaxIdleSeconds: 60,
   },
   auth: {
     google: {

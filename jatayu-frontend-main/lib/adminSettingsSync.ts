@@ -142,6 +142,11 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
       tokenTtlSeconds: readPositiveNumber(map, "AGORA_TOKEN_TTL_SECONDS", 3600),
       joinBeforeMinutes: readPositiveNumber(map, "AGORA_JOIN_BEFORE_MINUTES", 15),
       joinAfterMinutes: readPositiveNumber(map, "AGORA_JOIN_AFTER_MINUTES", 30),
+      transcriptionEnabled: readBool(map, "AGORA_TRANSCRIPTION_ENABLED", false),
+      agoraCustomerId: readString(map, "AGORA_CUSTOMER_ID"),
+      agoraCustomerSecret: readString(map, "AGORA_CUSTOMER_SECRET"),
+      transcriptionLanguages: readString(map, "AGORA_TRANSCRIPTION_LANGUAGES", "en-US"),
+      transcriptionMaxIdleSeconds: readPositiveNumber(map, "AGORA_TRANSCRIPTION_MAX_IDLE_SECONDS", 60),
     },
     auth: {
       google,
@@ -214,6 +219,11 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     AGORA_TOKEN_TTL_SECONDS: String(settings.communication.tokenTtlSeconds),
     AGORA_JOIN_BEFORE_MINUTES: String(settings.communication.joinBeforeMinutes),
     AGORA_JOIN_AFTER_MINUTES: String(settings.communication.joinAfterMinutes),
+    AGORA_TRANSCRIPTION_ENABLED: String(settings.communication.transcriptionEnabled),
+    AGORA_CUSTOMER_ID: settings.communication.agoraCustomerId,
+    AGORA_CUSTOMER_SECRET: settings.communication.agoraCustomerSecret,
+    AGORA_TRANSCRIPTION_LANGUAGES: settings.communication.transcriptionLanguages,
+    AGORA_TRANSCRIPTION_MAX_IDLE_SECONDS: String(settings.communication.transcriptionMaxIdleSeconds),
   };
 }
 

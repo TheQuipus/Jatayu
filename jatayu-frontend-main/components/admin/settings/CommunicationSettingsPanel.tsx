@@ -46,6 +46,34 @@ export default function CommunicationSettingsPanel({ draft, onChange }: Props) {
         <input className={styles.input} type="number" min="1" value={draft.joinAfterMinutes}
           onChange={(event) => number("joinAfterMinutes", event.target.value)} />
       </Field>
+      <label className={styles.toggleField}>
+        <span className={styles.toggleCopy}>
+          <span className={styles.toggleLabel}>Enable live transcription</span>
+          <span className={styles.toggleDesc}>Start Agora Speech-to-Text for confirmed RTC booking sessions.</span>
+        </span>
+        <input type="checkbox" className={styles.toggle} checked={draft.transcriptionEnabled}
+          onChange={(event) => onChange({ ...draft, transcriptionEnabled: event.target.checked })} />
+      </label>
+      <div className={styles.fieldRow}>
+        <Field label="Agora Customer ID" hint="RESTful API credential from Agora Console.">
+          <input className={styles.input} value={draft.agoraCustomerId}
+            onChange={(event) => onChange({ ...draft, agoraCustomerId: event.target.value })} />
+        </Field>
+        <Field label="Agora Customer Secret" hint="Stored only on the backend and never returned to clients.">
+          <input className={styles.input} type="password" autoComplete="off" value={draft.agoraCustomerSecret}
+            onChange={(event) => onChange({ ...draft, agoraCustomerSecret: event.target.value })} />
+        </Field>
+      </div>
+      <div className={styles.fieldRow}>
+        <Field label="Transcription languages" hint="Comma-separated Agora language codes, for example en-US,hi-IN.">
+          <input className={styles.input} value={draft.transcriptionLanguages}
+            onChange={(event) => onChange({ ...draft, transcriptionLanguages: event.target.value })} />
+        </Field>
+        <Field label="Stop after silence (seconds)">
+          <input className={styles.input} type="number" min="10" max="300" value={draft.transcriptionMaxIdleSeconds}
+            onChange={(event) => number("transcriptionMaxIdleSeconds", event.target.value)} />
+        </Field>
+      </div>
     </div>
   );
 }

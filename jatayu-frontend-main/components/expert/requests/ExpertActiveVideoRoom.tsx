@@ -161,7 +161,7 @@ export default function ExpertActiveVideoRoom({
       confirmText: "Yes, Finish Session",
       cancelText: "No, Keep Call Active",
       variant: "danger",
-      onConfirmAction: onFinishSession,
+      onConfirmAction: () => { void agora.stopTranscription().finally(onFinishSession); },
     });
   };
 
@@ -331,36 +331,17 @@ export default function ExpertActiveVideoRoom({
                 </div>
 
                 <div className={styles.transcriptBody}>
-                  <div className={styles.transcriptLine}>
-                    <span className={styles.transcriptSpeaker}>Client</span>
-                    <span className={styles.transcriptText}>
-                      "Hello! I am ready to discuss {title}."
-                    </span>
-                    <span className={styles.transcriptTime}>00:12</span>
-                  </div>
-                  <div className={styles.transcriptLine}>
-                    <span className={`${styles.transcriptSpeaker} ${styles.transcriptSpeakerYou}`}>
-                      You
-                    </span>
-                    <span className={styles.transcriptText}>
-                      "Welcome! Let's go through your requirements step by step."
-                    </span>
-                    <span className={styles.transcriptTime}>00:34</span>
-                  </div>
-                  <div className={styles.transcriptLine}>
-                    <span className={styles.transcriptSpeaker}>Client</span>
-                    <span className={styles.transcriptText}>
-                      "Great, I have a few specific questions prepared for our session."
-                    </span>
-                    <span className={styles.transcriptTime}>00:51</span>
-                  </div>
-                  <div className={`${styles.transcriptLine} ${styles.transcriptLineCurrent}`}>
-                    <span className={styles.transcriptSpeaker}>Client</span>
-                    <span className={styles.transcriptText}>
-                      "Can we start with the overall strategy review?"
-                    </span>
-                    <span className={styles.transcriptTime}>01:10</span>
-                  </div>
+                  {agora.transcriptSegments.length === 0 ? (
+                    <div className={styles.transcriptLine}><span className={styles.transcriptText}>Live transcript will appear when someone speaks.</span></div>
+                  ) : agora.transcriptSegments.map((segment) => (
+                    <div className={`${styles.transcriptLine} ${!segment.isFinal ? styles.transcriptLineCurrent : ''}`} key={`${segment.speakerUid}-${segment.sequence}`}>
+                      <span className={`${styles.transcriptSpeaker} ${segment.speakerUid === '2' ? styles.transcriptSpeakerYou : ''}`}>
+                        {segment.speakerUid === '2' ? 'You' : 'Client'}
+                      </span>
+                      <span className={styles.transcriptText}>{segment.text}</span>
+                      <span className={styles.transcriptTime}>{formatTimer(Math.floor(segment.startMs / 1000))}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

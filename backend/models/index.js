@@ -9,6 +9,8 @@ import SeekerCreditTransaction from './seeker/SeekerCreditTransaction.js';
 import RazorpayWebhookEvent from './seeker/RazorpayWebhookEvent.js';
 import Booking from './seeker/Booking.js';
 import BookingPayment from './seeker/BookingPayment.js';
+import BookingTranscriptSession from './seeker/BookingTranscriptSession.js';
+import BookingTranscriptSegment from './seeker/BookingTranscriptSegment.js';
 import DigilockerVerification from './DigilockerVerification.js';
 import DigilockerDocument from './DigilockerDocument.js';
 
@@ -46,6 +48,10 @@ Seeker.hasMany(Booking, { foreignKey: 'seekerId', as: 'bookings', onDelete: 'CAS
 Booking.belongsTo(Seeker, { foreignKey: 'seekerId', as: 'seeker' });
 Booking.hasMany(BookingPayment, { foreignKey: 'bookingId', as: 'payments', onDelete: 'CASCADE' });
 BookingPayment.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
+Booking.hasOne(BookingTranscriptSession, { foreignKey: 'bookingId', as: 'transcriptSession', onDelete: 'CASCADE' });
+BookingTranscriptSession.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
+Booking.hasMany(BookingTranscriptSegment, { foreignKey: 'bookingId', as: 'transcriptSegments', onDelete: 'CASCADE' });
+BookingTranscriptSegment.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 
 export {
   expertDb,
@@ -62,6 +68,8 @@ export {
   RazorpayWebhookEvent,
   Booking,
   BookingPayment,
+  BookingTranscriptSession,
+  BookingTranscriptSegment,
   DigilockerVerification,
   DigilockerDocument,
 };

@@ -18,6 +18,12 @@ import {
 } from '../controllers/digilockerController.js';
 import { connectLinkedin } from '../controllers/linkedinController.js';
 import { getExpertAgoraSession } from '../controllers/agoraSessionController.js';
+import {
+  getExpertTranscript,
+  startExpertTranscription,
+  stopExpertTranscription,
+  storeExpertTranscriptSegment,
+} from '../controllers/agoraTranscriptionController.js';
 
 const router = express.Router();
 
@@ -70,6 +76,10 @@ router.post('/onboarding/linkedin/connect', protect, connectLinkedin);
 router.get('/requests', protect, getRequests);
 router.patch('/requests/:bookingId/decision', protect, updateRequestDecision);
 router.post('/requests/:bookingId/session/token', protect, getExpertAgoraSession);
+router.post('/requests/:bookingId/transcription/start', protect, startExpertTranscription);
+router.post('/requests/:bookingId/transcription/stop', protect, stopExpertTranscription);
+router.post('/requests/:bookingId/transcription/segments', protect, storeExpertTranscriptSegment);
+router.get('/requests/:bookingId/transcript', protect, getExpertTranscript);
 router.post('/kyc/digilocker/start', protect, startDigilockerKyc);
 router.get('/kyc/digilocker/status', protect, getDigilockerKycStatus);
 router.get('/kyc/digilocker/callback', handleDigilockerCallback);
