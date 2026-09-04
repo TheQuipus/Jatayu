@@ -45,6 +45,7 @@ import SeekerRescheduleModal from "./SeekerRescheduleModal";
 import { formatCurrency, getPokeState, savePokeState, type BookingDetail } from "@/lib/seekerDashboard";
 import type { ConsultationType } from "@/lib/booking";
 import { pokeBookingExpert } from "@/lib/seekerBookingApi";
+import { fetchBookingTranscript, type TranscriptSegment } from "@/lib/agoraTranscriptApi";
 import styles from "./BookingDetailInfo.module.css";
 
 type BookingDetailInfoProps = {
@@ -152,6 +153,26 @@ export default function BookingDetailInfo({
   const [activeContentTab, setActiveContentTab] = useState<"transcript" | "video" | "chat" | "notes">("transcript");
   const [copiedNotes, setCopiedNotes] = useState(false);
   const [copiedTranscript, setCopiedTranscript] = useState(false);
+  const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
+
+  useEffect(() => {
+    let disposed = false;
+    fetchBookingTranscript(booking.id, "seeker")
+      .then((data) => {
+        if (!disposed) setTranscriptSegments(data.transcript?.segments || []);
+      })
+      .catch(() => {
+        if (!disposed) setTranscriptSegments([]);
+      });
+    return () => { disposed = true; };
+  }, [booking.id]);
+
+  const transcriptText = useMemo(() => transcriptSegments.map((segment) => {
+    const elapsed = Math.max(0, Math.floor(segment.startMs / 1000));
+    const time = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+    const speaker = segment.speakerRole === "seeker" ? "You" : booking.expert.name;
+    return `[${time}] ${speaker}: ${segment.text}`;
+  }).join("\n"), [booking.expert.name, transcriptSegments]);
 
   const [pokeState, setPokeState] = useState<{
     count: number;
@@ -179,13 +200,7 @@ Consultation: ${booking.consultationLabel} with ${booking.expert.name}
 Date: ${booking.scheduledDateLabel}, ${booking.scheduledTimeLabel}
 Topic: ${booking.subject || "General Consultation"}
 
-[00:01] ${booking.expert.name}: Hello! Thanks for joining today's session. I've reviewed your context on "${booking.subject || 'your question'}". Let me share my screen and walk through the details.
-[00:03] You: Hi! Yes, I'm excited. I specifically want to focus on cap table structure, valuation benchmarks, and key execution steps.
-[00:07] ${booking.expert.name}: Great question. For early-stage funding rounds, your primary focus should be keeping dilution bounded to 15-20% rather than optimizing solely for valuation.
-[00:15] ${booking.expert.name}: Let's break this down into three core milestones for your investor decks.
-[00:28] You: That makes complete sense. How do we structure the convertible notes in this scenario?
-[00:35] ${booking.expert.name}: I recommend using a standard post-money SAFE with a valuation cap aligned with current revenue multiples in your sector.
-[00:45] ${booking.expert.name}: I have listed the checklist of documents you will need in the session notes.`;
+${transcriptText || "No transcript is available for this session."}`;
 
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -255,8 +270,7 @@ ${notes || `1. Valuation & Cap Table:
   };
 
   const handleCopyTranscript = () => {
-    const text = `[00:01] ${booking.expert.name}: Hello! Thanks for joining today's session.\n[00:03] You: Hi! I want to focus on cap table structure.\n[00:07] ${booking.expert.name}: Dilution bounded to 15-20% is recommended.`;
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(transcriptText || "No transcript is available for this session.");
     setCopiedTranscript(true);
     setTimeout(() => setCopiedTranscript(false), 2000);
   };
@@ -1077,41 +1091,19 @@ ${notes || `1. Valuation & Cap Table:
                       </div>
 
                       <div className={styles.transcriptBox}>
-                        <div className={styles.transcriptLine}>
-                          <span className={styles.transcriptTime}>00:01</span>
-                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
-                          <span>Hello! Thanks for joining today's session. I've reviewed your context on &quot;{booking.subject || 'your question'}&quot;. Let me share my screen and walk through the details.</span>
-                        </div>
-                        <div className={styles.transcriptLine}>
-                          <span className={styles.transcriptTime}>00:03</span>
-                          <strong className={styles.transcriptSpeaker}>You:</strong>
-                          <span>Hi! Yes, I&apos;m excited. I specifically want to focus on cap table structure, valuation benchmarks, and key execution steps.</span>
-                        </div>
-                        <div className={styles.transcriptLine}>
-                          <span className={styles.transcriptTime}>00:07</span>
-                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
-                          <span>Great question. For early-stage funding rounds, your primary focus should be keeping dilution bounded to 15-20% rather than optimizing solely for valuation.</span>
-                        </div>
-                        <div className={styles.transcriptLine}>
-                          <span className={styles.transcriptTime}>00:15</span>
-                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
-                          <span>Let&apos;s break this down into three core milestones for your investor decks and cap table assumptions.</span>
-                        </div>
-                        <div className={styles.transcriptLine}>
-                          <span className={styles.transcriptTime}>00:28</span>
-                          <strong className={styles.transcriptSpeaker}>You:</strong>
-                          <span>That makes complete sense. How do we structure the convertible notes in this scenario?</span>
-                        </div>
-                        <div className={styles.transcriptLine}>
-                          <span className={styles.transcriptTime}>00:35</span>
-                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
-                          <span>I recommend using a standard post-money SAFE with a valuation cap aligned with current revenue multiples in your sector.</span>
-                        </div>
-                        <div className={styles.transcriptLine}>
-                          <span className={styles.transcriptTime}>00:45</span>
-                          <strong className={styles.transcriptSpeaker}>{booking.expert.name}:</strong>
-                          <span>I have listed the checklist of documents you will need in the session notes.</span>
-                        </div>
+                        {transcriptSegments.length ? transcriptSegments.map((segment) => {
+                          const elapsed = Math.max(0, Math.floor(segment.startMs / 1000));
+                          const time = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
+                          return (
+                            <div className={styles.transcriptLine} key={segment.id || `${segment.speakerUid}-${segment.sequence}`}>
+                              <span className={styles.transcriptTime}>{time}</span>
+                              <strong className={styles.transcriptSpeaker}>
+                                {segment.speakerRole === "seeker" ? "You" : booking.expert.name}:
+                              </strong>
+                              <span>{segment.text}</span>
+                            </div>
+                          );
+                        }) : <span>No transcript is available for this session.</span>}
                       </div>
                     </div>
                   )}

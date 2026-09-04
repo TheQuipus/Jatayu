@@ -71,6 +71,7 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     { name: 'Seeker Auth' },
     { name: 'Seeker' },
     { name: 'Bookings' },
+    { name: 'Transcription' },
     { name: 'Public Experts' },
     { name: 'Admin' },
     { name: 'Payments' },
@@ -82,6 +83,23 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
         scheme: 'bearer',
         bearerFormat: 'JWT',
         description: 'Paste the JWT returned by the relevant login endpoint.',
+      },
+    },
+    schemas: {
+      TranscriptSegmentInput: {
+        type: 'object',
+        required: ['speakerUid', 'sequence', 'startMs', 'text', 'isFinal'],
+        properties: {
+          speakerUid: { type: 'string', example: '1', description: 'Agora RTC UID: 1 for seeker, 2 for expert.' },
+          sequence: { type: 'integer', minimum: 0, example: 12 },
+          startMs: { type: 'integer', minimum: 0, example: 15300 },
+          durationMs: { type: 'integer', minimum: 0, example: 2400 },
+          language: { type: 'string', example: 'en-US' },
+          text: { type: 'string', maxLength: 10000, example: 'Here is the next step I recommend.' },
+          confidence: { type: 'number', nullable: true, example: 0.97 },
+          isFinal: { type: 'boolean', enum: [true], example: true },
+          providerTimestamp: { type: 'integer', nullable: true, example: 1788515100000 },
+        },
       },
     },
   },
@@ -146,6 +164,34 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
         parameters: [idParameter('bookingId', 'Booking/request ID')], requestBody: jsonBody(),
       }),
     },
+    '/api/expert/requests/{bookingId}/transcription/start': {
+      post: operation({
+        tag: 'Transcription', summary: 'Start Agora live transcription as the assigned expert', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Confirmed booking ID')],
+      }),
+    },
+    '/api/expert/requests/{bookingId}/transcription/stop': {
+      post: operation({
+        tag: 'Transcription', summary: 'Stop Agora live transcription as the assigned expert', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')],
+      }),
+    },
+    '/api/expert/requests/{bookingId}/transcription/segments': {
+      post: operation({
+        tag: 'Transcription', summary: 'Persist a finalized Agora transcript segment as the assigned expert', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TranscriptSegmentInput' } } },
+        },
+      }),
+    },
+    '/api/expert/requests/{bookingId}/transcript': {
+      get: operation({
+        tag: 'Transcription', summary: 'Get the stored booking transcript as the assigned expert', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')],
+      }),
+    },
     '/api/seeker/me': {
       get: operation({ tag: 'Seeker', summary: 'Get authenticated seeker profile and credits', security: bearerSecurity }),
     },
@@ -194,6 +240,34 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
       post: operation({
         tag: 'Bookings', summary: 'Verify Razorpay payment and finalize booking payment', security: bearerSecurity,
         parameters: [idParameter('bookingId', 'Booking ID')], requestBody: jsonBody(),
+      }),
+    },
+    '/api/seeker/bookings/{bookingId}/transcription/start': {
+      post: operation({
+        tag: 'Transcription', summary: 'Start Agora live transcription as the booking seeker', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Confirmed booking ID')],
+      }),
+    },
+    '/api/seeker/bookings/{bookingId}/transcription/stop': {
+      post: operation({
+        tag: 'Transcription', summary: 'Stop Agora live transcription as the booking seeker', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')],
+      }),
+    },
+    '/api/seeker/bookings/{bookingId}/transcription/segments': {
+      post: operation({
+        tag: 'Transcription', summary: 'Persist a finalized Agora transcript segment as the booking seeker', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TranscriptSegmentInput' } } },
+        },
+      }),
+    },
+    '/api/seeker/bookings/{bookingId}/transcript': {
+      get: operation({
+        tag: 'Transcription', summary: 'Get the stored booking transcript as the booking seeker', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')],
       }),
     },
     '/api/public/experts': {
@@ -261,6 +335,12 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
       patch: operation({
         tag: 'Admin', summary: 'Update expert application status', security: bearerSecurity,
         parameters: [idParameter('id', 'Application ID')], requestBody: jsonBody(),
+      }),
+    },
+    '/api/admin/bookings/{bookingId}/transcript': {
+      get: operation({
+        tag: 'Transcription', summary: 'Get any stored booking transcript as an administrator', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')],
       }),
     },
     '/api/payments/razorpay/config': {

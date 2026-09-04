@@ -173,7 +173,7 @@ export default function ActiveVideoRoom({
       confirmText: "Yes, Finish Session",
       cancelText: "No, Keep Call Active",
       variant: "danger",
-      onConfirmAction: onFinishSession,
+      onConfirmAction: () => { void agora.stopTranscription().finally(onFinishSession); },
     });
   };
 
@@ -332,26 +332,17 @@ export default function ActiveVideoRoom({
                 </div>
 
                 <div className={styles.transcriptBody}>
-                  <div className={styles.transcriptLine}>
-                    <span className={styles.transcriptSpeaker}>Expert</span>
-                    <span className={styles.transcriptText}>Welcome to the session! Let me start by understanding your current situation...</span>
-                    <span className={styles.transcriptTime}>00:12</span>
-                  </div>
-                  <div className={styles.transcriptLine}>
-                    <span className={`${styles.transcriptSpeaker} ${styles.transcriptSpeakerYou}`}>You</span>
-                    <span className={styles.transcriptText}>Thank you! I wanted to discuss the funding strategy for my startup...</span>
-                    <span className={styles.transcriptTime}>00:34</span>
-                  </div>
-                  <div className={styles.transcriptLine}>
-                    <span className={styles.transcriptSpeaker}>Expert</span>
-                    <span className={styles.transcriptText}>That's a great starting point. Let's talk about your current traction and metrics first.</span>
-                    <span className={styles.transcriptTime}>00:51</span>
-                  </div>
-                  <div className={`${styles.transcriptLine} ${styles.transcriptLineCurrent}`}>
-                    <span className={styles.transcriptSpeaker}>Expert</span>
-                    <span className={styles.transcriptText}>What stage are you at — pre-seed, seed, or Series A?</span>
-                    <span className={styles.transcriptTime}>01:10</span>
-                  </div>
+                  {agora.transcriptSegments.length === 0 ? (
+                    <div className={styles.transcriptLine}><span className={styles.transcriptText}>Live transcript will appear when someone speaks.</span></div>
+                  ) : agora.transcriptSegments.map((segment) => (
+                    <div className={`${styles.transcriptLine} ${!segment.isFinal ? styles.transcriptLineCurrent : ''}`} key={`${segment.speakerUid}-${segment.sequence}`}>
+                      <span className={`${styles.transcriptSpeaker} ${segment.speakerUid === '1' ? styles.transcriptSpeakerYou : ''}`}>
+                        {segment.speakerUid === '1' ? 'You' : 'Expert'}
+                      </span>
+                      <span className={styles.transcriptText}>{segment.text}</span>
+                      <span className={styles.transcriptTime}>{formatTimer(Math.floor(segment.startMs / 1000))}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

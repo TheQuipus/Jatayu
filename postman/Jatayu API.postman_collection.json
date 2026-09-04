@@ -152,7 +152,11 @@
           }
         },
         { "name": "List My Bookings", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/bookings" } },
-        { "name": "Get My Booking", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}" } }
+        { "name": "Get My Booking", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}" } },
+        { "name": "Start Live Transcription", "request": { "method": "POST", "description": "Starts Agora Speech-to-Text for a confirmed booking during its join window. Normally called automatically by the live-room UI.", "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}/transcription/start" } },
+        { "name": "Store Final Transcript Segment", "request": { "method": "POST", "description": "Stores one finalized Agora segment idempotently.", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"speakerUid\": \"1\",\n  \"sequence\": 1,\n  \"startMs\": 1000,\n  \"durationMs\": 2500,\n  \"language\": \"en-US\",\n  \"text\": \"This is a final seeker transcript segment.\",\n  \"confidence\": 0.97,\n  \"isFinal\": true,\n  \"providerTimestamp\": 1788515100000\n}" }, "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}/transcription/segments" } },
+        { "name": "Stop Live Transcription", "request": { "method": "POST", "description": "Stops the active Agora Speech-to-Text agent.", "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}/transcription/stop" } },
+        { "name": "Get Stored Transcript", "request": { "method": "GET", "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}/transcript" } }
       ]
     },
     {
@@ -187,7 +191,11 @@
             "body": { "mode": "raw", "raw": "{\n  \"decision\": \"declined\",\n  \"reasonCode\": \"scheduling_conflict\",\n  \"reasonNotes\": \"I am unavailable at the selected time.\"\n}" },
             "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/decision"
           }
-        }
+        },
+        { "name": "Start Live Transcription", "request": { "method": "POST", "description": "Starts Agora Speech-to-Text for the assigned confirmed booking during its join window.", "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/transcription/start" } },
+        { "name": "Store Final Transcript Segment", "request": { "method": "POST", "description": "Stores one finalized Agora segment idempotently.", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"speakerUid\": \"2\",\n  \"sequence\": 2,\n  \"startMs\": 4000,\n  \"durationMs\": 3000,\n  \"language\": \"en-US\",\n  \"text\": \"This is a final expert transcript segment.\",\n  \"confidence\": 0.96,\n  \"isFinal\": true,\n  \"providerTimestamp\": 1788515103000\n}" }, "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/transcription/segments" } },
+        { "name": "Stop Live Transcription", "request": { "method": "POST", "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/transcription/stop" } },
+        { "name": "Get Stored Transcript", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/transcript" } }
       ]
     },
     {
@@ -295,7 +303,8 @@
               "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/digilocker-documents" }
             },
             { "name": "View Application DigiLocker Document", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/digilocker-documents/{{digilockerDocumentId}}/file" } },
-            { "name": "Update Application Status", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"in_review\",\n  \"reviewerNote\": \"Reviewed through Postman\"\n}" }, "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/status" } }
+            { "name": "Update Application Status", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": \"in_review\",\n  \"reviewerNote\": \"Reviewed through Postman\"\n}" }, "url": "{{baseUrl}}/api/admin/applications/{{applicationId}}/status" } },
+            { "name": "Get Booking Transcript", "request": { "method": "GET", "description": "Returns the stored transcription session metadata and finalized transcript segments for any booking.", "url": "{{baseUrl}}/api/admin/bookings/{{bookingId}}/transcript" } }
           ]
         }
       ]

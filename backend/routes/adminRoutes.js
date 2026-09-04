@@ -12,6 +12,7 @@ import {
   getApplicationDigilockerDocumentFile,
   listApplicationDigilockerDocuments,
 } from '../controllers/adminDigilockerDocumentController.js';
+import { getAdminTranscript } from '../controllers/agoraTranscriptionController.js';
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.get('/auth/me', protectAdmin, getAdminMe);
 
 router.get('/settings', protectAdmin, getSettings);
 router.put('/settings', protectAdmin, updateSettings);
+router.get('/bookings/:bookingId/transcript', protectAdmin, getAdminTranscript);
 
 router.get('/applications/stats', protectAdmin, getApplicationStats);
 router.get('/applications', protectAdmin, listApplications);

@@ -3,6 +3,7 @@ import { Setting } from '../models/index.js';
 const SECRET_SETTING_KEYS = new Set([
   'AI_API_KEY',
   'AGORA_APP_CERTIFICATE',
+  'AGORA_CUSTOMER_SECRET',
   'AI_FALLBACK_API_KEY',
   'BREVO_API_KEY',
   'DIGILOCKER_CLIENT_SECRET',
