@@ -147,11 +147,7 @@ export default function ActiveVideoRoom({
     onConfirmAction: () => { },
   });
 
-  const [isNotesSaved, setIsNotesSaved] = useState(false);
-  const handleSaveNotes = () => {
-    setIsNotesSaved(true);
-    setTimeout(() => setIsNotesSaved(false), 2500);
-  };
+
 
   const handleLeaveClick = () => {
     setConfirmModalConfig({
@@ -430,21 +426,26 @@ export default function ActiveVideoRoom({
                     />
                     <div className={styles.notepadFooter}>
                       <span>Your notes are private and auto-saved.</span>
-                      <ContinueButton
-                        label="Save Notes"
-                        showArrow={false}
-                        onClick={handleSaveNotes}
-                        className={styles.saveNotesActiveBtn}
-                      />
+                      {notesSavedStatus !== "idle" && (
+                        <span
+                          className={`${styles.saveStatus} ${
+                            notesSavedStatus === "saving"
+                              ? styles["saveStatus-saving"]
+                              : styles["saveStatus-saved"]
+                          }`}
+                        >
+                          {notesSavedStatus === "saving" ? "Saving..." : "Saved ✓"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Need Help Box */}
+              {/* Help and Support Box */}
               <div className={styles.bookingBox}>
                 <div className={styles.bookingHeader}>
-                  <span className={styles.bookingHeaderTitle}>Need Help?</span>
+                  <span className={styles.bookingHeaderTitle}>Help and Support</span>
                   <span className={styles.bookingHeaderDots} />
                   <div className={styles.soundwaveIcon} aria-hidden="true">
                     <span />

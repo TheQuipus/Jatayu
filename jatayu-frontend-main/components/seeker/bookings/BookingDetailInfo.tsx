@@ -1479,7 +1479,7 @@ ${notes || `1. Valuation & Cap Table:
 
               <div className={styles.bookingBox}>
                 <div className={styles.bookingHeader}>
-                  <span className={styles.bookingHeaderTitle}>Need Help?</span>
+                  <span className={styles.bookingHeaderTitle}>Help and Support</span>
                   <span className={styles.bookingHeaderDots} />
                   <div className={styles.soundwaveIcon} aria-hidden="true">
                     <span />

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   checkoutConsultationTypes,
   getConsultationPrice,
@@ -8,17 +9,48 @@ import { formatCurrency } from "./checkoutUtils";
 import StepHeader from "./StepHeader";
 import styles from "./StepConsultationType.module.css";
 
+export const DURATION_OPTIONS = [
+  { id: "15min", label: "15min" },
+  { id: "30min", label: "30min" },
+  { id: "45min", label: "45min" },
+  { id: "1hr", label: "1 hr" },
+] as const;
+
 export type StepConsultationTypeProps = {
   expert: Expert;
   consultationType: ConsultationType | null;
   onSelectConsultationType: (type: ConsultationType | null) => void;
+  selectedDuration?: string;
+  onSelectDuration?: (duration: string) => void;
+  customDurationMinutes?: string;
+  onCustomDurationMinutesChange?: (mins: string) => void;
 };
 
 export default function StepConsultationType({
   expert,
   consultationType,
   onSelectConsultationType,
+  selectedDuration,
+  onSelectDuration,
+  customDurationMinutes,
+  onCustomDurationMinutesChange,
 }: StepConsultationTypeProps) {
+  const [internalDuration, setInternalDuration] = useState<string>("15min");
+  const [internalCustomMinutes, setInternalCustomMinutes] = useState<string>("");
+
+  const currentDuration = selectedDuration ?? internalDuration;
+  const currentCustomMinutes = customDurationMinutes ?? internalCustomMinutes;
+
+  const handleSelectDuration = (durId: string) => {
+    setInternalDuration(durId);
+    onSelectDuration?.(durId);
+  };
+
+  const handleCustomMinutesChange = (val: string) => {
+    setInternalCustomMinutes(val);
+    onCustomDurationMinutesChange?.(val);
+  };
+
   const availableFormats =
     expert.formats && expert.formats.length > 0
       ? expert.formats
@@ -51,15 +83,23 @@ export default function StepConsultationType({
           const isActive = consultationType === option.id;
 
           return (
-            <button
+            <div
               key={option.id}
-              type="button"
+              role="button"
+              tabIndex={0}
+              aria-pressed={isActive}
               className={`${styles.consultationCard} ${
                 isActive ? styles.consultationCardActive : ""
               }`}
               onClick={() =>
                 onSelectConsultationType(isActive ? null : option.id)
               }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelectConsultationType(isActive ? null : option.id);
+                }
+              }}
             >
               <div className={styles.consultationCardBody}>
                 <span className={styles.consultationLabel}>
@@ -72,12 +112,72 @@ export default function StepConsultationType({
                   />
                   {option.title.toUpperCase()}
                 </span>
-                <p className={styles.consultationQuote}>{formatCurrency(price)}</p>
+                <p className={styles.consultationQuote}>{formatCurrency(price)}/min</p>
                 <div className={styles.consultationRule} aria-hidden="true" />
                 <p className={styles.consultationDesc}>{option.desc}</p>
                 <p className={styles.consultationActiveTitle}>{option.title}</p>
+
+                {isActive && (
+                  <div
+                    className={styles.durationSection}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <div className={styles.durationGrid}>
+                      {DURATION_OPTIONS.map((item) => {
+                        const isChecked = currentDuration === item.id;
+                        return (
+                          <label
+                            key={item.id}
+                            className={styles.durationRadioItem}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectDuration(item.id);
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name={`duration-${option.id}`}
+                              value={item.id}
+                              checked={isChecked}
+                              onChange={() => handleSelectDuration(item.id)}
+                              className={styles.durationRadioInput}
+                            />
+                            <span className={styles.durationRadioCircle} aria-hidden="true" />
+                            <span className={styles.durationRadioText}>{item.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <div
+                      className={`${styles.customDurationBox} ${
+                        currentDuration === "custom" ? styles.customDurationBoxActive : ""
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectDuration("custom");
+                      }}
+                    >
+                      <input
+                        type="number"
+                        min="1"
+                        max="360"
+                        value={currentDuration === "custom" ? currentCustomMinutes : ""}
+                        onChange={(e) => {
+                          handleSelectDuration("custom");
+                          handleCustomMinutesChange(e.target.value);
+                        }}
+                        onFocus={() => handleSelectDuration("custom")}
+                        placeholder="Custom"
+                        className={styles.customDurationInput}
+                      />
+                      <span className={styles.customDurationSuffix}>mins</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

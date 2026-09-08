@@ -33,6 +33,8 @@ import { getBookingById, type BookingDetail } from "@/lib/seekerDashboard";
 import { getRequestDetailById } from "@/lib/expertRequestDetailStore";
 
 import ExtendSessionChatOverlay from "./ExtendSessionChatOverlay";
+import SessionEndedScreen from "./SessionEndedScreen";
+import DemoDevControlPanel from "./DemoDevControlPanel";
 
 export type DemoActiveVideoRoomProps = {
   initialRole?: "seeker" | "expert";
@@ -48,13 +50,97 @@ export default function DemoActiveVideoRoom({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(115);
+  const [isSessionEnded, setIsSessionEnded] = useState(false);
+  const [pendingExtension, setPendingExtension] = useState<{ minutes: number; amount: number } | null>(null);
   const [extendNotification, setExtendNotification] = useState<string | null>(null);
 
   // In-video extend chat overlay state (Seeker demo)
   const [isExtendChatOpen, setIsExtendChatOpen] = useState(false);
 
-  const [notes, setNotes] = useState("");
-  const [isNotesSaved, setIsNotesSaved] = useState(false);
+  // Dev simulation state: Expert already booked
+  const [isExpertBooked, setIsExpertBooked] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("jatayu_demo_expert_booked") === "true";
+    }
+    return false;
+  });
+
+  const handleToggleExpertBooked = (booked: boolean) => {
+    setIsExpertBooked(booked);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("jatayu_demo_expert_booked", booked ? "true" : "false");
+      try {
+        const bc = new BroadcastChannel("jatayu_demo_sync_v1");
+        bc.postMessage({ type: "EXPERT_BOOKED_TOGGLE", isBooked: booked });
+        bc.close();
+      } catch (err) {}
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleBroadcastMsg = (data: any) => {
+      if (!data) return;
+      if (data.type === "EXPERT_BOOKED_TOGGLE") {
+        setIsExpertBooked(Boolean(data.isBooked));
+      } else if (data.type === "EXTENDED_SESSION_STARTED") {
+        const mins = data.mins || 15;
+        setSecondsRemaining(mins * 60);
+        setIsSessionEnded(false);
+        setPendingExtension(null);
+        setIsExtendChatOpen(false);
+      }
+    };
+
+    let bc: BroadcastChannel | null = null;
+    if ("BroadcastChannel" in window) {
+      bc = new BroadcastChannel("jatayu_demo_sync_v1");
+      bc.onmessage = (e) => handleBroadcastMsg(e.data);
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "jatayu_demo_expert_booked") {
+        setIsExpertBooked(e.newValue === "true");
+      }
+      if (e.key === "jatayu_demo_sync_v1" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          handleBroadcastMsg(parsed);
+        } catch (err) {}
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  const [notes, setNotes] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("jatayu_demo_session_notes") || "";
+    }
+    return "";
+  });
+  const [notesSavedStatus, setNotesSavedStatus] = useState<"idle" | "saving" | "saved">("idle");
+
+  // Notes autosave
+  useEffect(() => {
+    if (!notes) {
+      setNotesSavedStatus("idle");
+      return;
+    }
+    setNotesSavedStatus("saving");
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem("jatayu_demo_session_notes", notes);
+      } catch (e) {}
+      setNotesSavedStatus("saved");
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [notes]);
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -94,6 +180,29 @@ export default function DemoActiveVideoRoom({
     };
   }, []);
 
+  // Video call timer countdown
+  useEffect(() => {
+    if (isSessionEnded || secondsRemaining <= 0) {
+      if (secondsRemaining <= 0 && !isSessionEnded) {
+        setIsSessionEnded(true);
+      }
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setIsSessionEnded(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isSessionEnded, secondsRemaining]);
+
   // Confirmation modal state
   const [confirmModalConfig, setConfirmModalConfig] = useState<{
     isOpen: boolean;
@@ -113,10 +222,7 @@ export default function DemoActiveVideoRoom({
     onConfirmAction: () => {},
   });
 
-  const handleSaveNotes = () => {
-    setIsNotesSaved(true);
-    setTimeout(() => setIsNotesSaved(false), 2500);
-  };
+
 
   const handleLeaveClick = () => {
     setConfirmModalConfig({
@@ -143,6 +249,8 @@ export default function DemoActiveVideoRoom({
       variant: "danger",
       onConfirmAction: () => {
         setConfirmModalConfig((prev) => ({ ...prev, isOpen: false }));
+        setIsSessionEnded(true);
+        setSecondsRemaining(0);
       },
     });
   };
@@ -230,7 +338,7 @@ export default function DemoActiveVideoRoom({
                     <span>{formatTimer(secondsRemaining)} remaining</span>
                   </div>
 
-                  {secondsRemaining <= 300 && (
+                  {secondsRemaining <= 300 && secondsRemaining > 0 && !isSessionEnded && (
                     <ContinueButton
                       label="Extend Session"
                       showArrow={false}
@@ -249,8 +357,34 @@ export default function DemoActiveVideoRoom({
                   expertImage={expertImage}
                   clientName="You"
                   clientImage="/assets/img/manportrait.png"
-                  onExtendSessionAdded={(secs) => setSecondsRemaining((prev) => prev + secs)}
+                  isExpertBooked={isExpertBooked}
+                  onExtensionConfirmed={(mins, amount) => {
+                    setPendingExtension({ minutes: mins, amount });
+                  }}
                 />
+
+                {/* Screen when video call timer ends */}
+                {(isSessionEnded || secondsRemaining <= 0) && (
+                  <SessionEndedScreen
+                    role="seeker"
+                    expertName={expertName}
+                    expertRole={expertRole}
+                    clientName="Vikram Malhotra"
+                    clientRole="Head of Product"
+                    pendingExtension={pendingExtension}
+                    isExpertBooked={isExpertBooked}
+                    sessionDetailsUrl="/seeker/bookings/booking-1"
+                    onLeaveRoom={() => {
+                      window.location.href = "/seeker/bookings/booking-1";
+                    }}
+                    onStartExtendedSession={(mins) => {
+                      setSecondsRemaining(mins * 60);
+                      setIsSessionEnded(false);
+                      setPendingExtension(null);
+                      setIsExtendChatOpen(false);
+                    }}
+                  />
+                )}
 
                 {/* Google Meet style Video Call Controls Overlay */}
                 <div className={styles.videoControls}>
@@ -453,21 +587,26 @@ export default function DemoActiveVideoRoom({
                       />
                       <div className={styles.notepadFooter}>
                         <span>Your notes are private and auto-saved.</span>
-                        <ContinueButton
-                          label="Save Notes"
-                          showArrow={false}
-                          onClick={handleSaveNotes}
-                          className={styles.saveNotesActiveBtn}
-                        />
+                        {notesSavedStatus !== "idle" && (
+                          <span
+                            className={`${styles.saveStatus} ${
+                              notesSavedStatus === "saving"
+                                ? styles["saveStatus-saving"]
+                                : styles["saveStatus-saved"]
+                            }`}
+                          >
+                            {notesSavedStatus === "saving" ? "Saving..." : "Saved ✓"}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Need Help Box */}
+                {/* Help and Support Box */}
                 <div className={styles.bookingBox}>
                   <div className={styles.bookingHeader}>
-                    <span className={styles.bookingHeaderTitle}>Need Help?</span>
+                    <span className={styles.bookingHeaderTitle}>Help and Support</span>
                     <span className={styles.bookingHeaderDots} />
                     <div className={styles.soundwaveIcon} aria-hidden="true">
                       <span />
@@ -534,6 +673,34 @@ export default function DemoActiveVideoRoom({
             onClose={() => setIsReportModalOpen(false)}
           />
         )}
+
+        {/* Floating Developer Control Panel (Easy to remove) */}
+        <DemoDevControlPanel
+          role="seeker"
+          secondsRemaining={secondsRemaining}
+          isSessionEnded={isSessionEnded}
+          isExpertBooked={isExpertBooked}
+          onToggleExpertBooked={handleToggleExpertBooked}
+          onSetNormalEnd={() => {
+            setPendingExtension(null);
+            setSecondsRemaining(0);
+            setIsSessionEnded(true);
+          }}
+          onSetExtensionEnd={(mins) => {
+            setPendingExtension({ minutes: mins, amount: mins * 35 });
+            setSecondsRemaining(0);
+            setIsSessionEnded(true);
+          }}
+          onResetActiveCall={(secs = 900) => {
+            setSecondsRemaining(secs);
+            setIsSessionEnded(false);
+            setPendingExtension(null);
+            setIsExtendChatOpen(false);
+          }}
+          onTriggerExtensionModal={() => {
+            setIsExtendChatOpen(true);
+          }}
+        />
       </section>
     );
   }
@@ -630,8 +797,32 @@ export default function DemoActiveVideoRoom({
                 expertImage="/assets/img/team1.png"
                 clientName={clientName}
                 clientImage="/assets/img/manportrait.png"
-                onExtendSessionAdded={(secs) => setSecondsRemaining((prev) => prev + secs)}
+                onExtensionConfirmed={(mins, amount) => {
+                  setPendingExtension({ minutes: mins, amount });
+                }}
               />
+
+              {/* Screen when video call timer ends */}
+              {(isSessionEnded || secondsRemaining <= 0) && (
+                <SessionEndedScreen
+                  role="expert"
+                  expertName="Dr. Ananya Sharma"
+                  expertRole="Startup & VC Expert"
+                  clientName={clientName}
+                  clientRole={clientRole}
+                  pendingExtension={pendingExtension}
+                  isExpertBooked={isExpertBooked}
+                  sessionDetailsUrl="/expert/requests/req-1"
+                  onLeaveRoom={() => {
+                    window.location.href = "/expert/requests/req-1";
+                  }}
+                  onStartExtendedSession={(mins) => {
+                    setSecondsRemaining(mins * 60);
+                    setIsSessionEnded(false);
+                    setPendingExtension(null);
+                  }}
+                />
+              )}
 
               {/* Google Meet style Video Call Controls Overlay */}
               <div className={styles.videoControls}>
@@ -830,21 +1021,26 @@ export default function DemoActiveVideoRoom({
                     />
                     <div className={styles.notepadFooter}>
                       <span>Your notes are private and auto-saved.</span>
-                      <ContinueButton
-                        label="Save Notes"
-                        showArrow={false}
-                        onClick={handleSaveNotes}
-                        className={styles.saveNotesActiveBtn}
-                      />
+                      {notesSavedStatus !== "idle" && (
+                        <span
+                          className={`${styles.saveStatus} ${
+                            notesSavedStatus === "saving"
+                              ? styles["saveStatus-saving"]
+                              : styles["saveStatus-saved"]
+                          }`}
+                        >
+                          {notesSavedStatus === "saving" ? "Saving..." : "Saved ✓"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Need Help Box */}
+              {/* Help and Support Box */}
               <div className={styles.bookingBox}>
                 <div className={styles.bookingHeader}>
-                  <span className={styles.bookingHeaderTitle}>Need Help?</span>
+                  <span className={styles.bookingHeaderTitle}>Help and Support</span>
                   <span className={styles.bookingHeaderDots} />
                   <div className={styles.soundwaveIcon} aria-hidden="true">
                     <span />
@@ -911,6 +1107,30 @@ export default function DemoActiveVideoRoom({
           onClose={() => setIsReportModalOpen(false)}
         />
       )}
+
+      {/* Floating Developer Control Panel (Easy to remove) */}
+      <DemoDevControlPanel
+        role="expert"
+        secondsRemaining={secondsRemaining}
+        isSessionEnded={isSessionEnded}
+        isExpertBooked={isExpertBooked}
+        onToggleExpertBooked={handleToggleExpertBooked}
+        onSetNormalEnd={() => {
+          setPendingExtension(null);
+          setSecondsRemaining(0);
+          setIsSessionEnded(true);
+        }}
+        onSetExtensionEnd={(mins) => {
+          setPendingExtension({ minutes: mins, amount: mins * 35 });
+          setSecondsRemaining(0);
+          setIsSessionEnded(true);
+        }}
+        onResetActiveCall={(secs = 900) => {
+          setSecondsRemaining(secs);
+          setIsSessionEnded(false);
+          setPendingExtension(null);
+        }}
+      />
     </section>
   );
 }

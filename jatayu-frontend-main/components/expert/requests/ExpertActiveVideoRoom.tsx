@@ -69,7 +69,20 @@ export default function ExpertActiveVideoRoom({
   const [extendNotification, setExtendNotification] = useState<string | null>(null);
 
   const [notes, setNotes] = useState("");
-  const [isNotesSaved, setIsNotesSaved] = useState(false);
+  const [notesSavedStatus, setNotesSavedStatus] = useState<"idle" | "saving" | "saved">("idle");
+
+  // Notes autosave
+  useEffect(() => {
+    if (!notes) {
+      setNotesSavedStatus("idle");
+      return;
+    }
+    setNotesSavedStatus("saving");
+    const timer = setTimeout(() => {
+      setNotesSavedStatus("saved");
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [notes]);
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const remoteVideoElementRef = useRef<HTMLDivElement>(null);
@@ -148,10 +161,7 @@ export default function ExpertActiveVideoRoom({
     onConfirmAction: () => { },
   });
 
-  const handleSaveNotes = () => {
-    setIsNotesSaved(true);
-    setTimeout(() => setIsNotesSaved(false), 2500);
-  };
+
 
   const handleFinishClick = () => {
     setConfirmModalConfig({
@@ -420,22 +430,27 @@ export default function ExpertActiveVideoRoom({
                       className={styles.notepadArea}
                     />
                     <div className={styles.notepadFooter}>
-                      <span>{isNotesSaved ? "Saved ✓" : "Notes are private and auto-saved."}</span>
-                      <ContinueButton
-                        label="Save Notes"
-                        showArrow={false}
-                        onClick={handleSaveNotes}
-                        className={styles.saveNotesActiveBtn}
-                      />
+                      <span>Notes are private and auto-saved.</span>
+                      {notesSavedStatus !== "idle" && (
+                        <span
+                          className={`${styles.saveStatus} ${
+                            notesSavedStatus === "saving"
+                              ? styles["saveStatus-saving"]
+                              : styles["saveStatus-saved"]
+                          }`}
+                        >
+                          {notesSavedStatus === "saving" ? "Saving..." : "Saved ✓"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Need Help Box */}
+              {/* Help and Support Box */}
               <div className={styles.bookingBox}>
                 <div className={styles.bookingHeader}>
-                  <span className={styles.bookingHeaderTitle}>Need Help?</span>
+                  <span className={styles.bookingHeaderTitle}>Help and Support</span>
                   <span className={styles.bookingHeaderDots} />
                   <div className={styles.soundwaveIcon} aria-hidden="true">
                     <span />

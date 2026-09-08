@@ -1,0 +1,1035 @@
+/* Jatayu Design System: Session Ended Screen (GMeet / MS Teams focused style) */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(8, 10, 16, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.overlay::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.container {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  animation: scaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: auto;
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Jatayu Signature Angled Polygon Header */
+.header {
+  background: var(--ink);
+  color: var(--white);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.headerTitle {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--white);
+}
+
+.headerDots {
+  flex: 1;
+  border-bottom: 2px dotted color-mix(in srgb, var(--white) 35%, transparent);
+  height: 3px;
+  flex-shrink: 0;
+}
+
+/* Jatayu White Body Surface */
+.body {
+  background: var(--white);
+  padding: 28px 28px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+  border-left: 1px solid var(--mercury);
+  border-right: 1px solid var(--mercury);
+  color: var(--ink);
+}
+
+/* End Call Icon Wrapper (GMeet / Teams feel) */
+.endIconWrapper {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(229, 59, 23, 0.1);
+  border: 1px solid rgba(229, 59, 23, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pomegranate);
+  margin-bottom: -4px;
+}
+
+.endIcon {
+  color: var(--pomegranate);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(20px, 3.5vw, 24px);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Jatayu Diamond Divider Rule */
+.titleRule {
+  position: relative;
+  width: min(100%, 220px);
+  height: 1px;
+  margin: 16px auto 18px;
+  background: color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
+.titleRule::before {
+  content: "✦";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  line-height: 1;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  background: var(--white);
+  padding: 0 8px;
+}
+
+.subtitle {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--scorpion);
+}
+
+.subtitle strong {
+  color: var(--bunker);
+  font-weight: 600;
+}
+
+/* GMeet-style Audio/Video Call Quality Rating */
+.ratingSection {
+  width: 100%;
+  padding: 6px 0;
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.ratingLabel {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--bunker, #0f172a);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.starRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.starBtn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.starBtn:hover:not(:disabled) {
+  transform: scale(1.18);
+}
+
+.starBtn:disabled {
+  cursor: default;
+}
+
+.starFilled {
+  color: #f59e0b;
+  fill: #f59e0b;
+  transition: color 0.15s ease, fill 0.15s ease;
+}
+
+.starEmpty {
+  color: var(--silver);
+  fill: transparent;
+  transition: color 0.15s ease;
+}
+
+.issueForm {
+  width: 100%;
+  max-width: 380px;
+  margin-top: 4px;
+}
+
+.issueInputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid var(--mercury, #e2e8f0);
+  border-radius: 8px;
+  padding: 4px 6px 4px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.issueInputWrapper:focus-within {
+  border-color: var(--pomegranate, #e53b17);
+  box-shadow: 0 0 0 2px rgba(229, 59, 23, 0.12);
+}
+
+.issueInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--bunker, #0f172a);
+  padding: 6px 0;
+}
+
+.issueInput::placeholder {
+  color: var(--silver, #94a3b8);
+  font-size: 13px;
+}
+
+.issueSubmitBtn {
+  background: var(--pomegranate, #e53b17);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.issueSubmitBtn:hover {
+  background: var(--thunderbird, #d9382b);
+}
+
+
+/* Payment Method Selection (One row per radio option) */
+.methodSelector {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.methodSelectorTitle {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--scorpion);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.methodList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.radioRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  width: 100%;
+}
+
+.radioRow:hover {
+  background: color-mix(in srgb, var(--ink) 2%, var(--white));
+  border-color: #cbd5e1;
+}
+
+.radioRowActive {
+  background: rgba(234, 67, 53, 0.05);
+  border-color: var(--pomegranate);
+}
+
+.radioRowLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.radioCustomCircle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  background: #ffffff;
+}
+
+.radioRowActive .radioCustomCircle {
+  border-color: var(--pomegranate);
+}
+
+.radioCustomDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pomegranate);
+}
+
+.radioLabelGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.radioMainLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bunker);
+}
+
+.radioSubLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--scorpion);
+}
+
+.radioPrice {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.radioRowActive .radioPrice {
+  color: var(--pomegranate);
+}
+
+.radioPriceCredits {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.radioRowActive .radioPriceCredits {
+  color: var(--pomegranate);
+}
+
+.inlineCreditsAmount {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.btnCreditsLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+/* Payment Summary Box */
+.paymentSummaryCard {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.summaryTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mercury, #e2e8f0);
+}
+
+.summaryTitle {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summaryList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--scorpion);
+}
+
+.summaryLabel {
+  color: var(--scorpion);
+  font-weight: 500;
+}
+
+.summaryValue {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.creditsBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.useCreditsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.useCreditsRow:hover {
+  background: #ffffff;
+}
+
+.useCreditsLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.useCreditsCheckbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.useCreditsLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.creditBalanceBeside {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion);
+  font-weight: 500;
+}
+
+.creditsDeduction {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.summaryDivider {
+  height: 1px;
+  background: var(--mercury, #e2e8f0);
+  margin: 2px 0;
+}
+
+.summaryTotalRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  padding-top: 2px;
+}
+
+.summaryTotalLabel {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.summaryTotalValue {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+
+/* Success State */
+.successIconWrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--green) 12%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green);
+  margin-bottom: -4px;
+}
+
+.successIcon {
+  color: var(--green);
+}
+
+/* Expert Waiting Screen Styles */
+.waitingIconWrapper {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+  margin-bottom: -4px;
+  animation: pulseAmberRing 2s infinite ease-in-out;
+}
+
+@keyframes pulseAmberRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.waitingIcon {
+  color: #f59e0b;
+}
+
+.waitingStatusCard {
+  width: 100%;
+  padding: 6px 0 0;
+  background: transparent;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.waitingCountdownBadge {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.waitingStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion);
+  font-weight: 500;
+}
+
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  animation: pulseDotAnim 1.5s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseDotAnim {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+  }
+
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.pulseDotGreen {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 70%, transparent);
+  animation: pulseGreenDotAnim 1.5s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseGreenDotAnim {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 70%, transparent);
+  }
+
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--green) 0%, transparent);
+  }
+
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 0%, transparent);
+  }
+}
+
+.secondaryLeaveBtn {
+  background: transparent;
+  border: 1px solid var(--mercury);
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.secondaryLeaveBtn:hover {
+  background: rgba(229, 59, 23, 0.06);
+  border-color: rgba(229, 59, 23, 0.3);
+  color: var(--pomegranate);
+}
+
+/* Action Buttons (Return to Session Details + Rejoin/Restart) */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* Tertiary CTA: Capslock, Orange, Minimalist */
+.tertiaryCtaBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: var(--pomegranate);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 12px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  width: 100%;
+  text-decoration: none;
+}
+
+/* Jatayu Signature Angled Polygon Footer */
+.footer {
+  height: 20px;
+  background: var(--ink);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+}
+
+/* ==========================================================================
+   Fake Razorpay Checkout Modal
+   ========================================================================== */
+.razorpayOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.razorpayModal {
+  width: 100%;
+  max-width: 390px;
+  background: #ffffff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.razorpayHeader {
+  background: #0c2340;
+  color: #ffffff;
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.razorpayHeaderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.razorpayBrand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.razorpayLogoIcon {
+  width: 24px;
+  height: 24px;
+  background: #3395ff;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.razorpayCloseBtn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.razorpayCloseBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.razorpayHeaderDetails {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.razorpayHeaderPurpose {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.razorpayHeaderAmount {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.razorpayContactBar {
+  background: #f8fafc;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 11px;
+  color: #64748b;
+  font-family: var(--font-mono, monospace);
+}
+
+.razorpayBody {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #ffffff;
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.razorpayBody::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.razorpaySectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.razorpayOptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.razorpayOptionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #ffffff;
+}
+
+.razorpayOptionItem:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.razorpayOptionItemActive {
+  border-color: #3395ff !important;
+  background: #f0f7ff !important;
+}
+
+.razorpayOptionLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.razorpayOptionIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0c2340;
+  flex-shrink: 0;
+}
+
+.razorpayOptionItemActive .razorpayOptionIcon {
+  background: #e0effe;
+  color: #0284c7;
+}
+
+.razorpayOptionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.razorpayOptionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.razorpayOptionSubtitle {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.razorpayRadio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.razorpayRadioActive {
+  border-color: #3395ff;
+  background: #3395ff;
+}
+
+.razorpayRadioDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.razorpayFooter {
+  padding: 14px 20px 16px;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.razorpayPayBtn {
+  width: 100%;
+  padding: 13px;
+  background: #3395ff;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(51, 149, 255, 0.35);
+}
+
+.razorpayPayBtn:hover:not(:disabled) {
+  background: #2085f3;
+}
+
+.razorpayPayBtn:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
+.razorpayPayBtnSuccess {
+  background: #10b981 !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+.razorpaySecurityBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
