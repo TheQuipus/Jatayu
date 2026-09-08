@@ -510,6 +510,14 @@
   max-height: calc(100% - 110px);
   overflow-y: auto;
   pointer-events: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.extendChatLog::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .extendChatSystemBanner {
@@ -592,15 +600,21 @@
 }
 
 .extendChatMsgBubbleSeeker {
-  background: #ffffff;
+  background: color-mix(in srgb, var(--pomegranate, #e53b17) 8%, #ffffff);
   color: var(--ink, #080a10);
   border-radius: 14px 0px 14px 0px !important;
-  border: 1px solid var(--mercury, #e5e7eb);
+  border: 1px solid color-mix(in srgb, var(--pomegranate, #e53b17) 22%, #e5e7eb);
   padding: 10px 16px;
   font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.5;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.extendChatMsgRowSeeker .extendChatMsgBubbleExpert {
+  background: color-mix(in srgb, var(--pomegranate, #e53b17) 8%, #ffffff);
+  color: var(--ink, #080a10);
+  border: 1px solid color-mix(in srgb, var(--pomegranate, #e53b17) 22%, #e5e7eb);
 }
 
 .extendChatMsgBubbleSystem {
@@ -624,6 +638,25 @@
   border-radius: 50%;
   width: 32px;
   height: 32px;
+}
+
+.extendChatSystemAvatarSmall {
+  width: 26px;
+  height: 26px;
+}
+
+.extendChatMsgBubbleSystemUnavailable {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 10px 14px;
+  max-width: 320px;
+}
+
+.extendChatSystemUnavailableTitle {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: var(--pomegranate, #e53b17);
 }
 
 /* Smooth Morph Animations for Chat Bubbles */
@@ -760,8 +793,8 @@
 }
 
 .extendChatRadioItemActive {
-  background: rgba(234, 67, 53, 0.08);
-  border-color: var(--pomegranate, #ea4335);
+  background: color-mix(in srgb, var(--pomegranate, #e53b17) 10%, #ffffff);
+  border-color: var(--pomegranate, #e53b17);
 }
 
 .extendChatRadioItemDisabled {
@@ -820,6 +853,129 @@
 
 .extendChatRadioItemActive .extendChatRadioPrice {
   color: var(--pomegranate, #ea4335);
+}
+
+.extendChatCustomContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.extendChatCustomInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  width: 100%;
+}
+
+.extendChatCustomInput {
+  width: 65px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #080a10);
+  background: #ffffff;
+  outline: none;
+  text-align: center;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.extendChatCustomInput:focus {
+  border-color: var(--pomegranate, #ea4335);
+  box-shadow: 0 0 0 2px rgba(234, 67, 53, 0.15);
+}
+
+.extendChatCustomUnit {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.extendChatCustomSubmitBtn {
+  margin-left: auto;
+  padding: 5px 12px;
+  background: var(--pomegranate, #ea4335);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.extendChatCustomSubmitBtn:hover:not(:disabled) {
+  background: #d9382b;
+}
+
+.extendChatCustomSubmitBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.extendChatCustomMaxHint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* Bottom Selection Button when Expert chooses an option */
+.extendChatConfirmBtn {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--pomegranate, #ea4335);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(234, 67, 53, 0.25);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.extendChatConfirmBtn:hover:not(:disabled) {
+  background: #d9382b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 67, 53, 0.35);
+}
+
+.extendChatConfirmBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.extendChatConfirmBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.extendChatConfirmBtnDecline {
+  background: #475569;
+  box-shadow: 0 2px 8px rgba(71, 85, 105, 0.25);
+}
+
+.extendChatConfirmBtnDecline:hover:not(:disabled) {
+  background: #334155;
+  box-shadow: 0 4px 12px rgba(71, 85, 105, 0.35);
 }
 
 /* Expert In-Chat Extension Request Decision Single Bar */
