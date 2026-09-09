@@ -193,23 +193,6 @@
   color: var(--ink);
 }
 
-.kpiCardActive {
-  background: var(--bunker);
-  border-color: var(--bunker);
-}
-
-.kpiCardActive .kpiLabel {
-  color: color-mix(in srgb, var(--white) 70%, transparent);
-}
-
-.kpiCardActive .kpiValue {
-  color: var(--white);
-}
-
-.kpiCardActive .kpiIconBox {
-  color: var(--pomegranate);
-}
-
 .topRowGrid {
   display: grid;
   grid-template-columns: 1.1fr 1.4fr;
@@ -470,7 +453,7 @@
 ---------------------------------------------------- */
 .middleGridRow {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: 1.15fr 1fr;
   gap: 16px;
 }
 
@@ -522,6 +505,7 @@
   display: flex;
   justify-content: space-between;
   padding-top: 10px;
+  padding-left: 48px;
   border-top: 1px solid var(--mercury);
 }
 
@@ -545,87 +529,154 @@
   color: var(--pomegranate);
 }
 
-.badgesGrid {
+.npsCard {
+  border: 1px solid var(--mercury);
+  border-radius: 14px;
+  background: var(--white);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.npsHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.npsScoreBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 6px 0;
+}
+
+.npsBigNumber {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.npsBadgeWorldClass {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e8f5e9;
+  color: #1b5e20;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.npsSegmentedBar {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  gap: 2px;
+}
+
+.npsSegmentPromoters {
+  background: #10b981;
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+.npsSegmentPassives {
+  background: #f59e0b;
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+.npsSegmentDetractors {
+  background: #ef4444;
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+.npsBreakdownGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  margin: 12px 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
 }
 
-.badgeBox {
-  padding: 14px 10px;
-  border-radius: 12px;
-  background: var(--seashell);
-  border: 1px solid var(--mercury);
+.npsBreakdownItem {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+}
+
+.npsBreakdownDotLabel {
+  display: inline-flex;
   align-items: center;
-  text-align: center;
   gap: 6px;
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.badgeBox:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--pomegranate) 35%, var(--mercury));
-}
-
-.badgeBoxLocked {
-  opacity: 0.5;
-  background: var(--gallery);
-}
-
-.badgeIconCircle {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: var(--white);
-  border: 1px solid var(--mercury);
-  color: var(--pomegranate);
-  display: grid;
-  place-items: center;
-}
-
-.badgeTitle {
-  font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  color: var(--dove-gray);
+}
+
+.npsDotPromoter {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.npsDotPassive {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.npsDotDetractor {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.npsBreakdownVal {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
   color: var(--ink);
 }
 
-.badgeDesc {
-  font-family: var(--font-body);
-  font-size: 10px;
-  color: var(--dove-gray);
-  line-height: 1.3;
+.npsBreakdownCount {
+  font-size: 11px;
+  color: var(--silver-chalice);
+  font-family: var(--font-mono);
 }
 
-.reputationProgressWrap {
-  padding-top: 14px;
-  border-top: 1px solid var(--mercury);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.reputationTopRow {
+.npsBenchmarkFootnote {
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--dove-gray);
+  padding-top: 10px;
+  border-top: 1px solid var(--mercury);
 }
 
-.reputationTitle {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--scorpion);
-}
-
-.reputationLevel {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--pomegranate);
+.npsBenchmarkFootnote strong {
+  color: var(--ink);
 }
 
 /* ----------------------------------------------------
@@ -976,7 +1027,8 @@
 
 @media (max-width: 1024px) {
   .topRowGrid,
-  .middleGridRow {
+  .middleGridRow,
+  .npsRowGrid {
     grid-template-columns: 1fr;
   }
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useMemo, type CSSProperties, type ReactNode } from "react";
 import {
+  Award,
   Bell,
   CalendarDays,
   DollarSign,
@@ -43,6 +44,7 @@ const NAV_ICONS = {
   notifications: Bell,
   earnings: DollarSign,
   reviews: Star,
+  achievements: Award,
   settings: Settings,
 } as const;
 
@@ -56,6 +58,8 @@ function isNavItemActive(id: string, pathname: string, href: string, currentHash
   if (id === "requests") return pathname.startsWith("/expert/requests/");
   if (id === "notifications") return pathname.startsWith("/expert/notifications/");
   if (id === "profile") return pathname.startsWith(EXPERT_PROFILE_HREF);
+  if (id === "achievements") return pathname.startsWith("/expert/achievements/");
+  if (id === "settings") return pathname.startsWith("/expert/settings/");
 
   if (itemHash) {
     return pathname === baseHref && currentHash === itemHash;
@@ -223,7 +227,6 @@ export default function ExpertShell({ children }: ExpertShellProps) {
             </button>
           </div>
 
-          {!isCollapsed && <div className={styles.navLabel}>MAIN MENU</div>}
           <nav className={styles.navSection} aria-label="Main">
             {dynamicMainNav.map((item) => (
               <NavLink
@@ -234,10 +237,6 @@ export default function ExpertShell({ children }: ExpertShellProps) {
                 isCollapsed={isCollapsed}
               />
             ))}
-          </nav>
-
-          {!isCollapsed && <div className={styles.navLabel}>Account</div>}
-          <nav className={styles.navSection} aria-label="Account">
             <NavLink
               item={SETTINGS_NAV}
               pathname={pathname}

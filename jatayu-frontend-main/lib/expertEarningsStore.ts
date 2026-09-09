@@ -58,42 +58,81 @@ export type EarningsSummary = {
   pendingPayout: string;
   totalInvoices: number;
   avgPerSession: string;
-  platformFee: string;
+  credits: string;
+  platformFee?: string;
 };
 
 export const EARNINGS_SUMMARY: EarningsSummary = {
-  availableBalance: "$3,240.00",
+  availableBalance: "₹32,400",
   nextPayoutDate: "Dec 24, 2024",
-  totalEarned: "$14,820",
-  annualGoalPercent: 74,
-  thisMonthRevenue: "$3,960",
+  totalEarned: "₹1,48,200",
+  annualGoalPercent: 0,
+  thisMonthRevenue: "₹39,600",
   thisMonthSessions: 8,
-  pendingPayout: "$840",
+  pendingPayout: "₹8,400",
   totalInvoices: 18,
-  avgPerSession: "$220",
+  avgPerSession: "₹2,200",
+  credits: "1,250",
   platformFee: "10%",
 };
 
+export type PricingRevenuePoint = {
+  price: string;
+  numericPrice: number;
+  revenue: number;
+  sessions: number;
+  isCurrentRate?: boolean;
+};
+
+export const PRICING_REVENUE_DATA: PricingRevenuePoint[] = [
+  { price: "₹500", numericPrice: 500, revenue: 6500, sessions: 13 },
+  { price: "₹1,000", numericPrice: 1000, revenue: 16000, sessions: 16 },
+  { price: "₹1,500", numericPrice: 1500, revenue: 25500, sessions: 17 },
+  { price: "₹2,200", numericPrice: 2200, revenue: 48400, sessions: 22, isCurrentRate: true },
+  { price: "₹3,000", numericPrice: 3000, revenue: 36000, sessions: 12 },
+  { price: "₹4,000", numericPrice: 4000, revenue: 28000, sessions: 7 },
+  { price: "₹5,000", numericPrice: 5000, revenue: 20000, sessions: 4 },
+];
+
+export const PACKAGE_PRICING_REVENUE_DATA: PricingRevenuePoint[] = [
+  { price: "₹500 (15m)", numericPrice: 500, revenue: 9500, sessions: 19 },
+  { price: "₹1,200 (30m)", numericPrice: 1200, revenue: 21600, sessions: 18 },
+  { price: "₹2,200 (60m)", numericPrice: 2200, revenue: 52800, sessions: 24, isCurrentRate: true },
+  { price: "₹4,500 (Audit)", numericPrice: 4500, revenue: 36000, sessions: 8 },
+  { price: "₹8,000 (Retainer)", numericPrice: 8000, revenue: 32000, sessions: 4 },
+];
+
+export const DAILY_REVENUE_DATA: RevenueDataPoint[] = [
+  { label: "Mon", amount: 3500 },
+  { label: "Tue", amount: 6200 },
+  { label: "Wed", amount: 4800 },
+  { label: "Thu", amount: 7500 },
+  { label: "Fri", amount: 5400 },
+  { label: "Sat", amount: 8200 },
+  { label: "Sun", amount: 2800 },
+];
+
 export const MONTHLY_REVENUE_DATA: RevenueDataPoint[] = [
-  { label: "Jan", amount: 1200 },
-  { label: "Feb", amount: 1850 },
-  { label: "Mar", amount: 2100 },
-  { label: "Apr", amount: 1950 },
-  { label: "May", amount: 2400 },
-  { label: "Jun", amount: 2800 },
-  { label: "Jul", amount: 3100 },
-  { label: "Aug", amount: 2900 },
-  { label: "Sep", amount: 3400 },
-  { label: "Oct", amount: 3800 },
-  { label: "Nov", amount: 4100 },
-  { label: "Dec", amount: 3960 },
+  { label: "Jul", amount: 42000 },
+  { label: "Aug", amount: 51000 },
+  { label: "Sep", amount: 48000 },
+  { label: "Oct", amount: 62000 },
+  { label: "Nov", amount: 71000 },
+  { label: "Dec", amount: 84200 },
+];
+
+export const YEARLY_REVENUE_DATA: RevenueDataPoint[] = [
+  { label: "2023", amount: 52000 },
+  { label: "2024", amount: 98000 },
+  { label: "2025", amount: 157000 },
+  { label: "2026", amount: 391000 },
 ];
 
 export const WEEKLY_REVENUE_DATA: RevenueDataPoint[] = [
-  { label: "Week 1", amount: 840 },
-  { label: "Week 2", amount: 1120 },
-  { label: "Week 3", amount: 960 },
-  { label: "Week 4", amount: 1040 },
+  { label: "Week 1", amount: 18400 },
+  { label: "Week 2", amount: 21200 },
+  { label: "Week 3", amount: 19600 },
+  { label: "Week 4", amount: 25000 },
 ];
 
 export const PAYOUT_METHODS: PayoutMethod[] = [
@@ -132,7 +171,7 @@ export const TRANSACTIONS_HISTORY: TransactionItem[] = [
     method: "stripe",
     methodLabel: "Stripe",
     transactionId: "TXN_9x740f...",
-    amount: "+$2,160",
+    amount: "+₹21,600",
     status: "Paid",
   },
   {
@@ -143,7 +182,7 @@ export const TRANSACTIONS_HISTORY: TransactionItem[] = [
     method: "stripe",
     methodLabel: "Stripe",
     transactionId: "TXN_pending...",
-    amount: "+$840",
+    amount: "+₹8,400",
     status: "Pending",
   },
   {
@@ -154,7 +193,7 @@ export const TRANSACTIONS_HISTORY: TransactionItem[] = [
     method: "paypal",
     methodLabel: "PayPal",
     transactionId: "TXN_5v924x...",
-    amount: "+$960",
+    amount: "+₹9,600",
     status: "Paid",
   },
   {
@@ -165,7 +204,7 @@ export const TRANSACTIONS_HISTORY: TransactionItem[] = [
     method: "bank",
     methodLabel: "Bank",
     transactionId: "TXN_7m019p...",
-    amount: "+$1,440",
+    amount: "+₹14,400",
     status: "Transit",
   },
   {
@@ -176,7 +215,7 @@ export const TRANSACTIONS_HISTORY: TransactionItem[] = [
     method: "stripe",
     methodLabel: "Stripe",
     transactionId: "TXN_2d481m...",
-    amount: "+$1,800",
+    amount: "+₹18,000",
     status: "Paid",
   },
 ];
@@ -188,7 +227,7 @@ export const INVOICES_LIST: InvoiceItem[] = [
     client: "Nexus Technologies",
     issueDate: "Dec 16, 2024",
     dueDate: "Dec 23, 2024",
-    amount: "$1,080.00",
+    amount: "₹10,800.00",
     status: "Paid",
   },
   {
@@ -197,7 +236,7 @@ export const INVOICES_LIST: InvoiceItem[] = [
     client: "Aura Creative",
     issueDate: "Dec 12, 2024",
     dueDate: "Dec 19, 2024",
-    amount: "$840.00",
+    amount: "₹8,400.00",
     status: "Pending",
   },
   {
@@ -206,7 +245,7 @@ export const INVOICES_LIST: InvoiceItem[] = [
     client: "CloudScale Inc",
     issueDate: "Dec 05, 2024",
     dueDate: "Dec 12, 2024",
-    amount: "$1,200.00",
+    amount: "₹12,000.00",
     status: "Paid",
   },
   {
@@ -215,7 +254,7 @@ export const INVOICES_LIST: InvoiceItem[] = [
     client: "FinVenture",
     issueDate: "Nov 28, 2024",
     dueDate: "Dec 05, 2024",
-    amount: "$800.00",
+    amount: "₹8,000.00",
     status: "Paid",
   },
 ];
@@ -227,7 +266,7 @@ export const COMPLETED_JOBS_LIST: CompletedJobItem[] = [
     client: "Marcus Williams (Nexus Technologies)",
     completedDate: "Dec 16, 2024",
     duration: "Full Day (8 hrs)",
-    payout: "$1,080.00",
+    payout: "₹10,800.00",
   },
   {
     id: "job-2",
@@ -235,7 +274,7 @@ export const COMPLETED_JOBS_LIST: CompletedJobItem[] = [
     client: "Elena Vasquez (Aura Creative)",
     completedDate: "Dec 12, 2024",
     duration: "4 hrs",
-    payout: "$840.00",
+    payout: "₹8,400.00",
   },
   {
     id: "job-3",
@@ -243,6 +282,6 @@ export const COMPLETED_JOBS_LIST: CompletedJobItem[] = [
     client: "David Park (CloudScale Inc)",
     completedDate: "Dec 05, 2024",
     duration: "6 hrs",
-    payout: "$1,200.00",
+    payout: "₹12,000.00",
   },
 ];

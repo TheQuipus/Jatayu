@@ -1,16 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   Bell,
   CalendarClock,
   Check,
   CheckCircle2,
-  Clock3,
   CreditCard,
   MessageSquare,
-  Settings,
   Star,
   UserRound,
 } from "lucide-react";
@@ -30,14 +27,7 @@ type ExpertNotification = {
   secondaryAction?: string;
 };
 
-const FILTERS: { id: "all" | NotificationType; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "request", label: "Requests" },
-  { id: "message", label: "Messages" },
-  { id: "session", label: "Sessions" },
-  { id: "payment", label: "Payments" },
-  { id: "review", label: "Reviews" },
-];
+type CategoryFilter = "all" | "requests_sessions" | "message" | "payment" | "review";
 
 const INITIAL_NOTIFICATIONS: ExpertNotification[] = [
   { id: 1, type: "request", title: "New Session Request", description: "Riya Mehta has requested a 45-minute product strategy consultation for Tuesday morning.", time: "2 min ago", group: "New", unread: true, action: "Accept", secondaryAction: "View details" },
@@ -63,31 +53,57 @@ const ICONS = {
   system: Bell,
 };
 
-const SUMMARY = [
-  { label: "Total Alerts", value: 12, filterId: "all" as const },
-  { label: "Requests", value: 3, filterId: "request" as const },
-  { label: "Messages", value: 5, filterId: "message" as const },
-  { label: "Sessions", value: 2, filterId: "session" as const },
-  { label: "Payments", value: 1, filterId: "payment" as const },
-  { label: "Reviews", value: 1, filterId: "review" as const },
+const SUMMARY: { id: CategoryFilter; label: string; icon: typeof Bell; toneClass: string }[] = [
+  { id: "all", label: "Total Alerts", icon: Bell, toneClass: "all" },
+  { id: "requests_sessions", label: "Requests & Sessions", icon: CalendarClock, toneClass: "session" },
+  { id: "message", label: "Messages", icon: MessageSquare, toneClass: "message" },
+  { id: "payment", label: "Payments", icon: CreditCard, toneClass: "payment" },
+  { id: "review", label: "Reviews", icon: Star, toneClass: "review" },
 ];
 
 export default function ExpertNotifications() {
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-  const [filter, setFilter] = useState<"all" | NotificationType>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "unread" | "read">("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [pushUpdates, setPushUpdates] = useState(true);
 
-  const visibleNotifications = useMemo(
-    () => notifications.filter((notification) => filter === "all" || notification.type === filter),
-    [filter, notifications],
-  );
-
   const unreadCount = notifications.filter((notification) => notification.unread).length;
+  const readCount = notifications.length - unreadCount;
+
+  const getCategoryCount = (id: CategoryFilter) => {
+    if (id === "all") return notifications.length;
+    if (id === "requests_sessions") {
+      return notifications.filter((n) => n.type === "request" || n.type === "session").length;
+    }
+    return notifications.filter((n) => n.type === id).length;
+  };
+
+  const visibleNotifications = useMemo(() => {
+    return notifications.filter((notification) => {
+      // 1. Read / Unread / All Filter
+      const matchesStatus =
+        statusFilter === "all"
+          ? true
+          : statusFilter === "unread"
+          ? notification.unread
+          : !notification.unread;
+      if (!matchesStatus) return false;
+
+      // 2. Category Filter
+      if (categoryFilter === "all") return true;
+      if (categoryFilter === "requests_sessions") {
+        return notification.type === "request" || notification.type === "session";
+      }
+      return notification.type === categoryFilter;
+    });
+  }, [categoryFilter, notifications, statusFilter]);
 
   const markRead = (id: number) => {
     setNotifications((current) =>
-      current.map((notification) => notification.id === id ? { ...notification, unread: false } : notification),
+      current.map((notification) =>
+        notification.id === id ? { ...notification, unread: false } : notification
+      )
     );
   };
 
@@ -110,31 +126,32 @@ export default function ExpertNotifications() {
               className={styles.markButton}
               onClick={() =>
                 setNotifications((current) =>
-                  current.map((notification) => ({ ...notification, unread: false })),
+                  current.map((notification) => ({ ...notification, unread: false }))
                 )
               }
               disabled={!unreadCount}
             >
               <Check size={15} aria-hidden="true" /> Mark all read
             </button>
-            <Link href="/expert/dashboard/#settings" className={styles.settingsButton}>
-              <Settings size={15} aria-hidden="true" /> Preferences
-            </Link>
           </div>
         </header>
 
         {/* --------------------------------------------------
-            2. KPI SUMMARY CARDS ROW
+            2. KPI SUMMARY CARDS ROW (Clickable Filters)
         -------------------------------------------------- */}
-        <div className={styles.summaryGrid} aria-label="Notification summary">
+        <div className={styles.summaryGrid} aria-label="Notification summary filters">
           {SUMMARY.map((item) => {
-            const Icon = item.filterId === "all" ? Bell : ICONS[item.filterId];
-            const isActive = filter === item.filterId;
+            const Icon = item.icon;
+            const isActive = categoryFilter === item.id;
+            const count = getCategoryCount(item.id);
+
             return (
-              <article
-                key={item.label}
-                className={`${styles.stat} ${styles[item.filterId]} ${isActive ? styles.statActive : ""}`}
-                onClick={() => setFilter(item.filterId)}
+              <button
+                key={item.id}
+                type="button"
+                className={`${styles.stat} ${styles[item.toneClass]} ${isActive ? styles.statActive : ""}`}
+                onClick={() => setCategoryFilter((current) => (current === item.id ? "all" : item.id))}
+                aria-pressed={isActive}
               >
                 <div className={styles.statHeader}>
                   <span className={styles.statLabel}>{item.label}</span>
@@ -142,8 +159,8 @@ export default function ExpertNotifications() {
                     <Icon size={16} aria-hidden="true" />
                   </span>
                 </div>
-                <div className={styles.statVal}>{item.value}</div>
-              </article>
+                <div className={styles.statVal}>{count}</div>
+              </button>
             );
           })}
         </div>
@@ -153,18 +170,31 @@ export default function ExpertNotifications() {
         -------------------------------------------------- */}
         <div className={styles.layout}>
           <main className={styles.feed}>
-            <nav className={styles.filters} aria-label="Filter notifications">
-              {FILTERS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  aria-pressed={filter === item.id}
-                  className={`${styles.filterBtn} ${filter === item.id ? styles.filterActive : ""}`}
-                  onClick={() => setFilter(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
+            <nav className={styles.filters} aria-label="Filter by read status">
+              <button
+                type="button"
+                aria-pressed={statusFilter === "all"}
+                className={`${styles.filterBtn} ${statusFilter === "all" ? styles.filterActive : ""}`}
+                onClick={() => setStatusFilter("all")}
+              >
+                All ({notifications.length})
+              </button>
+              <button
+                type="button"
+                aria-pressed={statusFilter === "unread"}
+                className={`${styles.filterBtn} ${statusFilter === "unread" ? styles.filterActive : ""}`}
+                onClick={() => setStatusFilter("unread")}
+              >
+                Unread ({unreadCount})
+              </button>
+              <button
+                type="button"
+                aria-pressed={statusFilter === "read"}
+                className={`${styles.filterBtn} ${statusFilter === "read" ? styles.filterActive : ""}`}
+                onClick={() => setStatusFilter("read")}
+              >
+                Read ({readCount})
+              </button>
             </nav>
 
             {(["New", "Earlier"] as const).map((group) => {
@@ -240,47 +270,12 @@ export default function ExpertNotifications() {
               <div className={styles.empty}>
                 <CheckCircle2 size={28} />
                 <strong>You’re all caught up</strong>
-                <span>No notifications match this filter.</span>
+                <span>No notifications match your current filter.</span>
               </div>
             ) : null}
           </main>
 
           <aside className={styles.rail}>
-            <section className={styles.sideCard}>
-              <div className={styles.sideHeading}>
-                <div className={styles.sectionHeader} style={{ marginBottom: 4 }}>
-                  <span className={styles.sectionDot} />
-                  <h2 className={styles.sectionTitle}>Shortcuts</h2>
-                </div>
-                <h2>Quick actions</h2>
-                <span>Useful expert links</span>
-              </div>
-              <Link href="/expert/messages/" className={styles.sideActionLink}>
-                <span className={styles.sideActionIcon}><MessageSquare size={16} /></span>
-                <span className={styles.sideActionText}>
-                  <strong>Open messages</strong>
-                  <small>5 recent conversations</small>
-                </span>
-                <span className={styles.sideActionArrow}>›</span>
-              </Link>
-              <Link href="/expert/requests/" className={styles.sideActionLink}>
-                <span className={styles.sideActionIcon}><UserRound size={16} /></span>
-                <span className={styles.sideActionText}>
-                  <strong>Review requests</strong>
-                  <small>3 awaiting response</small>
-                </span>
-                <span className={styles.sideActionArrow}>›</span>
-              </Link>
-              <Link href="/expert/availability/" className={styles.sideActionLink}>
-                <span className={styles.sideActionIcon}><CalendarClock size={16} /></span>
-                <span className={styles.sideActionText}>
-                  <strong>Update availability</strong>
-                  <small>Manage your calendar</small>
-                </span>
-                <span className={styles.sideActionArrow}>›</span>
-              </Link>
-            </section>
-
             <section className={styles.sideCard}>
               <div className={styles.sideHeading}>
                 <div className={styles.sectionHeader} style={{ marginBottom: 4 }}>
@@ -314,17 +309,6 @@ export default function ExpertNotifications() {
                 />
                 <i />
               </label>
-              <Link href="/expert/dashboard/#settings" className={styles.manageLink}>
-                Manage all settings <span>›</span>
-              </Link>
-            </section>
-
-            <section className={styles.tip}>
-              <Clock3 size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
-              <div>
-                <strong>Stay responsive</strong>
-                <p>Experts who reply within an hour are more likely to receive repeat client bookings.</p>
-              </div>
             </section>
           </aside>
         </div>
