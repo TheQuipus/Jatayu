@@ -73,6 +73,7 @@
 .bottomGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
   align-items: start;
 }
 
@@ -90,6 +91,47 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.cardHeaderTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.timeframeSelectWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.timeframeSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 32px;
+  padding: 4px 26px 4px 10px;
+  border: 1px solid var(--mercury);
+  border-radius: 8px;
+  background-color: var(--seashell);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23686868' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.timeframeSelect:hover,
+.timeframeSelect:focus {
+  border-color: var(--pomegranate);
+  background-color: var(--white);
+  outline: none;
 }
 
 .cardTitle {
@@ -278,15 +320,11 @@
 }
 
 .statsGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
   width: 100%;
   margin-bottom: 24px;
-}
-
-.statsGrid>* {
-  min-width: 0;
 }
 
 .statCard {
@@ -296,10 +334,10 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  flex: 1 1 220px;
+  flex: 1 1 0px;
   max-width: 100%;
-  min-height: 140px;
-  padding: 18px 20px;
+  min-height: 124px;
+  padding: 14px 12px;
   border-radius: 0;
   text-align: left;
   font: inherit;
@@ -315,17 +353,20 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .statLabel {
   font-family: var(--font-body);
-  font-size: 22px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.25;
   color: var(--dove-gray);
   transition: color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .statIconBox {
@@ -341,17 +382,17 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 6px;
   margin-top: auto;
 }
 
 .statValue {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 44px;
+  font-size: 24px;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--ink);
   transition: color 0.2s ease;
 }
@@ -359,10 +400,10 @@
 .statDelta {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  padding: 2px 6px;
   border-radius: 999px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -401,22 +442,29 @@
   width: 100%;
   height: auto;
   display: block;
+  overflow: visible;
 }
 
-.chartLabels {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px;
-  margin-top: 8px;
-  padding: 0 4px;
+.chartGridLine {
+  stroke: var(--mercury);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
 }
 
-.chartLabel {
+.chartAxisText {
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--silver-chalice);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 9px;
+  fill: var(--silver-chalice);
+  letter-spacing: 0.02em;
+}
+
+.chartDot {
+  transition: r 0.2s ease, fill 0.2s ease;
+  cursor: pointer;
+}
+
+.chartDot:hover {
+  r: 5px;
 }
 
 .viewAllLink {
@@ -615,6 +663,94 @@
   background: var(--pomegranate);
 }
 
+.sessionStatusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.sessionMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion);
+  margin-top: 2px;
+}
+
+.metaDot {
+  color: var(--silver-chalice);
+}
+
+.sessionPayoutVal {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+.ratingHintHighlight {
+  font-weight: 700;
+  color: var(--pomegranate);
+}
+
+.reviewClientInfo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.reviewClientRole {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--dove-gray);
+}
+
+.ratingBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pomegranate);
+  background: color-mix(in srgb, var(--pomegranate) 8%, var(--white));
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 25%, transparent);
+}
+
+.reviewFooterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.reviewSessionBadge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--scorpion);
+  background: var(--seashell);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
 .actionList {
   margin: 0;
   padding: 0;
@@ -666,7 +802,6 @@
 }
 
 @media (max-width: 1200px) {
-
   .topGrid,
   .middleGrid,
   .bottomGrid {
@@ -674,7 +809,7 @@
   }
 
   .statsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .checklist {
@@ -682,7 +817,13 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
   .statsGrid {
     grid-template-columns: 1fr;
   }

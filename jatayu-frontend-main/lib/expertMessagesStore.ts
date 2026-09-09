@@ -61,7 +61,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     activeSession: {
       projectTitle: "Product Strategy Workshop",
       date: "Dec 20 · Full Day",
-      payout: "$1,080",
+      payout: "₹10,800",
       status: "Confirmed",
     },
     clientDetails: {
@@ -69,7 +69,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
       industry: "SaaS / B2B",
       timezone: "PST (UTC-8)",
       sessionsCompleted: 3,
-      totalSpent: "$2,400",
+      totalSpent: "₹24,000",
     },
     messages: [
       {
@@ -127,7 +127,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
       industry: "Design Agency",
       timezone: "EST (UTC-5)",
       sessionsCompleted: 2,
-      totalSpent: "$1,200",
+      totalSpent: "₹12,000",
     },
     messages: [
       {
@@ -159,7 +159,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
       industry: "DevOps & Infrastructure",
       timezone: "CST (UTC-6)",
       sessionsCompleted: 4,
-      totalSpent: "$3,600",
+      totalSpent: "₹36,000",
     },
     messages: [
       {
@@ -191,7 +191,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
       industry: "Fintech",
       timezone: "PST (UTC-8)",
       sessionsCompleted: 1,
-      totalSpent: "$800",
+      totalSpent: "₹8,000",
     },
     messages: [
       {
@@ -223,7 +223,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
       industry: "Healthcare Tech",
       timezone: "EST (UTC-5)",
       sessionsCompleted: 1,
-      totalSpent: "$500",
+      totalSpent: "₹5,000",
     },
     messages: [
       {
@@ -255,7 +255,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
       industry: "Analytics & Growth",
       timezone: "PST (UTC-8)",
       sessionsCompleted: 3,
-      totalSpent: "$2,100",
+      totalSpent: "₹21,000",
     },
     messages: [
       {

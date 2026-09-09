@@ -94,6 +94,7 @@ export default function TopNavbar() {
       "/expert/report",
       "/expert/requests",
       "/expert/reviews",
+      "/expert/achievements",
     ];
     return expertPortalRoutes.some((route) => pathname.startsWith(route));
   }

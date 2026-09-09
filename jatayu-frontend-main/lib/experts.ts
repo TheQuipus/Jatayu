@@ -195,7 +195,7 @@ const baseExperts: Expert[] = [
     name: "Sneha Laxmeshwar",
     role: "Ex-VC Partner at Sequoia | Startup Advisor | 15+ Yrs Exp",
     desc: "VC partner helping founders navigate fundraising and venture capital",
-    bio: "I help early-stage founders navigate the complex world of venture capital. With over 15 years of experience on both sides of the table—as a founder who raised $20M+ and as a VC partner who deployed over $100M—I know exactly what investors are looking for. Whether you need help tearing down your pitch deck, structuring your seed round, or negotiating a term sheet, I provide actionable, no-nonsense advice.",
+    bio: "I help early-stage founders navigate the complex world of venture capital. With over 15 years of experience on both sides of the table—as a founder who raised ₹150 Cr+ and as a VC partner who deployed over ₹750 Cr—I know exactly what investors are looking for. Whether you need help tearing down your pitch deck, structuring your seed round, or negotiating a term sheet, I provide actionable, no-nonsense advice.",
     image: "/assets/img/team1.png",
     topics: ["Legal & Compliance", "Startup & Fundraising", "Career & Jobs", "Tax & Finance"],
     languages: ["Hindi", "English"],
@@ -208,7 +208,7 @@ const baseExperts: Expert[] = [
     sampleAnswers: [
       {
         question: "How should i value my pre-revenue saas startup for a seed round?",
-        answer: "Pre-revenue valuation is more art than science. Don't focus on DCF models; investors won't believe them anyway. Instead, look at the market standard for your geography and sector. In India right now, a standard seed round for a high-quality SaaS team ranges from $1M to $2M at a $6M to $10M post-money valuation. Focus on dilution: aim to give up 15-20% of your company in your seed round, and back-calculate your valuation from the amount you actually need to raise to reach 18-24 months of runway."
+        answer: "Pre-revenue valuation is more art than science. Don't focus on DCF models; investors won't believe them anyway. Instead, look at the market standard for your geography and sector. In India right now, a standard seed round for a high-quality SaaS team ranges from ₹8 Cr to ₹16 Cr at a ₹50 Cr to ₹80 Cr post-money valuation. Focus on dilution: aim to give up 15-20% of your company in your seed round, and back-calculate your valuation from the amount you actually need to raise to reach 18-24 months of runway."
       },
       {
         question: "What is the biggest mistake founders make during term sheet negotiation?",

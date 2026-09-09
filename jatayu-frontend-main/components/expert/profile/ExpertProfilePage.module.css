@@ -38,8 +38,42 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 8px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.viewPublicProfileBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bunker);
+  color: var(--white);
+  border: 1px solid var(--bunker);
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.viewPublicProfileBtn:hover {
+  background: color-mix(in srgb, var(--bunker) 80%, var(--pomegranate));
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
 }
 
 .logoutBtn {

@@ -112,7 +112,7 @@
 ---------------------------------------------------- */
 .topGridRow1 {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr;
+  grid-template-columns: 1.25fr 1fr;
   gap: 16px;
 }
 
@@ -277,9 +277,49 @@
   background: var(--pomegranate, #e53b17);
 }
 
+.goalInfoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
 .progressLabel {
   font-size: 11px;
   color: var(--silver-chalice, #9e9e9e);
+}
+
+.setGoalBtn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dove-gray, #686868);
+  background: var(--seashell, #f5f5f5);
+  border: 1px solid var(--mercury, #e2e2e2);
+  border-radius: 6px;
+  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.setGoalBtn:disabled {
+  cursor: not-allowed;
+}
+
+.comingSoonBadge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: #ebebeb;
+  color: var(--dove-gray, #686868);
+  border: 1px solid #dcdcdc;
 }
 
 .sessionsCompletedText {
@@ -386,37 +426,43 @@
   color: var(--silver-chalice, #9e9e9e);
 }
 
-.chartToggleGroup {
-  display: flex;
+.timeframeSelectWrapper {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--seashell, #f1f1f1);
+}
+
+.timeframeSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 32px;
+  padding: 4px 26px 4px 10px;
   border: 1px solid var(--mercury, #e6e6e6);
-}
-
-.chartToggleBtn {
-  padding: 5px 12px;
-  border-radius: 7px;
-  border: none;
-  background: transparent;
-  color: var(--dove-gray, #686868);
-  font-size: 12px;
+  border-radius: 8px;
+  background-color: var(--seashell, #f1f1f1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23686868' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink, #0b0d14);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-.chartToggleActive {
-  background: var(--white, #ffffff);
-  color: var(--ink, #0b0d14);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+.timeframeSelect:hover,
+.timeframeSelect:focus {
+  border-color: var(--pomegranate, #e53b17);
+  background-color: var(--white, #ffffff);
+  outline: none;
 }
 
 .chartSvgWrap {
   flex: 1;
   width: 100%;
-  min-height: 220px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -424,19 +470,31 @@
 
 .svgElement {
   width: 100%;
-  height: 200px;
+  height: auto;
+  display: block;
+  overflow: visible;
 }
 
-.chartLabelsRow {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 10px;
-  border-top: 1px solid var(--mercury, #e6e6e6);
+.chartGridLine {
+  stroke: var(--mercury, #e6e6e6);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
 }
 
-.chartLabelText {
-  font-size: 11px;
-  color: var(--silver-chalice, #9e9e9e);
+.chartAxisText {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  fill: var(--silver-chalice, #9e9e9e);
+  letter-spacing: 0.02em;
+}
+
+.chartDot {
+  transition: r 0.2s ease, fill 0.2s ease;
+  cursor: pointer;
+}
+
+.chartDot:hover {
+  r: 6px;
 }
 
 /* Payout Methods Card */
@@ -687,7 +745,31 @@
 .tableControls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.statementDownloadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--mercury, #e6e6e6);
+  background: var(--seashell, #f1f1f1);
+  color: var(--ink, #0b0d14);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.statementDownloadBtn:hover {
+  background: #e9e9e9;
+  border-color: #d8d8d8;
+}
+
+.statementDownloadBtn svg {
+  color: var(--pomegranate, #e53b17);
 }
 
 /* Table Wrapper */
@@ -856,6 +938,29 @@
   color: #1976d2;
 }
 
+.invoiceDownloadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--mercury, #e6e6e6);
+  background: var(--seashell, #f1f1f1);
+  color: var(--ink, #0b0d14);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.invoiceDownloadBtn:hover {
+  background: color-mix(in srgb, var(--pomegranate, #e53b17) 8%, var(--white, #ffffff));
+  border-color: var(--pomegranate, #e53b17);
+  color: var(--pomegranate, #e53b17);
+}
+
 .loadMoreBtn {
   align-self: center;
   padding: 8px 20px;
@@ -876,6 +981,248 @@
   background: var(--mercury, #e6e6e6);
 }
 
+
+/* ----------------------------------------------------
+   STATEMENT MODAL
+---------------------------------------------------- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(11, 13, 20, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.statementModal {
+  width: 100%;
+  max-width: 520px;
+  background: var(--white, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--mercury, #e6e6e6);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleUp 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--mercury, #e6e6e6);
+}
+
+.modalTitle {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink, #0b0d14);
+  margin: 0 0 4px;
+}
+
+.modalSubtitle {
+  font-size: 13px;
+  color: var(--dove-gray, #686868);
+  margin: 0;
+}
+
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--dove-gray, #686868);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.modalCloseBtn:hover {
+  background: var(--seashell, #f1f1f1);
+  color: var(--ink, #0b0d14);
+}
+
+.modalBody {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.presetRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.presetBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--mercury, #e6e6e6);
+  background: var(--seashell, #f5f5f5);
+  color: var(--scorpion, #5e5e5e);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.presetBtn:hover {
+  background: #ececec;
+  color: var(--ink, #0b0d14);
+}
+
+.presetBtnActive {
+  background: var(--ink, #0b0d14);
+  color: var(--white, #ffffff);
+  border-color: var(--ink, #0b0d14);
+}
+
+.dateInputsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.dateField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dateLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--scorpion, #5e5e5e);
+}
+
+.dateInput {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--mercury, #e6e6e6);
+  background: var(--white, #ffffff);
+  color: var(--ink, #0b0d14);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.dateInput:focus {
+  border-color: var(--pomegranate, #e53b17);
+}
+
+.statementPreviewBox {
+  background: var(--seashell, #f8f8f8);
+  border: 1px solid var(--mercury, #e6e6e6);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink, #0b0d14);
+}
+
+.previewHeader svg {
+  color: var(--pomegranate, #e53b17);
+}
+
+.previewStats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.previewStatItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.previewKey {
+  color: var(--dove-gray, #686868);
+}
+
+.previewVal {
+  font-weight: 600;
+  color: var(--ink, #0b0d14);
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--mercury, #e6e6e6);
+  background: #fafafa;
+}
+
+.cancelBtn {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--mercury, #e6e6e6);
+  background: var(--white, #ffffff);
+  color: var(--scorpion, #5e5e5e);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.cancelBtn:hover {
+  background: var(--seashell, #f1f1f1);
+  color: var(--ink, #0b0d14);
+}
+
+.downloadConfirmBtn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--pomegranate, #e53b17);
+  color: var(--white, #ffffff);
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.downloadConfirmBtn:hover {
+  background: #f0441f;
+  transform: scale(1.02);
+}
 
 /* ----------------------------------------------------
    RESPONSIVE BREAKPOINTS
@@ -907,5 +1254,14 @@
   .tableHeaderRow {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .tableControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dateInputsGrid {
+    grid-template-columns: 1fr;
   }
 }

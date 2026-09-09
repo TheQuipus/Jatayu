@@ -1,0 +1,465 @@
+/* ==========================================================================
+   Jatayu Design System: Demo Review Rating Modal
+   ========================================================================== */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(8, 10, 16, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modalOverlay::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalCard {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  animation: scaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: auto;
+  position: relative;
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Jatayu Signature Angled Polygon Header */
+.modalHeader {
+  background: var(--ink, #080a10);
+  color: var(--white, #ffffff);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+  -webkit-clip-path: polygon(0% 25%, 4% 0%, 96% 0%, 100% 25%, 100% 100%, 0% 100%);
+}
+
+.modalHeaderTitle {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--white, #ffffff);
+}
+
+.headerCloseBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--silver-chalice, #9e9e9e);
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.headerCloseBtn:hover {
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+/* Jatayu White Body Surface */
+.modalBody {
+  background: #ffffff;
+  padding: 24px 24px 20px;
+  border-left: 1px solid var(--mercury, #e2e8f0);
+  border-right: 1px solid var(--mercury, #e2e8f0);
+  color: var(--ink, #080a10);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Intro and Avatar styling */
+.reviewIntro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.headingLineOne {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--bunker, #0f172a);
+}
+
+.headingLineTwo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--pomegranate, #e53b17);
+}
+
+.coinLottieWrap {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.avatarRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 76px;
+  margin: 4px 0;
+  position: relative;
+}
+
+.reviewAvatar {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--mercury, #e2e8f0);
+  flex-shrink: 0;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.reviewAvatarShifted {
+  transform: translateX(-12px);
+}
+
+.reviewAvatarImg {
+  object-fit: cover;
+}
+
+.emojiBadgeCircle {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #fff6f2;
+  border: 2px solid var(--pomegranate, #e53b17);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  opacity: 0;
+  transform: translateX(12px) scale(0.6);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+.emojiBadgeCircleActive {
+  opacity: 1;
+  transform: translateX(24px) scale(1);
+  box-shadow: 0 4px 14px rgba(229, 59, 23, 0.2);
+}
+
+.emojiImg {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  animation: emojiBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes emojiBounce {
+  0% {
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.expertNameTitle {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--bunker, #0f172a);
+  margin: 0;
+}
+
+.expertRoleSubtitle {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion, #64748b);
+  margin-top: -4px;
+}
+
+.introHelperText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--scorpion, #64748b);
+  margin: 0;
+  max-width: 380px;
+}
+
+/* Star Rating Selector */
+.reviewForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.starRatingSelector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.starBtn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 48px;
+  height: 48px;
+  transition: transform 0.15s ease;
+}
+
+.starBtn:hover {
+  transform: scale(1.18);
+}
+
+.ratingStarIcon {
+  transition: all 0.15s ease;
+}
+
+.ratingStarIconFilled {
+  filter: drop-shadow(0 2px 6px rgba(255, 188, 9, 0.4));
+  animation: starPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+@keyframes starPop {
+  0% {
+    transform: scale(0.7);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.currentRatingText {
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: #f59e0b;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-top: -6px;
+}
+
+/* Comment Form Group */
+.commentFormGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.formLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bunker, #0f172a);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.commentTextarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--mercury, #e2e8f0);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink, #080a10);
+  background: #f8fafc;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.commentTextarea:focus {
+  border-color: var(--pomegranate, #e53b17);
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(229, 59, 23, 0.12);
+}
+
+.modalActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* Success / Submitted State */
+.submittedContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 10px 0;
+  position: relative;
+}
+
+.confettiWrap {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  height: 240px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.animatedBadgeWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.successIconBadge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--green, #10b981) 12%, #ffffff);
+  border: 2px solid color-mix(in srgb, var(--green, #10b981) 40%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green, #10b981);
+}
+
+.successCheckIcon {
+  color: var(--green, #10b981);
+}
+
+.submittedTitle {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--bunker, #0f172a);
+  margin: 0;
+}
+
+.creditsEarnedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: #ea580c;
+}
+
+.submittedDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--scorpion, #64748b);
+  margin: 0;
+  max-width: 380px;
+}
+
+.submittedSummaryBox {
+  width: 100%;
+  background: #f8fafc;
+  border: 1px solid var(--mercury, #e2e8f0);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.submittedStarsRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.submittedRatingLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #d97706;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+.submittedCommentQuote {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink, #080a10);
+  font-style: italic;
+  margin: 0;
+}
+
+.noCommentText {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion, #94a3b8);
+  margin: 0;
+}
+
+/* Jatayu Angled Polygon Footer */
+.modalFooter {
+  height: 20px;
+  background: var(--ink, #080a10);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+  -webkit-clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 96% 100%, 4% 100%, 0% 70%);
+}

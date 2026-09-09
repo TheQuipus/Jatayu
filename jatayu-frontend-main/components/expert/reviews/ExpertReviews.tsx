@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   Award,
-  Bell,
   CheckCircle2,
   ChevronDown,
   Clock,
@@ -12,7 +11,6 @@ import {
   Lock,
   Medal,
   MessageSquare,
-  Search,
   Send,
   Shield,
   Star,
@@ -23,10 +21,11 @@ import {
 } from "lucide-react";
 import {
   REVIEWS_SUMMARY,
+  NET_PROMOTER_SCORE,
   CATEGORY_SCORES,
-  FREQUENT_TAGS,
-  SIX_MONTH_TREND,
-  ONE_YEAR_TREND,
+  DAILY_RATING_TREND,
+  WEEKLY_RATING_TREND,
+  MONTHLY_RATING_TREND,
   ACHIEVEMENT_BADGES,
   INITIAL_REVIEWS,
   type ReviewItem,
@@ -34,34 +33,48 @@ import {
 import styles from "./ExpertReviews.module.css";
 
 export default function ExpertReviews() {
-  const [trendView, setTrendView] = useState<"6m" | "1y">("6m");
+  const [trendView, setTrendView] = useState<"daily" | "weekly" | "monthly">("monthly");
   const [activeTab, setActiveTab] = useState<"all" | "needsReply" | "fiveStar" | "recent">("all");
   const [reviews, setReviews] = useState<ReviewItem[]>(INITIAL_REVIEWS);
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyInput, setReplyInput] = useState<string>("");
 
-  const trendPoints = trendView === "6m" ? SIX_MONTH_TREND : ONE_YEAR_TREND;
+  const trendPoints =
+    trendView === "daily"
+      ? DAILY_RATING_TREND
+      : trendView === "weekly"
+      ? WEEKLY_RATING_TREND
+      : MONTHLY_RATING_TREND;
 
-  // Calculate SVG Rating Trend chart path
-  const minVal = 4.5;
+  // Calculate SVG Rating Trend chart path with Star Y-Axis
+  const minVal = 4.4;
   const maxVal = 5.05;
   const range = maxVal - minVal;
 
-  const svgWidth = 500;
+  const svgWidth = 520;
   const svgHeight = 160;
-  const padX = 20;
-  const padY = 20;
-  const chartW = svgWidth - padX * 2;
-  const chartH = svgHeight - padY * 2;
+  const padLeft = 48;
+  const padRight = 14;
+  const padTop = 16;
+  const padBottom = 16;
+  const chartW = svgWidth - padLeft - padRight;
+  const chartH = svgHeight - padTop - padBottom;
+
+  const yTicks = [
+    { value: 5.0, label: "5.0 ★" },
+    { value: 4.8, label: "4.8 ★" },
+    { value: 4.6, label: "4.6 ★" },
+    { value: 4.4, label: "4.4 ★" },
+  ];
 
   const pts = trendPoints.map((pt, i) => {
-    const x = padX + (i / (trendPoints.length - 1)) * chartW;
-    const y = padY + chartH - ((pt.rating - minVal) / range) * chartH;
+    const x = padLeft + (i / (trendPoints.length - 1)) * chartW;
+    const y = padTop + chartH - ((pt.rating - minVal) / range) * chartH;
     return { x, y, label: pt.label, rating: pt.rating };
   });
 
   const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaPath = `${linePath} L ${pts[pts.length - 1].x} ${svgHeight - padY} L ${pts[0].x} ${svgHeight - padY} Z`;
+  const areaPath = `${linePath} L ${pts[pts.length - 1].x} ${svgHeight - padBottom} L ${pts[0].x} ${svgHeight - padBottom} Z`;
 
   // Filter reviews
   const filteredReviews = reviews.filter((rev) => {
@@ -116,27 +129,13 @@ export default function ExpertReviews() {
               Reviews & <span className={styles.accentWord}>REPUTATION</span>
             </h1>
           </div>
-          <div className={styles.headerActions}>
-            <select className={styles.selectDropdown} defaultValue="all-time">
-              <option value="all-time">All Time</option>
-              <option value="this-year">This Year</option>
-              <option value="last-6-months">Last 6 Months</option>
-            </select>
-            <button type="button" className={styles.iconBtn} title="Search Reviews">
-              <Search size={16} />
-            </button>
-            <button type="button" className={styles.iconBtn} title="Notifications">
-              <Bell size={16} />
-              <span className={styles.notificationDot} />
-            </button>
-          </div>
         </div>
 
         {/* --------------------------------------------------
             2. KPI OVERVIEW METRICS ROW
         -------------------------------------------------- */}
         <div className={styles.summaryGrid}>
-          <div className={`${styles.kpiCard} ${styles.kpiCardActive}`}>
+          <div className={styles.kpiCard}>
             <div className={styles.kpiHeader}>
               <span className={styles.kpiLabel}>Overall Rating</span>
               <span className={styles.kpiIconBox}>
@@ -277,18 +276,6 @@ export default function ExpertReviews() {
                 </div>
               ))}
             </div>
-
-            {/* Word Tag Cloud */}
-            <div className={styles.wordTagsSection}>
-              <span className={styles.tagsLabel}>FREQUENTLY USED WORDS</span>
-              <div className={styles.wordTagsList}>
-                {FREQUENT_TAGS.map((tag) => (
-                  <span key={tag} className={styles.wordTagChip}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -306,26 +293,16 @@ export default function ExpertReviews() {
                 </div>
                 <h2 className={styles.cardTitle}>Rating Trend</h2>
               </div>
-              <div className={styles.chartToggleGroup}>
-                <button
-                  type="button"
-                  onClick={() => setTrendView("6m")}
-                  className={`${styles.chartToggleBtn} ${
-                    trendView === "6m" ? styles.chartToggleActive : ""
-                  }`}
-                >
-                  6 Months
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTrendView("1y")}
-                  className={`${styles.chartToggleBtn} ${
-                    trendView === "1y" ? styles.chartToggleActive : ""
-                  }`}
-                >
-                  1 Year
-                </button>
-              </div>
+              <select
+                className={styles.selectDropdown}
+                value={trendView}
+                onChange={(e) => setTrendView(e.target.value as "daily" | "weekly" | "monthly")}
+                aria-label="Select rating trend timeframe"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
             </div>
 
             <div className={styles.chartSvgWrap}>
@@ -341,6 +318,35 @@ export default function ExpertReviews() {
                     <stop offset="100%" stopColor="var(--pomegranate, #e53b17)" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
+
+                {/* Y-Axis Star Rating Gridlines and Labels */}
+                {yTicks.map((tick) => {
+                  const y = padTop + chartH - ((tick.value - minVal) / range) * chartH;
+                  return (
+                    <g key={tick.value}>
+                      <line
+                        x1={padLeft}
+                        y1={y}
+                        x2={svgWidth - padRight}
+                        y2={y}
+                        stroke="var(--mercury, #e6e6e6)"
+                        strokeDasharray="3 3"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={padLeft - 8}
+                        y={y + 3.5}
+                        textAnchor="end"
+                        fontSize="10"
+                        fontFamily="var(--font-mono)"
+                        fill="#d97706"
+                        fontWeight="700"
+                      >
+                        {tick.label}
+                      </text>
+                    </g>
+                  );
+                })}
 
                 <path d={areaPath} fill="url(#trendGrad)" />
                 <path
@@ -375,51 +381,90 @@ export default function ExpertReviews() {
             </div>
           </div>
 
-          {/* Achievements Card */}
-          <div className={styles.card}>
-            <div className={styles.cardHeaderRow}>
-              <div>
-                <div className={styles.sectionHeader} style={{ marginBottom: 4 }}>
-                  <span className={styles.sectionDot} />
-                  <h2 className={styles.sectionTitle}>Reputation Badges</h2>
+          {/* Net Promoter Score Card (Right Side Beside Graph) */}
+          <div className={styles.npsCard}>
+            <div>
+              <div className={styles.npsHeaderRow}>
+                <div>
+                  <h2 className={styles.cardTitle}>NPS this month</h2>
+                  <span className={styles.chartSubtitle}>Net Promoter Score</span>
                 </div>
-                <h2 className={styles.cardTitle}>Achievements</h2>
               </div>
-              <span className={styles.statBadgeGreen}>Top Rated</span>
-            </div>
 
-            <div className={styles.badgesGrid}>
-              {ACHIEVEMENT_BADGES.map((badge) => (
+              <div className={styles.npsScoreBlock}>
+                <span className={styles.npsBigNumber}>+{NET_PROMOTER_SCORE.score}</span>
+                <span className={styles.totalReviewsCount}>
+                  Calculated from {NET_PROMOTER_SCORE.totalSurveyed} post-session surveys this month
+                </span>
+              </div>
+
+              {/* Tri-color Segmented NPS Distribution Bar */}
+              <div
+                className={styles.npsSegmentedBar}
+                role="progressbar"
+                aria-label="NPS distribution bar"
+              >
                 <div
-                  key={badge.id}
-                  className={`${styles.badgeBox} ${
-                    !badge.unlocked ? styles.badgeBoxLocked : ""
-                  }`}
-                  title={badge.description}
-                >
-                  <div className={styles.badgeIconCircle}>
-                    {renderBadgeIcon(badge.icon)}
-                  </div>
-                  <span className={styles.badgeTitle}>{badge.title}</span>
-                  <span className={styles.badgeDesc}>{badge.description}</span>
-                </div>
-              ))}
+                  className={styles.npsSegmentPromoters}
+                  style={{ width: `${NET_PROMOTER_SCORE.promotersPercent}%` }}
+                  title={`Promoters (9-10): ${NET_PROMOTER_SCORE.promotersPercent}%`}
+                />
+                <div
+                  className={styles.npsSegmentPassives}
+                  style={{ width: `${NET_PROMOTER_SCORE.passivesPercent}%` }}
+                  title={`Passives (7-8): ${NET_PROMOTER_SCORE.passivesPercent}%`}
+                />
+                <div
+                  className={styles.npsSegmentDetractors}
+                  style={{ width: `${NET_PROMOTER_SCORE.detractorsPercent}%` }}
+                  title={`Detractors (0-6): ${NET_PROMOTER_SCORE.detractorsPercent}%`}
+                />
+              </div>
             </div>
 
-            <div className={styles.reputationProgressWrap}>
-              <div className={styles.reputationTopRow}>
-                <span className={styles.reputationTitle}>REPUTATION PROGRESS</span>
-                <span className={styles.reputationLevel}>94/100 · Level 5 Expert</span>
+            {/* 3-Column Breakdown: Promoters, Passives, Detractors */}
+            <div className={styles.npsBreakdownGrid}>
+              <div className={styles.npsBreakdownItem}>
+                <span className={styles.npsBreakdownDotLabel}>
+                  <span className={styles.npsDotPromoter} /> Promoters (9-10)
+                </span>
+                <span className={styles.npsBreakdownVal}>
+                  {NET_PROMOTER_SCORE.promotersPercent}%
+                </span>
+                <span className={styles.npsBreakdownCount}>
+                  {NET_PROMOTER_SCORE.promotersCount} clients
+                </span>
               </div>
-              <div className={styles.categoryBarBg}>
-                <div className={styles.categoryBarFill} style={{ width: "94%" }} />
+
+              <div className={styles.npsBreakdownItem}>
+                <span className={styles.npsBreakdownDotLabel}>
+                  <span className={styles.npsDotPassive} /> Passives (7-8)
+                </span>
+                <span className={styles.npsBreakdownVal}>
+                  {NET_PROMOTER_SCORE.passivesPercent}%
+                </span>
+                <span className={styles.npsBreakdownCount}>
+                  {NET_PROMOTER_SCORE.passivesCount} clients
+                </span>
+              </div>
+
+              <div className={styles.npsBreakdownItem}>
+                <span className={styles.npsBreakdownDotLabel}>
+                  <span className={styles.npsDotDetractor} /> Detractors (0-6)
+                </span>
+                <span className={styles.npsBreakdownVal}>
+                  {NET_PROMOTER_SCORE.detractorsPercent}%
+                </span>
+                <span className={styles.npsBreakdownCount}>
+                  {NET_PROMOTER_SCORE.detractorsCount} clients
+                </span>
               </div>
             </div>
           </div>
         </div>
 
         {/* --------------------------------------------------
-            5. BOTTOM SECTION: CLIENT REVIEWS FEED
+            6. BOTTOM SECTION: CLIENT REVIEWS FEED
         -------------------------------------------------- */}
         <div className={styles.reviewsCard}>
           <div className={styles.sectionHeader}>

@@ -35,6 +35,7 @@ import { getRequestDetailById } from "@/lib/expertRequestDetailStore";
 import ExtendSessionChatOverlay from "./ExtendSessionChatOverlay";
 import SessionEndedScreen from "./SessionEndedScreen";
 import DemoDevControlPanel from "./DemoDevControlPanel";
+import DemoReviewModal from "./DemoReviewModal";
 
 export type DemoActiveVideoRoomProps = {
   initialRole?: "seeker" | "expert";
@@ -56,6 +57,7 @@ export default function DemoActiveVideoRoom({
 
   // In-video extend chat overlay state (Seeker demo)
   const [isExtendChatOpen, setIsExtendChatOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   // Dev simulation state: Expert already booked
   const [isExpertBooked, setIsExpertBooked] = useState<boolean>(() => {
@@ -700,6 +702,18 @@ export default function DemoActiveVideoRoom({
           onTriggerExtensionModal={() => {
             setIsExtendChatOpen(true);
           }}
+          onTriggerReviewModal={() => {
+            setIsReviewModalOpen(true);
+          }}
+        />
+
+        {/* Demo Review Rating Pop-up Modal */}
+        <DemoReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          expertName={dummyBooking.expert.name}
+          expertImage={dummyBooking.expert.image}
+          expertRole={dummyBooking.expert.role}
         />
       </section>
     );
@@ -1130,6 +1144,18 @@ export default function DemoActiveVideoRoom({
           setIsSessionEnded(false);
           setPendingExtension(null);
         }}
+        onTriggerReviewModal={() => {
+          setIsReviewModalOpen(true);
+        }}
+      />
+
+      {/* Demo Review Rating Pop-up Modal */}
+      <DemoReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        expertName="Dr. Ananya Sharma"
+        expertImage="/assets/img/team1.png"
+        expertRole="Senior Cardiologist"
       />
     </section>
   );

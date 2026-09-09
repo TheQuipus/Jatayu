@@ -102,6 +102,71 @@ export function formatTimezoneLabel(timeZone: string) {
   }
 }
 
+export function getConflictingSlotIds(slots: TimeSlot[]): Set<string> {
+  const conflictingIds = new Set<string>();
+
+  for (let i = 0; i < slots.length; i++) {
+    const slotA = slots[i];
+    if (
+      !slotA.from ||
+      !slotA.to ||
+      getMinutes(slotA.to) - getMinutes(slotA.from) < MIN_SLOT_DURATION_MINUTES
+    ) {
+      continue;
+    }
+    for (let j = i + 1; j < slots.length; j++) {
+      const slotB = slots[j];
+      if (
+        !slotB.from ||
+        !slotB.to ||
+        getMinutes(slotB.to) - getMinutes(slotB.from) < MIN_SLOT_DURATION_MINUTES
+      ) {
+        continue;
+      }
+      const shareDay = slotA.days.some((day) => slotB.days.includes(day));
+      if (shareDay) {
+        const timeAFrom = getMinutes(slotA.from);
+        const timeATo = getMinutes(slotA.to);
+        const timeBFrom = getMinutes(slotB.from);
+        const timeBTo = getMinutes(slotB.to);
+
+        if (timeAFrom < timeBTo && timeBFrom < timeATo) {
+          conflictingIds.add(slotA.id);
+          conflictingIds.add(slotB.id);
+        }
+      }
+    }
+  }
+
+  return conflictingIds;
+}
+
+export function wouldSlotConflict(
+  slots: TimeSlot[],
+  slotId: string,
+  from: string,
+  to: string,
+  days: string[]
+): boolean {
+  if (!from || !to || days.length === 0) return false;
+  const fromMinutes = getMinutes(from);
+  const toMinutes = getMinutes(to);
+  if (toMinutes - fromMinutes < MIN_SLOT_DURATION_MINUTES) return false;
+
+  return slots.some((other) => {
+    if (other.id === slotId) return false;
+    if (!other.from || !other.to || other.days.length === 0) return false;
+    const otherFrom = getMinutes(other.from);
+    const otherTo = getMinutes(other.to);
+    if (otherTo - otherFrom < MIN_SLOT_DURATION_MINUTES) return false;
+
+    const shareDay = other.days.some((d) => days.includes(d));
+    if (!shareDay) return false;
+
+    return fromMinutes < otherTo && otherFrom < toMinutes;
+  });
+}
+
 export function checkHasConflict(slots: TimeSlot[]): boolean {
   for (let i = 0; i < slots.length; i++) {
     const slotA = slots[i];

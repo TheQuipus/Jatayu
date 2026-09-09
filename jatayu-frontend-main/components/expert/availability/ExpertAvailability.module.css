@@ -2,11 +2,11 @@
   width: 100%;
   background: var(--white);
   border: 1px solid var(--mercury);
-  border-radius: 14px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 18px 20px;
   text-align: left;
   overflow: visible;
-  --day-btn-size: 40px;
+  --day-btn-size: 38px;
   --day-btn-gap: 8px;
   --days-cluster-width: calc(7 * var(--day-btn-size) + 6 * var(--day-btn-gap));
 }
@@ -16,7 +16,20 @@
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 16px;
   align-items: center;
-  padding: 0 4px 3px;
+  padding: 0 2px 14px;
+  border-bottom: 1px solid var(--mercury);
+  margin-bottom: 16px;
+}
+
+.timezoneEyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--pomegranate);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hoursPaneTitle {
@@ -25,16 +38,12 @@
   font-weight: 600;
   color: var(--ink);
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .slotDaysCol {
   display: flex;
-  flex-direction: column;
   justify-content: flex-end;
-  align-items: flex-end;
-  justify-self: flex-end;
-  margin-left: auto;
-  gap: 6px;
   min-width: 0;
 }
 
@@ -47,7 +56,12 @@
 .selectDaysLabel {
   display: block;
   text-align: left;
-  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dove-gray);
 }
 
 .slotsContainer {
@@ -60,20 +74,37 @@
 .slotRow {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: 18px;
   align-items: flex-end;
   width: 100%;
   background: var(--seashell);
   border: 1px solid var(--mercury);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-left: 3px solid transparent;
+  border-radius: 6px 12px 12px 6px;
+  padding: 14px 18px;
   overflow: visible;
+  transition: all 0.2s ease;
+}
+
+.slotRow:hover {
+  background: color-mix(in srgb, var(--seashell) 94%, var(--ink));
+  border-color: color-mix(in srgb, var(--mercury) 80%, var(--ink));
+}
+
+.slotRow:has(.dayBtnSelected) {
+  border-left-color: var(--pomegranate);
+  background: color-mix(in srgb, var(--pomegranate) 3%, var(--seashell));
+}
+
+.slotRowConflict {
+  border-color: var(--pomegranate);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pomegranate) 40%, transparent);
 }
 
 .slotTimes {
   display: flex;
   align-items: flex-end;
-  gap: 10px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
@@ -94,68 +125,88 @@
   place-items: center;
   cursor: pointer;
   outline: none;
-  font-family: var(--font-body);
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 600;
-  color: var(--silver-chalice);
-  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  color: var(--scorpion);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 0;
 }
 
 .dayBtn:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--ink) 18%, var(--mercury));
-  color: var(--ink);
+  border-color: var(--pomegranate);
+  color: var(--pomegranate);
+  background: color-mix(in srgb, var(--pomegranate) 4%, var(--white));
+  transform: translateY(-1px);
 }
 
 .dayBtnSelected {
-  border-color: var(--pomegranate);
-  color: var(--white);
-  background: var(--bunker);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--pomegranate) 18%, transparent);
+  border-color: var(--pomegranate) !important;
+  color: var(--white) !important;
+  background: var(--pomegranate) !important;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pomegranate) 28%, transparent);
+}
+
+.dayBtnSelected:hover:not(:disabled) {
+  background: var(--thunderbird) !important;
+  border-color: var(--thunderbird) !important;
+  color: var(--white) !important;
+}
+
+.conflictMessage {
+  margin: -2px 0 2px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pomegranate) 8%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 20%, transparent);
+  color: var(--pomegranate);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.limitButton {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .dayBtn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  transform: none;
 }
 
 .slotCloseSpacer {
-  width: 27px;
-  flex-shrink: 0;
-}
-
-.slotToDivider {
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--silver-chalice);
+  width: 32px;
   flex-shrink: 0;
 }
 
 .slotCloseBtn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--silver-chalice);
   cursor: pointer;
-  padding: 6px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   outline: none;
   border-radius: 8px;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: all 0.15s ease;
   flex-shrink: 0;
-  margin-bottom: 6px;
 }
 
 .slotCloseBtn:hover:not(:disabled) {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--ink) 6%, var(--white));
+  color: var(--pomegranate);
+  background: #fff0eb;
+  border-color: color-mix(in srgb, var(--pomegranate) 20%, transparent);
 }
 
 .addSlotBtn {
   background: var(--white);
-  border: 1px dashed color-mix(in srgb, var(--ink) 18%, var(--mercury));
-  border-radius: 12px;
-  height: 48px;
+  border: 1px dashed color-mix(in srgb, var(--ink) 22%, var(--mercury));
+  border-radius: 10px;
+  height: 44px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -163,17 +214,19 @@
   gap: 8px;
   font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--scorpion);
   cursor: pointer;
   outline: none;
-  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.addSlotBtn:hover {
+.addSlotBtn:hover:not(:disabled) {
   border-color: var(--pomegranate);
   color: var(--pomegranate);
   background: color-mix(in srgb, var(--pomegranate) 4%, var(--white));
+  border-style: solid;
+  transform: translateY(-1px);
 }
 
 @media (max-width: 900px) {
@@ -203,11 +256,12 @@
 
 @media (max-width: 600px) {
   .hoursPane {
-    --day-btn-size: 36px;
+    --day-btn-size: 34px;
     --day-btn-gap: 6px;
+    padding: 14px;
   }
 
   .dayBtn {
-    font-size: 10px;
+    font-size: 11px;
   }
 }

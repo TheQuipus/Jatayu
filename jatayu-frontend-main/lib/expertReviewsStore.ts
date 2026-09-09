@@ -47,6 +47,36 @@ export type RatingSummary = {
   badgeLabel: string;
 };
 
+export type NetPromoterScoreData = {
+  score: number;
+  ratingLabel: string;
+  promotersPercent: number;
+  promotersCount: number;
+  passivesPercent: number;
+  passivesCount: number;
+  detractorsPercent: number;
+  detractorsCount: number;
+  totalSurveyed: number;
+  industryBenchmark: number;
+  topPercentile: string;
+  drivers: string[];
+};
+
+export const NET_PROMOTER_SCORE: NetPromoterScoreData = {
+  score: 88,
+  ratingLabel: "World Class Loyalty",
+  promotersPercent: 88,
+  promotersCount: 42,
+  passivesPercent: 9,
+  passivesCount: 4,
+  detractorsPercent: 3,
+  detractorsCount: 2,
+  totalSurveyed: 48,
+  industryBenchmark: 42,
+  topPercentile: "Top 1% of Experts",
+  drivers: ["Actionable Clarity", "Depth of Expertise", "Rapid Problem Solving", "Strategic ROI"],
+};
+
 export const REVIEWS_SUMMARY: RatingSummary = {
   overallRating: 4.9,
   totalReviews: 34,
@@ -83,7 +113,26 @@ export const FREQUENT_TAGS: string[] = [
   "Experienced",
 ];
 
-export const SIX_MONTH_TREND: TrendDataPoint[] = [
+export const DAILY_RATING_TREND: TrendDataPoint[] = [
+  { label: "Mon", rating: 4.8 },
+  { label: "Tue", rating: 4.9 },
+  { label: "Wed", rating: 4.85 },
+  { label: "Thu", rating: 5.0 },
+  { label: "Fri", rating: 4.9 },
+  { label: "Sat", rating: 5.0 },
+  { label: "Sun", rating: 5.0 },
+];
+
+export const WEEKLY_RATING_TREND: TrendDataPoint[] = [
+  { label: "W1", rating: 4.8 },
+  { label: "W2", rating: 4.85 },
+  { label: "W3", rating: 4.9 },
+  { label: "W4", rating: 4.95 },
+  { label: "W5", rating: 5.0 },
+  { label: "W6", rating: 5.0 },
+];
+
+export const MONTHLY_RATING_TREND: TrendDataPoint[] = [
   { label: "Jul", rating: 4.8 },
   { label: "Aug", rating: 4.85 },
   { label: "Sep", rating: 4.9 },
@@ -91,6 +140,8 @@ export const SIX_MONTH_TREND: TrendDataPoint[] = [
   { label: "Nov", rating: 4.95 },
   { label: "Dec", rating: 5.0 },
 ];
+
+export const SIX_MONTH_TREND: TrendDataPoint[] = MONTHLY_RATING_TREND;
 
 export const ONE_YEAR_TREND: TrendDataPoint[] = [
   { label: "Jan", rating: 4.7 },

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Wrench, ChevronDown, ChevronUp, RotateCcw, Zap, MessageSquare } from "lucide-react";
+import { Wrench, ChevronDown, ChevronUp, RotateCcw, Zap, MessageSquare, Star } from "lucide-react";
 
 export type DemoDevControlPanelProps = {
   role: "seeker" | "expert";
@@ -13,6 +13,7 @@ export type DemoDevControlPanelProps = {
   onSetExtensionEnd: (minutes: number) => void;
   onResetActiveCall: (seconds?: number) => void;
   onTriggerExtensionModal?: () => void;
+  onTriggerReviewModal?: () => void;
 };
 
 export default function DemoDevControlPanel({
@@ -25,6 +26,7 @@ export default function DemoDevControlPanel({
   onSetExtensionEnd,
   onResetActiveCall,
   onTriggerExtensionModal,
+  onTriggerReviewModal,
 }: DemoDevControlPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -179,6 +181,30 @@ export default function DemoDevControlPanel({
               <Zap size={12} color="#ea4335" />
               <span>End Call (+30m Ext)</span>
             </button>
+
+            {onTriggerReviewModal && (
+              <button
+                type="button"
+                onClick={onTriggerReviewModal}
+                style={{
+                  background: "rgba(245, 158, 11, 0.18)",
+                  border: "1px solid rgba(245, 158, 11, 0.45)",
+                  color: "#fbbf24",
+                  padding: "6px 10px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontSize: "11px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontWeight: 600,
+                }}
+              >
+                <Star size={12} color="#f59e0b" />
+                <span>Show Review Pop-up</span>
+              </button>
+            )}
 
             {role === "seeker" && onTriggerExtensionModal && (
               <button

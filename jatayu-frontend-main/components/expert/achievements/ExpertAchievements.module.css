@@ -1,0 +1,599 @@
+.page {
+  min-height: 100vh;
+  padding: 24px 0 80px;
+  color: var(--ink);
+  background: var(--gallery);
+}
+
+.pageInner {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ==========================================================================
+   1. Header Section
+   ========================================================================== */
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 8px;
+}
+
+.pageHeaderText {
+  max-width: 800px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dove-gray);
+}
+
+.livePulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+  animation: pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseDot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(52, 199, 89, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0);
+  }
+}
+
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(30px, 3.5vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: var(--bunker);
+}
+
+.accentWord {
+  color: var(--pomegranate);
+}
+
+.pageSubtitle {
+  max-width: 660px;
+  margin: 10px 0 0;
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* Jatayu Signature Title Divider with ✦ Glyph */
+.titleRule {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  margin: 12px 0 6px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.titleRule::before {
+  content: "✦";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  line-height: 1;
+  color: color-mix(in srgb, var(--pomegranate) 80%, var(--ink));
+  background: var(--gallery);
+  padding: 0 10px;
+}
+
+/* ==========================================================================
+   2. KPI Overview Grid (Chamfered Cards)
+   ========================================================================== */
+
+.summaryGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+}
+
+.kpiCard {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 170px;
+  min-height: 130px;
+  padding: 18px 20px;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
+  -webkit-clip-path: polygon(10% 3.179%, 12.647% 0%, 91.177% 0%, 96.765% 4.48%, 96.765% 53.757%, 100% 57.659%, 100% 95.376%, 95.294% 100%, 0% 100%, 0% 19.364%, 10% 8.736%, 10% 3.179%);
+  transition: all 0.2s ease;
+}
+
+.kpiCard:hover {
+  background: var(--seashell);
+  border-color: color-mix(in srgb, var(--ink) 12%, var(--mercury));
+  transform: translateY(-2px);
+}
+
+.kpiHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kpiLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dove-gray);
+}
+
+.kpiIconBox {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--kpi-tone, var(--pomegranate)) 12%, var(--white));
+  color: var(--kpi-tone, var(--pomegranate));
+}
+
+.kpiFooter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.kpiValue {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.kpiNote {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e9f7f0;
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+  color: #187352;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.kpiNoteGold {
+  background: #fff4e5;
+  border-color: color-mix(in srgb, #d97706 30%, transparent);
+  color: #d97706;
+}
+
+/* ==========================================================================
+   3. Level & Milestone Ladder Card
+   ========================================================================== */
+
+.panel {
+  border: 1px solid var(--mercury);
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 2px 8px rgba(11, 13, 20, 0.035);
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-top: 3px solid var(--pomegranate);
+  border-bottom: 1px solid var(--mercury);
+  background: var(--white);
+}
+
+.panelHeader > div {
+  position: relative;
+  padding-left: 36px;
+}
+
+.sectionIndex {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  color: var(--pomegranate);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--bunker);
+}
+
+.panelHeader p {
+  margin: 4px 0 0;
+  color: var(--dove-gray);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.levelCardBody {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.levelProgressSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.levelProgressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.levelBadgeBig {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--bunker);
+}
+
+.levelScoreLabel {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pomegranate);
+}
+
+.levelBarTrack {
+  width: 100%;
+  height: 10px;
+  background: var(--seashell);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--mercury);
+}
+
+.levelBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pomegranate), #ff7a59);
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.perksGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding-top: 6px;
+}
+
+.perkItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+}
+
+.perkIcon {
+  color: var(--green);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.perkText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.perkText strong {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bunker);
+}
+
+.perkText small {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--dove-gray);
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   4. Badges Showcase Grid
+   ========================================================================== */
+
+.badgesSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filterTabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  border-radius: 10px;
+}
+
+.filterBtn {
+  min-height: 30px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--dove-gray);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filterBtnActive {
+  background: var(--white);
+  color: var(--bunker);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.badgesGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 20px 22px 24px;
+}
+
+.badgeCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.badgeCard:hover {
+  background: var(--white);
+  border-color: color-mix(in srgb, var(--pomegranate) 30%, var(--mercury));
+  box-shadow: 0 8px 24px rgba(11, 13, 20, 0.06);
+  transform: translateY(-2px);
+}
+
+.badgeLocked {
+  opacity: 0.65;
+  background: color-mix(in srgb, var(--gallery) 80%, var(--white));
+}
+
+.badgeLocked:hover {
+  border-color: var(--mercury);
+  transform: none;
+  box-shadow: none;
+}
+
+.badgeTopRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.badgeIcon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+}
+
+.badgeMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.badgeTitle {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--bunker);
+  margin: 0;
+}
+
+.badgeDesc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.badgeFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--mercury) 80%, transparent);
+}
+
+.badgeStatusUnlocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #187352;
+  text-transform: uppercase;
+}
+
+.badgeStatusLocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dove-gray);
+  text-transform: uppercase;
+}
+
+.badgeDate {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dove-gray);
+}
+
+/* ==========================================================================
+   5. Recent Activity Timeline
+   ========================================================================== */
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 22px;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--mercury);
+}
+
+.timelineItem:last-child {
+  border-bottom: none;
+}
+
+.timelineIconBox {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #fff0eb;
+  color: var(--pomegranate);
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 20%, transparent);
+}
+
+.timelineDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timelineTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bunker);
+}
+
+.timelineDesc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--dove-gray);
+}
+
+.timelineDate {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dove-gray);
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .badgesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .perksGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .badgesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .panelHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .panelHeader > div {
+    padding-left: 0;
+  }
+
+  .sectionIndex {
+    position: static;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+}

@@ -1,47 +1,1145 @@
 .page {
-  padding: 25px 0 80px;
+  min-height: 100vh;
+  padding: 24px 0 80px;
+  color: var(--ink);
+  background: var(--gallery);
 }
 
 .pageInner {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 24px;
 }
 
+/* ==========================================================================
+   Header Section
+   ========================================================================== */
+
 .pageHeader {
-  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 8px;
+}
+
+.pageHeaderText {
+  max-width: 800px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dove-gray);
+}
+
+.livePulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+  animation: pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseDot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(52, 199, 89, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0);
+  }
 }
 
 .pageTitle {
-  margin: 0 0 8px;
+  margin: 0;
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(28px, 4vw, 36px);
-  line-height: 1.2;
-  letter-spacing: -1.2px;
-  color: var(--scorpion);
+  font-weight: 700;
+  font-size: clamp(30px, 3.5vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  color: var(--bunker);
 }
 
 .accentWord {
   color: var(--pomegranate);
-  text-transform: uppercase;
 }
 
 .pageSubtitle {
-  margin: 0;
+  max-width: 660px;
+  margin: 10px 0 0;
+  color: var(--scorpion);
   font-family: var(--font-body);
-  font-size: 16px;
-  line-height: 1.45;
-  color: var(--dove-gray);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
-.editorCard {
+/* Jatayu Signature Title Divider with ✦ Glyph */
+.titleRule {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  margin: 12px 0 6px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.titleRule::before {
+  content: "✦";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  line-height: 1;
+  color: color-mix(in srgb, var(--pomegranate) 80%, var(--ink));
+  background: var(--gallery);
+  padding: 0 10px;
+}
+
+/* ==========================================================================
+   Dashboard Layout Grid
+   ========================================================================== */
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+.mainColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sideColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: calc(var(--expert-sticky-top, 64px) + 16px);
+}
+
+/* ==========================================================================
+   Panel Card Architecture
+   ========================================================================== */
+
+.panel {
   border: 1px solid var(--mercury);
   border-radius: 14px;
   background: var(--white);
-  padding: 24px;
+  box-shadow: 0 2px 8px rgba(11, 13, 20, 0.035);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.saveBtn {
-  margin-top: 20px;
+.panel:hover {
+  box-shadow: 0 6px 20px rgba(11, 13, 20, 0.05);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-top: 3px solid var(--pomegranate);
+  border-bottom: 1px solid var(--mercury);
+  background: var(--white);
+}
+
+.panelHeader > div {
+  position: relative;
+  padding-left: 36px;
+}
+
+.sectionIndex {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  color: var(--pomegranate);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--bunker);
+}
+
+.panelHeader p {
+  margin: 4px 0 0;
+  color: var(--dove-gray);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.panelHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.panelSaveBtn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--pomegranate);
+  background: var(--pomegranate);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--pomegranate) 22%, transparent);
+  transition: all 0.2s ease;
+}
+
+.panelSaveBtn:hover:not(:disabled) {
+  background: var(--thunderbird);
+  border-color: var(--thunderbird);
+  transform: translateY(-1px);
+}
+
+.panelSaveBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.panelSaveBtn.savedState {
+  background: #187352;
+  border-color: #187352;
+  box-shadow: 0 4px 12px rgba(24, 115, 82, 0.25);
+  cursor: default;
+}
+
+.panelBody {
+  padding: 18px 20px;
+}
+
+/* ==========================================================================
+   Shared Action Buttons
+   ========================================================================== */
+
+.smallPrimary {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--pomegranate);
+  background: var(--pomegranate);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--pomegranate) 22%, transparent);
+  transition: all 0.2s ease;
+}
+
+.smallPrimary:hover {
+  background: var(--thunderbird);
+  border-color: var(--thunderbird);
+  transform: translateY(-1px);
+}
+
+.outlineButton {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  color: var(--scorpion);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.outlineButton:hover {
+  border-color: color-mix(in srgb, var(--ink) 25%, var(--mercury));
+  color: var(--ink);
+  background: var(--seashell);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   02 Exceptions & Blocking Panel
+   ========================================================================== */
+
+.addExceptionForm {
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  border-left: 3px solid var(--pomegranate);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin: 14px 18px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.addExceptionFormTitle {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--bunker);
+  margin: 0;
+}
+
+.addExceptionGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 12px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.formField label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dove-gray);
+}
+
+.formInput,
+.formSelect {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--mercury);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color-scheme: light;
+  transition: all 0.15s ease;
+}
+
+.formInput[type="date"] {
+  min-width: 140px;
+  cursor: pointer;
+}
+
+.formInput:focus,
+.formSelect:focus {
+  outline: none;
+  border-color: var(--pomegranate);
+  box-shadow: 0 0 0 2px rgba(229, 59, 23, 0.12);
+}
+
+.addExceptionActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.cancelBtn {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--mercury);
+  background: transparent;
+  color: var(--scorpion);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cancelBtn:hover {
+  background: var(--white);
+  color: var(--ink);
+}
+
+.confirmAddBtn {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--pomegranate);
+  background: var(--pomegranate);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.confirmAddBtn:hover {
+  background: var(--thunderbird);
+}
+
+.exceptionList {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 18px;
+}
+
+.exceptionRow {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--mercury);
+  transition: background 0.15s ease;
+}
+
+.exceptionRow:last-child {
+  border-bottom: none;
+}
+
+.exceptionIcon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--seashell);
+  color: var(--scorpion);
+  border: 1px solid var(--mercury);
+}
+
+.exceptionIcon.warm {
+  background: #fff0eb;
+  color: var(--pomegranate);
+  border-color: color-mix(in srgb, var(--pomegranate) 20%, transparent);
+}
+
+.exceptionDetails {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 5px;
+}
+
+.exceptionTitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bunker);
+}
+
+.exceptionDateRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dateChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.dateLabel {
+  color: var(--pomegranate);
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.dateArrow {
+  color: var(--dove-gray);
+  font-size: 12px;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status_warm {
+  background: #fff0eb;
+  color: var(--pomegranate);
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 25%, transparent);
+}
+
+.status_cool {
+  background: #eeeafb;
+  color: #7357c9;
+  border: 1px solid color-mix(in srgb, #7357c9 25%, transparent);
+}
+
+.status_emerald {
+  background: #e9f7f0;
+  color: #187352;
+  border: 1px solid color-mix(in srgb, #187352 25%, transparent);
+}
+
+.status_upcoming {
+  background: #fff0eb;
+  color: var(--pomegranate);
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 25%, transparent);
+}
+
+.status_planned {
+  background: var(--seashell);
+  color: var(--scorpion);
+  border: 1px solid var(--mercury);
+}
+
+.deleteActionBtn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--silver-chalice);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.deleteActionBtn:hover {
+  color: var(--pomegranate);
+  background: #fff0eb;
+  border-color: color-mix(in srgb, var(--pomegranate) 20%, transparent);
+}
+
+/* ==========================================================================
+   03 Time Off & Holidays Panel
+   ========================================================================== */
+
+.timeOffList {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 18px;
+}
+
+.timeOffCard {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--mercury);
+}
+
+.timeOffCard:last-child {
+  border-bottom: none;
+}
+
+.timeOffIcon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--seashell);
+  color: var(--scorpion);
+  border: 1px solid var(--mercury);
+}
+
+.iconGift {
+  background: #fff4e5;
+  color: #d97706;
+  border-color: color-mix(in srgb, #d97706 20%, transparent);
+}
+
+.timeOffDetails {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.timeOffTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.timeOffDate {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dove-gray);
+}
+
+.timeOffFooter {
+  padding: 0 18px 18px;
+}
+
+.addTimeOff {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed color-mix(in srgb, var(--ink) 22%, var(--mercury));
+  border-radius: 10px;
+  background: var(--seashell);
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.addTimeOff:hover {
+  border-color: var(--pomegranate);
+  border-style: solid;
+  color: var(--pomegranate);
+  background: color-mix(in srgb, var(--pomegranate) 4%, var(--white));
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   04 Booking Preferences Panel
+   ========================================================================== */
+
+.preferencesList {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.preferenceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preferenceRow:hover {
+  border-color: color-mix(in srgb, var(--ink) 20%, var(--mercury));
+  background: color-mix(in srgb, var(--seashell) 90%, var(--white));
+}
+
+.preferenceRowActive {
+  background: color-mix(in srgb, var(--pomegranate) 3%, var(--white));
+  border-color: color-mix(in srgb, var(--pomegranate) 35%, transparent);
+}
+
+.preferenceIconBox {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  color: var(--scorpion);
+  flex-shrink: 0;
+}
+
+.preferenceRowActive .preferenceIconBox {
+  color: var(--pomegranate);
+  border-color: color-mix(in srgb, var(--pomegranate) 30%, transparent);
+  background: #fff0eb;
+}
+
+.preferenceText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.preferenceText strong {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.preferenceText small {
+  color: var(--dove-gray);
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.switchWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.switchWrapper input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggleSwitch {
+  display: block;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--silver);
+  transition: background 0.25s ease;
+}
+
+.toggleSwitch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.switchWrapper input:checked + .toggleSwitch {
+  background: var(--pomegranate);
+}
+
+.switchWrapper input:checked + .toggleSwitch::after {
+  transform: translateX(16px);
+}
+
+.preferenceSelects {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  padding: 18px 20px 22px;
+  border-top: 1px solid var(--mercury);
+  background: var(--white);
+}
+
+.preferenceFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preferenceFieldLabel {
+  color: var(--bunker);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.preferenceFieldDescription {
+  margin: 0 0 6px 0;
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.selectWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.preferenceSelect {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--mercury);
+  border-radius: 8px;
+  background: var(--seashell);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.preferenceSelect:focus {
+  outline: none;
+  border-color: var(--pomegranate);
+  background: var(--white);
+  box-shadow: 0 0 0 2px rgba(229, 59, 23, 0.14);
+}
+
+/* ==========================================================================
+   Side Column: Sticky Calendar & Sync
+   ========================================================================== */
+
+.calendarSidebarWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calendarPanel {
+  padding: 18px;
+  border: 1px solid var(--mercury);
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 2px 8px rgba(11, 13, 20, 0.035);
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--mercury);
+}
+
+.calendarTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--bunker);
+  text-transform: uppercase;
+}
+
+.calendarNavBtn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--mercury);
+  border-radius: 8px;
+  background: var(--seashell);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.calendarNavBtn:hover {
+  background: var(--white);
+  border-color: var(--pomegranate);
+  color: var(--pomegranate);
+  transform: translateY(-1px);
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.weekday {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  color: var(--silver-chalice);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.calendarBlank {
+  display: block;
+}
+
+.calendarDay {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--scorpion);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.calendarDay:hover {
+  background: var(--seashell);
+  border-color: var(--mercury);
+  color: var(--ink);
+}
+
+.calendarDay.hasSession::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--pomegranate);
+}
+
+.calendarDay.isBlocked {
+  color: var(--silver-chalice);
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.calendarDay.selectedDay {
+  background: var(--bunker) !important;
+  color: var(--white) !important;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(8, 10, 16, 0.25);
+}
+
+.calendarDay.selectedDay::after {
+  background: var(--white);
+}
+
+.calendarLegend {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mercury);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--dove-gray);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.legendAvailable {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.legendSession {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pomegranate);
+}
+
+.legendBlocked {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--silver-chalice);
+}
+
+/* Calendar Sync Widget */
+.syncCard {
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  background: var(--white);
+  padding: 14px 16px;
+  box-shadow: 0 2px 8px rgba(11, 13, 20, 0.035);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.syncHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.syncStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.syncStatusText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--bunker);
+}
+
+.syncBadge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e9f7f0;
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+  color: #187352;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.syncDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.syncRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dove-gray);
+  font-family: var(--font-body);
+  font-size: 11px;
+}
+
+.syncIcon {
+  color: var(--scorpion);
+}
+
+.syncIconSuccess {
+  color: var(--green);
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sideColumn {
+    position: static;
+  }
+
+  .addExceptionGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .preferencesList {
+    grid-template-columns: 1fr;
+  }
+
+  .preferenceSelects {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .panelHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .panelHeader > div {
+    padding-left: 0;
+  }
+
+  .sectionIndex {
+    position: static;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+
+  .addExceptionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendarGrid {
+    gap: 4px;
+  }
+
+  .calendarDay {
+    font-size: 11px;
+  }
 }

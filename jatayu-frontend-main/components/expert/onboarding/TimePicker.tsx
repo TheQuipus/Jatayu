@@ -51,8 +51,8 @@ export default function TimePicker({
           paper: isDark ? "#1a1a1a" : "#ffffff",
         },
         text: {
-          primary: isDark ? "rgba(255, 255, 255, 0.95)" : "var(--ink)",
-          secondary: isDark ? "rgba(255, 255, 255, 0.55)" : "var(--scorpion)",
+          primary: isDark ? "rgba(255, 255, 255, 0.95)" : "#0b0d14",
+          secondary: isDark ? "rgba(255, 255, 255, 0.55)" : "#5e5e5e",
         },
       },
       typography: {
@@ -68,11 +68,11 @@ export default function TimePicker({
           styleOverrides: {
             root: {
               backgroundImage: "none",
-              border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid var(--mercury)",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid #e6e6e6",
               borderRadius: "12px",
               boxShadow: isDark
                 ? "0 16px 40px rgba(0, 0, 0, 0.45)"
-                : "0 16px 40px color-mix(in srgb, var(--ink) 12%, transparent)",
+                : "0 16px 40px rgba(11, 13, 20, 0.12)",
             },
           },
         },

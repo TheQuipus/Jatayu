@@ -69,36 +69,10 @@ const CONSULTATION_ICONS: Record<ConsultationType, typeof MessageSquare> = {
   group: Users,
 };
 
-function handleDownloadInvoice(booking: BookingDetail) {
-  const lines = [
-    "JATAYU INVOICE",
-    "",
-    `Invoice ID: ${booking.invoiceId}`,
-    `Booking ID: ${booking.referenceId}`,
-    `Date: ${booking.placedOnLabel}`,
-    "",
-    `Expert: ${booking.expert.name}`,
-    `Consultation: ${booking.consultationLabel}`,
-    `Schedule: ${booking.scheduledDateLabel}, ${booking.scheduledTimeLabel}`,
-    "",
-    "LINE ITEMS",
-    `${booking.consultationLabel}\t${formatCurrency(booking.consultationFee)}`,
-    `Platform Fee\t${formatCurrency(booking.platformFee)}`,
-    `GST (18%)\t${formatCurrency(booking.gst)}`,
-    ...(booking.walletApplied > 0
-      ? [`Jatayu Credits Applied\t− ${formatCurrency(booking.walletApplied)}`]
-      : []),
-    "",
-    `Total Paid\t${formatCurrency(booking.totalPaid)}`,
-  ];
+import { downloadBookingInvoicePdf } from "@/lib/invoicePdfGenerator";
 
-  const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `${booking.invoiceId}.txt`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+function handleDownloadInvoice(booking: BookingDetail) {
+  downloadBookingInvoicePdf(booking);
 }
 
 export default function BookingDetailInfo({
