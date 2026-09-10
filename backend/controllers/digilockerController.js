@@ -9,6 +9,7 @@ import {
   safeAccountDetails,
 } from '../services/digilockerService.js';
 import { downloadDigilockerDocuments } from '../services/digilockerDocumentService.js';
+import { sendNotification } from '../services/notificationService.js';
 
 function redirectWithResult(res, returnUrl, result) {
   const url = new URL(returnUrl);
@@ -175,6 +176,10 @@ export const handleDigilockerCallback = async (req, res) => {
       };
       await expert.save();
     }
+    await sendNotification({ recipientType: 'expert', recipientId: verification.expertId,
+      eventType: 'expert.kyc_verified', dedupeKey: `expert.kyc_verified:${verification.id}`,
+      title: 'DigiLocker verification completed', body: 'Your identity and available documents were verified successfully.',
+      href: '/expert/expert-onboarding/', data: { verificationId: verification.id } });
     return redirectWithResult(res, config.frontendReturnUrl, 'success');
   } catch (error) {
     console.error('DigiLocker callback Error:', error.message);
@@ -184,6 +189,10 @@ export const handleDigilockerCallback = async (req, res) => {
     verification.stateHash = null;
     verification.codeVerifier = null;
     await verification.save();
+    await sendNotification({ recipientType: 'expert', recipientId: verification.expertId,
+      eventType: 'expert.kyc_failed', dedupeKey: `expert.kyc_failed:${verification.id}:${verification.updatedAt?.getTime?.() || Date.now()}`,
+      title: 'DigiLocker verification failed', body: verification.failureDescription || 'Please retry DigiLocker verification.',
+      href: '/expert/expert-onboarding/', data: { verificationId: verification.id } }).catch(console.error);
     return redirectWithResult(res, config.frontendReturnUrl, 'error');
   }
 };

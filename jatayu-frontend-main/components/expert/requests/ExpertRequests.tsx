@@ -41,8 +41,9 @@ const SUMMARY_CARDS = [
   { id: "urgent", label: "Priority", icon: Zap },
   { id: "new", label: "New", icon: Inbox },
   { id: "pending", label: "Pending", icon: Hourglass },
-  { id: "accepted", label: "Accepted", icon: CheckCircle2 },
-  { id: "declined", label: "Declined", icon: XCircle },
+  { id: "accepted", label: "Upcoming", icon: CalendarClock },
+  { id: "completed", label: "Completed", icon: CheckCircle2 },
+  { id: "cancelled", label: "Cancelled", icon: XCircle },
 ] as const;
 
 function getTargetTimeMs(dateLabel: string, scheduledStartAt?: string): number {
@@ -155,14 +156,14 @@ export default function ExpertRequests() {
     pending: apiCounts?.pending ?? allStored.filter((r) => r.status === "pending").length,
     accepted: apiCounts?.accepted ?? allStored.filter((r) => r.status === "accepted").length,
     declined: apiCounts?.declined ?? allStored.filter((r) => r.status === "declined").length,
+    completed: apiCounts?.completed ?? allStored.filter((r) => r.status === "completed").length,
+    cancelled: apiCounts?.cancelled ?? allStored.filter((r) => r.status === "cancelled" || r.status === "declined").length,
   };
 
   const filteredRequests =
-    statusFilter === "all"
-      ? requests
-      : statusFilter === "urgent"
+    statusFilter === "urgent"
       ? requests.filter((request) => request.urgent)
-      : requests.filter((request) => request.status === statusFilter);
+      : requests;
 
   const handleConfirmAccept = async (requestId: string) => {
     await updateRequestStatusAsync(requestId, "accepted");
@@ -195,7 +196,7 @@ export default function ExpertRequests() {
         <header className={styles.pageHeader}>
           <div className={styles.pageHeaderText}>
             <p className={styles.pageSubtitle}>
-              Manage incoming session and consultation requests
+              Manage requests, upcoming bookings, and session history
             </p>
             <h1 className={styles.pageTitle}>
               Client <span className={styles.accentWord}>Requests</span>
@@ -363,10 +364,14 @@ export default function ExpertRequests() {
                         </Link>
                       );
                     })()
-                  ) : request.status === "declined" ? (
+                  ) : request.status === "declined" || request.status === "cancelled" ? (
                     <span className={styles.statusBadgeDeclined}>
                       <Ban size={14} aria-hidden="true" />
-                      Declined
+                      Cancelled
+                    </span>
+                  ) : request.status === "completed" ? (
+                    <span className={styles.statusBadgeDeclined}>
+                      <CheckCircle2 size={14} aria-hidden="true" /> Completed
                     </span>
                   ) : (
                     <>

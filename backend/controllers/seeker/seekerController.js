@@ -5,6 +5,7 @@ import {
 } from '../../utils/aiService.js';
 import { triggerNotification } from '../../utils/templateNotificationService.js';
 import { getSetting } from '../../utils/settingsHelper.js';
+import { sendNotification } from '../../services/notificationService.js';
 import {
   getSeekerOnboardingProgress,
   hasCompletedSeekerStep,
@@ -300,6 +301,11 @@ export const submitOnboarding = async (req, res) => {
       },
     }).catch((err) => console.error('[Notification Trigger Warning] Seeker welcome email failed:', err.message));
 
+    await sendNotification({ recipientType: 'seeker', recipientId: result.seeker.id,
+      eventType: 'seeker.onboarding_completed', dedupeKey: `seeker.onboarding_completed:${result.seeker.id}`,
+      title: 'Profile completed', body: `Your seeker profile is ready. You have ${result.seeker.credits} credits available.`,
+      href: '/seeker/explore/', data: { credits: result.seeker.credits } });
+
     return res.status(200).json({
       message: 'Seeker onboarding completed successfully',
       seeker: serializeSeeker(result.seeker),
@@ -366,4 +372,3 @@ export const improveSeekerNeeds = async (req, res) => {
     });
   }
 };
-

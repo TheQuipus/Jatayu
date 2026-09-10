@@ -7,7 +7,7 @@ import type {
   IMicrophoneAudioTrack,
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
-import { fetchAgoraSession } from "@/lib/agoraSessionApi";
+import { completeAgoraSession, fetchAgoraSession } from "@/lib/agoraSessionApi";
 import { decodeAgoraTranscript } from '@/lib/agoraTranscriptCodec';
 import {
   saveAgoraTranscriptSegment,
@@ -38,6 +38,8 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [remoteVideoVersion, setRemoteVideoVersion] = useState(0);
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
+  const [scheduledEndAt, setScheduledEndAt] = useState<string | null>(null);
+  const [hasEnded, setHasEnded] = useState(false);
 
   useEffect(() => {
     if (!enabled || !bookingId) return;
@@ -47,6 +49,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
       try {
         setStatus("connecting");
         const session = await fetchAgoraSession(bookingId, role);
+        setScheduledEndAt(session.scheduledEndAt);
         if (disposed) return;
         const AgoraRTC = (await import("agora-rtc-sdk-ng")).default;
         client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
@@ -118,6 +121,23 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
     };
   }, [bookingId, enabled, onMessage, onTranscript, requestVideo, role]);
 
+  useEffect(() => {
+    if (!enabled || !scheduledEndAt) return;
+    const finish = () => {
+      microphoneRef.current?.stop(); microphoneRef.current?.close(); microphoneRef.current = null;
+      cameraRef.current?.stop(); cameraRef.current?.close(); cameraRef.current = null;
+      void clientRef.current?.leave().catch(() => undefined);
+      clientRef.current = null;
+      setHasEnded(true);
+      void stopAgoraTranscription(bookingId, role).catch(() => undefined);
+      void completeAgoraSession(bookingId, role).catch(() => undefined);
+    };
+    const remaining = new Date(scheduledEndAt).getTime() - Date.now();
+    if (remaining <= 0) { finish(); return; }
+    const timeout = window.setTimeout(finish, remaining);
+    return () => window.clearTimeout(timeout);
+  }, [bookingId, enabled, role, scheduledEndAt]);
+
   const sendMessage = useCallback(async (text: string) => {
     const clean = text.trim();
     if (!clean || !clientRef.current || status !== "connected") return false;
@@ -154,7 +174,8 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
   );
 
   return { status, error, sendMessage, toggleMute, toggleVideo, isMuted, isVideoOff,
-    playLocalVideo, playRemoteVideo, remoteVideoVersion, transcriptSegments, stopTranscription };
+    playLocalVideo, playRemoteVideo, remoteVideoVersion, transcriptSegments, stopTranscription,
+    scheduledEndAt, hasEnded };
 }
 
 export type AgoraRoomState = ReturnType<typeof useAgoraRoom>;

@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
-import { SEEKER_NOTIFICATIONS, type SeekerNotification } from "@/lib/seekerDashboard";
+import type { SeekerNotification } from "@/lib/seekerDashboard";
+import { fetchNotifications, readAllNotifications, readNotification, type AppNotification } from "@/lib/notificationApi";
 import styles from "./NotificationPanel.module.css";
 
 function NotificationItem({
@@ -63,7 +64,7 @@ function NotificationItem({
 
 export default function NotificationPanel() {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(SEEKER_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<SeekerNotification[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -72,11 +73,21 @@ export default function NotificationPanel() {
     setNotifications((current) =>
       current.map((n) => (n.id === id ? { ...n, unread: false } : n))
     );
+    void readNotification(id).catch(() => undefined);
   };
 
   const markAllRead = () => {
     setNotifications((current) => current.map((n) => ({ ...n, unread: false })));
+    void readAllNotifications().catch(() => undefined);
   };
+
+  useEffect(() => {
+    const map = (item: AppNotification): SeekerNotification => ({ id:item.id, title:item.title, body:item.body,
+      timeAgo:new Date(item.createdAt).toLocaleString(), unread:!item.readAt, href:item.href || undefined });
+    fetchNotifications().then((data) => setNotifications(data.items.map(map))).catch(() => undefined);
+    const receive = (event: Event) => setNotifications((current) => [map((event as CustomEvent<AppNotification>).detail), ...current.filter((n) => n.id !== (event as CustomEvent<AppNotification>).detail.id)]);
+    window.addEventListener("jatayu:notification", receive); return () => window.removeEventListener("jatayu:notification", receive);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -23,7 +23,7 @@ export type RequestDetailModel = {
   title: string;
   subtitle: string;
   submittedDate: string;
-  status: "new" | "pending" | "accepted" | "declined";
+  status: "new" | "pending" | "accepted" | "declined" | "completed" | "cancelled";
   statusText: string;
   timeReceivedAgo: string;
   respondTimeLeft: string;
@@ -70,6 +70,7 @@ export type RequestDetailModel = {
     canJoin: boolean;
     joinBeforeMinutes: number;
   };
+  scheduledEndAt?: string;
 };
 
 export const REQUEST_DETAIL_DATA: RequestDetailModel = {
@@ -211,6 +212,7 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
 
   return {
     id: found.id,
+    scheduledEndAt: found.scheduledEndAt,
     expertProfessionalTitle: expertProfTitle,
     title: found.title,
     subtitle: `${found.title} — ${found.durationLabel}`,
@@ -223,6 +225,10 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
         ? "Pending Response"
         : found.status === "accepted"
         ? "Session Confirmed & Accepted"
+        : found.status === "completed"
+        ? "Session Completed"
+        : found.status === "cancelled"
+        ? "Session Cancelled"
         : "Request Declined",
     timeReceivedAgo: `Received ${found.timeAgo}`,
     respondTimeLeft: "Respond within 24h to maintain response rate",
@@ -280,7 +286,7 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
         description: `Escrow funds held in full (${formatRequestPrice(feeTotal)}).`,
         actor: "System",
       },
-      ...(found.status === "accepted"
+      ...(found.status === "accepted" || found.status === "completed"
         ? [
             {
               id: "hist-3",
@@ -289,8 +295,17 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
               description: "Expert accepted the request and confirmed session schedule.",
               actor: "Expert",
             },
+            ...(found.status === "completed"
+              ? [{
+                  id: "hist-4",
+                  title: "Session Completed",
+                  timestamp: found.scheduledEndAt || "Recently",
+                  description: "The scheduled consultation duration has ended.",
+                  actor: "System",
+                }]
+              : []),
           ]
-        : found.status === "declined"
+        : found.status === "declined" || found.status === "cancelled"
         ? [
             {
               id: "hist-3",

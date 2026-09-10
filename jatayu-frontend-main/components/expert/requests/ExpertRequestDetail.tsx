@@ -49,7 +49,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
   const [data, setData] = useState<RequestDetailModel>(() => getRequestDetailById(activeRequestId));
   const [loading, setLoading] = useState<boolean>(true);
 
-  const [requestStatus, setRequestStatus] = useState<"new" | "pending" | "accepted" | "declined">(() => {
+  const [requestStatus, setRequestStatus] = useState<"new" | "pending" | "accepted" | "declined" | "completed" | "cancelled">(() => {
     if (typeof window !== "undefined") {
       const stored = getStoredRequests();
       const match = stored.find((r) => r.id === activeRequestId);
@@ -225,6 +225,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
         title={data.title}
         proposedPrice={data.sessionDetails.proposedPrice}
         formatLabel={data.sessionDetails.format}
+        scheduledEndAt={data.scheduledEndAt}
         onLeaveRoom={() => setIsInActiveRoom(false)}
         onFinishSession={() => {
           setIsInActiveRoom(false);
@@ -355,15 +356,28 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
 
             {/* Status Chewy Banner Anchor matched 1:1 with BookingDetailInfo */}
             <div className={styles.badgeFloatAnchor}>
-              {requestStatus === "declined" ? (
+              {requestStatus === "declined" || requestStatus === "cancelled" ? (
                 <div className={styles.completedBadgeWrap}>
                   <div className={styles.chewyCard}>
                     <div className={`${styles.chewyTopHeader} ${styles.chewyTopHeaderRed}`}>
-                      <span>Request Declined</span>
+                      <span>Session Cancelled</span>
                     </div>
                     <div className={styles.chewyBody}>
                       <p className={styles.chewyDesc}>
-                        This request was declined. The client has been notified and escrow funds released.
+                        This session is cancelled and is retained in your session history.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : requestStatus === "completed" ? (
+                <div className={styles.completedBadgeWrap}>
+                  <div className={styles.chewyCard}>
+                    <div className={styles.chewyTopHeader}>
+                      <span>Session Completed</span>
+                    </div>
+                    <div className={styles.chewyBody}>
+                      <p className={styles.chewyDesc}>
+                        The scheduled consultation has ended and is now part of your session history.
                       </p>
                     </div>
                   </div>
@@ -533,7 +547,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
               </div>
 
               {/* Manage Request Card */}
-              {requestStatus !== "declined" ? (
+              {requestStatus === "new" || requestStatus === "pending" || requestStatus === "accepted" ? (
                 <div className={styles.bookingBox}>
                   <div className={styles.bookingHeader}>
                     <span className={styles.bookingHeaderTitle}>Manage Request</span>

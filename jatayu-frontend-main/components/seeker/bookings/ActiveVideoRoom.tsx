@@ -71,7 +71,9 @@ export default function ActiveVideoRoom({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [secondsRemaining, setSecondsRemaining] = useState(115);
+  const [secondsRemaining, setSecondsRemaining] = useState(() => Math.max(0, Math.ceil(
+    (new Date(booking.scheduledEndAt || Date.now()).getTime() - Date.now()) / 1000,
+  )));
   const [isExtendChatOpen, setIsExtendChatOpen] = useState(false);
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -88,10 +90,15 @@ export default function ActiveVideoRoom({
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 0));
+      const endAt = agora.scheduledEndAt || booking.scheduledEndAt;
+      setSecondsRemaining(endAt ? Math.max(0, Math.ceil((new Date(endAt).getTime() - Date.now()) / 1000)) : 0);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [agora.scheduledEndAt, booking.scheduledEndAt]);
+
+  useEffect(() => {
+    if (agora.hasEnded) onFinishSession();
+  }, [agora.hasEnded, onFinishSession]);
 
   const formatTimer = (totalSecs: number) => {
     const mins = Math.floor(totalSecs / 60);

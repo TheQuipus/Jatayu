@@ -22,14 +22,16 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
 
   // Session states: 'detail' | 'active' | 'completed'
   const [sessionState, setSessionState] = useState<'detail' | 'active' | 'completed'>(
-    action === 'join' ? 'active' : (booking.status === 'completed' ? 'completed' : 'detail')
+    action === 'join' && booking.sessionAccess?.canJoin
+      ? 'active'
+      : (booking.status === 'completed' ? 'completed' : 'detail')
   );
 
   useEffect(() => {
-    if (action === 'join') {
+    if (action === 'join' && booking.sessionAccess?.canJoin) {
       setSessionState('active');
     }
-  }, [action]);
+  }, [action, booking.sessionAccess?.canJoin]);
 
   // Chat messages
   const [chatMessages, setChatMessages] = useState<Array<{

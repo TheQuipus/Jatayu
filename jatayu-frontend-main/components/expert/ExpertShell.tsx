@@ -19,6 +19,7 @@ import {
   User,
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
+import RealtimeNotificationToast from "@/components/ui/RealtimeNotificationToast";
 import { ExpertShellContext } from "@/components/expert/ExpertShellContext";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import {
@@ -87,6 +88,8 @@ function NavLink({
   const isActive = isNavItemActive(item.id, pathname, item.href, currentHash);
 
   return (
+    <>
+      <RealtimeNotificationToast />
     <Link
       href={item.href}
       className={`${styles.navLink} ${isActive ? styles.navLinkActive : ""} ${isCollapsed ? styles.navLinkCollapsed : ""
@@ -104,6 +107,7 @@ function NavLink({
         </span>
       ) : null}
     </Link>
+    </>
   );
 }
 

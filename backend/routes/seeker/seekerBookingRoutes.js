@@ -8,7 +8,7 @@ import {
   pokeBookingExpert,
   verifyPayment,
 } from '../../controllers/seeker/seekerBookingController.js';
-import { getSeekerAgoraSession } from '../../controllers/agoraSessionController.js';
+import { completeSeekerAgoraSession, getSeekerAgoraSession } from '../../controllers/agoraSessionController.js';
 import {
   getSeekerTranscript,
   startSeekerTranscription,
@@ -25,6 +25,7 @@ router.post('/bookings/orders', createOrder);
 router.get('/bookings/:bookingId', getBooking);
 router.post('/bookings/:bookingId/poke', pokeBookingExpert);
 router.post('/bookings/:bookingId/session/token', getSeekerAgoraSession);
+router.post('/bookings/:bookingId/session/complete', completeSeekerAgoraSession);
 router.post('/bookings/:bookingId/transcription/start', startSeekerTranscription);
 router.post('/bookings/:bookingId/transcription/stop', stopSeekerTranscription);
 router.post('/bookings/:bookingId/transcription/segments', storeSeekerTranscriptSegment);

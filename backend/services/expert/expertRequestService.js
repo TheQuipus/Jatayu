@@ -7,6 +7,7 @@ import {
   seekerDb,
 } from '../../models/index.js';
 import {
+  completeEndedBookings,
   refundBookingCredits,
   requestBookingRefund,
 } from '../seeker/bookingService.js';
@@ -25,6 +26,8 @@ const DECLINE_REASON_CODES = new Set([
 ]);
 
 function requestStatus(booking, now = Date.now()) {
+  if (booking.status === 'completed') return 'completed';
+  if (booking.status === 'cancelled') return 'cancelled';
   if (booking.status === 'confirmed') return 'accepted';
   if (booking.status === 'declined') return 'declined';
   if (booking.status !== 'awaiting_expert') return null;
@@ -95,12 +98,14 @@ function whereForStatus(expertId, status, cutoff) {
   } else if (status === 'pending') {
     where.status = 'awaiting_expert';
     where.expertRequestedAt = { [Op.lt]: cutoff };
-  } else if (status === 'accepted') {
+  } else if (status === 'accepted' || status === 'upcoming') {
     where.status = 'confirmed';
-  } else if (status === 'declined') {
-    where.status = 'declined';
+  } else if (status === 'completed') {
+    where.status = 'completed';
+  } else if (status === 'declined' || status === 'cancelled') {
+    where.status = { [Op.in]: ['declined', 'cancelled'] };
   } else {
-    where.status = { [Op.in]: ['awaiting_expert', 'confirmed', 'declined'] };
+    where.status = { [Op.in]: ['awaiting_expert', 'confirmed', 'completed', 'declined', 'cancelled'] };
   }
   return where;
 }
@@ -112,6 +117,7 @@ async function ensureExpert(expertId) {
 
 export async function listExpertRequests(expertId, options) {
   await ensureExpert(expertId);
+  await completeEndedBookings();
   const now = Date.now();
   const cutoff = new Date(now - EXPERT_REQUEST_NEW_WINDOW_MS);
   const { rows, count } = await Booking.findAndCountAll({
@@ -125,11 +131,12 @@ export async function listExpertRequests(expertId, options) {
     limit: options.limit,
     offset: (options.page - 1) * options.limit,
   });
-  const [newCount, pendingCount, acceptedCount, declinedCount] = await Promise.all([
+  const [newCount, pendingCount, upcomingCount, completedCount, cancelledCount] = await Promise.all([
     Booking.count({ where: whereForStatus(expertId, 'new', cutoff) }),
     Booking.count({ where: whereForStatus(expertId, 'pending', cutoff) }),
-    Booking.count({ where: whereForStatus(expertId, 'accepted', cutoff) }),
-    Booking.count({ where: whereForStatus(expertId, 'declined', cutoff) }),
+    Booking.count({ where: whereForStatus(expertId, 'upcoming', cutoff) }),
+    Booking.count({ where: whereForStatus(expertId, 'completed', cutoff) }),
+    Booking.count({ where: whereForStatus(expertId, 'cancelled', cutoff) }),
   ]);
   return {
     requests: await Promise.all(rows.map(async (booking) => ({
@@ -137,11 +144,14 @@ export async function listExpertRequests(expertId, options) {
       sessionAccess: await getAgoraSessionAccess(booking),
     }))),
     counts: {
-      all: newCount + pendingCount + acceptedCount + declinedCount,
+      all: newCount + pendingCount + upcomingCount + completedCount + cancelledCount,
       new: newCount,
       pending: pendingCount,
-      accepted: acceptedCount,
-      declined: declinedCount,
+      upcoming: upcomingCount,
+      completed: completedCount,
+      cancelled: cancelledCount,
+      accepted: upcomingCount,
+      declined: cancelledCount,
     },
     pagination: {
       page: options.page,

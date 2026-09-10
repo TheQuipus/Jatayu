@@ -1,4 +1,4 @@
-export type RequestStatus = "new" | "pending" | "accepted" | "declined";
+export type RequestStatus = "new" | "pending" | "accepted" | "declined" | "completed" | "cancelled";
 
 export type ClientRequest = {
   id: string;
@@ -34,6 +34,8 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   pending: "Pending",
   accepted: "Accepted",
   declined: "Declined",
+  completed: "Completed",
+  cancelled: "Cancelled",
 };
 
 export const INITIAL_CLIENT_REQUESTS: ClientRequest[] = [];
@@ -84,6 +86,8 @@ export function getRequestCounts(requestsList?: ClientRequest[]) {
     pending: list.filter((r) => r.status === "pending").length,
     accepted: list.filter((r) => r.status === "accepted").length,
     declined: list.filter((r) => r.status === "declined").length,
+    completed: list.filter((r) => r.status === "completed").length,
+    cancelled: list.filter((r) => r.status === "cancelled" || r.status === "declined").length,
   };
 }
 
@@ -135,7 +139,7 @@ export async function fetchExpertRequests(params: FetchExpertRequestsParams = {}
     const limit = params.limit || 20;
     const sort = params.sort || "newest";
 
-    let filtered =
+    const filtered =
       statusFilter === "all"
         ? [...allStored]
         : statusFilter === "urgent"
@@ -170,6 +174,8 @@ export async function fetchExpertRequests(params: FetchExpertRequestsParams = {}
         pending: allStored.filter((r) => r.status === "pending").length,
         accepted: allStored.filter((r) => r.status === "accepted").length,
         declined: allStored.filter((r) => r.status === "declined").length,
+        completed: allStored.filter((r) => r.status === "completed").length,
+        cancelled: allStored.filter((r) => r.status === "cancelled" || r.status === "declined").length,
       },
     };
   }
@@ -208,4 +214,3 @@ export async function acceptExpertBookingRequest(bookingId: string): Promise<Cli
 
   return updateStoredRequestStatus(bookingId, "accepted");
 }
-

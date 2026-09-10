@@ -75,6 +75,7 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     { name: 'Public Experts' },
     { name: 'Admin' },
     { name: 'Payments' },
+    { name: 'Notifications' },
   ],
   components: {
     securitySchemes: {
@@ -151,7 +152,7 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
       get: operation({
         tag: 'Expert', summary: 'List and filter booking requests', security: bearerSecurity,
         parameters: [
-          { in: 'query', name: 'status', schema: { type: 'string', enum: ['all', 'new', 'pending', 'accepted', 'declined'] } },
+          { in: 'query', name: 'status', description: 'Upcoming/accepted and cancelled/declined are compatible aliases.', schema: { type: 'string', enum: ['all', 'new', 'pending', 'upcoming', 'completed', 'cancelled', 'accepted', 'declined'] } },
           { in: 'query', name: 'page', schema: { type: 'integer', minimum: 1, default: 1 } },
           { in: 'query', name: 'limit', schema: { type: 'integer', minimum: 1, default: 20 } },
           { in: 'query', name: 'sort', schema: { type: 'string', enum: ['newest', 'oldest'] } },
@@ -345,6 +346,16 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     },
     '/api/payments/razorpay/config': {
       get: operation({ tag: 'Payments', summary: 'Get public Razorpay Checkout configuration' }),
+    },
+    '/api/notifications': {
+      get: operation({ tag: 'Notifications', summary: 'List persisted notifications for the authenticated user', security: bearerSecurity,
+        parameters: [{ in: 'query', name: 'page', schema: { type: 'integer', minimum: 1 } }, { in: 'query', name: 'limit', schema: { type: 'integer', minimum: 1, maximum: 100 } }] }),
+    },
+    '/api/notifications/read-all': {
+      patch: operation({ tag: 'Notifications', summary: 'Mark all notifications as read', security: bearerSecurity }),
+    },
+    '/api/notifications/{id}/read': {
+      patch: operation({ tag: 'Notifications', summary: 'Mark one notification as read', security: bearerSecurity, parameters: [idParameter('id', 'Notification ID')] }),
     },
     '/api/payments/webhooks/razorpay': {
       post: operation({

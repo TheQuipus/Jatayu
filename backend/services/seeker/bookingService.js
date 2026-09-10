@@ -13,6 +13,7 @@ import { getRazorpayClient } from '../../config/razorpay.js';
 import { verifyRazorpayPaymentSignature } from '../payment/razorpayService.js';
 import { getBookingRules } from '../../config/bookingRules.js';
 import { getAgoraSessionAccess } from '../agoraService.js';
+import { sendNotification } from '../notificationService.js';
 import {
   DEFAULT_BOOKING_POKE_CONFIG,
   getBookingPokeConfig,
@@ -194,6 +195,15 @@ export async function expirePendingBookings() {
       await booking.save({ transaction });
     });
   }
+}
+
+export async function completeEndedBookings() {
+  await Booking.update({ status: 'completed', activeSlotKey: null }, {
+    where: {
+      status: 'confirmed',
+      scheduledEndAt: { [Op.lte]: new Date() },
+    },
+  });
 }
 
 export async function getExpertBookingOptions(expertIdentifier, from, days = 28) {
@@ -402,7 +412,7 @@ export async function verifyBookingPayment(seekerId, bookingId, input) {
 }
 
 export async function confirmBookingPayment(bookingId, paymentId) {
-  return seekerDb.transaction(async (transaction) => {
+  const booking = await seekerDb.transaction(async (transaction) => {
     const booking = await Booking.findByPk(bookingId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!booking || ['awaiting_expert', 'confirmed', 'declined'].includes(booking.status)) return booking;
     const payment = await BookingPayment.findOne({ where: { bookingId }, transaction, lock: transaction.LOCK.UPDATE });
@@ -419,6 +429,14 @@ export async function confirmBookingPayment(bookingId, paymentId) {
     await booking.save({ transaction });
     return booking;
   });
+  if (booking?.status === 'awaiting_expert') {
+    const seeker = await Seeker.findByPk(booking.seekerId, { attributes: ['fullName'] });
+    await sendNotification({ recipientType: 'expert', recipientId: booking.expertId,
+      eventType: 'booking.requested', dedupeKey: `booking.requested:${booking.id}`,
+      title: 'New booking request', body: `${seeker?.fullName || 'A seeker'} requested a ${booking.consultationType} consultation.`,
+      href: `/expert/requests/${booking.id}/`, data: { bookingId: booking.id } });
+  }
+  return booking;
 }
 
 export async function failBookingPayment(bookingId, failure = {}) {
@@ -554,6 +572,14 @@ export async function processBookingWebhook(payload) {
   const refundEntity = payload?.payload?.refund?.entity;
   if (['refund.created', 'refund.processed', 'refund.failed'].includes(payload.event)) {
     const payment = await applyBookingRefund(refundEntity);
+    if (payment) {
+      const booking = await Booking.findByPk(payment.bookingId);
+      if (booking) await sendNotification({ recipientType: 'seeker', recipientId: booking.seekerId,
+        eventType: `payment.${payment.refundStatus}`, dedupeKey: `payment.${payment.refundStatus}:${payment.id}`,
+        title: payment.refundStatus === 'refunded' ? 'Refund completed' : payment.refundStatus === 'refund_failed' ? 'Refund needs attention' : 'Refund processing',
+        body: payment.refundStatus === 'refunded' ? 'Your booking payment refund has been completed.' : payment.refundStatus === 'refund_failed' ? 'Your refund could not be completed automatically. Our team will review it.' : 'Your booking refund is being processed.',
+        href: `/seeker/bookings/${booking.id}/`, data: { bookingId: booking.id, refundStatus: payment.refundStatus } });
+    }
     return payment
       ? { processed: true }
       : { processed: false, reason: 'No booking payment matches this refund' };
@@ -574,13 +600,17 @@ export async function processBookingWebhook(payload) {
       description: paymentEntity?.error_description,
       payload: { payment: paymentEntity },
     });
+    const booking = await Booking.findByPk(payment.bookingId);
+    if (booking) await sendNotification({ recipientType: 'seeker', recipientId: booking.seekerId,
+      eventType: 'payment.failed', dedupeKey: `payment.failed:${payment.id}`, title: 'Booking payment failed',
+      body: 'Your booking payment was not completed. You can try booking the slot again.', href: `/seeker/bookings/${booking.id}/`, data: { bookingId: booking.id } });
     return { processed: true };
   }
   return { processed: false, reason: `Event ${payload.event} does not change a booking` };
 }
 
 export async function listSeekerBookings(seekerId) {
-  await expirePendingBookings();
+  await Promise.all([expirePendingBookings(), completeEndedBookings()]);
   const bookings = await Booking.findAll({
     where: { seekerId }, include: ['payments'], order: [['createdAt', 'DESC']],
   });
@@ -592,7 +622,7 @@ export async function listSeekerBookings(seekerId) {
 }
 
 export async function getSeekerBooking(seekerId, bookingId) {
-  await expirePendingBookings();
+  await Promise.all([expirePendingBookings(), completeEndedBookings()]);
   const booking = await Booking.findOne({ where: { id: bookingId, seekerId }, include: ['payments'] });
   if (!booking) return null;
   return {

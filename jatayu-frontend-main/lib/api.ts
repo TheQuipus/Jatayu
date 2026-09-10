@@ -1224,7 +1224,11 @@ export function normalizeClientRequest(item: Record<string, unknown>): ClientReq
 
   const reqStatusStr = String(item.requestStatus || item.status || "new").toLowerCase();
   const validStatus: RequestStatus =
-    reqStatusStr === "accepted" || reqStatusStr === "confirmed"
+    reqStatusStr === "completed"
+      ? "completed"
+      : reqStatusStr === "cancelled"
+        ? "cancelled"
+      : reqStatusStr === "accepted" || reqStatusStr === "confirmed"
       ? "accepted"
       : reqStatusStr === "declined" || reqStatusStr === "rejected"
         ? "declined"
