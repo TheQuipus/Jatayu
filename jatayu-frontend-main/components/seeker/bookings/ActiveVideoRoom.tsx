@@ -236,7 +236,7 @@ export default function ActiveVideoRoom({
                   <span>{formatTimer(secondsRemaining)} remaining</span>
                 </div>
 
-                {secondsRemaining <= 300 && (
+                {secondsRemaining > 0 && secondsRemaining <= agora.extensionOfferBeforeMinutes * 60 && (
                   <ContinueButton
                     label="Extend Session"
                     showArrow={false}

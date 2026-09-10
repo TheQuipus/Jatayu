@@ -131,6 +131,7 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
     payment: DEFAULT_ADMIN_SETTINGS.payment,
     booking: {
       minimumLeadTimeMinutes: Math.max(0, Number(map.BOOKING_MINIMUM_LEAD_TIME_MINUTES ?? 30) || 0),
+      extensionOfferBeforeMinutes: readPositiveNumber(map, "BOOKING_EXTENSION_OFFER_BEFORE_MINUTES", 5),
       pokeInitialDelayHours: readPositiveNumber(map, "BOOKING_POKE_INITIAL_DELAY_HOURS", 1),
       pokeCooldownHours: readPositiveNumber(map, "BOOKING_POKE_COOLDOWN_HOURS", 4),
       pokeMaxCount: Math.floor(readPositiveNumber(map, "BOOKING_POKE_MAX_COUNT", 2)),
@@ -211,6 +212,7 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     AI_API_KEY: settings.ai.apiKey,
     BOOKING_POKE_INITIAL_DELAY_HOURS: String(settings.booking.pokeInitialDelayHours),
     BOOKING_MINIMUM_LEAD_TIME_MINUTES: String(settings.booking.minimumLeadTimeMinutes),
+    BOOKING_EXTENSION_OFFER_BEFORE_MINUTES: String(settings.booking.extensionOfferBeforeMinutes),
     BOOKING_POKE_COOLDOWN_HOURS: String(settings.booking.pokeCooldownHours),
     BOOKING_POKE_MAX_COUNT: String(settings.booking.pokeMaxCount),
     AGORA_ENABLED: String(settings.communication.agoraEnabled),

@@ -44,6 +44,7 @@ export type PaymentSettings = {
 
 export type BookingSettings = {
   minimumLeadTimeMinutes: number;
+  extensionOfferBeforeMinutes: number;
   pokeInitialDelayHours: number;
   pokeCooldownHours: number;
   pokeMaxCount: number;
@@ -232,6 +233,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   },
   booking: {
     minimumLeadTimeMinutes: 30,
+    extensionOfferBeforeMinutes: 5,
     pokeInitialDelayHours: 1,
     pokeCooldownHours: 4,
     pokeMaxCount: 2,

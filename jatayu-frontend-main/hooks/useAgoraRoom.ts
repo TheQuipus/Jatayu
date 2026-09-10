@@ -39,6 +39,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
   const [remoteVideoVersion, setRemoteVideoVersion] = useState(0);
   const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
   const [scheduledEndAt, setScheduledEndAt] = useState<string | null>(null);
+  const [extensionOfferBeforeMinutes, setExtensionOfferBeforeMinutes] = useState(5);
   const [hasEnded, setHasEnded] = useState(false);
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
         setStatus("connecting");
         const session = await fetchAgoraSession(bookingId, role);
         setScheduledEndAt(session.scheduledEndAt);
+        setExtensionOfferBeforeMinutes(session.extensionOfferBeforeMinutes || 5);
         if (disposed) return;
         const AgoraRTC = (await import("agora-rtc-sdk-ng")).default;
         client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
@@ -175,7 +177,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
 
   return { status, error, sendMessage, toggleMute, toggleVideo, isMuted, isVideoOff,
     playLocalVideo, playRemoteVideo, remoteVideoVersion, transcriptSegments, stopTranscription,
-    scheduledEndAt, hasEnded };
+    scheduledEndAt, extensionOfferBeforeMinutes, hasEnded };
 }
 
 export type AgoraRoomState = ReturnType<typeof useAgoraRoom>;
