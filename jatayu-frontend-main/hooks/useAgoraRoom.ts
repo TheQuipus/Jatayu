@@ -8,6 +8,8 @@ import type {
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
 import { completeAgoraSession, fetchAgoraSession } from "@/lib/agoraSessionApi";
+import { getToken } from "@/lib/api";
+import { connectSocket } from "@/lib/socket";
 import { decodeAgoraTranscript } from '@/lib/agoraTranscriptCodec';
 import {
   saveAgoraTranscriptSegment,
@@ -140,6 +142,20 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
     return () => window.clearTimeout(timeout);
   }, [bookingId, enabled, role, scheduledEndAt]);
 
+  useEffect(() => {
+    const token = getToken();
+    if (!enabled || !token) return;
+    const socket = connectSocket(token);
+    const activate = (payload: { bookingId?: string; extendedEndAt?: string }) => {
+      if (payload.bookingId === bookingId && payload.extendedEndAt) {
+        setScheduledEndAt(payload.extendedEndAt);
+        setHasEnded(false);
+      }
+    };
+    socket.on("session:extension:activated", activate);
+    return () => { socket.off("session:extension:activated", activate); };
+  }, [bookingId, enabled]);
+
   const sendMessage = useCallback(async (text: string) => {
     const clean = text.trim();
     if (!clean || !clientRef.current || status !== "connected") return false;
@@ -174,10 +190,13 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
     () => stopAgoraTranscription(bookingId, role),
     [bookingId, role],
   );
+  const applyExtendedEndAt = useCallback((value: string) => {
+    if (value) { setScheduledEndAt(value); setHasEnded(false); }
+  }, []);
 
   return { status, error, sendMessage, toggleMute, toggleVideo, isMuted, isVideoOff,
     playLocalVideo, playRemoteVideo, remoteVideoVersion, transcriptSegments, stopTranscription,
-    scheduledEndAt, extensionOfferBeforeMinutes, hasEnded };
+    scheduledEndAt, extensionOfferBeforeMinutes, hasEnded, applyExtendedEndAt };
 }
 
 export type AgoraRoomState = ReturnType<typeof useAgoraRoom>;

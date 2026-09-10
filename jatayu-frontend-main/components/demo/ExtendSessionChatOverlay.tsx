@@ -17,6 +17,8 @@ export type ExtendSessionChatOverlayProps = {
   isExpertBooked?: boolean;
   onExtendSessionAdded?: (secondsToAdd: number) => void;
   onExtensionConfirmed?: (mins: number, amount: number) => void;
+  onPaymentRequired?: (order: { id: string; amount: number; currency: string }) => void;
+  onExtensionActivated?: (extendedEndAt: string) => void;
   channelName?: string;
   bookingId?: string;
 };
@@ -33,6 +35,8 @@ export default function ExtendSessionChatOverlay({
   isExpertBooked = false,
   onExtendSessionAdded,
   onExtensionConfirmed,
+  onPaymentRequired,
+  onExtensionActivated,
   channelName = DEFAULT_CHANNEL_NAME,
   bookingId,
 }: ExtendSessionChatOverlayProps) {
@@ -183,19 +187,25 @@ export default function ExtendSessionChatOverlay({
       setSelectedExpertChoice(null);
       setIsDismissed(false);
     };
-    const onDecision = (data: { bookingId?: string; decision?: "confirmed" | "reduced" | "declined"; minutes?: number }) => {
+    const onDecision = (data: { bookingId?: string; decision?: "confirmed" | "reduced" | "declined"; minutes?: number; order?: { id: string; amount: number; currency: string } }) => {
       if (role !== "seeker" || data.bookingId !== bookingId || !data.decision) return;
       setExtensionChatStatus(data.decision);
       setSeekerReceivedReplyMins(Number(data.minutes) || 0);
+      if (data.order && data.decision !== "declined") onPaymentRequired?.(data.order);
     };
     socket.on("session:extension:request", onRequest);
     socket.on("session:extension:decision", onDecision);
+    const onActivated = (data: { bookingId?: string; extendedEndAt?: string }) => {
+      if (data.bookingId === bookingId && data.extendedEndAt) onExtensionActivated?.(data.extendedEndAt);
+    };
+    socket.on("session:extension:activated", onActivated);
     socket.emit("session:extension:subscribe", { bookingId });
     return () => {
       socket.off("session:extension:request", onRequest);
       socket.off("session:extension:decision", onDecision);
+      socket.off("session:extension:activated", onActivated);
     };
-  }, [bookingId, role]);
+  }, [bookingId, onExtensionActivated, onPaymentRequired, role]);
 
   const handleSelectExtension = (mins: number) => {
     setSelectedExtension(mins);

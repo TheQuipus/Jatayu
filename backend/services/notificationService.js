@@ -2,6 +2,9 @@ import Notification from '../models/Notification.js';
 
 let socketServer = null;
 export function setNotificationSocketServer(io) { socketServer = io; }
+export function emitRealtime(recipientType, recipientId, event, payload) {
+  socketServer?.to(`notifications:${recipientType}:${recipientId}`).emit(event, payload);
+}
 
 export async function sendNotification(input) {
   const [notification, created] = input.dedupeKey

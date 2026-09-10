@@ -28,6 +28,8 @@ import { formatCurrency, type BookingDetail } from "@/lib/seekerDashboard";
 import styles from "./ActiveRoom.module.css";
 import type { AgoraRoomState } from "@/hooks/useAgoraRoom";
 import ExtendSessionChatOverlay from "@/components/demo/ExtendSessionChatOverlay";
+import { openRazorpayCheckout } from "@/lib/razorpay";
+import { verifyExtensionPayment } from "@/lib/seekerBookingApi";
 
 export type ChatMessage = {
   id: string;
@@ -75,6 +77,9 @@ export default function ActiveVideoRoom({
     (new Date(booking.scheduledEndAt || Date.now()).getTime() - Date.now()) / 1000,
   )));
   const [isExtendChatOpen, setIsExtendChatOpen] = useState(false);
+  const [extensionMessagesVisible, setExtensionMessagesVisible] = useState(true);
+  const [extensionPaymentOrder, setExtensionPaymentOrder] = useState<{ id: string; amount: number; currency: string } | null>(null);
+  const [extensionPaymentBusy, setExtensionPaymentBusy] = useState(false);
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const remoteVideoElementRef = useRef<HTMLDivElement>(null);
@@ -108,6 +113,28 @@ export default function ActiveVideoRoom({
 
   const handleExtendSession = () => {
     setIsExtendChatOpen(true);
+    setExtensionMessagesVisible(true);
+  };
+
+  const handleExtensionPayment = (order: { id: string; amount: number; currency: string }) => {
+    setExtensionPaymentOrder(order);
+  };
+
+  const payForExtension = async () => {
+    if (!extensionPaymentOrder || extensionPaymentBusy) return;
+    setExtensionPaymentBusy(true);
+    try {
+      const payment = await openRazorpayCheckout({ order: extensionPaymentOrder, expertName: booking.expert.name,
+        userName: "Seeker", userEmail: "", userPhone: "" });
+      const result = await verifyExtensionPayment(booking.id, payment);
+      agora.applyExtendedEndAt(result.extendedEndAt);
+      setExtensionPaymentOrder(null);
+      setIsExtendChatOpen(false);
+    } catch (error) {
+      console.error("Extension payment failed:", error);
+    } finally {
+      setExtensionPaymentBusy(false);
+    }
   };
 
   const toggleFullscreen = () => {
@@ -247,20 +274,6 @@ export default function ActiveVideoRoom({
                 )}
               </div>
 
-              {/* In-Video Pure Transparent Extension Screen */}
-              <ExtendSessionChatOverlay
-                role="seeker"
-                bookingId={booking.id}
-                isOpen={isExtendChatOpen}
-                expertName={booking.expert.name}
-                expertImage={booking.expert.image}
-                clientName="You"
-                clientImage="/assets/img/manportrait.png"
-                onExtendSessionAdded={(secs) => setSecondsRemaining((prev) => prev + secs)}
-                channelName={`jatayu_session_${booking.id || "agora"}`}
-              />
-
-
               {/* Google Meet style Video Call Controls Overlay */}
               <div className={styles.videoControls}>
                 <button
@@ -318,7 +331,34 @@ export default function ActiveVideoRoom({
                   <Phone size={16} style={{ transform: "rotate(135deg)" }} />
                 </button>
               </div>
+              {isExtendChatOpen ? (
+                <button type="button" onClick={() => setExtensionMessagesVisible((value) => !value)} className={styles.extensionMessageToggle}>
+                  {extensionMessagesVisible ? "Hide extension messages" : "Show extension messages"}
+                </button>
+              ) : null}
             </div>
+
+            {extensionMessagesVisible ? (
+              <ExtendSessionChatOverlay role="seeker" bookingId={booking.id} isOpen={isExtendChatOpen}
+                expertName={booking.expert.name} expertImage={booking.expert.image} clientName="You"
+                clientImage="/assets/img/manportrait.png" onPaymentRequired={handleExtensionPayment}
+                onExtensionActivated={agora.applyExtendedEndAt}
+                onExtendSessionAdded={(secs) => setSecondsRemaining((prev) => prev + secs)}
+                channelName={`jatayu_session_${booking.id || "agora"}`} />
+            ) : null}
+
+            {extensionPaymentOrder ? (
+              <aside className={styles.extensionPaymentDrawer} role="dialog" aria-label="Pay for session extension">
+                <button type="button" className={styles.extensionPaymentClose} onClick={() => setExtensionPaymentOrder(null)}>×</button>
+                <strong>Complete extension payment</strong>
+                <p>The expert approved your request. Payment must be captured before the session time is extended.</p>
+                <div className={styles.extensionPaymentAmount}>
+                  ₹{(extensionPaymentOrder.amount / 100).toLocaleString("en-IN")}
+                </div>
+                <ContinueButton label={extensionPaymentBusy ? "Opening payment…" : "Pay with Razorpay"}
+                  disabled={extensionPaymentBusy} onClick={() => void payForExtension()} />
+              </aside>
+            ) : null}
 
             {/* Live Transcript Panel */}
             {isTranscriptVisible && (

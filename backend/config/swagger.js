@@ -248,6 +248,12 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
         parameters: [idParameter('bookingId', 'Booking ID')], requestBody: jsonBody(),
       }),
     },
+    '/api/seeker/bookings/{bookingId}/extension/verify-payment': {
+      post: operation({
+        tag: 'Bookings', summary: 'Verify extension Razorpay payment and activate extended time', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')], requestBody: jsonBody(),
+      }),
+    },
     '/api/seeker/bookings/{bookingId}/transcription/start': {
       post: operation({
         tag: 'Transcription', summary: 'Start Agora live transcription as the booking seeker', security: bearerSecurity,

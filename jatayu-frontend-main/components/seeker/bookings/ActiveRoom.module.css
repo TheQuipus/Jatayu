@@ -149,7 +149,8 @@
   aspect-ratio: 16 / 9;
   background: var(--bunker);
   border: 1px solid var(--mercury);
-  overflow: hidden;
+  overflow: visible;
+  margin-bottom: 58px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
@@ -158,7 +159,50 @@
   height: 100vh;
   aspect-ratio: auto;
   border: none;
+  margin-bottom: 0;
+  overflow: hidden;
 }
+
+.roomMain > .extendChatOverlay {
+  position: relative;
+  inset: auto;
+  min-height: 220px;
+  max-height: 420px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  overflow: auto;
+}
+
+.extensionMessageToggle {
+  position: absolute;
+  right: 0;
+  bottom: -48px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  color: var(--ink);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 6;
+}
+
+.extensionPaymentDrawer {
+  position: fixed;
+  top: 96px;
+  right: 24px;
+  width: min(380px, calc(100vw - 32px));
+  z-index: 1000;
+  padding: 24px;
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+}
+
+.extensionPaymentDrawer p { margin: 12px 0; line-height: 1.5; }
+.extensionPaymentAmount { font-size: 28px; font-weight: 800; margin: 18px 0; }
+.extensionPaymentClose { position: absolute; top: 8px; right: 10px; border: 0; background: transparent; font-size: 24px; cursor: pointer; }
 
 .activeVideoFeed {
   position: absolute;
@@ -994,7 +1038,7 @@
 /* Google Meet style Controls Bar */
 .videoControls {
   position: absolute;
-  bottom: 14px;
+  bottom: -50px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -1008,6 +1052,10 @@
   border-radius: 9999px;
   z-index: 5;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.videoFeedContainer:fullscreen .videoControls {
+  bottom: 14px;
 }
 
 .controlBtn {

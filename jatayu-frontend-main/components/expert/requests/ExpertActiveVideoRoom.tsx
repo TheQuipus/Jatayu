@@ -71,6 +71,7 @@ export default function ExpertActiveVideoRoom({
     (new Date(scheduledEndAt || Date.now()).getTime() - Date.now()) / 1000,
   )));
   const [extendNotification, setExtendNotification] = useState<string | null>(null);
+  const [extensionMessagesVisible, setExtensionMessagesVisible] = useState(true);
 
   const [notes, setNotes] = useState("");
   const [notesSavedStatus, setNotesSavedStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -263,19 +264,6 @@ export default function ExpertActiveVideoRoom({
                 </div>
               </div>
 
-              {/* In-Video Pure Transparent Extension Decision Screen (Expert) */}
-              <ExtendSessionChatOverlay
-                role="expert"
-                bookingId={requestId}
-                expertName="You (Expert)"
-                expertImage="/assets/img/team1.png"
-                clientName={clientName}
-                clientImage={clientAvatar || "/assets/img/manportrait.png"}
-                onExtendSessionAdded={(secs) => setSecondsRemaining((prev) => prev + secs)}
-                channelName={`jatayu_session_${requestId || "agora"}`}
-              />
-
-
               {/* Video Call Controls Overlay */}
               <div className={styles.videoControls}>
                 <button
@@ -333,7 +321,19 @@ export default function ExpertActiveVideoRoom({
                   <Phone size={16} style={{ transform: "rotate(135deg)" }} />
                 </button>
               </div>
+              <button type="button" onClick={() => setExtensionMessagesVisible((value) => !value)} className={styles.extensionMessageToggle}>
+                {extensionMessagesVisible ? "Hide extension messages" : "Show extension messages"}
+              </button>
             </div>
+
+            {extensionMessagesVisible ? (
+              <ExtendSessionChatOverlay role="expert" bookingId={requestId} expertName="You (Expert)"
+                expertImage="/assets/img/team1.png" clientName={clientName}
+                clientImage={clientAvatar || "/assets/img/manportrait.png"}
+                onExtensionActivated={agora.applyExtendedEndAt}
+                onExtendSessionAdded={(secs) => setSecondsRemaining((prev) => prev + secs)}
+                channelName={`jatayu_session_${requestId || "agora"}`} />
+            ) : null}
 
             {/* Live AI Transcript Panel */}
             {isTranscriptVisible && (
