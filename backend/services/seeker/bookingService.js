@@ -56,13 +56,13 @@ function zonedParts(date, timezone) {
   return Object.fromEntries(parts.map(({ type, value }) => [type, value]));
 }
 
-function isWithinExpertAvailability(expert, scheduledStartAt) {
+function isWithinExpertAvailability(expert, scheduledStartAt, durationMinutes = SLOT_DURATION_MINUTES) {
   const timezone = expert.timezone || 'Asia/Kolkata';
   let parts;
   try { parts = zonedParts(scheduledStartAt, timezone); } catch { return false; }
   const weekday = parts.weekday.toLowerCase();
   const startMinute = Number(parts.hour) * 60 + Number(parts.minute);
-  const endMinute = startMinute + SLOT_DURATION_MINUTES;
+  const endMinute = startMinute + durationMinutes;
 
   return (expert.availabilities || []).some((availability) => {
     const days = parseJson(availability.days, []);
@@ -246,12 +246,18 @@ export async function getExpertBookingOptions(expertIdentifier, from, days = 28)
 
 export async function createBookingOrder(seekerId, input) {
   const consultationType = normalizeType(input.consultationType);
+  const requestedDuration = input.durationMinutes === undefined
+    ? SLOT_DURATION_MINUTES
+    : Number(input.durationMinutes);
   if (!SUPPORTED_TYPES.has(consultationType)) throw new Error('INVALID_CONSULTATION_TYPE');
   if (!input.expertId || !input.idempotencyKey || !input.subject?.trim() || !input.context?.trim()) {
     throw new Error('MISSING_BOOKING_FIELDS');
   }
   if (input.idempotencyKey.length > 100 || input.subject.trim().length > 255 || input.context.trim().length > 5000) {
     throw new Error('INVALID_BOOKING_FIELDS');
+  }
+  if (!Number.isInteger(requestedDuration) || requestedDuration < 1 || requestedDuration > 360) {
+    throw new Error('INVALID_BOOKING_DURATION');
   }
   const startAt = new Date(input.scheduledStartAt);
   const bookingRules = await getBookingRules();
@@ -262,10 +268,10 @@ export async function createBookingOrder(seekerId, input) {
     error.earliestStartAt = new Date(earliestStartAt).toISOString();
     throw error;
   }
-  const endAt = new Date(startAt.getTime() + SLOT_DURATION_MINUTES * 60000);
+  const endAt = new Date(startAt.getTime() + requestedDuration * 60000);
   const expert = await resolveApprovedExpert(input.expertId);
   if (!expert) throw new Error('EXPERT_NOT_FOUND');
-  if (!isWithinExpertAvailability(expert, startAt)) throw new Error('EXPERT_UNAVAILABLE');
+  if (!isWithinExpertAvailability(expert, startAt, requestedDuration)) throw new Error('EXPERT_UNAVAILABLE');
   const consultationFee = priceFor(expert, consultationType);
   if (!consultationFee) throw new Error('FORMAT_NOT_OFFERED');
   await expirePendingBookings();

@@ -136,9 +136,9 @@
           ],
           "request": {
             "method": "POST",
-            "description": "Amount is calculated by the backend from the approved expert's format price. scheduledStartAt must fall inside the expert's configured availability.",
+            "description": "Amount is calculated by the backend from the approved expert's format price. scheduledStartAt and the requested duration must fall inside the expert's configured availability.",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"expertId\": \"{{expertId}}\",\n  \"consultationType\": \"video\",\n  \"subject\": \"Career planning consultation\",\n  \"context\": \"I want guidance on the next steps in my career.\",\n  \"scheduledStartAt\": \"{{bookingStartAt}}\",\n  \"useCredits\": false,\n  \"idempotencyKey\": \"{{bookingIdempotencyKey}}\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"expertId\": \"{{expertId}}\",\n  \"consultationType\": \"video\",\n  \"subject\": \"Career planning consultation\",\n  \"context\": \"I want guidance on the next steps in my career.\",\n  \"scheduledStartAt\": \"{{bookingStartAt}}\",\n  \"durationMinutes\": 15,\n  \"useCredits\": false,\n  \"idempotencyKey\": \"{{bookingIdempotencyKey}}\"\n}" },
             "url": "{{baseUrl}}/api/seeker/bookings/orders"
           }
         },
