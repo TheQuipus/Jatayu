@@ -40,7 +40,7 @@ export async function getAgoraSessionAccess(booking) {
   const startsAt = new Date(booking.scheduledStartAt).getTime();
   const endsAt = new Date(booking.scheduledEndAt).getTime();
   const opensAt = startsAt - config.joinBeforeMinutes * 60 * 1000;
-  const closesAt = endsAt + config.joinAfterMinutes * 60 * 1000;
+  const closesAt = endsAt;
   const now = Date.now();
 
   return {
@@ -61,7 +61,7 @@ export async function createAgoraSessionToken(booking, role) {
   const startsAt = new Date(booking.scheduledStartAt).getTime();
   const endsAt = new Date(booking.scheduledEndAt).getTime();
   const opensAt = startsAt - config.joinBeforeMinutes * 60 * 1000;
-  const closesAt = endsAt + config.joinAfterMinutes * 60 * 1000;
+  const closesAt = endsAt;
   if (now < opensAt) {
     const error = new Error('SESSION_NOT_OPEN');
     error.opensAt = new Date(opensAt).toISOString();

@@ -17,6 +17,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
+import RealtimeNotificationToast from "@/components/ui/RealtimeNotificationToast";
 import { SeekerShellContext } from "@/components/seeker/SeekerShellContext";
 import { MAIN_NAV, PROFILE_NAV, QUICK_LINKS, SEEKER_PROFILE } from "@/lib/seekerDashboard";
 import {
@@ -131,6 +132,7 @@ export default function SeekerShell({ children }: SeekerShellProps) {
 
   return (
     <SeekerShellContext.Provider value={shellContext}>
+      <RealtimeNotificationToast />
       <div className={`${styles.shell} ${isCollapsed ? styles.shellCollapsed : ""}`.trim()}>
         <aside
           className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`.trim()}

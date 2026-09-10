@@ -1,4 +1,4 @@
-import { Expert, Credential, Availability, sequelize } from '../models/index.js';
+import { Expert, Credential, Availability, Admin, sequelize } from '../models/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import {
   AiNotConfiguredError,
@@ -6,6 +6,7 @@ import {
   recommendExpertSkills,
 } from '../utils/aiService.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
+import { sendNotification } from '../services/notificationService.js';
 
 /**
  * Get current expert's full profile
@@ -259,6 +260,12 @@ export const submitOnboarding = async (req, res) => {
       },
     }).catch((err) => console.error('[Notification Trigger Warning] Expert under review email failed:', err.message));
 
+    const admins = await Admin.findAll({ attributes: ['id'] });
+    await Promise.all(admins.map((admin) => sendNotification({ recipientType: 'admin', recipientId: admin.id,
+      eventType: 'expert.onboarding_submitted', dedupeKey: `expert.onboarding_submitted:${expert.id}:${admin.id}`,
+      title: 'New expert application', body: `${expert.fullName} submitted an application for review.`,
+      href: `/admin/review/${expert.applicationNumber}/`, data: { expertId: expert.id, applicationNumber: expert.applicationNumber } })));
+
     return res.status(200).json({
       message: 'Onboarding completed and submitted for review successfully',
       expert
@@ -407,4 +414,3 @@ export const recommendOnboardingSkills = async (req, res) => {
     });
   }
 };
-

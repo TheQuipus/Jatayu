@@ -18,8 +18,9 @@ export function getSocket(): Socket {
   return socket;
 }
 
-export function connectSocket(): Socket {
+export function connectSocket(token?: string): Socket {
   const client = getSocket();
+  if (token) client.auth = { token };
   if (!client.connected) {
     client.connect();
   }

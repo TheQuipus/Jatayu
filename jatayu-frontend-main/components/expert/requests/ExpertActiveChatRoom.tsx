@@ -54,6 +54,7 @@ export type ExpertActiveChatRoomProps = {
   title: string;
   proposedPrice?: string;
   formatLabel?: string;
+  scheduledEndAt?: string;
   onLeaveRoom: () => void;
   onFinishSession: () => void;
 };

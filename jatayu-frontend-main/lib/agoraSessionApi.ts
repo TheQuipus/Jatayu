@@ -26,3 +26,14 @@ export async function fetchAgoraSession(bookingId: string, role: "seeker" | "exp
   if (!response.ok) throw new Error(data.message || "Unable to enter the session room");
   return data.session as AgoraSessionCredentials;
 }
+
+export async function completeAgoraSession(bookingId: string, role: "seeker" | "expert") {
+  const root = role === "expert" ? "expert/requests" : "seeker/bookings";
+  const response = await fetch(`${publicApiBase()}/api/${root}/${encodeURIComponent(bookingId)}/session/complete`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken() || ""}`, "Content-Type": "application/json" },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || "Unable to complete the session");
+  return data;
+}

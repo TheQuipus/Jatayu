@@ -17,7 +17,7 @@ import {
   startDigilockerKyc,
 } from '../controllers/digilockerController.js';
 import { connectLinkedin } from '../controllers/linkedinController.js';
-import { getExpertAgoraSession } from '../controllers/agoraSessionController.js';
+import { completeExpertAgoraSession, getExpertAgoraSession } from '../controllers/agoraSessionController.js';
 import {
   getExpertTranscript,
   startExpertTranscription,
@@ -76,6 +76,7 @@ router.post('/onboarding/linkedin/connect', protect, connectLinkedin);
 router.get('/requests', protect, getRequests);
 router.patch('/requests/:bookingId/decision', protect, updateRequestDecision);
 router.post('/requests/:bookingId/session/token', protect, getExpertAgoraSession);
+router.post('/requests/:bookingId/session/complete', protect, completeExpertAgoraSession);
 router.post('/requests/:bookingId/transcription/start', protect, startExpertTranscription);
 router.post('/requests/:bookingId/transcription/stop', protect, stopExpertTranscription);
 router.post('/requests/:bookingId/transcription/segments', protect, storeExpertTranscriptSegment);

@@ -43,6 +43,7 @@ export type ExpertActiveVideoRoomProps = {
   title: string;
   proposedPrice?: string;
   formatLabel?: string;
+  scheduledEndAt?: string;
   onLeaveRoom: () => void;
   onFinishSession: () => void;
 };
@@ -55,6 +56,7 @@ export default function ExpertActiveVideoRoom({
   title,
   proposedPrice = "₹2,400.00",
   formatLabel = "Video Call",
+  scheduledEndAt,
   onLeaveRoom,
   onFinishSession,
 }: ExpertActiveVideoRoomProps) {
@@ -65,7 +67,9 @@ export default function ExpertActiveVideoRoom({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [secondsRemaining, setSecondsRemaining] = useState(115);
+  const [secondsRemaining, setSecondsRemaining] = useState(() => Math.max(0, Math.ceil(
+    (new Date(scheduledEndAt || Date.now()).getTime() - Date.now()) / 1000,
+  )));
   const [extendNotification, setExtendNotification] = useState<string | null>(null);
 
   const [notes, setNotes] = useState("");
@@ -99,10 +103,15 @@ export default function ExpertActiveVideoRoom({
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 0));
+      const endAt = agora.scheduledEndAt || scheduledEndAt;
+      setSecondsRemaining(endAt ? Math.max(0, Math.ceil((new Date(endAt).getTime() - Date.now()) / 1000)) : 0);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [agora.scheduledEndAt, scheduledEndAt]);
+
+  useEffect(() => {
+    if (agora.hasEnded) onFinishSession();
+  }, [agora.hasEnded, onFinishSession]);
 
   const formatTimer = (totalSecs: number) => {
     const mins = Math.floor(totalSecs / 60);

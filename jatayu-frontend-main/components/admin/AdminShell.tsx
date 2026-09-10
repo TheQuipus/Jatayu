@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
+import RealtimeNotificationToast from "@/components/ui/RealtimeNotificationToast";
 import {
   ADMIN_DASHBOARD_HREF,
   ADMIN_EXPERT_PATH_PREFIXES,
@@ -255,6 +256,7 @@ export default function AdminShell({ children }: AdminShellProps) {
 
   return (
     <div className={`${styles.shell} ${isCollapsed ? styles.shellCollapsed : ""}`.trim()}>
+      <RealtimeNotificationToast />
       <aside
         className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`.trim()}
         aria-label="Admin navigation"

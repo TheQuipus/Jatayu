@@ -23,6 +23,9 @@ import razorpayWebhookRoutes from './routes/razorpayWebhookRoutes.js';
 import { getRazorpayClient, validateRazorpayConfig } from './config/razorpay.js';
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 import { createOpenApiDocument } from './config/swagger.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import { setNotificationSocketServer } from './services/notificationService.js';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
@@ -83,6 +86,7 @@ app.use('/api/seeker', seekerBookingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/public/experts', publicExpertRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -116,7 +120,21 @@ const startServer = async () => {
       path: '/socket.io',
     });
 
+    io.use((socket, next) => {
+      try {
+        const token = socket.handshake.auth?.token;
+        const user = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production');
+        if (!user?.id) throw new Error();
+        user.role ||= 'expert';
+        if (!['seeker', 'expert', 'admin'].includes(user.role)) throw new Error();
+        socket.user = user;
+        next();
+      } catch { next(new Error('Unauthorized')); }
+    });
+    setNotificationSocketServer(io);
+
     io.on('connection', (socket) => {
+      socket.join(`notifications:${socket.user.role}:${socket.user.id}`);
       console.log(`Socket connected: ${socket.id}`);
       socket.emit('connected', { socketId: socket.id, message: 'WebSocket connected.' });
 

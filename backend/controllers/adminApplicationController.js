@@ -9,6 +9,7 @@ import {
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { getSetting } from '../utils/settingsHelper.js';
+import { sendNotification } from '../services/notificationService.js';
 
 const FRONTEND_TO_BACKEND_STATUS = {
   pending: 'pending_review',
@@ -140,6 +141,12 @@ async function ensureReviewMetadata(expert) {
 
   if (changed) {
     await saveExpertForAdmin(expert);
+
+    await sendNotification({ recipientType: 'expert', recipientId: expert.id,
+      eventType: `expert.application_${backendStatus}`, dedupeKey: `expert.application:${expert.id}:${backendStatus}`,
+      title: backendStatus === 'approved' ? 'Application approved' : backendStatus === 'rejected' ? 'Application rejected' : backendStatus === 'on_hold' ? 'Application on hold' : 'Application status updated',
+      body: reviewerNote || `Your expert application is now ${backendStatus.replace('_', ' ')}.`,
+      href: backendStatus === 'approved' ? '/expert/dashboard/' : '/expert/expert-onboarding/', data: { status: backendStatus } });
   }
 }
 

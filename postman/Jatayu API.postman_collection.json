@@ -24,6 +24,7 @@
     { "key": "razorpayPaymentSignature", "value": "" },
     { "key": "bookingStartAt", "value": "" },
     { "key": "bookingIdempotencyKey", "value": "" },
+    { "key": "notificationId", "value": "" },
     { "key": "otp", "value": "123456" }
   ],
   "item": [
@@ -168,10 +169,13 @@
           "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.requests?.[0]?.id) {", "  pm.collectionVariables.set('bookingId', data.requests[0].id);", "  if (pm.environment.name) pm.environment.set('bookingId', data.requests[0].id);", "}"] } }],
           "request": {
             "method": "GET",
-            "description": "Returns only requests assigned to the authenticated expert. Change status to all, new, pending, accepted, or declined.",
+            "description": "Returns only bookings assigned to the authenticated expert. Status supports all, new, pending, upcoming, completed, and cancelled. accepted/declined remain compatible aliases.",
             "url": "{{baseUrl}}/api/expert/requests?status=all&page=1&limit=20&sort=newest"
           }
         },
+        { "name": "List Upcoming Sessions", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests?status=upcoming&page=1&limit=20&sort=newest" } },
+        { "name": "List Completed Session History", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests?status=completed&page=1&limit=20&sort=newest" } },
+        { "name": "List Cancelled Session History", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests?status=cancelled&page=1&limit=20&sort=newest" } },
         {
           "name": "Accept Request",
           "request": {
@@ -273,6 +277,15 @@
         { "name": "Save Budget Step", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"personalisation\",\n  \"selectedBudget\": \"standard\"\n}" }, "url": "{{baseUrl}}/api/seeker/profile" } },
         { "name": "Save Personalisation Step", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"step\": \"review\",\n  \"selectedLanguages\": [\"english\", \"hindi\"],\n  \"location\": \"Delhi\",\n  \"additionalContext\": \"Evening sessions preferred.\",\n  \"profilePhotoSrc\": \"/assets/img/manportrait.png\"\n}" }, "url": "{{baseUrl}}/api/seeker/profile" } },
         { "name": "Submit Onboarding", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}" }, "url": "{{baseUrl}}/api/seeker/submit" } }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{seekerToken}}", "type": "string" }] },
+      "item": [
+        { "name": "List My Notifications", "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.items?.[0]?.id) pm.collectionVariables.set('notificationId', data.items[0].id);"] } }], "request": { "method": "GET", "description": "Use seekerToken by default; replace folder token with expertToken for expert notifications.", "url": "{{baseUrl}}/api/notifications?page=1&limit=30" } },
+        { "name": "Mark Notification Read", "request": { "method": "PATCH", "url": "{{baseUrl}}/api/notifications/{{notificationId}}/read" } },
+        { "name": "Mark All Notifications Read", "request": { "method": "PATCH", "url": "{{baseUrl}}/api/notifications/read-all" } }
       ]
     },
     {

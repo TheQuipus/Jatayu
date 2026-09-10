@@ -10,7 +10,9 @@
     "migrate:seeker-credits": "node scripts/migrateSeekerCredits.js",
     "migrate:seeker-bookings": "node scripts/migrateSeekerBookings.js",
     "migrate:digilocker": "node scripts/migrateDigilockerVerification.js",
-    "migrate:agora-transcripts": "node scripts/migrateAgoraTranscripts.js"
+    "migrate:agora-transcripts": "node scripts/migrateAgoraTranscripts.js",
+    "migrate:booking-extensions": "node scripts/migrateBookingExtensions.js",
+    "migrate:notifications": "node scripts/migrateNotifications.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.2",

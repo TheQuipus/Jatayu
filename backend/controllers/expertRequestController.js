@@ -2,8 +2,9 @@ import {
   decideExpertRequest,
   listExpertRequests,
 } from '../services/expert/expertRequestService.js';
+import { sendNotification } from '../services/notificationService.js';
 
-const ALLOWED_STATUSES = new Set(['all', 'new', 'pending', 'accepted', 'declined']);
+const ALLOWED_STATUSES = new Set(['all', 'new', 'pending', 'upcoming', 'completed', 'cancelled', 'accepted', 'declined']);
 const ERROR_RESPONSES = {
   EXPERT_NOT_FOUND: [403, 'Authenticated expert account was not found'],
   REQUEST_NOT_FOUND: [404, 'Booking request not found'],
@@ -42,6 +43,14 @@ export async function getRequests(req, res) {
 export async function updateRequestDecision(req, res) {
   try {
     const request = await decideExpertRequest(req.user.id, req.params.bookingId, req.body || {});
+    void sendNotification({ recipientType: 'seeker', recipientId: request.seekerId,
+      eventType: request.requestStatus === 'accepted' ? 'booking.accepted' : 'booking.declined',
+      dedupeKey: `booking.decision:${request.id}`,
+      title: request.requestStatus === 'accepted' ? 'Booking accepted' : 'Booking declined',
+      body: request.requestStatus === 'accepted'
+        ? `${request.expertName} accepted your booking request.`
+        : `${request.expertName} declined your booking request${request.declineReasonNotes ? `: ${request.declineReasonNotes}` : '.'}`,
+      href: `/seeker/bookings/${request.id}/`, data: { bookingId: request.id, status: request.status } }).catch(console.error);
     return res.status(200).json({
       message: request.requestStatus === 'accepted'
         ? 'Booking request accepted'

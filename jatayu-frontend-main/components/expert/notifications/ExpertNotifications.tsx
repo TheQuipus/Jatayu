@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   CalendarClock,
@@ -12,11 +12,12 @@ import {
   UserRound,
 } from "lucide-react";
 import styles from "./ExpertNotifications.module.css";
+import { fetchNotifications, readAllNotifications, readNotification, type AppNotification } from "@/lib/notificationApi";
 
 type NotificationType = "request" | "message" | "session" | "payment" | "review" | "system";
 
 type ExpertNotification = {
-  id: number;
+  id: string | number;
   type: NotificationType;
   title: string;
   description: string;
@@ -62,7 +63,7 @@ const SUMMARY: { id: CategoryFilter; label: string; icon: typeof Bell; toneClass
 ];
 
 export default function ExpertNotifications() {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<ExpertNotification[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "unread" | "read">("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [emailUpdates, setEmailUpdates] = useState(true);
@@ -99,12 +100,25 @@ export default function ExpertNotifications() {
     });
   }, [categoryFilter, notifications, statusFilter]);
 
-  const markRead = (id: number) => {
+  const mapNotification = (item: AppNotification): ExpertNotification => ({
+    id: item.id, type: item.title.toLowerCase().includes("booking") ? "request" : "system",
+    title: item.title, description: item.body, time: new Date(item.createdAt).toLocaleString(),
+    group: Date.now() - new Date(item.createdAt).getTime() < 86400000 ? "New" : "Earlier", unread: !item.readAt,
+    action: item.href ? "View details" : undefined,
+  });
+  useEffect(() => {
+    fetchNotifications().then((data) => setNotifications(data.items.map(mapNotification))).catch(() => undefined);
+    const receive = (event: Event) => setNotifications((current) => [mapNotification((event as CustomEvent<AppNotification>).detail), ...current]);
+    window.addEventListener("jatayu:notification", receive); return () => window.removeEventListener("jatayu:notification", receive);
+  }, []);
+
+  const markRead = (id: string | number) => {
     setNotifications((current) =>
       current.map((notification) =>
         notification.id === id ? { ...notification, unread: false } : notification
       )
     );
+    void readNotification(String(id)).catch(() => undefined);
   };
 
   return (
@@ -124,11 +138,12 @@ export default function ExpertNotifications() {
             <button
               type="button"
               className={styles.markButton}
-              onClick={() =>
+              onClick={() => {
                 setNotifications((current) =>
                   current.map((notification) => ({ ...notification, unread: false }))
-                )
-              }
+                );
+                void readAllNotifications().catch(() => undefined);
+              }}
               disabled={!unreadCount}
             >
               <Check size={15} aria-hidden="true" /> Mark all read

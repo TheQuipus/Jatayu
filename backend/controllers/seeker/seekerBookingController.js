@@ -8,6 +8,15 @@ import {
   verifyBookingPayment,
 } from '../../services/seeker/bookingService.js';
 import { getBookingPokeConfig } from '../../config/bookingPokes.js';
+import { sendNotification } from '../../services/notificationService.js';
+
+function notifyExpertOfBooking(booking, seekerName) {
+  if (booking.status !== 'awaiting_expert') return Promise.resolve();
+  return sendNotification({ recipientType: 'expert', recipientId: booking.expertId,
+    eventType: 'booking.requested', dedupeKey: `booking.requested:${booking.id}`,
+    title: 'New booking request', body: `${seekerName || 'A seeker'} requested a ${booking.consultationType} consultation.`,
+    href: `/expert/requests/${booking.id}/`, data: { bookingId: booking.id } });
+}
 
 const ERROR_RESPONSES = {
   MISSING_BOOKING_FIELDS: [400, 'expertId, idempotencyKey, subject, context, and scheduledStartAt are required'],
@@ -61,6 +70,7 @@ export async function createOrder(req, res) {
   try {
     const result = await createBookingOrder(req.user.id, req.body);
     const payment = result.payment;
+    if (!result.reused) void notifyExpertOfBooking(result.booking, req.user.fullName).catch(console.error);
     return res.status(result.reused ? 200 : 201).json({
       booking: serializeBooking(result.booking, await getBookingPokeConfig()),
       checkoutRequired: result.booking.payableAmount > 0
@@ -80,6 +90,7 @@ export async function createOrder(req, res) {
 export async function verifyPayment(req, res) {
   try {
     const booking = await verifyBookingPayment(req.user.id, req.params.bookingId, req.body);
+    void notifyExpertOfBooking(booking, req.user.fullName).catch(console.error);
     return res.status(200).json({
       message: booking.status === 'awaiting_expert'
         ? 'Payment confirmed and booking request sent to the expert'
@@ -112,6 +123,10 @@ export async function getBooking(req, res) {
 export async function pokeBookingExpert(req, res) {
   try {
     const booking = await pokeExpert(req.user.id, req.params.bookingId);
+    void sendNotification({ recipientType: 'expert', recipientId: booking.expertId,
+      eventType: 'booking.poked', dedupeKey: `booking.poked:${booking.id}:${booking.pokeCount}`,
+      title: 'Booking reminder', body: `${req.user.fullName || 'A seeker'} reminded you about a booking request.`,
+      href: `/expert/requests/${booking.id}/`, data: { bookingId: booking.id } }).catch(console.error);
     return res.status(200).json({ message: 'Expert poked successfully', booking });
   } catch (error) {
     return handleBookingError(error, res, 'poke expert');
