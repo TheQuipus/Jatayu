@@ -112,6 +112,8 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const [consultationType, setConsultationType] = useState<ConsultationType | null>(
     () => initialFormat
   );
+  const [selectedDuration, setSelectedDuration] = useState("15min");
+  const [customDurationMinutes, setCustomDurationMinutes] = useState("");
   const initialAvailableDateOffset = useMemo(() => {
     if (!expert.availabilities || expert.availabilities.length === 0) return 0;
     const today = new Date();
@@ -696,8 +698,14 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         selectedSlotTime,
         bookingOptions?.timezone || bookingExpert.timezone || "Asia/Kolkata",
       );
+      const durationMinutes = selectedDuration === "custom"
+        ? Number(customDurationMinutes)
+        : ({ "15min": 15, "30min": 30, "45min": 45, "1hr": 60 } as Record<string, number>)[selectedDuration];
+      if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 360) {
+        throw new Error("Select a valid session duration between 1 and 360 minutes");
+      }
 
-      const fingerprint = [expertIdentifier, consultationType, scheduledStartAt].join(":");
+      const fingerprint = [expertIdentifier, consultationType, scheduledStartAt, durationMinutes].join(":");
       const idempotencyKey = getBookingIdempotencyKey(fingerprint);
       const userFullName =
         [registerFirstName, registerLastName].filter(Boolean).join(" ") || "Priya Sharma";
@@ -710,6 +718,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         subject,
         context,
         scheduledStartAt,
+        durationMinutes,
         useCredits,
         idempotencyKey,
       });
@@ -821,6 +830,10 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   expert={bookingExpert}
                   consultationType={consultationType}
                   onSelectConsultationType={setConsultationType}
+                  selectedDuration={selectedDuration}
+                  onSelectDuration={setSelectedDuration}
+                  customDurationMinutes={customDurationMinutes}
+                  onCustomDurationMinutesChange={setCustomDurationMinutes}
                 />
               )}
 

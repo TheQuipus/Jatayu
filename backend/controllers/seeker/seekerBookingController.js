@@ -23,6 +23,7 @@ const ERROR_RESPONSES = {
   INVALID_BOOKING_FIELDS: [422, 'Booking fields exceed their allowed length'],
   INVALID_CONSULTATION_TYPE: [422, 'Unsupported consultation type'],
   INVALID_BOOKING_TIME: [422, 'scheduledStartAt must be a valid future ISO date'],
+  INVALID_BOOKING_DURATION: [422, 'durationMinutes must be a whole number between 1 and 360'],
   INVALID_FROM_DATE: [422, 'from must be a valid date'],
   EXPERT_NOT_FOUND: [404, 'Approved expert not found'],
   SEEKER_NOT_FOUND: [404, 'Seeker not found'],

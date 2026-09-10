@@ -229,7 +229,12 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
       get: operation({ tag: 'Bookings', summary: 'List seeker bookings', security: bearerSecurity }),
     },
     '/api/seeker/bookings/orders': {
-      post: operation({ tag: 'Bookings', summary: 'Create a booking and Razorpay order', security: bearerSecurity, requestBody: jsonBody() }),
+      post: operation({
+        tag: 'Bookings',
+        summary: 'Create a booking and Razorpay order',
+        security: bearerSecurity,
+        requestBody: jsonBody('Include durationMinutes as a whole number from 1 to 360. It defaults to 30 for backward compatibility.'),
+      }),
     },
     '/api/seeker/bookings/{bookingId}': {
       get: operation({

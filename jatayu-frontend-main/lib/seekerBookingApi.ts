@@ -187,7 +187,7 @@ export async function fetchBookingOptions(expertId: string): Promise<BookingOpti
 
 export function createBookingOrder(input: {
   expertId: string; consultationType: string; subject: string; context: string;
-  scheduledStartAt: string; useCredits: boolean; idempotencyKey: string;
+  scheduledStartAt: string; durationMinutes: number; useCredits: boolean; idempotencyKey: string;
 }): Promise<CreateBookingResponse> {
   return bookingFetch<CreateBookingResponse>("/api/seeker/bookings/orders", {
     method: "POST", body: JSON.stringify(input),
