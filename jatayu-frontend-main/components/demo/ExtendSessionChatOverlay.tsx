@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Shield } from "lucide-react";
+import { getToken } from "@/lib/api";
+import { connectSocket } from "@/lib/socket";
 import styles from "@/components/seeker/bookings/ActiveRoom.module.css";
 
 export type ExtendSessionChatOverlayProps = {
@@ -16,6 +18,7 @@ export type ExtendSessionChatOverlayProps = {
   onExtendSessionAdded?: (secondsToAdd: number) => void;
   onExtensionConfirmed?: (mins: number, amount: number) => void;
   channelName?: string;
+  bookingId?: string;
 };
 
 const DEFAULT_CHANNEL_NAME = "jatayu_demo_sync_v1";
@@ -31,6 +34,7 @@ export default function ExtendSessionChatOverlay({
   onExtendSessionAdded,
   onExtensionConfirmed,
   channelName = DEFAULT_CHANNEL_NAME,
+  bookingId,
 }: ExtendSessionChatOverlayProps) {
   const chatLogRef = useRef<HTMLDivElement>(null);
 
@@ -165,6 +169,34 @@ export default function ExtendSessionChatOverlay({
     };
   }, [role, channelName, onExtendSessionAdded]);
 
+  useEffect(() => {
+    const token = getToken();
+    if (!token || !bookingId) return;
+    const socket = connectSocket(token);
+    const onRequest = (data: { bookingId?: string; minutes?: number }) => {
+      if (role !== "expert" || data.bookingId !== bookingId) return;
+      const reqMins = Number(data.minutes) || 30;
+      setExpertRequestedMins(reqMins);
+      setExpertConfirmedMins(reqMins);
+      setExpertHasRequest(true);
+      setExpertDecisionStatus("pending");
+      setSelectedExpertChoice(null);
+      setIsDismissed(false);
+    };
+    const onDecision = (data: { bookingId?: string; decision?: "confirmed" | "reduced" | "declined"; minutes?: number }) => {
+      if (role !== "seeker" || data.bookingId !== bookingId || !data.decision) return;
+      setExtensionChatStatus(data.decision);
+      setSeekerReceivedReplyMins(Number(data.minutes) || 0);
+    };
+    socket.on("session:extension:request", onRequest);
+    socket.on("session:extension:decision", onDecision);
+    socket.emit("session:extension:subscribe", { bookingId });
+    return () => {
+      socket.off("session:extension:request", onRequest);
+      socket.off("session:extension:decision", onDecision);
+    };
+  }, [bookingId, role]);
+
   const handleSelectExtension = (mins: number) => {
     setSelectedExtension(mins);
     if (isExpertBooked) {
@@ -178,6 +210,7 @@ export default function ExtendSessionChatOverlay({
       type: "SEEKER_REQUEST_EXTENSION",
       mins,
     });
+    if (bookingId) connectSocket(getToken() || undefined).emit("session:extension:request", { bookingId, minutes: mins });
   };
 
   const handleCustomInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,6 +302,13 @@ export default function ExtendSessionChatOverlay({
       decision: status,
       mins: finalMins,
     });
+    if (bookingId) {
+      connectSocket(getToken() || undefined).emit("session:extension:decision", {
+        bookingId,
+        decision: status,
+        minutes: finalMins,
+      });
+    }
   };
 
   // --- SEEKER VIEW RENDERING ---

@@ -250,6 +250,7 @@ export default function ActiveVideoRoom({
               {/* In-Video Pure Transparent Extension Screen */}
               <ExtendSessionChatOverlay
                 role="seeker"
+                bookingId={booking.id}
                 isOpen={isExtendChatOpen}
                 expertName={booking.expert.name}
                 expertImage={booking.expert.image}
