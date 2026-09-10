@@ -26,6 +26,7 @@ import { createOpenApiDocument } from './config/swagger.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import { sendNotification, setNotificationSocketServer } from './services/notificationService.js';
 import { Booking, BookingExtension } from './models/index.js';
+import { approveExtension } from './services/bookingExtensionService.js';
 import jwt from 'jsonwebtoken';
 
 dotenv.config();
@@ -164,6 +165,11 @@ const startServer = async () => {
                 ? 'declined'
                 : extension.approvedMinutes < extension.requestedMinutes ? 'reduced' : 'confirmed',
               minutes: extension.approvedMinutes || 0,
+              order: extension.status === 'payment_pending' ? {
+                id: extension.razorpayOrderId,
+                amount: extension.totalAmount,
+                currency: extension.currency,
+              } : null,
             });
           }
         } catch (error) {
@@ -218,20 +224,13 @@ const startServer = async () => {
           if (!['confirmed', 'reduced', 'declined'].includes(decision)) throw new Error('INVALID_EXTENSION_DECISION');
           const booking = await Booking.findOne({ where: { id: bookingId, expertId: socket.user.id, status: 'confirmed' } });
           if (!booking) throw new Error('BOOKING_NOT_FOUND');
-          const extension = await BookingExtension.findOne({ where: { bookingId: booking.id } });
-          if (!extension || extension.status !== 'requested') throw new Error('EXTENSION_NOT_PENDING');
           const approvedMinutes = decision === 'declined' ? 0 : Number(minutes);
-          if (decision !== 'declined' && (!Number.isInteger(approvedMinutes) || approvedMinutes < 1 || approvedMinutes > extension.requestedMinutes)) {
-            throw new Error('INVALID_EXTENSION_DURATION');
-          }
-          extension.status = decision === 'declined' ? 'declined' : 'approved';
-          extension.approvedMinutes = approvedMinutes || null;
-          extension.respondedAt = new Date();
-          await extension.save();
+          const result = await approveExtension(socket.user.id, booking.id, decision, approvedMinutes);
           io.to(`notifications:seeker:${booking.seekerId}`).emit('session:extension:decision', {
             bookingId: booking.id,
             decision,
             minutes: approvedMinutes,
+            order: result.order,
           });
           void sendNotification({
             recipientType: 'seeker', recipientId: booking.seekerId,

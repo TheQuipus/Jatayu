@@ -209,6 +209,17 @@ export async function verifyBookingPayment(bookingId: string, payment: RazorpayC
     : ({} as SeekerBooking);
 }
 
+export async function verifyExtensionPayment(bookingId: string, payment: RazorpayCheckoutResult) {
+  return bookingFetch<{ bookingId: string; extendedEndAt: string; minutes: number; status: string }>(
+    `/api/seeker/bookings/${encodeURIComponent(bookingId)}/extension/verify-payment`,
+    { method: "POST", body: JSON.stringify({
+      razorpayOrderId: payment.razorpay_order_id,
+      razorpayPaymentId: payment.razorpay_payment_id,
+      razorpaySignature: payment.razorpay_signature,
+    }) },
+  );
+}
+
 export type SeekerBookingsQueryParams = {
   status?: string;
   page?: number;

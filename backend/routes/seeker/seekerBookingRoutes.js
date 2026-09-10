@@ -15,6 +15,7 @@ import {
   stopSeekerTranscription,
   storeSeekerTranscriptSegment,
 } from '../../controllers/agoraTranscriptionController.js';
+import { verifySeekerExtensionPayment } from '../../controllers/bookingExtensionController.js';
 
 const router = express.Router();
 
@@ -31,5 +32,6 @@ router.post('/bookings/:bookingId/transcription/stop', stopSeekerTranscription);
 router.post('/bookings/:bookingId/transcription/segments', storeSeekerTranscriptSegment);
 router.get('/bookings/:bookingId/transcript', getSeekerTranscript);
 router.post('/bookings/:bookingId/verify-payment', verifyPayment);
+router.post('/bookings/:bookingId/extension/verify-payment', verifySeekerExtensionPayment);
 
 export default router;
