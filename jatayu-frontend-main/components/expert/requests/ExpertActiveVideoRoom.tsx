@@ -266,6 +266,7 @@ export default function ExpertActiveVideoRoom({
               {/* In-Video Pure Transparent Extension Decision Screen (Expert) */}
               <ExtendSessionChatOverlay
                 role="expert"
+                bookingId={requestId}
                 expertName="You (Expert)"
                 expertImage="/assets/img/team1.png"
                 clientName={clientName}

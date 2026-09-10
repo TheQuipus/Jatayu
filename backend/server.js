@@ -24,7 +24,8 @@ import { getRazorpayClient, validateRazorpayConfig } from './config/razorpay.js'
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 import { createOpenApiDocument } from './config/swagger.js';
 import notificationRoutes from './routes/notificationRoutes.js';
-import { setNotificationSocketServer } from './services/notificationService.js';
+import { sendNotification, setNotificationSocketServer } from './services/notificationService.js';
+import { Booking, BookingExtension } from './models/index.js';
 import jwt from 'jsonwebtoken';
 
 dotenv.config();
@@ -140,6 +141,111 @@ const startServer = async () => {
 
       socket.on('ping', (payload) => {
         socket.emit('pong', payload || { timestamp: Date.now() });
+      });
+
+      socket.on('session:extension:subscribe', async ({ bookingId } = {}) => {
+        try {
+          const ownership = socket.user.role === 'expert'
+            ? { expertId: socket.user.id }
+            : { seekerId: socket.user.id };
+          const booking = await Booking.findOne({ where: { id: bookingId, ...ownership } });
+          if (!booking) throw new Error('BOOKING_NOT_FOUND');
+          const extension = await BookingExtension.findOne({ where: { bookingId: booking.id } });
+          if (!extension) return;
+          if (socket.user.role === 'expert' && extension.status === 'requested') {
+            socket.emit('session:extension:request', {
+              bookingId: booking.id,
+              minutes: extension.requestedMinutes,
+            });
+          } else if (socket.user.role === 'seeker' && extension.status !== 'requested') {
+            socket.emit('session:extension:decision', {
+              bookingId: booking.id,
+              decision: extension.status === 'declined'
+                ? 'declined'
+                : extension.approvedMinutes < extension.requestedMinutes ? 'reduced' : 'confirmed',
+              minutes: extension.approvedMinutes || 0,
+            });
+          }
+        } catch (error) {
+          socket.emit('session:extension:error', { bookingId, code: error.message });
+        }
+      });
+
+      socket.on('session:extension:request', async ({ bookingId, minutes } = {}) => {
+        try {
+          if (socket.user.role !== 'seeker') throw new Error('FORBIDDEN');
+          const requestedMinutes = Number(minutes);
+          if (!Number.isInteger(requestedMinutes) || requestedMinutes < 1 || requestedMinutes > 360) {
+            throw new Error('INVALID_EXTENSION_DURATION');
+          }
+          const booking = await Booking.findOne({ where: { id: bookingId, seekerId: socket.user.id, status: 'confirmed' } });
+          if (!booking) throw new Error('BOOKING_NOT_FOUND');
+          if (Date.now() > new Date(booking.scheduledEndAt).getTime()) throw new Error('SESSION_CLOSED');
+          const [extension] = await BookingExtension.findOrCreate({
+            where: { bookingId: booking.id },
+            defaults: {
+              bookingId: booking.id,
+              requestedMinutes,
+              status: 'requested',
+              originalEndAt: booking.scheduledEndAt,
+            },
+          });
+          if (extension.status === 'requested') {
+            extension.requestedMinutes = requestedMinutes;
+            extension.requestedAt = new Date();
+            await extension.save();
+          }
+          io.to(`notifications:expert:${booking.expertId}`).emit('session:extension:request', {
+            bookingId: booking.id,
+            minutes: requestedMinutes,
+          });
+          void sendNotification({
+            recipientType: 'expert', recipientId: booking.expertId,
+            eventType: 'session.extension_requested',
+            title: 'Session extension requested',
+            body: `The seeker requested ${requestedMinutes} additional minutes.`,
+            href: `/expert/requests/${booking.id}/?action=join`,
+            data: { bookingId: booking.id, minutes: requestedMinutes },
+          }).catch(console.error);
+        } catch (error) {
+          socket.emit('session:extension:error', { bookingId, code: error.message });
+        }
+      });
+
+      socket.on('session:extension:decision', async ({ bookingId, decision, minutes } = {}) => {
+        try {
+          if (socket.user.role !== 'expert') throw new Error('FORBIDDEN');
+          if (!['confirmed', 'reduced', 'declined'].includes(decision)) throw new Error('INVALID_EXTENSION_DECISION');
+          const booking = await Booking.findOne({ where: { id: bookingId, expertId: socket.user.id, status: 'confirmed' } });
+          if (!booking) throw new Error('BOOKING_NOT_FOUND');
+          const extension = await BookingExtension.findOne({ where: { bookingId: booking.id } });
+          if (!extension || extension.status !== 'requested') throw new Error('EXTENSION_NOT_PENDING');
+          const approvedMinutes = decision === 'declined' ? 0 : Number(minutes);
+          if (decision !== 'declined' && (!Number.isInteger(approvedMinutes) || approvedMinutes < 1 || approvedMinutes > extension.requestedMinutes)) {
+            throw new Error('INVALID_EXTENSION_DURATION');
+          }
+          extension.status = decision === 'declined' ? 'declined' : 'approved';
+          extension.approvedMinutes = approvedMinutes || null;
+          extension.respondedAt = new Date();
+          await extension.save();
+          io.to(`notifications:seeker:${booking.seekerId}`).emit('session:extension:decision', {
+            bookingId: booking.id,
+            decision,
+            minutes: approvedMinutes,
+          });
+          void sendNotification({
+            recipientType: 'seeker', recipientId: booking.seekerId,
+            eventType: `session.extension_${decision}`,
+            title: decision === 'declined' ? 'Extension declined' : 'Extension approved',
+            body: decision === 'declined'
+              ? 'The expert declined your session extension request.'
+              : `The expert approved ${approvedMinutes} additional minutes.`,
+            href: `/seeker/bookings/${booking.id}/?action=join`,
+            data: { bookingId: booking.id, decision, minutes: approvedMinutes },
+          }).catch(console.error);
+        } catch (error) {
+          socket.emit('session:extension:error', { bookingId, code: error.message });
+        }
       });
 
       socket.on('disconnect', (reason) => {
