@@ -12,6 +12,7 @@ export type AgoraSessionCredentials = {
   expiresAt: string;
   scheduledStartAt: string;
   scheduledEndAt: string;
+  extensionOfferBeforeMinutes: number;
 };
 
 export async function fetchAgoraSession(bookingId: string, role: "seeker" | "expert") {

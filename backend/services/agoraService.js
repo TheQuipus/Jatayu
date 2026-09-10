@@ -9,13 +9,14 @@ function positiveInt(value, fallback) {
 }
 
 export async function getAgoraConfig() {
-  const [enabled, appId, appCertificate, tokenTtl, joinBefore, joinAfter] = await Promise.all([
+  const [enabled, appId, appCertificate, tokenTtl, joinBefore, joinAfter, extensionOfferBefore] = await Promise.all([
     getDatabaseSettingBool('AGORA_ENABLED', false),
     getDatabaseSetting('AGORA_APP_ID'),
     getDatabaseSetting('AGORA_APP_CERTIFICATE'),
     getDatabaseSetting('AGORA_TOKEN_TTL_SECONDS', '3600'),
     getDatabaseSetting('AGORA_JOIN_BEFORE_MINUTES', '15'),
     getDatabaseSetting('AGORA_JOIN_AFTER_MINUTES', '30'),
+    getDatabaseSetting('BOOKING_EXTENSION_OFFER_BEFORE_MINUTES', '5'),
   ]);
   return {
     enabled,
@@ -24,6 +25,7 @@ export async function getAgoraConfig() {
     tokenTtlSeconds: positiveInt(tokenTtl, 3600),
     joinBeforeMinutes: positiveInt(joinBefore, 15),
     joinAfterMinutes: positiveInt(joinAfter, 30),
+    extensionOfferBeforeMinutes: positiveInt(extensionOfferBefore, 5),
   };
 }
 
@@ -49,6 +51,7 @@ export async function getAgoraSessionAccess(booking) {
     closesAt: new Date(closesAt).toISOString(),
     canJoin: booking.status === 'confirmed' && now >= opensAt && now <= closesAt,
     joinBeforeMinutes: config.joinBeforeMinutes,
+    extensionOfferBeforeMinutes: config.extensionOfferBeforeMinutes,
   };
 }
 
@@ -99,5 +102,6 @@ export async function createAgoraSessionToken(booking, role) {
     expiresAt: new Date(now + expiresIn * 1000).toISOString(),
     scheduledStartAt: booking.scheduledStartAt,
     scheduledEndAt: booking.scheduledEndAt,
+    extensionOfferBeforeMinutes: config.extensionOfferBeforeMinutes,
   };
 }

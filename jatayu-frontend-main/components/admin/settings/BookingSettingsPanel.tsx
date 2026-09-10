@@ -30,6 +30,16 @@ export default function BookingSettingsPanel({ draft, onChange }: Props) {
           onChange={(event) => updateNonNegativeNumber("minimumLeadTimeMinutes", event.target.value)}
         />
       </Field>
+      <Field label="Show Extend Session before (minutes)" hint="The seeker sees the extension option when this much time remains in an active session.">
+        <input
+          className={styles.input}
+          type="number"
+          min="1"
+          step="1"
+          value={draft.extensionOfferBeforeMinutes}
+          onChange={(event) => updateNumber("extensionOfferBeforeMinutes", event.target.value)}
+        />
+      </Field>
       <div className={styles.fieldRow}>
         <Field label="Poke initial delay (hours)" hint="How long a seeker must wait before the first poke.">
           <input
