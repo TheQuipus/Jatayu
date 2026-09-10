@@ -63,6 +63,7 @@ export default function ExtendSessionChatOverlay({
   // Auto-hide states
   const [isDismissed, setIsDismissed] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const [realtimeError, setRealtimeError] = useState("");
 
   // Auto-scroll chat history to latest event
   useEffect(() => {
@@ -193,8 +194,15 @@ export default function ExtendSessionChatOverlay({
       setSeekerReceivedReplyMins(Number(data.minutes) || 0);
       if (data.order && data.decision !== "declined") onPaymentRequired?.(data.order);
     };
+    const onError = (data: { bookingId?: string; code?: string }) => {
+      if (data.bookingId !== bookingId) return;
+      setRealtimeError(data.code || "Unable to process the extension request");
+      if (role === "seeker") setExtensionChatStatus("idle");
+      if (role === "expert") setExpertDecisionStatus("pending");
+    };
     socket.on("session:extension:request", onRequest);
     socket.on("session:extension:decision", onDecision);
+    socket.on("session:extension:error", onError);
     const onActivated = (data: { bookingId?: string; extendedEndAt?: string }) => {
       if (data.bookingId === bookingId && data.extendedEndAt) onExtensionActivated?.(data.extendedEndAt);
     };
@@ -203,6 +211,7 @@ export default function ExtendSessionChatOverlay({
     return () => {
       socket.off("session:extension:request", onRequest);
       socket.off("session:extension:decision", onDecision);
+      socket.off("session:extension:error", onError);
       socket.off("session:extension:activated", onActivated);
     };
   }, [bookingId, onExtensionActivated, onPaymentRequired, role]);
@@ -214,13 +223,10 @@ export default function ExtendSessionChatOverlay({
       return;
     }
     setExtensionChatStatus("requesting");
+    setRealtimeError("");
 
-    // Broadcast live to Expert tab
-    broadcastSync({
-      type: "SEEKER_REQUEST_EXTENSION",
-      mins,
-    });
     if (bookingId) connectSocket(getToken() || undefined).emit("session:extension:request", { bookingId, minutes: mins });
+    else broadcastSync({ type: "SEEKER_REQUEST_EXTENSION", mins });
   };
 
   const handleCustomInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -306,19 +312,13 @@ export default function ExtendSessionChatOverlay({
     setExpertDecisionStatus(status);
     setExpertConfirmedMins(finalMins);
 
-    // Broadcast live to Seeker tab
-    broadcastSync({
-      type: "EXPERT_DECISION",
-      decision: status,
-      mins: finalMins,
-    });
     if (bookingId) {
       connectSocket(getToken() || undefined).emit("session:extension:decision", {
         bookingId,
         decision: status,
         minutes: finalMins,
       });
-    }
+    } else broadcastSync({ type: "EXPERT_DECISION", decision: status, mins: finalMins });
   };
 
   // --- SEEKER VIEW RENDERING ---
@@ -328,6 +328,7 @@ export default function ExtendSessionChatOverlay({
     return (
       <div className={`${styles.extendChatOverlay} ${isFadingOut ? styles.extendChatOverlayFadingOut : ""}`}>
         <div ref={chatLogRef} className={styles.extendChatLog}>
+          {realtimeError ? <div className={styles.extendChatMsgBubbleSystem}>Unable to continue: {realtimeError}</div> : null}
           {isExpertBooked ? (
             /* Expert Already Booked: Do not allow time selection, display compact system message */
             <div className={`${styles.extendChatMsgRow} ${styles.extendChatMsgRowExpert} ${styles.extendChatMsgRowReply}`}>
@@ -504,7 +505,7 @@ export default function ExtendSessionChatOverlay({
                           Note: The expert has reduced extension to {seekerReceivedReplyMins} minutes.
                         </div>
                       )}
-                      Session extended by +{seekerReceivedReplyMins} mins. You will be redirected to payment after the current session ends. Make sure you have enough balance in your account.
+                      Extension approved for +{seekerReceivedReplyMins} mins. Complete the Razorpay payment from the payment panel to activate it.
                     </div>
                   </div>
                 </div>
@@ -522,6 +523,7 @@ export default function ExtendSessionChatOverlay({
   return (
     <div className={`${styles.extendChatOverlay} ${isFadingOut ? styles.extendChatOverlayFadingOut : ""}`}>
       <div ref={chatLogRef} className={styles.extendChatLog}>
+        {realtimeError ? <div className={styles.extendChatMsgBubbleSystem}>Unable to continue: {realtimeError}</div> : null}
         {/* Seeker Message Row */}
         <div className={`${styles.extendChatMsgRow} ${styles.extendChatMsgRowExpert}`}>
           <div className={styles.extendChatMsgAvatar}>

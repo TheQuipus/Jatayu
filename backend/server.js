@@ -196,6 +196,21 @@ const startServer = async () => {
               originalEndAt: booking.scheduledEndAt,
             },
           });
+          if (extension.status === 'payment_pending' && extension.razorpayOrderId) {
+            socket.emit('session:extension:decision', {
+              bookingId: booking.id,
+              decision: extension.approvedMinutes < extension.requestedMinutes ? 'reduced' : 'confirmed',
+              minutes: extension.approvedMinutes,
+              order: { id: extension.razorpayOrderId, amount: extension.totalAmount, currency: extension.currency },
+            });
+            return;
+          }
+          if (extension.status === 'paid') throw new Error('EXTENSION_ALREADY_PAID');
+          if (extension.status !== 'requested') {
+            await extension.update({ status: 'requested', approvedMinutes: null, razorpayOrderId: null,
+              razorpayPaymentId: null, consultationFee: null, gst: null, totalAmount: null,
+              respondedAt: null, paidAt: null, extendedEndAt: null });
+          }
           if (extension.status === 'requested') {
             extension.requestedMinutes = requestedMinutes;
             extension.requestedAt = new Date();
