@@ -101,6 +101,7 @@ export default function ExpertActiveChatRoom({
   title,
   proposedPrice = "₹2,400.00",
   formatLabel = "Text Chat",
+  scheduledEndAt,
   onLeaveRoom,
   onFinishSession,
 }: ExpertActiveChatRoomProps) {
@@ -124,15 +125,20 @@ export default function ExpertActiveChatRoom({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
 
-  const [secondsRemaining, setSecondsRemaining] = useState(900); // 15 mins
+  const [secondsRemaining, setSecondsRemaining] = useState(() => Math.max(0, Math.ceil(
+    (new Date(scheduledEndAt || Date.now()).getTime() - Date.now()) / 1000,
+  )));
 
   useEffect(() => {
     if (secondsRemaining <= 0) return;
     const timer = setInterval(() => {
-      setSecondsRemaining((prev) => Math.max(0, prev - 1));
+      const endAt = scheduledEndAt;
+      const remaining = endAt ? Math.max(0, Math.ceil((new Date(endAt).getTime() - Date.now()) / 1000)) : 0;
+      setSecondsRemaining(remaining);
+      if (remaining === 0) onFinishSession();
     }, 1000);
     return () => clearInterval(timer);
-  }, [secondsRemaining]);
+  }, [onFinishSession, scheduledEndAt, secondsRemaining]);
 
   const formatTimer = (totalSecs: number) => {
     const m = Math.floor(totalSecs / 60);
@@ -143,10 +149,10 @@ export default function ExpertActiveChatRoom({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const receiveAgoraMessage = useCallback((message: AgoraTextMessage) => {
     setChatMessages((previous) => [...previous, {
-      id: `agora-${Date.now()}-${Math.random()}`,
+      id: message.id || `agora-${Date.now()}-${Math.random()}`,
       sender: message.sender === "expert" ? "expert" : "client",
       text: message.text,
-      timestamp: message.timestamp,
+      timestamp: new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     }]);
   }, []);
   const agora = useAgoraRoom({
@@ -156,6 +162,11 @@ export default function ExpertActiveChatRoom({
     requestVideo: false,
     onMessage: receiveAgoraMessage,
   });
+
+  useEffect(() => {
+    if (!agora.scheduledEndAt) return;
+    setSecondsRemaining(Math.max(0, Math.ceil((new Date(agora.scheduledEndAt).getTime() - Date.now()) / 1000)));
+  }, [agora.scheduledEndAt]);
 
   const chatLogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -199,13 +210,7 @@ export default function ExpertActiveChatRoom({
   };
 
   const handleSendEmoji = (emoji: string) => {
-    const msg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      sender: "expert",
-      text: emoji,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-    setChatMessages((prev) => [...prev, msg]);
+    void agora.sendMessage(emoji);
     setShowEmojiPicker(false);
   };
 
@@ -214,19 +219,7 @@ export default function ExpertActiveChatRoom({
     if (!file) return;
 
     const isImg = file.type.startsWith("image/");
-    const msg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      sender: "expert",
-      text: isImg ? `Shared an image: ${file.name}` : `Shared a file: ${file.name}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      attachment: {
-        name: file.name,
-        size: `${(file.size / 1024).toFixed(0)} KB`,
-        type: isImg ? "image" : "file",
-      },
-    };
-
-    setChatMessages((prev) => [...prev, msg]);
+    void agora.sendMessage(isImg ? `Shared an image: ${file.name}` : `Shared a file: ${file.name}`);
   };
 
   const handleFinishClick = () => {

@@ -43,7 +43,11 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
 
   const [newMessage, setNewMessage] = useState("");
   const handleAgoraMessage = useCallback((message: AgoraTextMessage) => {
-    setChatMessages((previous) => [...previous, { id: `agora-${Date.now()}-${Math.random()}`, ...message }]);
+    setChatMessages((previous) => [...previous, {
+      ...message,
+      id: message.id || `agora-${Date.now()}-${Math.random()}`,
+      timestamp: new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    }]);
   }, []);
   const agora = useAgoraRoom({
     bookingId: booking.id,

@@ -10,6 +10,7 @@ import type {
 import { completeAgoraSession, fetchAgoraSession } from "@/lib/agoraSessionApi";
 import { getToken } from "@/lib/api";
 import { connectSocket } from "@/lib/socket";
+import { getBookingMessages, markBookingMessagesRead, saveBookingMessage } from '@/lib/bookingChatApi';
 import { decodeAgoraTranscript } from '@/lib/agoraTranscriptCodec';
 import {
   saveAgoraTranscriptSegment,
@@ -18,7 +19,7 @@ import {
   type TranscriptSegment,
 } from '@/lib/agoraTranscriptApi';
 
-export type AgoraTextMessage = { sender: "seeker" | "expert"; text: string; timestamp: string };
+export type AgoraTextMessage = { id?: string; sender: "seeker" | "expert"; text: string; timestamp: string };
 
 type Options = {
   bookingId: string;
@@ -43,6 +44,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
   const [scheduledEndAt, setScheduledEndAt] = useState<string | null>(null);
   const [extensionOfferBeforeMinutes, setExtensionOfferBeforeMinutes] = useState(5);
   const [hasEnded, setHasEnded] = useState(false);
+  const seenMessageIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!enabled || !bookingId) return;
@@ -54,6 +56,13 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
         const session = await fetchAgoraSession(bookingId, role);
         setScheduledEndAt(session.scheduledEndAt);
         setExtensionOfferBeforeMinutes(session.extensionOfferBeforeMinutes || 5);
+        const history = await getBookingMessages(bookingId, role).catch(() => []);
+        history.forEach((message) => {
+          if (seenMessageIdsRef.current.has(message.id)) return;
+          seenMessageIdsRef.current.add(message.id);
+          onMessage(message);
+        });
+        void markBookingMessagesRead(bookingId, role).catch(() => undefined);
         if (disposed) return;
         const AgoraRTC = (await import("agora-rtc-sdk-ng")).default;
         client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
@@ -76,6 +85,8 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
         client.on("stream-message", (_uid, payload) => {
           try {
             const decoded = JSON.parse(new TextDecoder().decode(payload)) as AgoraTextMessage;
+            if (decoded.id && seenMessageIdsRef.current.has(decoded.id)) return;
+            if (decoded.id) seenMessageIdsRef.current.add(decoded.id);
             onMessage(decoded);
             return;
           } catch { /* The payload may be an Agora STT protobuf message. */ }
@@ -159,15 +170,14 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
   const sendMessage = useCallback(async (text: string) => {
     const clean = text.trim();
     if (!clean || !clientRef.current || status !== "connected") return false;
-    const message: AgoraTextMessage = {
-      sender: role,
-      text: clean.slice(0, 900),
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
+    const clientMessageId = crypto.randomUUID();
+    const saved = await saveBookingMessage(bookingId, role, clean.slice(0, 2000), clientMessageId);
+    const message: AgoraTextMessage = { ...saved };
     const dataClient = clientRef.current as IAgoraRTCClient & {
       sendStreamMessage: (payload: Uint8Array, needRetry?: boolean) => Promise<void>;
     };
     await dataClient.sendStreamMessage(new TextEncoder().encode(JSON.stringify(message)), true);
+    seenMessageIdsRef.current.add(saved.id);
     onMessage(message);
     return true;
   }, [onMessage, role, status]);

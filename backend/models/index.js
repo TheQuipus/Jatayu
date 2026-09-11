@@ -12,6 +12,7 @@ import BookingPayment from './seeker/BookingPayment.js';
 import BookingTranscriptSession from './seeker/BookingTranscriptSession.js';
 import BookingTranscriptSegment from './seeker/BookingTranscriptSegment.js';
 import BookingExtension from './seeker/BookingExtension.js';
+import BookingMessage from './seeker/BookingMessage.js';
 import DigilockerVerification from './DigilockerVerification.js';
 import DigilockerDocument from './DigilockerDocument.js';
 import Notification from './Notification.js';
@@ -56,6 +57,8 @@ Booking.hasMany(BookingTranscriptSegment, { foreignKey: 'bookingId', as: 'transc
 BookingTranscriptSegment.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 Booking.hasOne(BookingExtension, { foreignKey: 'bookingId', as: 'extension', onDelete: 'CASCADE' });
 BookingExtension.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
+Booking.hasMany(BookingMessage, { foreignKey: 'bookingId', as: 'messages', onDelete: 'CASCADE' });
+BookingMessage.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 
 export {
   expertDb,
@@ -75,6 +78,7 @@ export {
   BookingTranscriptSession,
   BookingTranscriptSegment,
   BookingExtension,
+  BookingMessage,
   DigilockerVerification,
   DigilockerDocument,
   Notification,
