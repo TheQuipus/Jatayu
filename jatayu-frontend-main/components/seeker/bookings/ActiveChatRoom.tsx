@@ -790,26 +790,6 @@ export default function ActiveChatRoom({
                   })
                 )}
 
-                {/* Animated Typing Indicator */}
-                <div className={styles.typingIndicatorRow}>
-                  <div className={styles.typingAvatarWrap}>
-                    <Image
-                      src={booking.expert.image}
-                      alt={booking.expert.name}
-                      fill
-                      className={styles.typingAvatarImg}
-                    />
-                  </div>
-                  <div className={styles.typingBubble}>
-                    <span className={styles.typingDot} />
-                    <span className={styles.typingDot} />
-                    <span className={styles.typingDot} />
-                  </div>
-                  <span className={styles.typingText}>
-                    {booking.expert.name} is typing...
-                  </span>
-                </div>
-
                 <div ref={chatEndRef} />
               </div>
 

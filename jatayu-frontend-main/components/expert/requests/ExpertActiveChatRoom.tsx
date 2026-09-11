@@ -14,6 +14,7 @@ import {
   Headphones,
   Image as ImageIcon,
   Italic,
+  MessageCircle,
   Paperclip,
   Reply,
   Send,
@@ -251,14 +252,14 @@ export default function ExpertActiveChatRoom({
   };
 
   return (
-    <section className={styles.sessionRoom}>
-      {agora.status === "error" ? <p role="alert" style={{ textAlign: "center" }}>{agora.error}</p> : null}
-      {agora.chatError ? <p role="alert" style={{ textAlign: "center", color: "#b42318" }}>{agora.chatError}</p> : null}
+    <section className={`${styles.sessionRoom} ${styles.expertChatRoom}`}>
+      {agora.status === "error" ? <p role="alert" className={styles.chatErrorBanner}>{agora.error}</p> : null}
+      {agora.chatError ? <p role="alert" className={styles.chatErrorBanner}>{agora.chatError}</p> : null}
       <div className="container">
-        <div className={styles.roomGrid}>
+        <div className={`${styles.roomGrid} ${styles.expertChatGrid}`}>
           {/* Left Column: Full Height Interactive Chat Interface */}
           <div className={styles.roomMain}>
-            <div className={`${styles.chatInterface} ${styles.chatInterfaceFullHeight}`}>
+            <div className={`${styles.chatInterface} ${styles.chatInterfaceFullHeight} ${styles.expertChatInterface}`}>
               {/* Lively Chat Header Bar */}
               <div className={styles.chatRoomHeader}>
                 <div className={styles.chatHeaderExpertInfo}>
@@ -269,7 +270,7 @@ export default function ExpertActiveChatRoom({
                       fill
                       className={styles.chatHeaderAvatarImg}
                     />
-                    <span className={styles.chatHeaderStatusDot} title="Client is online" />
+                    <span className={styles.chatHeaderStatusDot} aria-hidden="true" />
                   </div>
                   <div className={styles.chatHeaderDetails}>
                     <h3 className={styles.chatHeaderName}>
@@ -308,7 +309,16 @@ export default function ExpertActiveChatRoom({
               </div>
 
               {/* Chat Log Scroll Area */}
-              <div className={styles.chatLog} ref={chatLogRef}>
+              <div className={`${styles.chatLog} ${styles.expertChatLog}`} ref={chatLogRef} aria-live="polite">
+                {chatMessages.length === 0 && (
+                  <div className={styles.expertEmptyChat}>
+                    <span className={styles.expertEmptyChatIcon}>
+                      <MessageCircle size={26} aria-hidden="true" />
+                    </span>
+                    <strong>Start the conversation</strong>
+                    <p>Send a message to {clientName} about “{title}”.</p>
+                  </div>
+                )}
                 {chatMessages.map((msg) => {
                   const isExpert = msg.sender === "expert";
                   const isSingleEmoji = ANIMATED_EMOJIS.includes(msg.text.trim());
@@ -437,7 +447,7 @@ export default function ExpertActiveChatRoom({
               )}
 
               {/* Chat Input Bar */}
-              <div className={styles.chatInputArea}>
+              <div className={`${styles.chatInputArea} ${styles.expertChatInputArea}`}>
                 <form onSubmit={handleSendMessage} className={styles.chatForm}>
                   <input
                     type="file"
@@ -488,7 +498,7 @@ export default function ExpertActiveChatRoom({
           </div>
 
           {/* Right Column: Client summary + Notes notepad + Need Help */}
-          <aside className={styles.roomSidebar}>
+          <aside className={`${styles.roomSidebar} ${styles.expertChatSidebar}`}>
             <div className={styles.roomSidebarInner}>
               {/* Session Info Box */}
               <div className={styles.bookingBox}>
