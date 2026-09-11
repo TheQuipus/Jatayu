@@ -193,6 +193,13 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
         parameters: [idParameter('bookingId', 'Booking ID')],
       }),
     },
+    '/api/expert/requests/{bookingId}/messages': {
+      get: operation({ tag: 'Bookings', summary: 'Get persisted booking chat history as expert', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')] }),
+      post: operation({ tag: 'Bookings', summary: 'Persist and deliver a booking chat message as expert', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')], requestBody: jsonBody('message and unique clientMessageId') }),
+    },
+    '/api/expert/requests/{bookingId}/messages/read': {
+      patch: operation({ tag: 'Bookings', summary: 'Mark seeker booking messages read by expert', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')] }),
+    },
     '/api/seeker/me': {
       get: operation({ tag: 'Seeker', summary: 'Get authenticated seeker profile and credits', security: bearerSecurity }),
     },
@@ -281,6 +288,13 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
         tag: 'Transcription', summary: 'Get the stored booking transcript as the booking seeker', security: bearerSecurity,
         parameters: [idParameter('bookingId', 'Booking ID')],
       }),
+    },
+    '/api/seeker/bookings/{bookingId}/messages': {
+      get: operation({ tag: 'Bookings', summary: 'Get persisted booking chat history as seeker', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')] }),
+      post: operation({ tag: 'Bookings', summary: 'Persist and deliver a booking chat message as seeker', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')], requestBody: jsonBody('message and unique clientMessageId') }),
+    },
+    '/api/seeker/bookings/{bookingId}/messages/read': {
+      patch: operation({ tag: 'Bookings', summary: 'Mark expert booking messages read by seeker', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')] }),
     },
     '/api/public/experts': {
       get: operation({

@@ -38,6 +38,7 @@ import ContinueButton from "@/components/ui/ContinueButton";
 import ReportForm from "@/app/seeker/report/[bookingId]/ReportForm";
 import { formatCurrency, SEEKER_PROFILE, type BookingDetail } from "@/lib/seekerDashboard";
 import styles from "./ActiveRoom.module.css";
+import type { AgoraRoomState } from "@/hooks/useAgoraRoom";
 
 export type ChatMessage = {
   id: string;
@@ -66,6 +67,7 @@ export type ActiveChatRoomProps = {
   onSendMessage: (e: React.FormEvent) => void;
   onLeaveRoom: () => void;
   onFinishSession: () => void;
+  agora: AgoraRoomState;
 };
 
 function getEmojiCodepoint(emojiChar: string): string {
@@ -163,6 +165,7 @@ export default function ActiveChatRoom({
   onSendMessage,
   onLeaveRoom,
   onFinishSession,
+  agora,
 }: ActiveChatRoomProps) {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -207,7 +210,9 @@ export default function ActiveChatRoom({
   };
 
   // Astrotalk Extend Session & Timer states
-  const [secondsRemaining, setSecondsRemaining] = useState(900); // 15 mins
+  const [secondsRemaining, setSecondsRemaining] = useState(() => Math.max(0, Math.ceil(
+    (new Date(booking.scheduledEndAt || Date.now()).getTime() - Date.now()) / 1000,
+  )));
   const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
   const [selectedPackId, setSelectedPackId] = useState("10m");
   const [walletBalance, setWalletBalance] = useState(1250);
@@ -215,10 +220,13 @@ export default function ActiveChatRoom({
   useEffect(() => {
     if (secondsRemaining <= 0) return;
     const timer = setInterval(() => {
-      setSecondsRemaining((prev) => Math.max(0, prev - 1));
+      const endAt = agora.scheduledEndAt || booking.scheduledEndAt;
+      const remaining = endAt ? Math.max(0, Math.ceil((new Date(endAt).getTime() - Date.now()) / 1000)) : 0;
+      setSecondsRemaining(remaining);
+      if (remaining === 0) onFinishSession();
     }, 1000);
     return () => clearInterval(timer);
-  }, [secondsRemaining]);
+  }, [agora.scheduledEndAt, booking.scheduledEndAt, onFinishSession, secondsRemaining]);
 
   const formatTimer = (totalSecs: number) => {
     const m = Math.floor(totalSecs / 60);

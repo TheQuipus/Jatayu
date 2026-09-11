@@ -12,7 +12,8 @@
     "migrate:digilocker": "node scripts/migrateDigilockerVerification.js",
     "migrate:agora-transcripts": "node scripts/migrateAgoraTranscripts.js",
     "migrate:booking-extensions": "node scripts/migrateBookingExtensions.js",
-    "migrate:notifications": "node scripts/migrateNotifications.js"
+    "migrate:notifications": "node scripts/migrateNotifications.js",
+    "migrate:booking-messages": "node scripts/migrateBookingMessages.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.2",

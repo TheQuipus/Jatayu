@@ -24,6 +24,7 @@ import {
   stopExpertTranscription,
   storeExpertTranscriptSegment,
 } from '../controllers/agoraTranscriptionController.js';
+import { expertChat } from '../controllers/bookingChatController.js';
 
 const router = express.Router();
 
@@ -81,6 +82,9 @@ router.post('/requests/:bookingId/transcription/start', protect, startExpertTran
 router.post('/requests/:bookingId/transcription/stop', protect, stopExpertTranscription);
 router.post('/requests/:bookingId/transcription/segments', protect, storeExpertTranscriptSegment);
 router.get('/requests/:bookingId/transcript', protect, getExpertTranscript);
+router.get('/requests/:bookingId/messages', protect, expertChat.list);
+router.post('/requests/:bookingId/messages', protect, expertChat.send);
+router.patch('/requests/:bookingId/messages/read', protect, expertChat.read);
 router.post('/kyc/digilocker/start', protect, startDigilockerKyc);
 router.get('/kyc/digilocker/status', protect, getDigilockerKycStatus);
 router.get('/kyc/digilocker/callback', handleDigilockerCallback);
