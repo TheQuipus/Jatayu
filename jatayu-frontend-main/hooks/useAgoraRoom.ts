@@ -37,6 +37,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
   const remoteVideoRef = useRef<IRemoteVideoTrack | null>(null);
   const [status, setStatus] = useState<"idle" | "connecting" | "connected" | "error">("idle");
   const [error, setError] = useState("");
+  const [chatError, setChatError] = useState("");
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [remoteVideoVersion, setRemoteVideoVersion] = useState(0);
@@ -163,24 +164,43 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
         setHasEnded(false);
       }
     };
+    const receiveChatMessage = (message: AgoraTextMessage & { bookingId?: string }) => {
+      if (message.bookingId !== bookingId || !message.id || seenMessageIdsRef.current.has(message.id)) return;
+      seenMessageIdsRef.current.add(message.id);
+      onMessage(message);
+      void markBookingMessagesRead(bookingId, role).catch(() => undefined);
+    };
     socket.on("session:extension:activated", activate);
-    return () => { socket.off("session:extension:activated", activate); };
-  }, [bookingId, enabled]);
+    socket.on("chat:message", receiveChatMessage);
+    return () => {
+      socket.off("session:extension:activated", activate);
+      socket.off("chat:message", receiveChatMessage);
+    };
+  }, [bookingId, enabled, onMessage, role]);
 
   const sendMessage = useCallback(async (text: string) => {
     const clean = text.trim();
-    if (!clean || !clientRef.current || status !== "connected") return false;
-    const clientMessageId = crypto.randomUUID();
-    const saved = await saveBookingMessage(bookingId, role, clean.slice(0, 2000), clientMessageId);
-    const message: AgoraTextMessage = { ...saved };
-    const dataClient = clientRef.current as IAgoraRTCClient & {
-      sendStreamMessage: (payload: Uint8Array, needRetry?: boolean) => Promise<void>;
-    };
-    await dataClient.sendStreamMessage(new TextEncoder().encode(JSON.stringify(message)), true);
-    seenMessageIdsRef.current.add(saved.id);
-    onMessage(message);
-    return true;
-  }, [onMessage, role, status]);
+    if (!clean) return false;
+    setChatError("");
+    try {
+      const clientMessageId = crypto.randomUUID();
+      const saved = await saveBookingMessage(bookingId, role, clean.slice(0, 2000), clientMessageId);
+      const message: AgoraTextMessage = { ...saved };
+      seenMessageIdsRef.current.add(saved.id);
+      onMessage(message);
+      if (clientRef.current && status === "connected") {
+        const dataClient = clientRef.current as IAgoraRTCClient & {
+          sendStreamMessage: (payload: Uint8Array, needRetry?: boolean) => Promise<void>;
+        };
+        await dataClient.sendStreamMessage(new TextEncoder().encode(JSON.stringify(message)), true)
+          .catch((reason: unknown) => console.warn("Agora message delivery used socket fallback:", reason));
+      }
+      return true;
+    } catch (reason) {
+      setChatError(reason instanceof Error ? reason.message : "Unable to send message");
+      return false;
+    }
+  }, [bookingId, onMessage, role, status]);
 
   const toggleMute = useCallback(async () => {
     if (!microphoneRef.current) return;
@@ -204,7 +224,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
     if (value) { setScheduledEndAt(value); setHasEnded(false); }
   }, []);
 
-  return { status, error, sendMessage, toggleMute, toggleVideo, isMuted, isVideoOff,
+  return { status, error, chatError, sendMessage, toggleMute, toggleVideo, isMuted, isVideoOff,
     playLocalVideo, playRemoteVideo, remoteVideoVersion, transcriptSegments, stopTranscription,
     scheduledEndAt, extensionOfferBeforeMinutes, hasEnded, applyExtendedEndAt };
 }

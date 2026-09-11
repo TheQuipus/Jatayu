@@ -253,6 +253,7 @@ export default function ExpertActiveChatRoom({
   return (
     <section className={styles.sessionRoom}>
       {agora.status === "error" ? <p role="alert" style={{ textAlign: "center" }}>{agora.error}</p> : null}
+      {agora.chatError ? <p role="alert" style={{ textAlign: "center", color: "#b42318" }}>{agora.chatError}</p> : null}
       <div className="container">
         <div className={styles.roomGrid}>
           {/* Left Column: Full Height Interactive Chat Interface */}
