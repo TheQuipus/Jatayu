@@ -18,6 +18,9 @@ the backend starts:
 This guide describes running the project directly on a local machine, without
 Docker.
 
+Developers using Windows should follow [README-WINDOWS.md](README-WINDOWS.md),
+which includes MySQL Server and database setup instructions for Windows.
+
 ## 1. Prerequisites
 
 Install:
