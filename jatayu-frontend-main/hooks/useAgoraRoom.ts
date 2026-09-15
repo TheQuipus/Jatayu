@@ -26,11 +26,12 @@ type Options = {
   role: "seeker" | "expert";
   enabled: boolean;
   requestVideo: boolean;
+  requestAudio?: boolean;
   onMessage: (message: AgoraTextMessage) => void;
   onTranscript?: (segment: TranscriptSegment) => void;
 };
 
-export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage, onTranscript }: Options) {
+export function useAgoraRoom({ bookingId, role, enabled, requestVideo, requestAudio = true, onMessage, onTranscript }: Options) {
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const microphoneRef = useRef<IMicrophoneAudioTrack | null>(null);
   const cameraRef = useRef<ICameraVideoTrack | null>(null);
@@ -55,6 +56,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
       try {
         setStatus("connecting");
         const session = await fetchAgoraSession(bookingId, role);
+        const audioEnabled = requestAudio && session.capabilities.includes("audio");
         setScheduledEndAt(session.scheduledEndAt);
         setExtensionOfferBeforeMinutes(session.extensionOfferBeforeMinutes || 5);
         const history = await getBookingMessages(bookingId, role).catch(() => []);
@@ -70,6 +72,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
         clientRef.current = client;
         client.on("user-published", async (user, mediaType) => {
           if (!client) return;
+          if (mediaType === "audio" && !audioEnabled) return;
           await client.subscribe(user, mediaType);
           if (mediaType === "audio") user.audioTrack?.play();
           if (mediaType === "video" && user.videoTrack) {
@@ -107,7 +110,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
           }
         });
         await client.join(session.appId, session.channel, session.token, session.uid);
-        if (session.capabilities.includes("audio")) {
+        if (audioEnabled) {
           microphoneRef.current = await AgoraRTC.createMicrophoneAudioTrack();
         }
         if (requestVideo && session.capabilities.includes("video")) {
@@ -115,9 +118,11 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
         }
         const tracks = [microphoneRef.current, cameraRef.current].filter(Boolean);
         if (tracks.length) await client.publish(tracks as [IMicrophoneAudioTrack, ...ICameraVideoTrack[]]);
-        await startAgoraTranscription(bookingId, role).catch((reason) => {
-          console.warn('Agora live transcription was not started:', reason);
-        });
+        if (audioEnabled) {
+          await startAgoraTranscription(bookingId, role).catch((reason) => {
+            console.warn('Agora live transcription was not started:', reason);
+          });
+        }
         if (!disposed) setStatus("connected");
       } catch (reason) {
         if (!disposed) {
@@ -135,7 +140,7 @@ export function useAgoraRoom({ bookingId, role, enabled, requestVideo, onMessage
       client?.leave().catch(() => undefined);
       clientRef.current = null;
     };
-  }, [bookingId, enabled, onMessage, onTranscript, requestVideo, role]);
+  }, [bookingId, enabled, onMessage, onTranscript, requestAudio, requestVideo, role]);
 
   useEffect(() => {
     if (!enabled || !scheduledEndAt) return;
