@@ -161,6 +161,7 @@ export default function ExpertActiveChatRoom({
     role: "expert",
     enabled: true,
     requestVideo: false,
+    requestAudio: false,
     onMessage: receiveAgoraMessage,
   });
 

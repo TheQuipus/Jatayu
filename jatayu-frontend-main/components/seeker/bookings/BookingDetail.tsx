@@ -54,6 +54,7 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
     role: "seeker",
     enabled: sessionState === "active",
     requestVideo: booking.consultationType === "video",
+    requestAudio: booking.consultationType !== "text",
     onMessage: handleAgoraMessage,
   });
 
