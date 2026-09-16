@@ -336,6 +336,7 @@ export async function seekerGoogleLogin(payload: GoogleLoginPayload): Promise<Au
 
 export interface UpdateProfilePayload {
   step?: string;
+  fullName?: string;
   category?: string;
   skills?: string[];
   experienceLevel?: string;
@@ -419,15 +420,9 @@ export async function submitOnboarding(): Promise<SubmitOnboardingResponse> {
 // ---------------------------------------------------------------------------
 
 export async function getProfile(): Promise<Record<string, unknown>> {
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem("jatayu_expert_user");
-      if (raw) return JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      // ignore JSON parse errors
-    }
-  }
-  return Promise.resolve({});
+  return apiFetch<Record<string, unknown>>("/api/expert/me", {
+    method: "GET",
+  });
 }
 
 export type DigilockerKycStartResponse = {

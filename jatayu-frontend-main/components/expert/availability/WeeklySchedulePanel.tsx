@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Check, Save } from "lucide-react";
 import ExpertAvailability from "./ExpertAvailability";
 import styles from "./ExpertAvailabilityPage.module.css";
+import type { TimeSlot } from "@/lib/expertAvailability";
+import { fetchExpertAvailability, saveExpertAvailability } from "@/lib/expertProfileApi";
 
 type WeeklySchedulePanelProps = {
   onValidityChange?: (isValid: boolean) => void;
@@ -12,16 +14,55 @@ type WeeklySchedulePanelProps = {
 export default function WeeklySchedulePanel({ onValidityChange }: WeeklySchedulePanelProps = {}) {
   const [isValid, setIsValid] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadedSchedule, setLoadedSchedule] = useState<{
+    timezone: string;
+    slots: TimeSlot[];
+  } | null>(null);
+  const [currentSchedule, setCurrentSchedule] = useState<{
+    timezone: string;
+    slots: TimeSlot[];
+  } | null>(null);
 
-  const handleValidityChange = (valid: boolean) => {
+  useEffect(() => {
+    let active = true;
+    void fetchExpertAvailability()
+      .then((schedule) => {
+        if (!active) return;
+        setLoadedSchedule(schedule);
+        setCurrentSchedule(schedule);
+      })
+      .catch((error) => {
+        console.error("Could not load expert availability:", error);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleValidityChange = useCallback((valid: boolean) => {
     setIsValid(valid);
     onValidityChange?.(valid);
-  };
+  }, [onValidityChange]);
 
-  const handleSave = () => {
-    if (!isValid) return;
-    setIsSaved(true);
-    window.setTimeout(() => setIsSaved(false), 2200);
+  const handleScheduleChange = useCallback((schedule: { timezone: string; slots: TimeSlot[] }) => {
+    setCurrentSchedule(schedule);
+    setIsSaved(false);
+  }, []);
+
+  const handleSave = async () => {
+    if (!isValid || !currentSchedule || isSaving) return;
+    setIsSaving(true);
+    try {
+      await saveExpertAvailability(currentSchedule.timezone, currentSchedule.slots);
+      setLoadedSchedule(currentSchedule);
+      setIsSaved(true);
+      window.setTimeout(() => setIsSaved(false), 2200);
+    } catch (error) {
+      console.error("Could not save expert availability:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -37,7 +78,7 @@ export default function WeeklySchedulePanel({ onValidityChange }: WeeklySchedule
             type="button"
             className={`${styles.panelSaveBtn} ${isSaved ? styles.savedState : ""}`}
             onClick={handleSave}
-            disabled={!isValid || isSaved}
+            disabled={!isValid || !currentSchedule || isSaved || isSaving}
             aria-label="Save weekly schedule"
           >
             {isSaved ? (
@@ -55,7 +96,13 @@ export default function WeeklySchedulePanel({ onValidityChange }: WeeklySchedule
         </div>
       </div>
       <div className={styles.panelBody}>
-        <ExpertAvailability variant="app" onValidityChange={handleValidityChange} />
+        <ExpertAvailability
+          variant="app"
+          initialTimezone={loadedSchedule?.timezone}
+          initialSlots={loadedSchedule?.slots}
+          onValidityChange={handleValidityChange}
+          onScheduleChange={handleScheduleChange}
+        />
       </div>
     </section>
   );

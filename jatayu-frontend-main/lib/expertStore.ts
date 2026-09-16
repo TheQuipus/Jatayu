@@ -19,7 +19,13 @@ export function getExpertProfile(): ExtendedExpertProfileData {
     return DEFAULT_EXPERT_PROFILE;
   }
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data) as ExtendedExpertProfileData;
+    return {
+      ...DEFAULT_EXPERT_PROFILE,
+      ...parsed,
+      skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+      languages: Array.isArray(parsed.languages) ? parsed.languages : [],
+    };
   } catch {
     return DEFAULT_EXPERT_PROFILE;
   }
