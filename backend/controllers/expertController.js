@@ -94,6 +94,7 @@ export const updateProfile = async (req, res) => {
   const body = req.body;
   const {
     step, // 'category', 'skills', 'experience', 'identity', 'credentials', 'preferences', 'audience', 'availability'
+    fullName,
     category,
     experienceLevel,
     professionalTitle,
@@ -123,6 +124,11 @@ export const updateProfile = async (req, res) => {
       if (!expert) return false;
 
       // Update fields based on which onboarding step/data is sent
+      if (fullName !== undefined) {
+        const normalizedName = String(fullName).trim();
+        if (!normalizedName) throw new TypeError('fullName cannot be empty');
+        expert.fullName = normalizedName;
+      }
       if (category !== undefined) expert.category = category;
       if (skills !== undefined) expert.skills = skills;
       if (experienceLevel !== undefined) expert.experienceLevel = experienceLevel;

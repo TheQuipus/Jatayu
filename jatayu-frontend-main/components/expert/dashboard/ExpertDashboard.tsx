@@ -35,7 +35,7 @@ import {
   type EarningsTimeframe,
 } from "@/lib/expertDashboard";
 import { getExpertProfile } from "@/lib/expertStore";
-import { fetchExpertProfileData } from "@/lib/expertProfileApi";
+import { fetchExpertDashboardProfile } from "@/lib/expertProfileApi";
 import styles from "./ExpertDashboard.module.css";
 
 const STAT_ICONS = {
@@ -48,6 +48,73 @@ const STAT_ICONS = {
   timer: TimerReset,
   trend: TrendingUp,
 } as const;
+
+type ReviewStepState = "done" | "active" | "pending" | "attention";
+
+type ReviewDisplay = {
+  steps: Array<{ label: string; state: ReviewStepState }>;
+  note: string;
+};
+
+function getReviewDisplay(status: string, reviewerNote?: string | null): ReviewDisplay {
+  const note = reviewerNote?.trim();
+  switch (status) {
+    case "approved":
+      return {
+        steps: [
+          { label: "Application Submitted", state: "done" },
+          { label: "Review Completed", state: "done" },
+          { label: "Approved", state: "done" },
+        ],
+        note: "Your expert application has been approved and your profile is ready.",
+      };
+    case "rejected":
+      return {
+        steps: [
+          { label: "Application Submitted", state: "done" },
+          { label: "Review Completed", state: "done" },
+          { label: "Not Approved", state: "attention" },
+        ],
+        note: note || "Your application was not approved. Contact support if you need more information.",
+      };
+    case "on_hold":
+      return {
+        steps: [
+          { label: "Application Submitted", state: "done" },
+          { label: "Application On Hold", state: "attention" },
+          { label: "Approved", state: "pending" },
+        ],
+        note: note || "Your application is on hold while the review team waits for more information.",
+      };
+    case "in_review":
+      return {
+        steps: [
+          { label: "Application Submitted", state: "done" },
+          { label: "Under Review", state: "active" },
+          { label: "Approved", state: "pending" },
+        ],
+        note: "Your application is currently being reviewed by our team.",
+      };
+    case "pending_review":
+      return {
+        steps: [
+          { label: "Application Submitted", state: "done" },
+          { label: "Waiting for Review", state: "active" },
+          { label: "Approved", state: "pending" },
+        ],
+        note: "Your application is in the review queue. We’ll notify you when its status changes.",
+      };
+    default:
+      return {
+        steps: [
+          { label: "Application Not Submitted", state: "active" },
+          { label: "Under Review", state: "pending" },
+          { label: "Approved", state: "pending" },
+        ],
+        note: "Complete your expert profile and submit it to begin the review process.",
+      };
+  }
+}
 
 function formatShortMoney(amount: number): string {
   if (amount >= 10000000) {
@@ -180,6 +247,8 @@ export default function ExpertDashboard() {
     greeting: EXPERT_PROFILE.greeting,
   });
   const [earningsTimeframe, setEarningsTimeframe] = useState<EarningsTimeframe>("month");
+  const [reviewStatus, setReviewStatus] = useState("draft");
+  const [reviewerNote, setReviewerNote] = useState<string | null>(null);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -190,12 +259,14 @@ export default function ExpertDashboard() {
       });
     };
 
-    void fetchExpertProfileData()
-      .then((saved) => {
+    void fetchExpertDashboardProfile()
+      .then(({ profile: saved, reviewStatus: status, reviewerNote: note }) => {
         setProfile({
           name: saved.name || EXPERT_PROFILE.name,
           greeting: EXPERT_PROFILE.greeting,
         });
+        setReviewStatus(status);
+        setReviewerNote(note);
       })
       .catch(handleUpdate);
 
@@ -211,6 +282,7 @@ export default function ExpertDashboard() {
 
   const firstName = profile.name.split(" ")[0];
   const currentEarnings = EARNINGS_DATA[earningsTimeframe] || EARNINGS_DATA.month;
+  const reviewDisplay = getReviewDisplay(reviewStatus, reviewerNote);
 
   return (
     <section className={styles.dashboard}>
@@ -279,38 +351,41 @@ export default function ExpertDashboard() {
             <h2 className={styles.cardTitle}>Review Status</h2>
 
             <div className={styles.reviewStepper}>
-              <div className={styles.reviewStep}>
-                <span className={`${styles.reviewDot} ${styles.reviewDotDone}`} aria-hidden="true">
-                  <CheckCircle2 size={14} />
-                </span>
-                <div className={styles.reviewStepBody}>
-                  <span className={styles.reviewStepLabel}>Application Submitted</span>
+              {reviewDisplay.steps.map((step, index) => (
+                <div key={step.label}>
+                  <div className={styles.reviewStep}>
+                    <span
+                      className={`${styles.reviewDot} ${
+                        step.state === "done"
+                          ? styles.reviewDotDone
+                          : step.state === "active"
+                            ? styles.reviewDotActive
+                            : step.state === "attention"
+                              ? styles.reviewDotAttention
+                              : ""
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {step.state === "done" ? <CheckCircle2 size={14} /> : null}
+                      {step.state === "attention" ? <AlertCircle size={14} /> : null}
+                    </span>
+                    <div className={styles.reviewStepBody}>
+                      <span className={`${styles.reviewStepLabel} ${
+                        step.state === "pending" ? styles.reviewStepMuted : ""
+                      }`}>
+                        {step.label}
+                      </span>
+                    </div>
+                  </div>
+                  {index < reviewDisplay.steps.length - 1 ? (
+                    <div className={styles.reviewConnector} aria-hidden="true" />
+                  ) : null}
                 </div>
-              </div>
-
-              <div className={styles.reviewConnector} aria-hidden="true" />
-
-              <div className={styles.reviewStep}>
-                <span className={`${styles.reviewDot} ${styles.reviewDotActive}`} aria-hidden="true" />
-                <div className={styles.reviewStepBody}>
-                  <span className={styles.reviewStepLabel}>Under Review</span>
-                </div>
-              </div>
-
-              <div className={styles.reviewConnector} aria-hidden="true" />
-
-              <div className={styles.reviewStep}>
-                <span className={styles.reviewDot} aria-hidden="true" />
-                <div className={styles.reviewStepBody}>
-                  <span className={`${styles.reviewStepLabel} ${styles.reviewStepMuted}`}>
-                    Approved
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
 
             <p className={styles.reviewNote}>
-              Review typically completes within 24–48 hours. We&apos;ll notify you by email.
+              {reviewDisplay.note}
             </p>
           </article>
         </div>

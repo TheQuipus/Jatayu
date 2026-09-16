@@ -288,6 +288,13 @@
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--pomegranate) 15%, transparent);
 }
 
+.reviewDotAttention {
+  border-color: #b42318;
+  background: #fef3f2;
+  color: #b42318;
+  box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.1);
+}
+
 .reviewConnector {
   width: 2px;
   height: 20px;

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
 import RealtimeNotificationToast from "@/components/ui/RealtimeNotificationToast";
+import ActiveSessionAttention from "@/components/expert/ActiveSessionAttention";
 import { ExpertShellContext } from "@/components/expert/ExpertShellContext";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import {
@@ -319,6 +320,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
             <div className={styles.content}>{children}</div>
           </div>
         </div>
+        <ActiveSessionAttention />
       </div>
     </ExpertShellContext.Provider>
   );

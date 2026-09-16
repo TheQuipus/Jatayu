@@ -37,7 +37,12 @@ import {
   type ExperienceLevel,
 } from "@/lib/expertProfile";
 import { getExpertProfile, saveExpertProfile } from "@/lib/expertStore";
-import { fetchExpertProfileData, saveExpertProfileData } from "@/lib/expertProfileApi";
+import {
+  fetchExpertProfileRecord,
+  mapBackendAvailability,
+  mapBackendProfileToExpertData,
+  saveExpertProfileData,
+} from "@/lib/expertProfileApi";
 import {
   getExpertApplicationDraft,
   saveExpertApplicationDraft,
@@ -64,6 +69,7 @@ import type {
   PortfolioSampleFile,
 } from "@/lib/expertApplicationSubmission";
 import type { TimeSlot } from "@/lib/expertAvailability";
+import { buildCredentialsPayload, parseCredentialsFromProfile } from "@/lib/expertAuth";
 import styles from "./ExpertProfileEditor.module.css";
 
 const MAX_CHARS = 160;
@@ -206,9 +212,54 @@ export default function ExpertProfileEditor() {
     if (draft.linkedin) setLinkedin(draft.linkedin);
     if (draft.portfolio) setPortfolio(draft.portfolio);
 
-    void fetchExpertProfileData()
-      .then((data) => {
-        setProfile(data);
+    void fetchExpertProfileRecord()
+      .then((record) => {
+        setProfile(mapBackendProfileToExpertData(record));
+        if (record.applicationNumber) setAppId(record.applicationNumber);
+        if (record.selectedFormats?.length) setSelectedFormats(record.selectedFormats);
+        if (record.selectedLengths?.length) setSelectedLengths(record.selectedLengths);
+        if (record.formatPrices) setFormatPrices(record.formatPrices);
+
+        const audiences = Array.isArray(record.targetAudience)
+          ? record.targetAudience
+          : (() => {
+              try {
+                const parsed = JSON.parse(record.targetAudience || "[]");
+                return Array.isArray(parsed) ? parsed : [];
+              } catch {
+                return [];
+              }
+            })();
+        if (audiences.length) setSelectedAudiences(audiences);
+
+        const parsedCredentials = parseCredentialsFromProfile(record.credentials);
+        if (parsedCredentials.employmentPositions.length) {
+          setEmploymentPositions(parsedCredentials.employmentPositions);
+        }
+        if (parsedCredentials.educationDegrees.length) {
+          setEducationDegrees(parsedCredentials.educationDegrees);
+        }
+
+        const availability = mapBackendAvailability(record);
+        if (availability.timezone) setTimezone(availability.timezone);
+        if (availability.slots.length) setAvailabilitySlots(availability.slots);
+
+        const metadata = record.onboardingMetadata || {};
+        if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
+        if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
+        if (typeof metadata.acceptCustomRequests === "boolean") {
+          setAcceptCustomRequests(metadata.acceptCustomRequests);
+        }
+        if (metadata.governmentId && typeof metadata.governmentId === "object") {
+          setGovernmentId(metadata.governmentId as GovernmentIdData);
+        }
+        if (typeof metadata.kycVideoUrl === "string") setKycVideoUrl(metadata.kycVideoUrl);
+        if (Array.isArray(metadata.certificates)) {
+          setCertificates(metadata.certificates as ExpertCertificate[]);
+        }
+        if (Array.isArray(metadata.portfolioSamples)) {
+          setPortfolioSamples(metadata.portfolioSamples as PortfolioSampleFile[]);
+        }
       })
       .catch(() => {
         const stored = getExpertProfile();
@@ -353,7 +404,30 @@ export default function ExpertProfileEditor() {
     setIsSaving(true);
     setSaveError(null);
     try {
-      await saveExpertProfileData(profile, photoFile);
+      await saveExpertProfileData(profile, photoFile, {
+        credentials: buildCredentialsPayload(employmentPositions, educationDegrees),
+        selectedFormats,
+        selectedLengths,
+        formatPrices,
+        targetAudience: selectedAudiences,
+        focusAreas: profile.languages,
+        timezone,
+        availabilitySlots: availabilitySlots.map((slot) => ({
+          days: slot.days,
+          from: slot.from,
+          to: slot.to,
+        })),
+        onboardingMetadata: {
+          linkedin,
+          portfolio,
+          acceptCustomRequests,
+          audiences: selectedAudiences,
+          governmentId,
+          kycVideoUrl,
+          certificates,
+          portfolioSamples,
+        },
+      });
       setPhotoFile(null);
 
       // Save draft / onboarding details
