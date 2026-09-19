@@ -25,8 +25,6 @@ import {
   EXPERT_PROFILE,
   EXPERT_PROFILE_HREF,
   EXPERT_STATS,
-  PROFILE_CHECKLIST,
-  PROFILE_STRENGTH,
   RECENT_SESSIONS,
   TOP_REVIEWS,
   UPCOMING_SESSIONS,
@@ -249,9 +247,14 @@ export default function ExpertDashboard() {
   const [earningsTimeframe, setEarningsTimeframe] = useState<EarningsTimeframe>("month");
   const [reviewStatus, setReviewStatus] = useState("draft");
   const [reviewerNote, setReviewerNote] = useState<string | null>(null);
+  const [completion, setCompletion] = useState<{
+    percentage: number;
+    checklist: Array<{ id: string; label: string; status: "done" | "pending" }>;
+  }>({ percentage: 0, checklist: [] });
+  const [completionLoading, setCompletionLoading] = useState(true);
 
   useEffect(() => {
-    const handleUpdate = () => {
+    const handleFailure = () => {
       const saved = getExpertProfile();
       setProfile({
         name: saved.name || EXPERT_PROFILE.name,
@@ -259,23 +262,27 @@ export default function ExpertDashboard() {
       });
     };
 
-    void fetchExpertDashboardProfile()
-      .then(({ profile: saved, reviewStatus: status, reviewerNote: note }) => {
+    const loadDashboard = () => fetchExpertDashboardProfile()
+      .then(({ profile: saved, reviewStatus: status, reviewerNote: note, completion: currentCompletion }) => {
         setProfile({
           name: saved.name || EXPERT_PROFILE.name,
           greeting: EXPERT_PROFILE.greeting,
         });
         setReviewStatus(status);
         setReviewerNote(note);
+        setCompletion(currentCompletion);
       })
-      .catch(handleUpdate);
+      .catch(handleFailure)
+      .finally(() => setCompletionLoading(false));
+
+    void loadDashboard();
 
     if (typeof window !== "undefined") {
-      window.addEventListener("expert-profile-updated", handleUpdate);
+      window.addEventListener("expert-profile-updated", loadDashboard);
     }
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener("expert-profile-updated", handleUpdate);
+        window.removeEventListener("expert-profile-updated", loadDashboard);
       }
     };
   }, []);
@@ -283,6 +290,9 @@ export default function ExpertDashboard() {
   const firstName = profile.name.split(" ")[0];
   const currentEarnings = EARNINGS_DATA[earningsTimeframe] || EARNINGS_DATA.month;
   const reviewDisplay = getReviewDisplay(reviewStatus, reviewerNote);
+  const strengthLabel = completion.percentage === 100
+    ? "Complete"
+    : completion.percentage >= 75 ? "Strong" : completion.percentage >= 50 ? "Good" : "Getting started";
 
   return (
     <section className={styles.dashboard}>
@@ -300,24 +310,24 @@ export default function ExpertDashboard() {
           <article className={styles.card}>
             <div className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>Profile Completion</h2>
-              <span className={styles.strengthBadge}>Strong</span>
+              <span className={styles.strengthBadge}>{completionLoading ? "Loading…" : strengthLabel}</span>
             </div>
 
             <div className={styles.progressBlock}>
               <div className={styles.progressMeta}>
                 <span className={styles.progressLabel}>Profile Strength</span>
-                <span className={styles.progressValue}>{PROFILE_STRENGTH}%</span>
+                <span className={styles.progressValue}>{completion.percentage}%</span>
               </div>
-              <div className={styles.progressTrack} role="progressbar" aria-valuenow={PROFILE_STRENGTH} aria-valuemin={0} aria-valuemax={100}>
+              <div className={styles.progressTrack} role="progressbar" aria-valuenow={completion.percentage} aria-valuemin={0} aria-valuemax={100}>
                 <div
                   className={styles.progressFill}
-                  style={{ width: `${PROFILE_STRENGTH}%` }}
+                  style={{ width: `${completion.percentage}%` }}
                 />
               </div>
             </div>
 
             <ul className={styles.checklist}>
-              {PROFILE_CHECKLIST.map((item) => (
+              {completion.checklist.map((item) => (
                 <li key={item.id} className={styles.checklistItem}>
                   {item.status === "done" ? (
                     <CheckCircle2 size={16} className={styles.checkDone} aria-hidden="true" />
@@ -336,11 +346,13 @@ export default function ExpertDashboard() {
             </ul>
 
             <p className={styles.cardHint}>
-              Complete pending onboarding steps to reach <strong>Verification Ready</strong>
+              {completion.percentage === 100
+                ? <>Your profile is <strong>Verification Ready</strong></>
+                : <>Complete pending onboarding steps to reach <strong>Verification Ready</strong></>}
             </p>
             <PrimaryButton
               href={EXPERT_PROFILE_HREF}
-              label="Complete Profile"
+              label={completion.percentage === 100 ? "View Profile" : "Complete Profile"}
               variant="orange"
               fullWidth
               className={styles.cardAction}

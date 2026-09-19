@@ -1,8 +1,6 @@
-import { getProfile, updateProfile } from "@/lib/api";
+import { getDigilockerKycStatus, getProfile, updateProfile } from "@/lib/api";
 import type { ExperienceLevel, ExpertProfileData } from "@/lib/expertProfile";
-import { DEFAULT_EXPERT_PROFILE } from "@/lib/expertProfile";
 import type { TimeSlot } from "@/lib/expertAvailability";
-import { deriveLocationFromTimezone } from "@/lib/expertApplicationMedia";
 import { saveExpertProfile } from "@/lib/expertStore";
 
 export type BackendExpertProfile = {
@@ -40,6 +38,10 @@ export type ExpertDashboardProfile = {
   reviewStatus: string;
   reviewerNote: string | null;
   submittedAt: string | null;
+  completion: {
+    percentage: number;
+    checklist: Array<{ id: string; label: string; status: "done" | "pending" }>;
+  };
 };
 
 function asStringArray(value: unknown): string[] {
@@ -104,20 +106,25 @@ export function mapBackendProfileToExpertData(
     asStringArray(metadata.languages).length > 0
       ? asStringArray(metadata.languages)
       : asStringArray(normalizedExpert.focusAreas);
+  const storedLocation = typeof metadata.location === "string"
+    ? metadata.location.trim()
+    : "";
+  // These exact values were previously inserted by frontend fallbacks. `Kolkata`
+  // was derived from the availability timezone `Asia/Kolkata`, not user input.
+  const legacyLocations = new Set(["Bengaluru, India", "Kolkata", "India"]);
+  const location = legacyLocations.has(storedLocation) ? "" : storedLocation;
 
   return {
-    name: normalizedExpert.fullName || DEFAULT_EXPERT_PROFILE.name,
-    role: normalizedExpert.professionalTitle || DEFAULT_EXPERT_PROFILE.role,
-    avatar: normalizedExpert.profilePhotoSrc || DEFAULT_EXPERT_PROFILE.avatar,
+    name: normalizedExpert.fullName || "",
+    role: normalizedExpert.professionalTitle || "",
+    avatar: normalizedExpert.profilePhotoSrc || "/assets/img/profile-placeholder.svg",
     tagLine: normalizedExpert.tagLine || "",
     bio: normalizedExpert.bio || "",
-    category: normalizedExpert.category || DEFAULT_EXPERT_PROFILE.category,
+    category: normalizedExpert.category || "",
     skills: asStringArray(normalizedExpert.skills),
-    experienceLevel: (normalizedExpert.experienceLevel as ExperienceLevel) || "established",
-    languages: languages.length > 0 ? languages : ["English"],
-    location: typeof metadata.location === "string"
-      ? metadata.location
-      : deriveLocationFromTimezone(normalizedExpert.timezone || "") || "India",
+    experienceLevel: (normalizedExpert.experienceLevel as ExperienceLevel) || "",
+    languages,
+    location,
   };
 }
 
@@ -152,17 +159,48 @@ export async function fetchExpertProfileRecord(): Promise<BackendExpertProfile> 
 }
 
 export async function fetchExpertDashboardProfile(): Promise<ExpertDashboardProfile> {
-  const expert = normalizeBackendProfile((await getProfile()) as BackendExpertProfile);
+  const [profileResponse, digilocker] = await Promise.all([
+    getProfile(),
+    getDigilockerKycStatus().catch(() => null),
+  ]);
+  const expert = normalizeBackendProfile(profileResponse as BackendExpertProfile);
   const profile = mapBackendProfileToExpertData(expert);
+  const metadata = expert.onboardingMetadata || {};
+  const credentials = expert.credentials || [];
+  const hasWorkExperience = credentials.some((item) =>
+    item && typeof item === "object" && (item as { type?: string }).type === "experience"
+  );
+  const hasKyc = digilocker?.kyc?.status === "verified"
+    || Boolean(metadata.governmentId)
+    || Boolean(metadata.kycVideoUrl);
+  const formats = expert.selectedFormats || [];
+  const lengths = expert.selectedLengths || [];
+  const prices = expert.formatPrices || {};
+  const submitted = Boolean(expert.submittedAt)
+    || ["pending_review", "in_review", "on_hold", "approved", "rejected"].includes(expert.status || "")
+    || expert.onboardingStep === "success";
+  const checklist: ExpertDashboardProfile["completion"]["checklist"] = [
+    { id: "category", label: "Expert category", status: profile.category ? "done" : "pending" },
+    { id: "skills", label: "Skills & expertise", status: profile.skills.length ? "done" : "pending" },
+    { id: "experience", label: "Work experience", status: hasWorkExperience ? "done" : "pending" },
+    { id: "identity", label: "Profile identity", status: profile.name && profile.role && profile.tagLine && profile.bio ? "done" : "pending" },
+    { id: "credentials", label: "Credentials & KYC", status: credentials.length > 0 && hasKyc ? "done" : "pending" },
+    { id: "preferences", label: "Consultation preferences", status: formats.length > 0 && lengths.length > 0 && formats.every((format) => Number(prices[format]) > 0) ? "done" : "pending" },
+    { id: "audience", label: "Target audience", status: asStringArray(expert.targetAudience).length ? "done" : "pending" },
+    { id: "availability", label: "Availability schedule", status: expert.timezone && expert.availabilities?.length ? "done" : "pending" },
+    { id: "review", label: "Review & submit", status: submitted ? "done" : "pending" },
+  ];
+  const completedCount = checklist.filter((item) => item.status === "done").length;
   saveExpertProfile(profile);
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("expert-profile-updated"));
-  }
   return {
     profile,
     reviewStatus: expert.status || "draft",
     reviewerNote: expert.reviewerNote || null,
     submittedAt: expert.submittedAt || null,
+    completion: {
+      percentage: Math.round((completedCount / checklist.length) * 100),
+      checklist,
+    },
   };
 }
 
@@ -181,7 +219,7 @@ export async function saveExpertProfileData(
       category: profile.category,
       skills: profile.skills,
       experienceLevel: profile.experienceLevel,
-      profilePhotoSrc: photoFile ? undefined : profile.avatar,
+      profilePhotoSrc: photoFile || profile.avatar === "/assets/img/profile-placeholder.svg" ? undefined : profile.avatar,
       onboardingMetadata: {
         ...(additionalPayload.onboardingMetadata || {}),
         languages: profile.languages,

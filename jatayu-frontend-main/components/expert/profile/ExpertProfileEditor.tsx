@@ -30,13 +30,12 @@ import {
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import ShinyText from "@/components/ui/ShinyText";
 import {
-  DEFAULT_EXPERT_PROFILE,
   EXPERIENCE_LABELS,
   isExpertProfileValid,
   type ExpertProfileData,
   type ExperienceLevel,
 } from "@/lib/expertProfile";
-import { getExpertProfile, saveExpertProfile } from "@/lib/expertStore";
+import { saveExpertProfile } from "@/lib/expertStore";
 import {
   fetchExpertProfileRecord,
   mapBackendAvailability,
@@ -44,11 +43,8 @@ import {
   saveExpertProfileData,
 } from "@/lib/expertProfileApi";
 import {
-  getExpertApplicationDraft,
   saveExpertApplicationDraft,
-  getExpertApplications,
 } from "@/lib/expertApplicationsStore";
-import { getDemoExpertApplications } from "@/lib/demoExpertApplications";
 import {
   CONSULTATION_FORMATS,
   SESSION_LENGTHS,
@@ -71,6 +67,7 @@ import type {
 import type { TimeSlot } from "@/lib/expertAvailability";
 import { buildCredentialsPayload, parseCredentialsFromProfile } from "@/lib/expertAuth";
 import styles from "./ExpertProfileEditor.module.css";
+import { getDigilockerKycStatus, suggestOnboardingIdentityCopy, type DigilockerKycStatusResponse } from "@/lib/api";
 
 const MAX_CHARS = 160;
 const MAX_SKILLS = 8;
@@ -99,7 +96,8 @@ export default function ExpertProfileEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile Identity & Basic state
-  const [profile, setProfile] = useState<ExpertProfileData>(DEFAULT_EXPERT_PROFILE);
+  const [profile, setProfile] = useState<ExpertProfileData>(() => mapBackendProfileToExpertData({}));
+  const [reviewStatus, setReviewStatus] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [skillInput, setSkillInput] = useState("");
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
@@ -109,116 +107,47 @@ export default function ExpertProfileEditor() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   // Full Onboarding state
-  const [linkedin, setLinkedin] = useState("linkedin.com/in/aditya-dhar");
-  const [portfolio, setPortfolio] = useState("adityadhar.design");
-  const [employmentPositions, setEmploymentPositions] = useState<EmploymentPosition[]>([
-    {
-      id: "pos-1",
-      jobTitle: "Principal Product Designer",
-      company: "Design Systems Lab",
-      startMonth: "01",
-      startYear: "2020",
-      endMonth: "",
-      endYear: "",
-      currentlyWorking: true,
-      responsibilities: "Leading UX strategy, mentorship, and enterprise design transformation.",
-    },
-  ]);
-  const [educationDegrees, setEducationDegrees] = useState<EducationDegree[]>([
-    {
-      id: "edu-1",
-      degree: "B.Tech in Computer Science",
-      fieldOfStudy: "Human Computer Interaction",
-      institution: "Indian Institute of Technology",
-      graduationYear: "2018",
-      honours: "First Class with Distinction",
-    },
-  ]);
-  const [selectedFormats, setSelectedFormats] = useState<string[]>([
-    "video",
-    "written",
-    "group",
-    "shoutout",
-  ]);
-  const [formatPrices, setFormatPrices] = useState<Record<string, string>>({
-    video: "2500",
-    written: "1200",
-    shoutout: "800",
-    group: "1500",
-  });
-  const [selectedLengths, setSelectedLengths] = useState<string[]>(["15", "30", "45", "60"]);
-  const [acceptCustomRequests, setAcceptCustomRequests] = useState(true);
-  const [selectedAudiences, setSelectedAudiences] = useState<string[]>([
-    "startup",
-    "enterprise",
-    "career",
-    "smb",
-  ]);
-  const [governmentId, setGovernmentId] = useState<GovernmentIdData>({
-    type: "aadhaar",
-    front: { name: "aadhaar_front_doc.pdf", size: "1.4 MB" },
-    back: { name: "aadhaar_back_doc.pdf", size: "1.2 MB" },
-  });
-  const [kycVideoUrl, setKycVideoUrl] = useState("https://jatayu.com/verify/video-intro-9214.mp4");
-  const [certificates, setCertificates] = useState<ExpertCertificate[]>([
-    { id: "c1", name: "Certified Executive Design Strategist", issuer: "Interaction Design Org" },
-    { id: "c2", name: "Advanced Product Architecture", issuer: "Design Guild" },
-  ]);
-  const [portfolioSamples, setPortfolioSamples] = useState<PortfolioSampleFile[]>([
-    {
-      id: "ps-1",
-      fileName: "Enterprise_Fintech_CaseStudy.pdf",
-      fileSize: "4.2 MB",
-      fileType: "application/pdf",
-      description: "0 to 1 scaling case study for B2B financial services.",
-      status: "complete",
-      progress: 100,
-    },
-  ]);
-  const [timezone, setTimezone] = useState("Asia/Kolkata (IST +5:30)");
-  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[]>([
-    { id: "slot-1", days: ["Mon", "Tue", "Wed", "Thu", "Fri"], from: "10:00 AM", to: "06:00 PM" },
-    { id: "slot-2", days: ["Sat"], from: "11:00 AM", to: "03:00 PM" },
-  ]);
-  const [appId, setAppId] = useState("APP-1079");
+  const [linkedin, setLinkedin] = useState("");
+  const [portfolio, setPortfolio] = useState("");
+  const [employmentPositions, setEmploymentPositions] = useState<EmploymentPosition[]>([]);
+  const [educationDegrees, setEducationDegrees] = useState<EducationDegree[]>([]);
+  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
+  const [formatPrices, setFormatPrices] = useState<Record<string, string>>({});
+  const [selectedLengths, setSelectedLengths] = useState<string[]>([]);
+  const [acceptCustomRequests, setAcceptCustomRequests] = useState(false);
+  const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
+  const [governmentId, setGovernmentId] = useState<GovernmentIdData | undefined>(undefined);
+  const [kycVideoUrl, setKycVideoUrl] = useState("");
+  const [certificates, setCertificates] = useState<ExpertCertificate[]>([]);
+  const [portfolioSamples, setPortfolioSamples] = useState<PortfolioSampleFile[]>([]);
+  const [timezone, setTimezone] = useState("");
+  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[]>([]);
+  const [appId, setAppId] = useState("");
   const [activeSectionTab, setActiveSectionTab] = useState<string>("all");
+  const [kycStatus, setKycStatus] = useState<DigilockerKycStatusResponse | null>(null);
+  const [kycLoading, setKycLoading] = useState(true);
+  const [kycError, setKycError] = useState("");
+  const [credentialsLoading, setCredentialsLoading] = useState(true);
+  const [credentialsError, setCredentialsError] = useState("");
 
-  // Load from backend, stores, drafts on mount
   useEffect(() => {
-    // 1. Check draft & applications
-    const draft = getExpertApplicationDraft();
-    const apps = getExpertApplications();
-    const demoApps = getDemoExpertApplications();
-    const matchedApp = apps[0] ?? demoApps[0];
+    let active = true;
+    getDigilockerKycStatus().then((data) => { if (active) setKycStatus(data); })
+      .catch(() => { if (active) setKycError("Unable to load DigiLocker status. Please reload to retry."); })
+      .finally(() => { if (active) setKycLoading(false); });
+    return () => { active = false; };
+  }, []);
 
-    if (matchedApp) {
-      setAppId(matchedApp.appId || "APP-1079");
-      if (matchedApp.linkedin) setLinkedin(matchedApp.linkedin);
-      if (matchedApp.portfolio) setPortfolio(matchedApp.portfolio);
-      if (matchedApp.employmentPositions?.length) setEmploymentPositions(matchedApp.employmentPositions);
-      if (matchedApp.educationDegrees?.length) setEducationDegrees(matchedApp.educationDegrees);
-      if (matchedApp.formats?.length) setSelectedFormats(matchedApp.formats);
-      if (matchedApp.formatPrices) setFormatPrices(matchedApp.formatPrices);
-      if (matchedApp.lengths?.length) setSelectedLengths(matchedApp.lengths);
-      if (matchedApp.audiences?.length) setSelectedAudiences(matchedApp.audiences);
-      if (matchedApp.governmentId) setGovernmentId(matchedApp.governmentId);
-      if (matchedApp.kycVideoUrl) setKycVideoUrl(matchedApp.kycVideoUrl);
-      if (matchedApp.certificates?.length) setCertificates(matchedApp.certificates);
-      if (matchedApp.portfolioSamples?.length) setPortfolioSamples(matchedApp.portfolioSamples);
-      if (matchedApp.timezone) setTimezone(matchedApp.timezone);
-      if (matchedApp.availabilitySlots?.length) setAvailabilitySlots(matchedApp.availabilitySlots);
-    }
-
-    if (draft.linkedin) setLinkedin(draft.linkedin);
-    if (draft.portfolio) setPortfolio(draft.portfolio);
-
+  // Load only the authenticated expert's current backend profile.
+  useEffect(() => {
     void fetchExpertProfileRecord()
       .then((record) => {
         setProfile(mapBackendProfileToExpertData(record));
-        if (record.applicationNumber) setAppId(record.applicationNumber);
-        if (record.selectedFormats?.length) setSelectedFormats(record.selectedFormats);
-        if (record.selectedLengths?.length) setSelectedLengths(record.selectedLengths);
-        if (record.formatPrices) setFormatPrices(record.formatPrices);
+        setAppId(record.applicationNumber || "");
+        setReviewStatus(record.status || "draft");
+        setSelectedFormats(record.selectedFormats || []);
+        setSelectedLengths(record.selectedLengths || []);
+        setFormatPrices(record.formatPrices || {});
 
         const audiences = Array.isArray(record.targetAudience)
           ? record.targetAudience
@@ -230,19 +159,15 @@ export default function ExpertProfileEditor() {
                 return [];
               }
             })();
-        if (audiences.length) setSelectedAudiences(audiences);
+        setSelectedAudiences(audiences);
 
         const parsedCredentials = parseCredentialsFromProfile(record.credentials);
-        if (parsedCredentials.employmentPositions.length) {
-          setEmploymentPositions(parsedCredentials.employmentPositions);
-        }
-        if (parsedCredentials.educationDegrees.length) {
-          setEducationDegrees(parsedCredentials.educationDegrees);
-        }
+        setEmploymentPositions(parsedCredentials.employmentPositions);
+        setEducationDegrees(parsedCredentials.educationDegrees);
 
         const availability = mapBackendAvailability(record);
-        if (availability.timezone) setTimezone(availability.timezone);
-        if (availability.slots.length) setAvailabilitySlots(availability.slots);
+        setTimezone(availability.timezone);
+        setAvailabilitySlots(availability.slots);
 
         const metadata = record.onboardingMetadata || {};
         if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
@@ -250,21 +175,20 @@ export default function ExpertProfileEditor() {
         if (typeof metadata.acceptCustomRequests === "boolean") {
           setAcceptCustomRequests(metadata.acceptCustomRequests);
         }
-        if (metadata.governmentId && typeof metadata.governmentId === "object") {
-          setGovernmentId(metadata.governmentId as GovernmentIdData);
-        }
-        if (typeof metadata.kycVideoUrl === "string") setKycVideoUrl(metadata.kycVideoUrl);
-        if (Array.isArray(metadata.certificates)) {
-          setCertificates(metadata.certificates as ExpertCertificate[]);
-        }
-        if (Array.isArray(metadata.portfolioSamples)) {
-          setPortfolioSamples(metadata.portfolioSamples as PortfolioSampleFile[]);
-        }
+        setGovernmentId(metadata.governmentId && typeof metadata.governmentId === "object"
+          ? metadata.governmentId as GovernmentIdData
+          : undefined);
+        setKycVideoUrl(typeof metadata.kycVideoUrl === "string" ? metadata.kycVideoUrl : "");
+        setCertificates(Array.isArray(metadata.certificates)
+          ? metadata.certificates as ExpertCertificate[]
+          : []);
+        setPortfolioSamples(Array.isArray(metadata.portfolioSamples)
+          ? metadata.portfolioSamples as PortfolioSampleFile[]
+          : []);
       })
       .catch(() => {
-        const stored = getExpertProfile();
-        setProfile(stored);
-      });
+        setCredentialsError("Unable to load saved credentials. Please reload to retry.");
+      }).finally(() => setCredentialsLoading(false));
   }, []);
 
   const isUploadedPhoto =
@@ -309,13 +233,20 @@ export default function ExpertProfileEditor() {
 
   const handleAiBioAssist = async () => {
     setIsGeneratingBio(true);
-    const role = profile.role.trim() || "Industry Leader";
-    const category = profile.category.trim() || "Product Design";
-    const draft = `I'm a ${role} specializing in ${category}. I help founders and teams cut through complexity with high-impact, actionable guidance.`;
-
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    updateProfile("bio", draft.slice(0, MAX_CHARS));
-    setIsGeneratingBio(false);
+    setSaveError(null);
+    try {
+      const result = await suggestOnboardingIdentityCopy({
+        fullName: profile.name, professionalTitle: profile.role, category: profile.category,
+        skills: profile.skills, languages: profile.languages, currentBio: profile.bio,
+        employment: employmentPositions, education: educationDegrees, field: "bio", intent: "improve",
+      });
+      if (!result.bio) throw new Error(result.notice || "No biography suggestion was returned.");
+      updateProfile("bio", result.bio.slice(0, MAX_CHARS));
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Unable to generate biography.");
+    } finally {
+      setIsGeneratingBio(false);
+    }
   };
 
   const handleAddSkill = () => {
@@ -401,6 +332,7 @@ export default function ExpertProfileEditor() {
 
   // Save full profile + onboarding data
   const handleSaveAll = async () => {
+    if (credentialsLoading || credentialsError) return;
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -436,7 +368,7 @@ export default function ExpertProfileEditor() {
         professionalTitle: profile.role,
         categoryLabel: profile.category,
         skills: profile.skills,
-        experienceLevel: profile.experienceLevel,
+        experienceLevel: profile.experienceLevel || undefined,
         tagLine: profile.tagLine,
         bio: profile.bio,
         location: profile.location,
@@ -466,10 +398,13 @@ export default function ExpertProfileEditor() {
     }
   };
 
-  const publicProfileSlug = expertSlug(profile.name || "aditya-dhar");
+  const publicProfileSlug = expertSlug(profile.name);
   const publicProfileUrl = `/expert/${publicProfileSlug}`;
 
   const yearOptions = useMemo(() => getYearOptions(35), []);
+
+  if (credentialsLoading) return <div className={styles.editor} role="status">Loading your profile…</div>;
+  if (credentialsError) return <div className={styles.editor} role="alert">{credentialsError}</div>;
 
   return (
     <div className={styles.editor}>
@@ -479,15 +414,15 @@ export default function ExpertProfileEditor() {
       <div className={styles.topActionBar}>
         <div className={styles.topActionMeta}>
           <span className={styles.statusBadge}>
-            <ShieldCheck size={14} /> Verified Expert
+            <ShieldCheck size={14} /> {reviewStatus === "approved" ? "Approved Expert" : `Review status: ${reviewStatus.replaceAll("_", " ")}`}
           </span>
           <span className={styles.appIdBadge}>
-            <Award size={13} /> {appId}
+            <Award size={13} /> {appId || "Not submitted"}
           </span>
         </div>
 
         <div className={styles.topButtonsGroup}>
-          <Link
+          {reviewStatus === "approved" && profile.name && <Link
             href={publicProfileUrl}
             target="_blank"
             rel="noopener noreferrer"
@@ -496,7 +431,7 @@ export default function ExpertProfileEditor() {
           >
             <ExternalLink size={15} />
             View Public Profile
-          </Link>
+          </Link>}
 
           <div className={styles.saveBtnWrapper}>
             <PrimaryButton
@@ -552,7 +487,7 @@ export default function ExpertProfileEditor() {
             aria-label="Upload profile photo"
           >
             <span className={styles.photoAvatarInner}>
-              {isUploadedPhoto ? (
+              {!profile.avatar ? <User size={40} aria-label="No profile photo uploaded" /> : isUploadedPhoto ? (
                 <img src={profile.avatar} alt="" className={styles.photoAvatar} />
               ) : (
                 <Image
@@ -627,6 +562,8 @@ export default function ExpertProfileEditor() {
               onChange={(e) => updateProfile("category", e.target.value)}
               className={styles.selectField}
             >
+              <option value="">Select category</option>
+              {profile.category && !CATEGORIES_LIST.includes(profile.category) && <option value={profile.category}>{profile.category}</option>}
               {CATEGORIES_LIST.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
@@ -647,6 +584,7 @@ export default function ExpertProfileEditor() {
               }
               className={styles.selectField}
             >
+              <option value="">Select experience level</option>
               {(Object.keys(EXPERIENCE_LABELS) as ExperienceLevel[]).map((level) => (
                 <option key={level} value={level}>
                   {EXPERIENCE_LABELS[level]}
@@ -736,7 +674,7 @@ export default function ExpertProfileEditor() {
               value={profile.location}
               onChange={(e) => updateProfile("location", e.target.value)}
               className={styles.textField}
-              placeholder="e.g. Mumbai, India"
+              placeholder="Enter your city and country"
             />
           </div>
 
@@ -1246,42 +1184,54 @@ export default function ExpertProfileEditor() {
           <span className={styles.sectionStepBadge}>Step 5 · Credentials</span>
         </div>
 
-        <div className={styles.kycGrid}>
+        {credentialsError && <p role="alert">{credentialsError}</p>}
+        {kycError && <p role="alert">{kycError}</p>}
+        {credentialsLoading && <p role="status">Loading credentials…</p>}
+        {!credentialsLoading && !credentialsError && <div className={styles.kycGrid}>
           {/* Government ID */}
           <div className={styles.kycCard}>
             <div className={styles.kycCardHeader}>
               <span className={styles.kycTitle}>Government ID</span>
-              <span className={styles.kycBadgeVerified}>
-                <CheckCircle2 size={12} /> Verified
+              <span className={kycStatus?.kyc?.status === "verified" ? styles.kycBadgeVerified : styles.kycDetailText}>
+                {kycLoading ? "Loading verification…" : kycError ? "Verification unavailable" : kycStatus?.kyc?.status === "verified" ? "DigiLocker verified" : governmentId?.front ? "Uploaded" : "Not uploaded"}
               </span>
             </div>
             <p className={styles.kycDetailText}>
-              <strong>Document:</strong> {governmentId?.type ? governmentId.type.toUpperCase() : "Aadhaar Card"}
+              <strong>Document:</strong> {String(kycStatus?.governmentId?.name || kycStatus?.governmentId?.type || governmentId?.type?.toUpperCase() || "No identity document available")}
             </p>
             <p className={styles.kycDetailText}>
-              <strong>Files:</strong> {governmentId?.front?.name || "Front uploaded"} {governmentId?.back ? `& ${governmentId.back.name}` : ""}
+              <strong>Files:</strong> {[governmentId?.front?.name, governmentId?.back?.name].filter(Boolean).join(" & ") || "No manually uploaded files"}
             </p>
+            {!kycLoading && !kycError && <p className={styles.kycDetailText}>
+              <strong>DigiLocker status:</strong> {String(kycStatus?.kyc?.status || "Not started").replaceAll("_", " ")}
+              {kycStatus?.sandbox ? " (Sandbox)" : ""}
+            </p>}
+            {Array.isArray(kycStatus?.kyc?.issuedDocuments) && kycStatus.kyc.issuedDocuments.map((document, index) => (
+              <p key={index} className={styles.kycDetailText}>
+                {String(document?.name || document?.description || document?.doctype || "Issued document")}
+              </p>
+            ))}
           </div>
 
           {/* KYC Video Intro */}
           <div className={styles.kycCard}>
             <div className={styles.kycCardHeader}>
               <span className={styles.kycTitle}>Video Introduction</span>
-              <span className={styles.kycBadgeVerified}>
-                <CheckCircle2 size={12} /> Approved
+              <span className={styles.kycDetailText}>
+                {kycVideoUrl ? "Uploaded" : "Not uploaded"}
               </span>
             </div>
             <p className={styles.kycDetailText}>
-              <strong>Video Status:</strong> 60-second self-recorded introductory session on file.
+              <strong>Video Status:</strong> {kycVideoUrl ? "Introduction video on file." : "No introduction video uploaded."}
             </p>
-            <a
+            {kycVideoUrl && <a
               href={kycVideoUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{ fontSize: 12, color: "var(--pomegranate)", textDecoration: "underline" }}
             >
               Review Intro Video
-            </a>
+            </a>}
           </div>
 
           {/* Certificates */}
@@ -1289,14 +1239,15 @@ export default function ExpertProfileEditor() {
             <div className={styles.kycCardHeader}>
               <span className={styles.kycTitle}>Certifications & Licenses</span>
               <span className={styles.kycBadgeVerified}>
-                <Award size={12} /> {certificates.length} Active
+                <Award size={12} /> {certificates.length} Submitted
               </span>
             </div>
             {certificates.map((cert) => (
               <p key={cert.id} className={styles.kycDetailText}>
-                • <strong>{cert.name}</strong> ({cert.issuer})
+                • <strong>{cert.name || cert.fileName}</strong> {cert.issuer ? `(${cert.issuer})` : ""}
               </p>
             ))}
+            {certificates.length === 0 && <p className={styles.kycDetailText}>No certifications added.</p>}
           </div>
 
           {/* Portfolio Samples */}
@@ -1312,8 +1263,9 @@ export default function ExpertProfileEditor() {
                 • {ps.fileName} ({ps.fileSize})
               </p>
             ))}
+            {portfolioSamples.length === 0 && <p className={styles.kycDetailText}>No work samples uploaded.</p>}
           </div>
-        </div>
+        </div>}
       </section>
 
       {/* ----------------------------------------------------

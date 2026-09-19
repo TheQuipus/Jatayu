@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { expertTimeOffSlots } from '../../utils/expertTimeOff.js';
 import { Op, UniqueConstraintError } from 'sequelize';
 import {
   Availability,
@@ -57,6 +58,9 @@ function zonedParts(date, timezone) {
 }
 
 function isWithinExpertAvailability(expert, scheduledStartAt, durationMinutes = SLOT_DURATION_MINUTES) {
+  const startMs = new Date(scheduledStartAt).getTime();
+  const endMs = startMs + durationMinutes * 60000;
+  if (expertTimeOffSlots(expert).some(({ startAt, endAt }) => startMs < Date.parse(endAt) && endMs > Date.parse(startAt))) return false;
   const timezone = expert.timezone || 'Asia/Kolkata';
   let parts;
   try { parts = zonedParts(scheduledStartAt, timezone); } catch { return false; }
@@ -237,10 +241,10 @@ export async function getExpertBookingOptions(expertIdentifier, from, days = 28)
       fromTime: item.fromTime,
       toTime: item.toTime,
     })),
-    occupiedSlots: occupied.map((item) => ({
+    occupiedSlots: [...expertTimeOffSlots(expert), ...occupied.map((item) => ({
       startAt: item.scheduledStartAt,
       endAt: item.scheduledEndAt,
-    })),
+    }))],
   };
 }
 

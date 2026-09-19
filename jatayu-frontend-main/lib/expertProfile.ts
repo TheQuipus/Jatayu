@@ -8,7 +8,7 @@ export type ExpertProfileData = {
   bio: string;
   category: string;
   skills: string[];
-  experienceLevel: ExperienceLevel;
+  experienceLevel: ExperienceLevel | "";
   languages: string[];
   location: string;
 };
@@ -20,18 +20,16 @@ export const EXPERIENCE_LABELS: Record<ExperienceLevel, string> = {
 };
 
 export const DEFAULT_EXPERT_PROFILE: ExpertProfileData = {
-  name: "Sarah Mitchell",
-  role: "UX Strategy Expert",
-  avatar: "/assets/img/avatar1.png",
-  tagLine:
-    "I help product teams turn research into roadmaps that ship — with clarity, speed, and measurable outcomes.",
-  bio:
-    "I'm a UX strategy consultant with 9+ years guiding B2B and D2C teams through research, positioning, and design system decisions. I focus on practical frameworks clients can apply immediately.",
-  category: "Product Design",
-  skills: ["UX Strategy", "Product Research", "Design Systems", "Workshop Facilitation", "Roadmapping"],
-  experienceLevel: "established",
-  languages: ["English", "Hindi"],
-  location: "Bengaluru, India",
+  name: "",
+  role: "",
+  avatar: "/assets/img/profile-placeholder.svg",
+  tagLine: "",
+  bio: "",
+  category: "",
+  skills: [],
+  experienceLevel: "",
+  languages: [],
+  location: "",
 };
 
 export function isExpertProfileValid(profile: ExpertProfileData): boolean {
