@@ -1,5 +1,6 @@
 import { Expert, Credential, Availability, Admin, sequelize } from '../models/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
+import { validateTimeOff } from '../utils/expertTimeOff.js';
 import {
   AiNotConfiguredError,
   suggestExpertIdentityCopy,
@@ -114,13 +115,16 @@ export const updateProfile = async (req, res) => {
   let onboardingMetadata;
   try {
     onboardingMetadata = normalizeOnboardingMetadata(body.onboardingMetadata);
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'timeOff')) {
+      onboardingMetadata.timeOff = validateTimeOff(onboardingMetadata.timeOff);
+    }
   } catch (error) {
     return res.status(422).json({ message: error.message });
   }
 
   try {
     const expertExists = await sequelize.transaction(async (transaction) => {
-      const expert = await Expert.findByPk(expertId, { transaction });
+      const expert = await Expert.findByPk(expertId, { transaction, lock: transaction.LOCK.UPDATE });
       if (!expert) return false;
 
       // Update fields based on which onboarding step/data is sent

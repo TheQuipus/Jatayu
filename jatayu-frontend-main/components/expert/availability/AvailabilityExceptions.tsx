@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchExpertProfileRecord } from "@/lib/expertProfileApi";
+import { updateProfile } from "@/lib/api";
 import { CalendarOff, Plus, Trash2, Check, Save } from "lucide-react";
 import styles from "./ExpertAvailabilityPage.module.css";
 
@@ -10,27 +12,6 @@ type ExceptionItem = {
   fromDate: string;
   toDate: string;
 };
-
-const INITIAL_EXCEPTIONS: ExceptionItem[] = [
-  {
-    id: 1,
-    title: "Diwali festival break",
-    fromDate: "20 Oct 2026",
-    toDate: "22 Oct 2026",
-  },
-  {
-    id: 2,
-    title: "Annual technology conference",
-    fromDate: "14 Nov 2026",
-    toDate: "16 Nov 2026",
-  },
-  {
-    id: 3,
-    title: "Personal leave",
-    fromDate: "05 Dec 2026",
-    toDate: "08 Dec 2026",
-  },
-];
 
 function formatDate(dateString: string): string {
   if (!dateString) return "";
@@ -49,35 +30,62 @@ function formatDate(dateString: string): string {
 }
 
 export default function AvailabilityExceptions() {
-  const [items, setItems] = useState<ExceptionItem[]>(INITIAL_EXCEPTIONS);
+  const [items, setItems] = useState<ExceptionItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchExpertProfileRecord().then((profile) => {
+      if (!active) return;
+      const saved = profile.onboardingMetadata?.timeOff;
+      setItems(Array.isArray(saved) ? saved : []);
+    }).catch(() => {
+      if (active) {
+        setLoadFailed(true);
+        setError("Unable to load time off. Reload this page to try again.");
+      }
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   // Form State
   const [newTitle, setNewTitle] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  const handleSave = () => {
-    setIsSaved(true);
-    window.setTimeout(() => setIsSaved(false), 2200);
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await updateProfile({ onboardingMetadata: { timeOff: items } });
+      setIsSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save time off.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCreateException = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !fromDate) return;
 
-    const formattedFrom = formatDate(fromDate);
-    const formattedTo = toDate ? formatDate(toDate) : formattedFrom;
+    if (toDate && toDate < fromDate) return;
 
     const newItem: ExceptionItem = {
       id: Date.now(),
       title: newTitle.trim(),
-      fromDate: formattedFrom,
-      toDate: formattedTo,
+      fromDate,
+      toDate: toDate || fromDate,
     };
 
     setItems((current) => [newItem, ...current]);
+    setIsSaved(false);
     setNewTitle("");
     setFromDate("");
     setToDate("");
@@ -98,6 +106,7 @@ export default function AvailabilityExceptions() {
             className={styles.outlineButton}
             onClick={() => setIsAdding((prev) => !prev)}
             aria-label="Add time off"
+            disabled={loading || saving || loadFailed}
           >
             <Plus size={13} />
             <span>Add</span>
@@ -106,7 +115,7 @@ export default function AvailabilityExceptions() {
             type="button"
             className={`${styles.panelSaveBtn} ${isSaved ? styles.savedState : ""}`}
             onClick={handleSave}
-            disabled={isSaved}
+            disabled={isSaved || loading || saving || loadFailed}
             aria-label="Save time off"
           >
             {isSaved ? (
@@ -117,13 +126,15 @@ export default function AvailabilityExceptions() {
             ) : (
               <>
                 <Save size={13} />
-                <span>Save</span>
+                <span>{saving ? "Saving…" : "Save"}</span>
               </>
             )}
           </button>
         </div>
       </div>
 
+      {error && <p role="alert">{error}</p>}
+      {loading && <p role="status">Loading time off…</p>}
       {isAdding && (
         <form onSubmit={handleCreateException} className={styles.addExceptionForm}>
           <h4 className={styles.addExceptionFormTitle}>Add Time Off / Availability</h4>
@@ -138,6 +149,7 @@ export default function AvailabilityExceptions() {
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 required
+                maxLength={200}
               />
             </div>
 
@@ -179,7 +191,7 @@ export default function AvailabilityExceptions() {
             >
               Cancel
             </button>
-            <button type="submit" className={styles.confirmAddBtn}>
+            <button type="submit" className={styles.confirmAddBtn} disabled={saving}>
               <Plus size={13} />
               <span>Add to list</span>
             </button>
@@ -197,18 +209,22 @@ export default function AvailabilityExceptions() {
               <strong className={styles.exceptionTitle}>{title}</strong>
               <div className={styles.exceptionDateRow}>
                 <span className={styles.dateChip}>
-                  <span className={styles.dateLabel}>From:</span> {from}
+                  <span className={styles.dateLabel}>From:</span> {formatDate(from)}
                 </span>
                 <span className={styles.dateArrow}>→</span>
                 <span className={styles.dateChip}>
-                  <span className={styles.dateLabel}>To:</span> {to}
+                  <span className={styles.dateLabel}>To:</span> {formatDate(to)}
                 </span>
               </div>
             </div>
             <button
               type="button"
               className={styles.deleteActionBtn}
-              onClick={() => setItems((current) => current.filter((item) => item.id !== id))}
+              disabled={saving}
+              onClick={() => {
+                setItems((current) => current.filter((item) => item.id !== id));
+                setIsSaved(false);
+              }}
               aria-label={`Remove ${title}`}
             >
               <Trash2 size={14} />
