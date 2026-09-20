@@ -24,7 +24,7 @@ import { getRazorpayClient, validateRazorpayConfig } from './config/razorpay.js'
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 import { createOpenApiDocument } from './config/swagger.js';
 import notificationRoutes from './routes/notificationRoutes.js';
-import { sendNotification, setNotificationSocketServer } from './services/notificationService.js';
+import { sendNotification, sendUpcomingExpertReminders, setNotificationSocketServer } from './services/notificationService.js';
 import { Booking, BookingExtension } from './models/index.js';
 import { approveExtension } from './services/bookingExtensionService.js';
 import jwt from 'jsonwebtoken';
@@ -285,6 +285,12 @@ const startServer = async () => {
       console.log(`WebSocket:    ws://localhost:${PORT}/socket.io`);
       console.log(`======================================================\n`);
     });
+
+    const reminderTimer = setInterval(() => {
+      void sendUpcomingExpertReminders().catch((error) =>
+        console.error('[Session Reminder] Unable to send reminders:', error.message));
+    }, 60 * 1000);
+    reminderTimer.unref();
   } catch (error) {
     console.error('Unable to start backend server:', error);
     process.exit(1);

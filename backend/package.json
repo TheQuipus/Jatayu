@@ -13,7 +13,8 @@
     "migrate:agora-transcripts": "node scripts/migrateAgoraTranscripts.js",
     "migrate:booking-extensions": "node scripts/migrateBookingExtensions.js",
     "migrate:notifications": "node scripts/migrateNotifications.js",
-    "migrate:booking-messages": "node scripts/migrateBookingMessages.js"
+    "migrate:booking-messages": "node scripts/migrateBookingMessages.js",
+    "migrate:expert-security": "node scripts/migrateExpertSecurity.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.2",

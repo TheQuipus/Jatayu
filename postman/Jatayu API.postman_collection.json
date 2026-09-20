@@ -245,7 +245,18 @@
           "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.authorizationUrl) pm.environment.set('digilockerAuthorizationUrl', data.authorizationUrl);"] } }],
           "request": { "method": "POST", "description": "Returns the consent URL. Open authorizationUrl in a browser; DigiLocker OAuth cannot be completed entirely inside Postman.", "url": "{{baseUrl}}/api/expert/kyc/digilocker/start" }
         },
-        { "name": "Get DigiLocker KYC Status", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/kyc/digilocker/status" } }
+        { "name": "Get DigiLocker KYC Status", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/kyc/digilocker/status" } },
+        { "name": "Get Security Settings", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/security" } },
+        { "name": "Enable Two-Factor Authentication", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"enabled\": true\n}" }, "url": "{{baseUrl}}/api/expert/security/two-factor" } },
+        { "name": "Change Password", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"Password@123\",\n  \"newPassword\": \"NewPassword@123\"\n}" }, "url": "{{baseUrl}}/api/expert/security/password" } },
+        { "name": "Logout Other Sessions", "request": { "method": "POST", "url": "{{baseUrl}}/api/expert/security/sessions/logout-others" } },
+        { "name": "Request Email Change", "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.challengeId) pm.collectionVariables.set('securityChallengeId', data.challengeId);"] } }], "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"email\",\n  \"value\": \"new.expert@example.com\"\n}" }, "url": "{{baseUrl}}/api/expert/security/contact/request" } },
+        { "name": "Verify Email or Phone Change", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"challengeId\": \"{{securityChallengeId}}\",\n  \"code\": \"{{otp}}\"\n}" }, "url": "{{baseUrl}}/api/expert/security/contact/verify" } },
+        { "name": "Get Notification Preferences", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/notification-preferences" } },
+        { "name": "Save Notification Preferences", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"preferences\": {\n    \"sessionRequests\": { \"push\": true, \"email\": true, \"sms\": true },\n    \"reminders\": { \"push\": true, \"email\": true, \"sms\": false },\n    \"messages\": { \"push\": true, \"email\": true, \"sms\": false },\n    \"payouts\": { \"push\": true, \"email\": true, \"sms\": true }\n  }\n}" }, "url": "{{baseUrl}}/api/expert/notification-preferences" } },
+        { "name": "Download My Data", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/account/export" } },
+        { "name": "Logout Current Session", "request": { "method": "POST", "url": "{{baseUrl}}/api/expert/account/logout" } },
+        { "name": "Soft Delete Account", "request": { "method": "DELETE", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"confirmation\": \"DELETE\"\n}" }, "url": "{{baseUrl}}/api/expert/account" } }
       ]
     },
     {

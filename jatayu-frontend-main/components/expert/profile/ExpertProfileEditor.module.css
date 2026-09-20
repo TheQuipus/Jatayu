@@ -293,6 +293,52 @@
   gap: 12px;
 }
 
+.linkedinSyncBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, #0a66c2 35%, var(--mercury));
+  border-radius: 10px;
+  background: var(--white);
+  color: #0a66c2;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.linkedinSyncBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, #0a66c2 7%, var(--white));
+  border-color: #0a66c2;
+}
+
+.linkedinSyncBtn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.linkedinSyncBtnDone {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 40%, var(--mercury));
+}
+
+.linkedinMark {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 3px;
+  background: #0a66c2;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .fieldLabel {
   font-family: var(--font-body);
   font-size: 13px;
@@ -392,6 +438,13 @@
 .skillInputRow {
   display: flex;
   gap: 8px;
+}
+
+.skillsHint {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--scorpion);
 }
 
 .skillInputRow .textField {
@@ -662,6 +715,11 @@
   border-color: var(--pomegranate);
   color: var(--pomegranate);
   font-weight: 600;
+}
+
+.selectableChip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* KYC / Credentials Display */

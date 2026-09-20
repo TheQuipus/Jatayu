@@ -425,6 +425,48 @@ export async function getProfile(): Promise<Record<string, unknown>> {
   });
 }
 
+export type ExpertSecuritySession = {
+  id: string;
+  device: string;
+  ipAddress?: string | null;
+  loginMethod: string;
+  lastSeenAt: string;
+  createdAt: string;
+  expiresAt: string;
+  activeNow: boolean;
+  revokedAt?: string | null;
+};
+
+export type ExpertSecurityResponse = {
+  email: string;
+  phone: string | null;
+  maskedPhone: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  twoFactorEnabled: boolean;
+  hasPassword: boolean;
+  sessions: ExpertSecuritySession[];
+  loginHistory: ExpertSecuritySession[];
+};
+
+export const getExpertSecurity = () => apiFetch<ExpertSecurityResponse>("/api/expert/security", { method: "GET" });
+export const setExpertTwoFactor = (enabled: boolean) => apiFetch<{ twoFactorEnabled: boolean }>("/api/expert/security/two-factor", { method: "PATCH", body: JSON.stringify({ enabled }) });
+export const changeExpertPassword = (currentPassword: string, newPassword: string) => apiFetch<{ message: string }>("/api/expert/security/password", { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) });
+export const logoutExpertOtherSessions = () => apiFetch<{ message: string }>("/api/expert/security/sessions/logout-others", { method: "POST" });
+export const revokeExpertSession = (sessionId: string) => apiFetch<{ message: string }>(`/api/expert/security/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+export const requestExpertContactVerification = (type: "email" | "phone", value: string) => apiFetch<{ challengeId: string; message: string }>("/api/expert/security/contact/request", { method: "POST", body: JSON.stringify({ type, value }) });
+export const verifyExpertContact = (challengeId: string, code: string) => apiFetch<{ message: string }>("/api/expert/security/contact/verify", { method: "POST", body: JSON.stringify({ challengeId, code }) });
+
+export type ExpertNotificationPreferences = Record<
+  "sessionRequests" | "reminders" | "messages" | "payouts",
+  { push: boolean; email: boolean; sms: boolean }
+>;
+export const getExpertNotificationPreferences = () => apiFetch<{ preferences: ExpertNotificationPreferences }>("/api/expert/notification-preferences", { method: "GET" });
+export const saveExpertNotificationPreferences = (preferences: ExpertNotificationPreferences) => apiFetch<{ preferences: ExpertNotificationPreferences }>("/api/expert/notification-preferences", { method: "PUT", body: JSON.stringify({ preferences }) });
+export const exportExpertAccountData = () => apiFetch<Record<string, unknown>>("/api/expert/account/export", { method: "GET" });
+export const logoutExpertCurrentSession = () => apiFetch<{ message: string }>("/api/expert/account/logout", { method: "POST" });
+export const deleteExpertAccount = (confirmation: string) => apiFetch<{ message: string; recoverable: boolean }>("/api/expert/account", { method: "DELETE", body: JSON.stringify({ confirmation }) });
+
 export type DigilockerKycStartResponse = {
   authorizationUrl: string;
   sandbox?: boolean;

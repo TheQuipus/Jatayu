@@ -9,6 +9,16 @@ import {
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { sendNotification } from '../services/notificationService.js';
 
+function publicExpert(expert) {
+  const data = expert?.toJSON ? expert.toJSON() : { ...expert };
+  delete data.password;
+  if (data.onboardingMetadata && typeof data.onboardingMetadata === 'object') {
+    const { pendingOtp, ...safeMetadata } = data.onboardingMetadata;
+    data.onboardingMetadata = safeMetadata;
+  }
+  return data;
+}
+
 /**
  * Get current expert's full profile
  */
@@ -28,7 +38,7 @@ export const getProfile = async (req, res) => {
     }
 
     return res.status(200).json({
-      ...expert.toJSON(),
+      ...publicExpert(expert),
       onboardingComplete: expert.status === 'approved' || expert.onboardingStep === 'success',
     });
   } catch (error) {
@@ -218,7 +228,7 @@ export const updateProfile = async (req, res) => {
 
     return res.status(200).json({
       message: 'Profile updated successfully',
-      expert: updatedProfile
+      expert: publicExpert(updatedProfile)
     });
   } catch (error) {
     // Do not log the complete Sequelize error: it may contain the full SQL payload.
@@ -278,7 +288,7 @@ export const submitOnboarding = async (req, res) => {
 
     return res.status(200).json({
       message: 'Onboarding completed and submitted for review successfully',
-      expert
+      expert: publicExpert(expert)
     });
   } catch (error) {
     console.error('Submit Onboarding Error:', error);

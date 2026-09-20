@@ -116,6 +116,40 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     '/api/expert/me': {
       get: operation({ tag: 'Expert', summary: 'Get authenticated expert profile', security: bearerSecurity }),
     },
+    '/api/expert/security': {
+      get: operation({ tag: 'Expert Security', summary: 'Get account security, sessions, and login history', security: bearerSecurity }),
+    },
+    '/api/expert/security/two-factor': {
+      patch: operation({ tag: 'Expert Security', summary: 'Enable or disable login OTP', security: bearerSecurity, requestBody: jsonBody() }),
+    },
+    '/api/expert/security/password': {
+      patch: operation({ tag: 'Expert Security', summary: 'Set or change account password', security: bearerSecurity, requestBody: jsonBody() }),
+    },
+    '/api/expert/security/sessions/logout-others': {
+      post: operation({ tag: 'Expert Security', summary: 'Revoke all sessions except the current session', security: bearerSecurity }),
+    },
+    '/api/expert/security/sessions/{sessionId}': {
+      delete: operation({ tag: 'Expert Security', summary: 'Revoke one active session', security: bearerSecurity, parameters: [{ in: 'path', name: 'sessionId', required: true, schema: { type: 'string', format: 'uuid' } }] }),
+    },
+    '/api/expert/security/contact/request': {
+      post: operation({ tag: 'Expert Security', summary: 'Send verification OTP to a new email or phone', security: bearerSecurity, requestBody: jsonBody() }),
+    },
+    '/api/expert/security/contact/verify': {
+      post: operation({ tag: 'Expert Security', summary: 'Verify and save a new email or phone', security: bearerSecurity, requestBody: jsonBody() }),
+    },
+    '/api/expert/notification-preferences': {
+      get: operation({ tag: 'Expert Notifications', summary: 'Get expert channel preferences', security: bearerSecurity }),
+      put: operation({ tag: 'Expert Notifications', summary: 'Save expert channel preferences', security: bearerSecurity, requestBody: jsonBody() }),
+    },
+    '/api/expert/account/export': {
+      get: operation({ tag: 'Expert Account', summary: 'Export authenticated expert account data', security: bearerSecurity }),
+    },
+    '/api/expert/account/logout': {
+      post: operation({ tag: 'Expert Account', summary: 'Revoke the current expert session', security: bearerSecurity }),
+    },
+    '/api/expert/account': {
+      delete: operation({ tag: 'Expert Account', summary: 'Soft-delete the authenticated expert account', security: bearerSecurity, requestBody: jsonBody() }),
+    },
     '/api/expert/profile': {
       put: operation({
         tag: 'Expert', summary: 'Save expert profile or onboarding step', security: bearerSecurity,

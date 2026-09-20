@@ -29,6 +29,23 @@ import {
   Sliders,
 } from "lucide-react";
 import styles from "./ExpertSettings.module.css";
+import {
+  changeExpertPassword,
+  deleteExpertAccount,
+  exportExpertAccountData,
+  getExpertSecurity,
+  getExpertNotificationPreferences,
+  logoutExpertOtherSessions,
+  logoutExpertCurrentSession,
+  requestExpertContactVerification,
+  revokeExpertSession,
+  setExpertTwoFactor,
+  saveExpertNotificationPreferences,
+  verifyExpertContact,
+  type ExpertSecuritySession,
+  type ExpertNotificationPreferences,
+} from "@/lib/api";
+import { clearAuthSession } from "@/lib/expertAuth";
 
 const SETTINGS_STORAGE_KEY = "jatayu_expert_settings";
 
@@ -40,28 +57,16 @@ export default function ExpertSettings() {
   const [personalisationData, setPersonalisationData] = useState(true);
 
   // Security State (matching screenshot precisely)
-  const [registeredPhone, setRegisteredPhone] = useState("+91 98765 •••••");
-  const [emailAddress, setEmailAddress] = useState("priya.sharma@gmail.com");
+  const [registeredPhone, setRegisteredPhone] = useState("");
+  const [emailAddress, setEmailAddress] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
-  const [twoFactorAuth, setTwoFactorAuth] = useState(true);
-  const [sessions, setSessions] = useState([
-    {
-      id: "s1",
-      device: "Chrome on Windows",
-      location: "Mumbai",
-      activeNow: true,
-      sub: "Active now · This device",
-      type: "laptop",
-    },
-    {
-      id: "s2",
-      device: "Safari on iPhone",
-      location: "Pune",
-      activeNow: false,
-      sub: "2 days ago",
-      type: "phone",
-    },
-  ]);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
+  const [sessions, setSessions] = useState<ExpertSecuritySession[]>([]);
+  const [loginHistory, setLoginHistory] = useState<ExpertSecuritySession[]>([]);
+  const [securityLoading, setSecurityLoading] = useState(true);
+  const [securityError, setSecurityError] = useState<string | null>(null);
 
   // Password update modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -73,6 +78,7 @@ export default function ExpertSettings() {
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   // Regional State
   const [interfaceLanguage, setInterfaceLanguage] = useState("en-US");
@@ -84,13 +90,15 @@ export default function ExpertSettings() {
   const [vacationMode, setVacationMode] = useState(false);
 
   // Notifications Matrix State
-  const [notifications, setNotifications] = useState({
+  const [notifications, setNotifications] = useState<ExpertNotificationPreferences>({
     sessionRequests: { push: true, email: true, sms: true },
     reminders: { push: true, email: true, sms: false },
     messages: { push: true, email: true, sms: false },
     payouts: { push: true, email: true, sms: true },
-    marketing: { push: false, email: true, sms: false },
   });
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
+  const [notificationsDirty, setNotificationsDirty] = useState(false);
 
   // Modals & Feedback
   const [isSaved, setIsSaved] = useState(false);
@@ -103,11 +111,17 @@ export default function ExpertSettings() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [newPhoneInput, setNewPhoneInput] = useState("");
+  const [newEmailInput, setNewEmailInput] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [contactChallenge, setContactChallenge] = useState<{ id: string; type: "email" | "phone" } | null>(null);
+  const [contactBusy, setContactBusy] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState<string[]>([
     "SpamBot_992",
     "anonymous_inquiry_41",
   ]);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [accountActionError, setAccountActionError] = useState<string | null>(null);
+  const [accountActionBusy, setAccountActionBusy] = useState<"export" | "logout" | "delete" | null>(null);
 
   // Load saved settings
   useEffect(() => {
@@ -120,31 +134,54 @@ export default function ExpertSettings() {
         if (parsed.showBookingActivity !== undefined) setShowBookingActivity(parsed.showBookingActivity);
         if (parsed.showReviewsGiven !== undefined) setShowReviewsGiven(parsed.showReviewsGiven);
         if (parsed.personalisationData !== undefined) setPersonalisationData(parsed.personalisationData);
-        if (parsed.twoFactorAuth !== undefined) setTwoFactorAuth(parsed.twoFactorAuth);
         if (parsed.displayTimezone !== undefined) setDisplayTimezone(parsed.displayTimezone);
         if (parsed.interfaceLanguage !== undefined) setInterfaceLanguage(parsed.interfaceLanguage);
         if (parsed.vacationMode !== undefined) setVacationMode(parsed.vacationMode);
-        if (parsed.notifications !== undefined) setNotifications(parsed.notifications);
-        if (parsed.registeredPhone !== undefined) setRegisteredPhone(parsed.registeredPhone);
-        if (parsed.emailAddress !== undefined) setEmailAddress(parsed.emailAddress);
       }
     } catch {
       // ignore
     }
   }, []);
 
-  const handleSaveSettings = () => {
+  const loadSecurity = async () => {
+    setSecurityError(null);
+    try {
+      const data = await getExpertSecurity();
+      setRegisteredPhone(data.maskedPhone || "Not added");
+      setEmailAddress(data.email);
+      setEmailVerified(data.emailVerified);
+      setPhoneVerified(data.phoneVerified);
+      setTwoFactorAuth(data.twoFactorEnabled);
+      setHasPassword(data.hasPassword);
+      setSessions(data.sessions);
+      setLoginHistory(data.loginHistory);
+    } catch (error) {
+      setSecurityError(error instanceof Error ? error.message : "Unable to load security settings.");
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadSecurity(); }, []);
+
+  useEffect(() => {
+    getExpertNotificationPreferences()
+      .then(({ preferences }) => { setNotifications(preferences); setNotificationsDirty(false); })
+      .catch((error) => setNotificationsError(error instanceof Error ? error.message : "Unable to load notification preferences."))
+      .finally(() => setNotificationsLoading(false));
+  }, []);
+
+  const handleSaveSettings = async () => {
     setIsSaving(true);
+    setNotificationsError(null);
     const payload = {
       profileVisibility,
       showBookingActivity,
       showReviewsGiven,
       personalisationData,
-      twoFactorAuth,
       displayTimezone,
       interfaceLanguage,
       vacationMode,
-      notifications,
     };
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
@@ -152,6 +189,17 @@ export default function ExpertSettings() {
       // ignore
     }
 
+    if (notificationsDirty) {
+      try {
+        const { preferences } = await saveExpertNotificationPreferences(notifications);
+        setNotifications(preferences);
+        setNotificationsDirty(false);
+      } catch (error) {
+        setNotificationsError(error instanceof Error ? error.message : "Unable to save notification preferences.");
+        setIsSaving(false);
+        return;
+      }
+    }
     setTimeout(() => {
       setIsSaving(false);
       setIsSaved(true);
@@ -164,6 +212,7 @@ export default function ExpertSettings() {
     channel: "push" | "email" | "sms",
   ) => {
     setIsSaved(false);
+    setNotificationsDirty(true);
     setNotifications((prev) => ({
       ...prev,
       [category]: {
@@ -173,13 +222,90 @@ export default function ExpertSettings() {
     }));
   };
 
-  const handleRequestDataExport = () => {
-    setExportNotice("Your data archive is being prepared and will be sent to your registered email.");
-    setTimeout(() => setExportNotice(null), 6000);
+  const handleRequestDataExport = async () => {
+    setAccountActionBusy("export");
+    setAccountActionError(null);
+    try {
+      const data = await exportExpertAccountData();
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `jatayu-expert-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setExportNotice("Your data archive was downloaded.");
+      window.setTimeout(() => setExportNotice(null), 6000);
+    } catch (error) {
+      setAccountActionError(error instanceof Error ? error.message : "Unable to download account data.");
+    } finally {
+      setAccountActionBusy(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    setAccountActionBusy("logout");
+    setAccountActionError(null);
+    try {
+      await logoutExpertCurrentSession();
+    } catch {
+      // Clear the local session even when the server session already expired.
+    } finally {
+      clearAuthSession();
+      window.location.assign("/login");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setAccountActionBusy("delete");
+    setAccountActionError(null);
+    try {
+      await deleteExpertAccount(deleteConfirmText);
+      clearAuthSession();
+      window.location.assign("/login?accountDeleted=1");
+    } catch (error) {
+      setAccountActionError(error instanceof Error ? error.message : "Unable to delete account.");
+      setAccountActionBusy(null);
+    }
   };
 
   const handleUnblockUser = (name: string) => {
     setBlockedUsers((prev) => prev.filter((u) => u !== name));
+  };
+
+  const startContactVerification = async (type: "email" | "phone", value: string) => {
+    setContactBusy(true);
+    setSecurityError(null);
+    try {
+      const result = await requestExpertContactVerification(type, value);
+      setContactChallenge({ id: result.challengeId, type });
+      setVerificationCode("");
+    } catch (error) {
+      setSecurityError(error instanceof Error ? error.message : "Unable to send verification code.");
+    } finally {
+      setContactBusy(false);
+    }
+  };
+
+  const confirmContactVerification = async () => {
+    if (!contactChallenge || verificationCode.length !== 6) return;
+    setContactBusy(true);
+    setSecurityError(null);
+    try {
+      await verifyExpertContact(contactChallenge.id, verificationCode);
+      await loadSecurity();
+      setContactChallenge(null);
+      setVerificationCode("");
+      setNewPhoneInput("");
+      setNewEmailInput("");
+      setShowPhoneModal(false);
+      setShowEmailModal(false);
+    } catch (error) {
+      setSecurityError(error instanceof Error ? error.message : "Unable to verify code.");
+    } finally {
+      setContactBusy(false);
+    }
   };
 
   return (
@@ -416,7 +542,7 @@ export default function ExpertSettings() {
                 </div>
 
                 <span className={styles.secureBadge}>
-                  <CheckCircle2 size={13} /> Secure
+                  <CheckCircle2 size={13} /> {securityLoading ? "Checking…" : twoFactorAuth ? "2FA enabled" : "Protected"}
                 </span>
               </div>
             </div>
@@ -431,13 +557,13 @@ export default function ExpertSettings() {
                       <span style={{ color: "#25D366", marginRight: 5, fontSize: 13 }}>💬</span>
                       {registeredPhone}
                     </span>
-                    <span className={styles.verifiedPill}>Verified</span>
+                    <span className={phoneVerified ? styles.verifiedPill : styles.unverifiedPill}>{phoneVerified ? "Verified" : "Unverified"}</span>
                   </div>
                 </div>
                 <button
                   type="button"
                   className={styles.btnAction}
-                  onClick={() => setShowPhoneModal(true)}
+                  onClick={() => { setContactChallenge(null); setVerificationCode(""); setShowPhoneModal(true); }}
                 >
                   Change Number
                 </button>
@@ -457,7 +583,7 @@ export default function ExpertSettings() {
                 <button
                   type="button"
                   className={styles.btnAction}
-                  onClick={() => setShowEmailModal(true)}
+                  onClick={() => { setContactChallenge(null); setVerificationCode(""); setNewEmailInput(emailVerified ? "" : emailAddress); setShowEmailModal(true); }}
                 >
                   {emailVerified ? "Change" : "Verify"}
                 </button>
@@ -475,9 +601,14 @@ export default function ExpertSettings() {
                   type="button"
                   role="switch"
                   aria-checked={twoFactorAuth}
-                  onClick={() => {
-                    setTwoFactorAuth((prev) => !prev);
-                    setIsSaved(false);
+                  disabled={securityLoading}
+                  onClick={async () => {
+                    try {
+                      const result = await setExpertTwoFactor(!twoFactorAuth);
+                      setTwoFactorAuth(result.twoFactorEnabled);
+                    } catch (error) {
+                      setSecurityError(error instanceof Error ? error.message : "Unable to update two-factor authentication.");
+                    }
                   }}
                   className={`${styles.toggleSwitch} ${
                     twoFactorAuth ? styles.toggleSwitchActive : ""
@@ -508,7 +639,7 @@ export default function ExpertSettings() {
                     setShowPasswordModal(true);
                   }}
                 >
-                  <Key size={14} /> Update Password
+                  <Key size={14} /> {hasPassword ? "Update Password" : "Set Password"}
                 </button>
               </div>
 
@@ -524,11 +655,17 @@ export default function ExpertSettings() {
                   <button
                     type="button"
                     className={styles.logoutAllBtn}
-                    onClick={() => {
-                      setSessions((prev) => prev.filter((s) => s.activeNow));
+                    disabled={securityLoading || sessions.every((session) => session.activeNow)}
+                    onClick={async () => {
+                      try {
+                        await logoutExpertOtherSessions();
+                        await loadSecurity();
+                      } catch (error) {
+                        setSecurityError(error instanceof Error ? error.message : "Unable to log out other sessions.");
+                      }
                     }}
                   >
-                    Logout All
+                    Logout Others
                   </button>
                 </div>
 
@@ -546,13 +683,13 @@ export default function ExpertSettings() {
                               : styles.deviceIconBoxOther
                           }
                         >
-                          {sess.type === "laptop" ? <Laptop size={18} /> : <Smartphone size={18} />}
+                          {/iOS|Android|iPhone/i.test(sess.device) ? <Smartphone size={18} /> : <Laptop size={18} />}
                         </div>
                         <div>
                           <div className={styles.deviceTitle}>
-                            {sess.device} · {sess.location}
+                            {sess.device}
                           </div>
-                          <div className={styles.deviceSub}>{sess.sub}</div>
+                          <div className={styles.deviceSub}>{sess.activeNow ? "Active now · This device" : `Signed in ${new Date(sess.createdAt).toLocaleString()}`}{sess.ipAddress ? ` · ${sess.ipAddress}` : ""}</div>
                         </div>
                       </div>
 
@@ -562,8 +699,13 @@ export default function ExpertSettings() {
                         <button
                           type="button"
                           className={styles.btnRemoveDevice}
-                          onClick={() => {
-                            setSessions((prev) => prev.filter((s) => s.id !== sess.id));
+                          onClick={async () => {
+                            try {
+                              await revokeExpertSession(sess.id);
+                              setSessions((current) => current.filter((item) => item.id !== sess.id));
+                            } catch (error) {
+                              setSecurityError(error instanceof Error ? error.message : "Unable to remove session.");
+                            }
                           }}
                         >
                           Remove
@@ -573,6 +715,7 @@ export default function ExpertSettings() {
                   ))}
                 </div>
               </div>
+              {securityError && <p role="alert" className={styles.settingDesc}>{securityError}</p>}
 
               {/* Row 5: Login History */}
               <div className={styles.settingRow}>
@@ -609,7 +752,7 @@ export default function ExpertSettings() {
               </div>
             </div>
 
-            <div className={styles.notifMatrix}>
+            <fieldset className={styles.notifMatrix} disabled={notificationsLoading || isSaving} style={{ border: 0, padding: 0, margin: 0 }}>
               <div className={styles.notifMatrixHeader}>
                 <span className={styles.notifMatrixHeaderLabel}>Notification Type</span>
                 <span>Push</span>
@@ -744,7 +887,9 @@ export default function ExpertSettings() {
                   />
                 </div>
               </div>
-            </div>
+            </fieldset>
+            {notificationsLoading && <p role="status" className={styles.settingDesc}>Loading notification preferences…</p>}
+            {notificationsError && <p role="alert" className={styles.settingDesc}>{notificationsError}</p>}
           </section>
 
         {/* ----------------------------------------------------
@@ -866,13 +1011,15 @@ export default function ExpertSettings() {
                 type="button"
                 className={styles.actionCardItem}
                 onClick={handleRequestDataExport}
+                disabled={accountActionBusy !== null}
               >
                 <div className={styles.actionCardItemLeft}>
                   <Download size={18} />
-                  <span>Download My Data</span>
+                  <span>{accountActionBusy === "export" ? "Preparing Download…" : "Download My Data"}</span>
                 </div>
                 <ArrowRight size={16} className={styles.actionCardArrow} />
               </button>
+              {accountActionError && <p role="alert" className={styles.settingDesc}>{accountActionError}</p>}
 
               {/* Button 2: Logout of Jatayu */}
               <button
@@ -989,9 +1136,14 @@ export default function ExpertSettings() {
 
             <div className={styles.modalBody}>
               <p style={{ margin: 0, fontSize: 13, color: "var(--dove-gray)" }}>
-                We will send an SMS OTP to your new mobile number for verification.
+                {contactChallenge?.type === "phone" ? "Enter the 6-digit code sent to your new number." : "We will send an SMS OTP to your new mobile number for verification."}
               </p>
-              <div style={{ display: "flex", gap: 8 }}>
+              {contactChallenge?.type === "phone" ? <input
+                type="text" inputMode="numeric" value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="Enter 6-digit code" className={styles.selectDropdown}
+                style={{ width: "100%", backgroundImage: "none", textAlign: "center" }}
+              /> : <div style={{ display: "flex", gap: 8 }}>
                 <span
                   style={{
                     display: "flex",
@@ -1015,7 +1167,8 @@ export default function ExpertSettings() {
                   className={styles.selectDropdown}
                   style={{ flex: 1, backgroundImage: "none", padding: "0 12px" }}
                 />
-              </div>
+              </div>}
+              {securityError && <p role="alert" className={styles.settingDesc}>{securityError}</p>}
             </div>
 
             <div className={styles.modalFooter}>
@@ -1023,18 +1176,12 @@ export default function ExpertSettings() {
                 type="button"
                 className={styles.btnSaveTop}
                 style={{ minHeight: 36, fontSize: 13 }}
-                onClick={() => {
-                  if (newPhoneInput.length === 10) {
-                    setRegisteredPhone(`+91 ${newPhoneInput.slice(0, 5)} •••••`);
-                    setShowPhoneModal(false);
-                    setNewPhoneInput("");
-                    setIsSaved(true);
-                    setTimeout(() => setIsSaved(false), 3000);
-                  }
-                }}
-                disabled={newPhoneInput.length !== 10}
+                onClick={() => contactChallenge?.type === "phone"
+                  ? void confirmContactVerification()
+                  : void startContactVerification("phone", `+91${newPhoneInput}`)}
+                disabled={contactBusy || (contactChallenge?.type === "phone" ? verificationCode.length !== 6 : newPhoneInput.length !== 10)}
               >
-                Send Verification OTP
+                {contactBusy ? "Please wait…" : contactChallenge?.type === "phone" ? "Confirm Code" : "Send Verification OTP"}
               </button>
             </div>
           </div>
@@ -1061,15 +1208,20 @@ export default function ExpertSettings() {
 
             <div className={styles.modalBody}>
               <p style={{ margin: 0, fontSize: 13, color: "var(--dove-gray)" }}>
-                A confirmation link was sent to <strong>{emailAddress}</strong>. Click the link in your inbox or enter your 6-digit code below.
+                {contactChallenge?.type === "email" ? <>Enter the code sent to <strong>{newEmailInput}</strong>.</> : "Enter the email address you want to verify."}
               </p>
               <input
-                type="text"
-                placeholder="Enter 6-digit code"
-                maxLength={6}
+                type={contactChallenge?.type === "email" ? "text" : "email"}
+                value={contactChallenge?.type === "email" ? verificationCode : newEmailInput}
+                onChange={(e) => contactChallenge?.type === "email"
+                  ? setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  : setNewEmailInput(e.target.value)}
+                placeholder={contactChallenge?.type === "email" ? "Enter 6-digit code" : "name@example.com"}
+                maxLength={contactChallenge?.type === "email" ? 6 : 254}
                 className={styles.selectDropdown}
                 style={{ width: "100%", backgroundImage: "none", padding: "0 12px", textAlign: "center", letterSpacing: "0.2em", fontFamily: "var(--font-mono)", fontSize: 16 }}
               />
+              {securityError && <p role="alert" className={styles.settingDesc}>{securityError}</p>}
             </div>
 
             <div className={styles.modalFooter}>
@@ -1077,14 +1229,12 @@ export default function ExpertSettings() {
                 type="button"
                 className={styles.btnSaveTop}
                 style={{ minHeight: 36, fontSize: 13 }}
-                onClick={() => {
-                  setEmailVerified(true);
-                  setShowEmailModal(false);
-                  setIsSaved(true);
-                  setTimeout(() => setIsSaved(false), 3000);
-                }}
+                onClick={() => contactChallenge?.type === "email"
+                  ? void confirmContactVerification()
+                  : void startContactVerification("email", newEmailInput)}
+                disabled={contactBusy || (contactChallenge?.type === "email" ? verificationCode.length !== 6 : !/^\S+@\S+\.\S+$/.test(newEmailInput))}
               >
-                Confirm Verification
+                {contactBusy ? "Please wait…" : contactChallenge?.type === "email" ? "Confirm Verification" : "Send Verification Code"}
               </button>
             </div>
           </div>
@@ -1110,14 +1260,9 @@ export default function ExpertSettings() {
             </div>
 
             <div className={styles.modalBody}>
-              {[
-                { time: "Today, 12:42 PM", ip: "49.36.128.94", location: "Mumbai, Maharashtra", device: "Chrome 128 / Windows 11", status: "Successful" },
-                { time: "Yesterday, 06:15 PM", ip: "49.36.128.94", location: "Mumbai, Maharashtra", device: "Chrome 128 / Windows 11", status: "Successful" },
-                { time: "07 Sep 2026, 09:30 AM", ip: "157.48.201.12", location: "Pune, Maharashtra", device: "Safari 18 / iOS 18", status: "Successful" },
-                { time: "04 Sep 2026, 04:10 PM", ip: "103.212.144.5", location: "Bangalore, Karnataka", device: "Chrome Mobile / Android", status: "Successful" },
-              ].map((item, idx) => (
+              {loginHistory.map((item) => (
                 <div
-                  key={idx}
+                  key={item.id}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -1131,12 +1276,13 @@ export default function ExpertSettings() {
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{item.device}</div>
                     <div style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--dove-gray)" }}>
-                      {item.time} · {item.location} ({item.ip})
+                      {new Date(item.createdAt).toLocaleString()} · {item.ipAddress || "IP unavailable"} · {item.loginMethod}
                     </div>
                   </div>
-                  <span className={styles.verifiedPill}>OK</span>
+                  <span className={item.revokedAt ? styles.unverifiedPill : styles.verifiedPill}>{item.revokedAt ? "Ended" : "Active"}</span>
                 </div>
               ))}
+              {loginHistory.length === 0 && <p className={styles.settingDesc}>No recorded login activity yet. New activity appears after your next login.</p>}
             </div>
 
             <div className={styles.modalFooter}>
@@ -1184,13 +1330,15 @@ export default function ExpertSettings() {
               >
                 Cancel
               </button>
-              <Link
-                href="/login"
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={accountActionBusy !== null}
                 className={`${styles.btnAction} ${styles.btnDanger}`}
                 style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                <LogOut size={14} /> Log Out
-              </Link>
+                <LogOut size={14} /> {accountActionBusy === "logout" ? "Logging Out…" : "Log Out"}
+              </button>
             </div>
           </div>
         </div>
@@ -1216,7 +1364,7 @@ export default function ExpertSettings() {
 
             <div className={styles.modalBody}>
               <p style={{ margin: 0, fontSize: 13, color: "var(--dove-gray)", lineHeight: 1.5 }}>
-                This action is <strong>permanent and irreversible</strong>. All your expert profile data, past session records, and configurations will be permanently deleted.
+                This disables your account and removes it from public results. Your records are retained using soft deletion so an administrator can recover the account if required.
               </p>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--dove-gray)" }}>
                 To proceed, please type <strong>DELETE</strong> below:
@@ -1229,6 +1377,7 @@ export default function ExpertSettings() {
                 className={styles.selectDropdown}
                 style={{ width: "100%", backgroundImage: "none", padding: "0 12px", fontFamily: "var(--font-mono)" }}
               />
+              {accountActionError && <p role="alert" className={styles.settingDesc}>{accountActionError}</p>}
             </div>
 
             <div className={styles.modalFooter} style={{ gap: 10 }}>
@@ -1244,15 +1393,12 @@ export default function ExpertSettings() {
               </button>
               <button
                 type="button"
-                disabled={deleteConfirmText !== "DELETE"}
+                disabled={deleteConfirmText !== "DELETE" || accountActionBusy !== null}
                 className={`${styles.btnAction} ${styles.btnDanger}`}
                 style={{ opacity: deleteConfirmText === "DELETE" ? 1 : 0.5 }}
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  alert("Account deletion request submitted.");
-                }}
+                onClick={() => void handleDeleteAccount()}
               >
-                <Trash2 size={14} /> Permanently Delete
+                <Trash2 size={14} /> {accountActionBusy === "delete" ? "Deleting…" : "Delete Account"}
               </button>
             </div>
           </div>
@@ -1283,16 +1429,16 @@ export default function ExpertSettings() {
             </div>
 
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
                 setPasswordError(null);
 
-                if (!currentPassword) {
+                if (hasPassword && !currentPassword) {
                   setPasswordError("Please enter your current password.");
                   return;
                 }
-                if (newPassword.length < 8) {
-                  setPasswordError("New password must be at least 8 characters long.");
+                if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+                  setPasswordError("New password must be at least 8 characters and include a letter, number, and symbol.");
                   return;
                 }
                 if (newPassword !== confirmPassword) {
@@ -1300,12 +1446,20 @@ export default function ExpertSettings() {
                   return;
                 }
 
-                setPasswordSuccess("Password updated successfully!");
-                setTimeout(() => {
-                  setShowPasswordModal(false);
-                  setIsSaved(true);
-                  setTimeout(() => setIsSaved(false), 3000);
-                }, 1000);
+                setPasswordBusy(true);
+                try {
+                  const result = await changeExpertPassword(currentPassword, newPassword);
+                  setPasswordSuccess(result.message);
+                  setHasPassword(true);
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  await loadSecurity();
+                } catch (error) {
+                  setPasswordError(error instanceof Error ? error.message : "Unable to update password.");
+                } finally {
+                  setPasswordBusy(false);
+                }
               }}
             >
               <div className={styles.modalBody}>
@@ -1350,7 +1504,7 @@ export default function ExpertSettings() {
                 )}
 
                 {/* Current Password */}
-                <div className={styles.formFieldGroup}>
+                {hasPassword && <div className={styles.formFieldGroup}>
                   <label className={styles.fieldLabel} htmlFor="current-password">
                     Current Password
                   </label>
@@ -1373,7 +1527,7 @@ export default function ExpertSettings() {
                       {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
-                </div>
+                </div>}
 
                 {/* New Password */}
                 <div className={styles.formFieldGroup}>
@@ -1441,10 +1595,11 @@ export default function ExpertSettings() {
                 </button>
                 <button
                   type="submit"
+                  disabled={passwordBusy}
                   className={styles.btnSaveTop}
                   style={{ minHeight: 36, fontSize: 13 }}
                 >
-                  Update Password
+                  {passwordBusy ? "Updating…" : hasPassword ? "Update Password" : "Set Password"}
                 </button>
               </div>
             </form>
