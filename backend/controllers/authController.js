@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { Expert } from '../models/index.js';
 import dotenv from 'dotenv';
 import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
@@ -19,10 +18,9 @@ import {
   clearPendingOtpMetadata,
   isStoredOtpValid,
 } from '../utils/otpPersistence.js';
+import { issueExpertToken } from '../services/expertSessionService.js';
 
 dotenv.config();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
 
 function normalizeExpertEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -34,10 +32,11 @@ function nationalPhoneDigits(phone) {
   return digits;
 }
 
-async function findExpertByEmail(email) {
+async function findExpertByEmail(email, options = {}) {
   const normalized = normalizeExpertEmail(email);
   if (!normalized) return null;
   return Expert.findOne({
+    ...options,
     where: Expert.sequelize.where(
       Expert.sequelize.fn('LOWER', Expert.sequelize.col('email')),
       normalized,
@@ -45,10 +44,11 @@ async function findExpertByEmail(email) {
   });
 }
 
-async function findExpertByPhone(phone) {
+async function findExpertByPhone(phone, options = {}) {
   const last10 = nationalPhoneDigits(phone);
   if (last10.length < 10) return null;
   return Expert.findOne({
+    ...options,
     where: Expert.sequelize.where(
       Expert.sequelize.fn(
         'RIGHT',
@@ -139,7 +139,10 @@ export const register = async (req, res) => {
     const normalizedEmail = normalizeExpertEmail(email);
     const normalizedPhone = nationalPhoneDigits(phone);
 
-    const existingEmail = await findExpertByEmail(normalizedEmail);
+    const existingEmail = await findExpertByEmail(normalizedEmail, { paranoid: false });
+    if (existingEmail?.deletedAt) {
+      return res.status(409).json({ message: 'This account was deleted. Contact support if you want it restored.', code: 'ACCOUNT_DELETED' });
+    }
     if (existingEmail) {
       return res.status(409).json({
         message: 'An expert account with this email already exists. Please log in to continue.',
@@ -147,7 +150,10 @@ export const register = async (req, res) => {
       });
     }
 
-    const existingPhone = await findExpertByPhone(normalizedPhone);
+    const existingPhone = await findExpertByPhone(normalizedPhone, { paranoid: false });
+    if (existingPhone?.deletedAt) {
+      return res.status(409).json({ message: 'An account using this phone number was deleted. Contact support to restore it.', code: 'ACCOUNT_DELETED' });
+    }
     if (existingPhone) {
       return res.status(409).json({
         message: 'An expert account with this contact number already exists. Please log in to continue.',
@@ -224,30 +230,30 @@ export const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
     }
 
-    // Update expert verification flags
-    expert.isPhoneVerified = true;
-    expert.isEmailVerified = true;
+    const completingSignup = expert.onboardingStep === 'otp';
+    // Signup OTP verifies the registered contacts. A later 2FA OTP only
+    // authenticates the login and must not change contact verification flags.
+    if (completingSignup) {
+      expert.isPhoneVerified = Boolean(expert.phone);
+      expert.isEmailVerified = Boolean(expert.email);
+    }
     // Only advance to the first onboarding step for a brand-new signup. If the
     // expert had already progressed further (re-verifying after re-submitting
     // the signup form), keep their existing progress instead of resetting it.
-    if (expert.onboardingStep === 'otp') {
+    if (completingSignup) {
       expert.onboardingStep = 'category';
     }
     expert.onboardingMetadata = clearPendingOtpMetadata(expert.onboardingMetadata);
     await expert.save();
 
     // Signup is complete — make the expert visible in the admin approval queue
-    await promoteExpertToApplicationQueue(expert);
+    if (completingSignup) await promoteExpertToApplicationQueue(expert);
 
     // Clean up OTP memory
     tempOtps.delete(expertId);
 
     // Generate JWT
-    const token = jwt.sign(
-      { id: expert.id, email: expert.email, fullName: expert.fullName },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const token = await issueExpertToken(expert, req, 'otp');
 
     return res.status(200).json({
       message: 'Account verified successfully',
@@ -324,7 +330,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'incorrect credentials' });
     }
 
-    if (expert.onboardingStep === 'otp') {
+    if (expert.onboardingStep === 'otp' || expert.twoFactorEnabled) {
       try {
         await issueOtp(expert);
       } catch (deliveryError) {
@@ -343,11 +349,7 @@ export const login = async (req, res) => {
     }
 
     // Generate JWT
-    const token = jwt.sign(
-      { id: expert.id, email: expert.email, fullName: expert.fullName },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const token = await issueExpertToken(expert, req, 'password');
 
     return res.status(200).json({
       token,
@@ -369,9 +371,14 @@ export const googleLogin = async (req, res) => {
     const profile = await verifyGoogleLogin({ idToken, accessToken });
     const { googleId, email, fullName, picture } = profile;
 
-    let expert = await Expert.findOne({ where: { googleId } });
+    let expert = await Expert.findOne({ where: { googleId }, paranoid: false });
     if (!expert) {
-      expert = await findExpertByEmail(email);
+      expert = await findExpertByEmail(email, { paranoid: false });
+    }
+    if (expert?.deletedAt) {
+      const error = new Error('This account was deleted. Contact support if you want it restored.');
+      error.status = 403;
+      throw error;
     }
 
     if (!expert) {
@@ -398,11 +405,7 @@ export const googleLogin = async (req, res) => {
       await expert.save();
     }
 
-    const token = jwt.sign(
-      { id: expert.id, email: expert.email, fullName: expert.fullName },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const token = await issueExpertToken(expert, req, 'google');
 
     return res.status(200).json({
       token,
@@ -425,8 +428,13 @@ export const linkedinLogin = async (req, res) => {
     const { linkedinId, email, fullName, picture, emailVerified } =
       await verifyLinkedinLogin({ authCode, redirectUri });
 
-    let expert = await Expert.findOne({ where: { linkedinId } });
-    if (!expert) expert = await findExpertByEmail(email);
+    let expert = await Expert.findOne({ where: { linkedinId }, paranoid: false });
+    if (!expert) expert = await findExpertByEmail(email, { paranoid: false });
+    if (expert?.deletedAt) {
+      const error = new Error('This account was deleted. Contact support if you want it restored.');
+      error.status = 403;
+      throw error;
+    }
 
     if (!expert) {
       expert = await Expert.create({
@@ -451,11 +459,7 @@ export const linkedinLogin = async (req, res) => {
     }
 
     // Generate JWT
-    const token = jwt.sign(
-      { id: expert.id, email: expert.email, fullName: expert.fullName },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const token = await issueExpertToken(expert, req, 'linkedin');
 
     return res.status(200).json({
       token,

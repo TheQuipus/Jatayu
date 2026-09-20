@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   X,
@@ -28,6 +28,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import PrimaryButton from "@/components/ui/PrimaryButton";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import ShinyText from "@/components/ui/ShinyText";
 import {
   EXPERIENCE_LABELS,
@@ -66,8 +67,16 @@ import type {
 } from "@/lib/expertApplicationSubmission";
 import type { TimeSlot } from "@/lib/expertAvailability";
 import { buildCredentialsPayload, parseCredentialsFromProfile } from "@/lib/expertAuth";
+import { skillsForExpertCategory } from "@/lib/expertSkillCatalog";
+import { useLinkedinProfileSync } from "@/hooks/useLinkedinProfileSync";
 import styles from "./ExpertProfileEditor.module.css";
-import { getDigilockerKycStatus, suggestOnboardingIdentityCopy, type DigilockerKycStatusResponse } from "@/lib/api";
+import {
+  getDigilockerKycStatus,
+  suggestOnboardingIdentityCopy,
+  updateProfile as updateExpertProfile,
+  type DigilockerKycStatusResponse,
+  type LinkedinConnectResponse,
+} from "@/lib/api";
 
 const MAX_CHARS = 160;
 const MAX_SKILLS = 8;
@@ -129,6 +138,40 @@ export default function ExpertProfileEditor() {
   const [kycError, setKycError] = useState("");
   const [credentialsLoading, setCredentialsLoading] = useState(true);
   const [credentialsError, setCredentialsError] = useState("");
+  const [linkedinConnected, setLinkedinConnected] = useState(false);
+  const [linkedinError, setLinkedinError] = useState("");
+  const [positionToDelete, setPositionToDelete] = useState<EmploymentPosition | null>(null);
+  const [degreeToDelete, setDegreeToDelete] = useState<EducationDegree | null>(null);
+
+  const handleLinkedinProfileFetched = useCallback((response: LinkedinConnectResponse) => {
+    const record = response.expert;
+    const mappedProfile = mapBackendProfileToExpertData(record);
+    const parsedCredentials = parseCredentialsFromProfile(record.credentials);
+
+    setProfile((current) => ({
+      ...current,
+      name: mappedProfile.name || current.name,
+      avatar: mappedProfile.avatar || current.avatar,
+    }));
+    if (parsedCredentials.employmentPositions.length > 0) {
+      setEmploymentPositions(parsedCredentials.employmentPositions);
+    }
+    if (parsedCredentials.educationDegrees.length > 0) {
+      setEducationDegrees(parsedCredentials.educationDegrees);
+    }
+    setLinkedinConnected(true);
+    setLinkedinError("");
+  }, []);
+
+  const handleLinkedinError = useCallback((message: string) => {
+    setLinkedinError(message);
+  }, []);
+
+  const { start: handleLinkedinSync, isLoading: isLinkedinSyncing } = useLinkedinProfileSync({
+    onSuccess: handleLinkedinProfileFetched,
+    onError: handleLinkedinError,
+    returnPath: "/expert/profile/",
+  });
 
   useEffect(() => {
     let active = true;
@@ -170,6 +213,7 @@ export default function ExpertProfileEditor() {
         setAvailabilitySlots(availability.slots);
 
         const metadata = record.onboardingMetadata || {};
+        setLinkedinConnected(Boolean(metadata.linkedinConnectedAt));
         if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
         if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
         if (typeof metadata.acceptCustomRequests === "boolean") {
@@ -193,6 +237,10 @@ export default function ExpertProfileEditor() {
 
   const isUploadedPhoto =
     profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:");
+  const suggestedSkills = useMemo(
+    () => skillsForExpertCategory(profile.category),
+    [profile.category],
+  );
 
   useEffect(() => {
     return () => {
@@ -267,6 +315,19 @@ export default function ExpertProfileEditor() {
     );
   };
 
+  const handleToggleSkill = (skill: string) => {
+    const selectedSkill = profile.skills.find(
+      (item) => item.toLowerCase() === skill.toLowerCase(),
+    );
+    if (selectedSkill) {
+      handleRemoveSkill(selectedSkill);
+      return;
+    }
+    if (profile.skills.length < MAX_SKILLS) {
+      updateProfile("skills", [...profile.skills, skill]);
+    }
+  };
+
   // Employment position helpers
   const handleAddPosition = () => {
     setEmploymentPositions((prev) => [...prev, createEmptyEmploymentPosition()]);
@@ -280,9 +341,33 @@ export default function ExpertProfileEditor() {
     setSaved(false);
   };
 
-  const handleRemovePosition = (id: string) => {
-    setEmploymentPositions((prev) => prev.filter((pos) => pos.id !== id));
-    setSaved(false);
+  const persistCredentials = async (
+    positions: EmploymentPosition[],
+    degrees: EducationDegree[],
+  ) => {
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await updateExpertProfile({
+        credentials: buildCredentialsPayload(positions, degrees),
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const confirmRemovePosition = async () => {
+    if (!positionToDelete) return;
+    const previousPositions = employmentPositions;
+    const nextPositions = employmentPositions.filter((pos) => pos.id !== positionToDelete.id);
+    setEmploymentPositions(nextPositions);
+    setPositionToDelete(null);
+    try {
+      await persistCredentials(nextPositions, educationDegrees);
+    } catch (error) {
+      setEmploymentPositions(previousPositions);
+      setSaveError(error instanceof Error ? error.message : "Could not delete work experience.");
+    }
   };
 
   // Education helpers
@@ -298,9 +383,18 @@ export default function ExpertProfileEditor() {
     setSaved(false);
   };
 
-  const handleRemoveDegree = (id: string) => {
-    setEducationDegrees((prev) => prev.filter((deg) => deg.id !== id));
-    setSaved(false);
+  const confirmRemoveDegree = async () => {
+    if (!degreeToDelete) return;
+    const previousDegrees = educationDegrees;
+    const nextDegrees = educationDegrees.filter((degree) => degree.id !== degreeToDelete.id);
+    setEducationDegrees(nextDegrees);
+    setDegreeToDelete(null);
+    try {
+      await persistCredentials(employmentPositions, nextDegrees);
+    } catch (error) {
+      setEducationDegrees(previousDegrees);
+      setSaveError(error instanceof Error ? error.message : "Could not delete education record.");
+    }
   };
 
   // Format toggle & price
@@ -422,17 +516,6 @@ export default function ExpertProfileEditor() {
         </div>
 
         <div className={styles.topButtonsGroup}>
-          {reviewStatus === "approved" && profile.name && <Link
-            href={publicProfileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.viewPublicBtn}
-            title="Preview your public profile"
-          >
-            <ExternalLink size={15} />
-            View Public Profile
-          </Link>}
-
           <div className={styles.saveBtnWrapper}>
             <PrimaryButton
               type="button"
@@ -476,7 +559,6 @@ export default function ExpertProfileEditor() {
               </p>
             </div>
           </div>
-          <span className={styles.sectionStepBadge}>Step 4 · Identity</span>
         </div>
 
         {/* Profile Photo */}
@@ -755,12 +837,43 @@ export default function ExpertProfileEditor() {
               </p>
             </div>
           </div>
-          <span className={styles.sectionStepBadge}>Step 2 · Skills</span>
         </div>
 
         <div className={styles.fieldGroup}>
-          <label htmlFor="profile-skills" className={styles.fieldLabel}>
+          <div className={styles.fieldLabel}>
             Core Skills ({profile.skills.length}/{MAX_SKILLS})
+          </div>
+
+          {suggestedSkills.length > 0 ? (
+            <div className={styles.chipsGrid} aria-label="Available skills">
+              {suggestedSkills.map((skill) => {
+                const isSelected = profile.skills.some(
+                  (item) => item.toLowerCase() === skill.toLowerCase(),
+                );
+                return (
+                  <button
+                    key={skill}
+                    type="button"
+                    className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
+                    onClick={() => handleToggleSkill(skill)}
+                    disabled={!isSelected && profile.skills.length >= MAX_SKILLS}
+                    aria-pressed={isSelected}
+                  >
+                    {isSelected && <Check size={13} />}
+                    {skill}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className={styles.skillsHint}>
+              {profile.category
+                ? "No predefined skills are available for this category. Add your own below."
+                : "Choose a category above to see relevant skills."}
+            </p>
+          )}
+          <label htmlFor="profile-skills" className={styles.fieldLabel}>
+            Add another skill
           </label>
           <div className={styles.skillInputRow}>
             <input
@@ -821,8 +934,22 @@ export default function ExpertProfileEditor() {
               </p>
             </div>
           </div>
-          <span className={styles.sectionStepBadge}>Step 3 · Experience</span>
+          <button
+            type="button"
+            className={`${styles.linkedinSyncBtn} ${linkedinConnected ? styles.linkedinSyncBtnDone : ""}`}
+            onClick={handleLinkedinSync}
+            disabled={isLinkedinSyncing}
+          >
+            <span className={styles.linkedinMark} aria-hidden="true">in</span>
+            {isLinkedinSyncing
+              ? "Syncing..."
+              : linkedinConnected
+                ? "LinkedIn Synced"
+                : "Fetch With LinkedIn"}
+          </button>
         </div>
+
+        {linkedinError && <p className={styles.errorNote} role="alert">{linkedinError}</p>}
 
         {/* Employment Positions */}
         <div className={styles.fieldGroup}>
@@ -830,14 +957,6 @@ export default function ExpertProfileEditor() {
             <label className={styles.fieldLabel}>
               Employment Positions ({employmentPositions.length})
             </label>
-            <button
-              type="button"
-              className={styles.addBtn}
-              style={{ minHeight: 34, padding: "0 12px" }}
-              onClick={handleAddPosition}
-            >
-              <Plus size={13} /> Add Position
-            </button>
           </div>
 
           <div className={styles.itemCardList}>
@@ -847,16 +966,15 @@ export default function ExpertProfileEditor() {
                   <h4 className={styles.itemCardTitle}>
                     {pos.jobTitle || "Job Title"} at {pos.company || "Company"}
                   </h4>
-                  {employmentPositions.length > 1 && (
-                    <button
-                      type="button"
-                      className={styles.deleteItemBtn}
-                      onClick={() => handleRemovePosition(pos.id)}
-                      title="Remove Position"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className={styles.deleteItemBtn}
+                    onClick={() => setPositionToDelete(pos)}
+                    title="Remove Position"
+                    aria-label={`Delete ${pos.jobTitle || "work experience"}${pos.company ? ` at ${pos.company}` : ""}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
 
                 <div className={styles.fieldRow}>
@@ -933,6 +1051,15 @@ export default function ExpertProfileEditor() {
               </div>
             ))}
           </div>
+
+          <button
+            type="button"
+            className={styles.addBtn}
+            style={{ minHeight: 34, padding: "0 12px", alignSelf: "flex-end" }}
+            onClick={handleAddPosition}
+          >
+            <Plus size={13} /> Add Position
+          </button>
         </div>
 
         {/* Education Degrees */}
@@ -941,14 +1068,6 @@ export default function ExpertProfileEditor() {
             <label className={styles.fieldLabel}>
               Education & Degrees ({educationDegrees.length})
             </label>
-            <button
-              type="button"
-              className={styles.addBtn}
-              style={{ minHeight: 34, padding: "0 12px" }}
-              onClick={handleAddDegree}
-            >
-              <Plus size={13} /> Add Degree
-            </button>
           </div>
 
           <div className={styles.itemCardList}>
@@ -958,16 +1077,15 @@ export default function ExpertProfileEditor() {
                   <h4 className={styles.itemCardTitle}>
                     {deg.degree || "Degree"} — {deg.institution || "Institution"}
                   </h4>
-                  {educationDegrees.length > 1 && (
-                    <button
-                      type="button"
-                      className={styles.deleteItemBtn}
-                      onClick={() => handleRemoveDegree(deg.id)}
-                      title="Remove Degree"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className={styles.deleteItemBtn}
+                    onClick={() => setDegreeToDelete(deg)}
+                    title="Remove Degree"
+                    aria-label={`Delete ${deg.degree || "education record"}${deg.institution ? ` from ${deg.institution}` : ""}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
 
                 <div className={styles.fieldRow}>
@@ -1027,8 +1145,47 @@ export default function ExpertProfileEditor() {
               </div>
             ))}
           </div>
+
+          <button
+            type="button"
+            className={styles.addBtn}
+            style={{ minHeight: 34, padding: "0 12px", alignSelf: "flex-end" }}
+            onClick={handleAddDegree}
+          >
+            <Plus size={13} /> Add Degree
+          </button>
         </div>
       </section>
+
+      <ConfirmModal
+        isOpen={Boolean(positionToDelete)}
+        onClose={() => setPositionToDelete(null)}
+        onConfirm={confirmRemovePosition}
+        title="Delete work experience?"
+        message={
+          positionToDelete
+            ? `Remove ${positionToDelete.jobTitle || "this position"}${positionToDelete.company ? ` at ${positionToDelete.company}` : ""} from your profile?`
+            : "Remove this position from your profile?"
+        }
+        confirmText="Delete"
+        cancelText="Keep"
+        variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(degreeToDelete)}
+        onClose={() => setDegreeToDelete(null)}
+        onConfirm={confirmRemoveDegree}
+        title="Delete education record?"
+        message={
+          degreeToDelete
+            ? `Remove ${degreeToDelete.degree || "this education record"}${degreeToDelete.institution ? ` from ${degreeToDelete.institution}` : ""} from your profile?`
+            : "Remove this education record from your profile?"
+        }
+        confirmText="Delete"
+        cancelText="Keep"
+        variant="danger"
+      />
 
       {/* ----------------------------------------------------
           STEP 6: CONSULTATION PREFERENCES & PRICING
@@ -1046,7 +1203,6 @@ export default function ExpertProfileEditor() {
               </p>
             </div>
           </div>
-          <span className={styles.sectionStepBadge}>Step 6 · Preferences</span>
         </div>
 
         {/* Formats Grid */}
@@ -1110,20 +1266,6 @@ export default function ExpertProfileEditor() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4 }}>
-          <input
-            type="checkbox"
-            id="custom-requests-toggle"
-            checked={acceptCustomRequests}
-            onChange={(e) => {
-              setAcceptCustomRequests(e.target.checked);
-              setSaved(false);
-            }}
-          />
-          <label htmlFor="custom-requests-toggle" className={styles.fieldLabel} style={{ margin: 0, cursor: "pointer" }}>
-            Accept custom consulting and retainer proposals from enterprise clients
-          </label>
-        </div>
       </section>
 
       {/* ----------------------------------------------------
@@ -1142,7 +1284,6 @@ export default function ExpertProfileEditor() {
               </p>
             </div>
           </div>
-          <span className={styles.sectionStepBadge}>Step 7 · Audience</span>
         </div>
 
         <div className={styles.chipsGrid}>
@@ -1181,7 +1322,6 @@ export default function ExpertProfileEditor() {
               </p>
             </div>
           </div>
-          <span className={styles.sectionStepBadge}>Step 5 · Credentials</span>
         </div>
 
         {credentialsError && <p role="alert">{credentialsError}</p>}
@@ -1211,27 +1351,6 @@ export default function ExpertProfileEditor() {
                 {String(document?.name || document?.description || document?.doctype || "Issued document")}
               </p>
             ))}
-          </div>
-
-          {/* KYC Video Intro */}
-          <div className={styles.kycCard}>
-            <div className={styles.kycCardHeader}>
-              <span className={styles.kycTitle}>Video Introduction</span>
-              <span className={styles.kycDetailText}>
-                {kycVideoUrl ? "Uploaded" : "Not uploaded"}
-              </span>
-            </div>
-            <p className={styles.kycDetailText}>
-              <strong>Video Status:</strong> {kycVideoUrl ? "Introduction video on file." : "No introduction video uploaded."}
-            </p>
-            {kycVideoUrl && <a
-              href={kycVideoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: 12, color: "var(--pomegranate)", textDecoration: "underline" }}
-            >
-              Review Intro Video
-            </a>}
           </div>
 
           {/* Certificates */}

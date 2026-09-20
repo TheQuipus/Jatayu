@@ -16,6 +16,8 @@ import BookingMessage from './seeker/BookingMessage.js';
 import DigilockerVerification from './DigilockerVerification.js';
 import DigilockerDocument from './DigilockerDocument.js';
 import Notification from './Notification.js';
+import ExpertSession from './ExpertSession.js';
+import ExpertSecurityChallenge from './ExpertSecurityChallenge.js';
 
 // Expert-module relationships (same database connection)
 Expert.hasMany(Credential, { foreignKey: 'expertId', as: 'credentials', onDelete: 'CASCADE' });
@@ -23,6 +25,10 @@ Credential.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
 
 Expert.hasMany(Availability, { foreignKey: 'expertId', as: 'availabilities', onDelete: 'CASCADE' });
 Availability.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
+Expert.hasMany(ExpertSession, { foreignKey: 'expertId', as: 'sessions', onDelete: 'CASCADE' });
+ExpertSession.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
+Expert.hasMany(ExpertSecurityChallenge, { foreignKey: 'expertId', as: 'securityChallenges', onDelete: 'CASCADE' });
+ExpertSecurityChallenge.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
 
 Expert.hasOne(DigilockerVerification, {
   foreignKey: 'expertId',
@@ -82,4 +88,6 @@ export {
   DigilockerVerification,
   DigilockerDocument,
   Notification,
+  ExpertSession,
+  ExpertSecurityChallenge,
 };

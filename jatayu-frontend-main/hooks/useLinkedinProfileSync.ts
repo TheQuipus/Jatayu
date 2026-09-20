@@ -16,9 +16,14 @@ function redirectUri() {
 type Options = {
   onSuccess: (response: LinkedinConnectResponse) => void;
   onError: (message: string) => void;
+  returnPath?: string;
 };
 
-export function useLinkedinProfileSync({ onSuccess, onError }: Options) {
+export function useLinkedinProfileSync({
+  onSuccess,
+  onError,
+  returnPath,
+}: Options) {
   const [clientId, setClientId] = useState("");
   const [enabled, setEnabled] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -50,7 +55,7 @@ export function useLinkedinProfileSync({ onSuccess, onError }: Options) {
       return;
     }
     const state = crypto.randomUUID();
-    sessionStorage.setItem(STATE_KEY, state);
+    sessionStorage.setItem(STATE_KEY, JSON.stringify({ state, returnPath }));
     const url = new URL("https://www.linkedin.com/oauth/v2/authorization");
     url.search = new URLSearchParams({
       response_type: "code",
@@ -60,11 +65,20 @@ export function useLinkedinProfileSync({ onSuccess, onError }: Options) {
       scope: "openid profile email",
     }).toString();
     window.location.assign(url.toString());
-  }, [clientId, configLoaded, enabled, onError]);
+  }, [clientId, configLoaded, enabled, onError, returnPath]);
 
   useEffect(() => {
-    const expectedState = sessionStorage.getItem(STATE_KEY);
-    if (!expectedState) return;
+    const storedSession = sessionStorage.getItem(STATE_KEY);
+    if (!storedSession) return;
+    let expectedState = storedSession;
+    let destination = "";
+    try {
+      const parsed = JSON.parse(storedSession) as { state?: string; returnPath?: string };
+      expectedState = parsed.state || "";
+      destination = parsed.returnPath || "";
+    } catch {
+      // Support OAuth attempts created before return destinations were introduced.
+    }
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     const state = params.get("state");
@@ -85,7 +99,10 @@ export function useLinkedinProfileSync({ onSuccess, onError }: Options) {
 
     queueMicrotask(() => setIsLoading(true));
     connectExpertLinkedin({ authCode: code, redirectUri: redirectUri() })
-      .then(onSuccess)
+      .then((response) => {
+        onSuccess(response);
+        if (destination.startsWith("/")) window.location.assign(destination);
+      })
       .catch((error: Error) => onError(error.message || "LinkedIn connection failed."))
       .finally(() => setIsLoading(false));
   }, [onError, onSuccess]);

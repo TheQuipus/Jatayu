@@ -79,6 +79,7 @@ import type {
   PortfolioSampleFile,
 } from "@/lib/expertApplicationSubmission";
 import type { TimeSlot } from "@/lib/expertAvailability";
+import { EXPERT_SKILLS_BY_CATEGORY as skillsByCategory } from "@/lib/expertSkillCatalog";
 
 const categories = [
   { id: "software", label: "Software Engineering", icon: Code },
@@ -91,100 +92,6 @@ const categories = [
   { id: "product", label: "Product Management", icon: Briefcase },
   { id: "data", label: "Data Science", icon: Database },
 ];
-
-const skillsByCategory: Record<string, string[]> = {
-  software: [
-    "Frontend Development",
-    "Backend Architecture",
-    "Mobile Apps",
-    "Cloud & DevOps",
-    "System Design",
-    "Security & Cryptography",
-    "Database Tuning",
-    "AI / ML Models",
-    "API Integrations",
-  ],
-  design: [
-    "UI / UX Design",
-    "Interaction Design",
-    "Design Systems",
-    "Wireframing",
-    "Visual Branding",
-    "User Research",
-    "Prototyping",
-    "Motion Design",
-    "Webflow / Framer",
-  ],
-  business: [
-    "Market Research",
-    "Financial Modeling",
-    "Growth Strategy",
-    "Operations Management",
-    "Mergers & Acquisitions",
-    "Startup Scaling",
-    "Go-to-Market",
-    "Change Management",
-    "Competitive Analysis",
-    "Pricing Strategy",
-  ],
-  marketing: [
-    "Meta & Google Ads",
-    "SEO Strategy",
-    "Content Marketing",
-    "Brand Strategy",
-    "Email Automation",
-    "Product Marketing",
-    "Conversion Optimization",
-    "Influencer Marketing",
-    "Growth Hacking",
-  ],
-  finance: [
-    "VC Fundraising",
-    "Tax Advisory & GST",
-    "Bookkeeping",
-    "Equity & Cap Tables",
-    "CFO Services",
-    "Treasury Management",
-    "Valuation Audits",
-    "Audit Preparation",
-  ],
-  health: [
-    "Diet & Nutrition",
-    "Mental Wellness",
-    "Fitness Coaching",
-    "Yoga & Mindfulness",
-    "Sleep Hygiene",
-    "Corporate Wellness",
-    "Holistic Therapy",
-  ],
-  legal: [
-    "Founder Agreements",
-    "ESOP Structuring",
-    "SaaS Contracts",
-    "IP & Patents",
-    "Regulatory Compliance",
-    "Company Incorporation",
-    "Data Privacy (GDPR)",
-  ],
-  product: [
-    "Product Strategy",
-    "Roadmapping",
-    "Agile / Scrum",
-    "User Story Mapping",
-    "Product Analytics",
-    "A/B Testing",
-    "Feature Prioritization",
-  ],
-  data: [
-    "Data Warehousing",
-    "SQL / Postgres",
-    "Python Analytics",
-    "Predictive Modeling",
-    "BI Dashboards",
-    "Big Data Pipelines",
-    "A/B Test Analytics",
-  ],
-};
 
 type OnboardingStep = ExpertOnboardingStep;
 

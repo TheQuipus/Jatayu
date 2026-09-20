@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { ExpertSession } from '../models/index.js';
 
 dotenv.config();
 
@@ -13,6 +14,12 @@ export const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production');
+      if (decoded.jti) {
+        const session = await ExpertSession.findByPk(decoded.jti);
+        if (!session || session.revokedAt || new Date(session.expiresAt) <= new Date()) {
+          return res.status(401).json({ message: 'Session has expired or was revoked' });
+        }
+      }
       
       // Store the decoded token details (id, email, fullName) in the request object
       req.user = decoded;

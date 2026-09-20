@@ -45,6 +45,21 @@ const Expert = expertDb.define('Expert', {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  twoFactorEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  notificationPreferences: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {
+      sessionRequests: { push: true, email: true, sms: true },
+      reminders: { push: true, email: true, sms: false },
+      messages: { push: true, email: true, sms: false },
+      payouts: { push: true, email: true, sms: true }
+    }
+  },
   onboardingStep: {
     type: DataTypes.STRING,
     defaultValue: 'category'
@@ -123,7 +138,8 @@ const Expert = expertDb.define('Expert', {
     allowNull: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  paranoid: true
 });
 
 export default Expert;

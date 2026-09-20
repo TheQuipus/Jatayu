@@ -25,8 +25,18 @@ import {
   storeExpertTranscriptSegment,
 } from '../controllers/agoraTranscriptionController.js';
 import { expertChat } from '../controllers/bookingChatController.js';
+import { exportAccountData, logoutCurrentSession, softDeleteAccount } from '../controllers/expertAccountController.js';
+import { getSecurity, updateTwoFactor, updatePassword, logoutOtherSessions, revokeSession, requestContactVerification, verifyContact, getNotificationPreferences, updateNotificationPreferences } from '../controllers/expertSecurityController.js';
 
 const router = express.Router();
+const securityAction = (handler) => async (req, res, next) => {
+  try {
+    await handler(req, res, next);
+  } catch (error) {
+    console.error('Expert Security Error:', error.message);
+    if (!res.headersSent) res.status(500).json({ message: 'Unable to process security request' });
+  }
+};
 
 // Configure multer disk storage for profile photo uploads
 const storage = multer.diskStorage({
@@ -67,6 +77,18 @@ const upload = multer({
 
 // Profile endpoints
 router.get('/me', protect, getProfile);
+router.get('/security', protect, securityAction(getSecurity));
+router.patch('/security/two-factor', protect, securityAction(updateTwoFactor));
+router.patch('/security/password', protect, securityAction(updatePassword));
+router.post('/security/sessions/logout-others', protect, securityAction(logoutOtherSessions));
+router.delete('/security/sessions/:sessionId', protect, securityAction(revokeSession));
+router.post('/security/contact/request', protect, securityAction(requestContactVerification));
+router.post('/security/contact/verify', protect, securityAction(verifyContact));
+router.get('/notification-preferences', protect, securityAction(getNotificationPreferences));
+router.put('/notification-preferences', protect, securityAction(updateNotificationPreferences));
+router.get('/account/export', protect, securityAction(exportAccountData));
+router.post('/account/logout', protect, securityAction(logoutCurrentSession));
+router.delete('/account', protect, securityAction(softDeleteAccount));
 router.put('/profile', protect, upload.single('profilePhoto'), updateProfile);
 router.post('/submit', protect, submitOnboarding);
 router.post('/onboarding/ai-suggest', protect, suggestOnboardingIdentity);
