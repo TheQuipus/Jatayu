@@ -1,4 +1,5 @@
 import { getStoredRequests, formatRequestPrice } from "./expertRequests";
+import { formatUtcRelativeTime, formatUtcToLocalDate, formatUtcToLocalTime, parseUtcDate } from "./dateTimeUtils";
 
 export type RequestDetailAttachment = {
   id: string;
@@ -71,6 +72,15 @@ export type RequestDetailModel = {
     joinBeforeMinutes: number;
   };
   scheduledEndAt?: string;
+  scheduledStartAt?: string;
+  paymentStatus: string;
+  paymentDetails?: {
+    consultationFee: string;
+    platformFee: string;
+    gst: string;
+    creditsApplied: string;
+    payable: string;
+  };
 };
 
 export const REQUEST_DETAIL_DATA: RequestDetailModel = {
@@ -167,14 +177,99 @@ export const REQUEST_DETAIL_DATA: RequestDetailModel = {
       actor: "System",
     },
   ],
+  paymentStatus: "authorized",
+  paymentDetails: { consultationFee: "₹12,000", platformFee: "₹0", gst: "₹0", creditsApplied: "₹0", payable: "₹12,000" },
 };
+
+function arrayOfStrings(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  return [];
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function formatTimestamp(value: unknown): string {
+  const date = parseUtcDate(value as string | Date | number);
+  if (!date) return "Not available";
+  return `${formatUtcToLocalDate(date, { month: "short", day: "numeric", year: "numeric" })} at ${formatUtcToLocalTime(date)}`;
+}
+
+export function mapExpertRequestDetail(raw: Record<string, unknown>): RequestDetailModel {
+  const seeker = objectValue(raw.seeker);
+  const stats = objectValue(seeker.stats);
+  const amounts = objectValue(raw.amounts);
+  const payment = objectValue(raw.payment);
+  const scheduledStart = parseUtcDate(raw.scheduledStartAt as string | Date | number);
+  const scheduledEnd = parseUtcDate(raw.scheduledEndAt as string | Date | number);
+  const requestedDate = scheduledStart
+    ? formatUtcToLocalDate(scheduledStart, { month: "long", day: "numeric", year: "numeric", weekday: "long" })
+    : "Not scheduled";
+  const duration = scheduledStart && scheduledEnd
+    ? `${formatUtcToLocalTime(scheduledStart)} - ${formatUtcToLocalTime(scheduledEnd)}`
+    : "Not available";
+  const durationMinutes = scheduledStart && scheduledEnd
+    ? Math.max(0, Math.round((scheduledEnd.getTime() - scheduledStart.getTime()) / 60000))
+    : 0;
+  const type = String(raw.consultationType || "consultation").toLowerCase();
+  const format = type === "video" ? "Video call" : type === "text" || type === "chat" ? "Text chat" : type === "group" ? "Group consultation" : type === "shoutout" ? "Shoutout" : type;
+  const totalPaise = Number(amounts.consultationFee ?? raw.consultationFee ?? amounts.total ?? raw.totalAmount ?? 0);
+  const totalRupees = String(amounts.unit || "paise") === "paise" ? totalPaise / 100 : totalPaise;
+  const clientName = String(seeker.fullName || "Client");
+  const clientCategory = String(seeker.category || "");
+  const topics = arrayOfStrings(seeker.topics);
+  const needChips = arrayOfStrings(seeker.selectedNeedChips);
+  const context = String(raw.context || seeker.needsText || seeker.additionalContext || "No additional context provided.");
+  const status = String(raw.requestStatus || raw.status || "new") as RequestDetailModel["status"];
+  const responseSeconds = Number(raw.responseTimeRemainingSeconds || 0);
+  const responseHours = Math.floor(responseSeconds / 3600);
+  const responseMinutes = Math.floor((responseSeconds % 3600) / 60);
+  const submittedAt = raw.expertRequestedAt || raw.createdAt;
+  const history: RequestDetailHistoryEvent[] = [{ id: "submitted", title: "Request submitted", timestamp: formatTimestamp(submittedAt), description: `${clientName} submitted this booking request.`, actor: clientName }];
+  if (payment.status || raw.paymentStatus) history.push({ id: "payment", title: "Payment updated", timestamp: formatTimestamp(payment.paidAt || payment.verifiedAt || raw.createdAt), description: `Payment status: ${String(raw.paymentStatus || payment.status).replaceAll("_", " ")}.`, actor: "System" });
+  if (raw.expertRespondedAt) history.push({ id: "response", title: status === "declined" ? "Request declined" : "Request accepted", timestamp: formatTimestamp(raw.expertRespondedAt), description: status === "declined" ? String(raw.declineReasonNotes || raw.declineReasonCode || "Request declined by expert.") : "The expert accepted and confirmed the session.", actor: "Expert" });
+  if (status === "completed") history.push({ id: "completed", title: "Session completed", timestamp: formatTimestamp(raw.scheduledEndAt), description: "The scheduled consultation duration ended.", actor: "System" });
+  return {
+    id: String(raw.id),
+    expertProfessionalTitle: String(raw.expertProfessionalTitle || ""),
+    title: String(raw.subject || "Consultation"),
+    subtitle: `${String(raw.subject || "Consultation")} — ${duration}`,
+    submittedDate: formatTimestamp(submittedAt),
+    status,
+    statusText: status === "new" ? "New Request — Awaiting your response" : status === "pending" ? "Pending Response" : status === "accepted" ? "Session Confirmed & Accepted" : status === "completed" ? "Session Completed" : status === "cancelled" ? "Session Cancelled" : "Request Declined",
+    timeReceivedAgo: submittedAt ? `Received ${formatUtcRelativeTime(parseUtcDate(submittedAt as string | Date | number) || new Date())}` : "Received time unavailable",
+    respondTimeLeft: responseSeconds > 0 ? `Respond within ${responseHours}h ${responseMinutes}m to maintain response rate` : status === "new" || status === "pending" ? "Response window has passed" : "Response completed",
+    client: {
+      name: clientName, avatar: String(seeker.profilePhotoSrc || "/assets/img/profile-placeholder.svg"), role: clientCategory,
+      company: "", location: String(seeker.location || "Not provided"), timezone: String(raw.timezone || "Not provided"),
+      isOnline: false, rating: 0, totalSessions: Number(stats.completedSessions || 0),
+      isVerified: Boolean(seeker.isEmailVerified || seeker.isPhoneVerified), isPro: false, isOrg: false,
+      stats: { sessionsBooked: Number(stats.sessionsBooked || 0), totalSpent: formatRequestPrice(Number(stats.totalSpent || 0) / 100), completionRate: `${Number(stats.completionRate || 0)}%` },
+    },
+    proposal: { summary: context, paragraphs: [context], tags: [...new Set([clientCategory, ...topics, ...needChips])].filter(Boolean), scopeDeliverables: [] },
+    sessionDetails: { requestedDate, duration: durationMinutes ? `${duration} (${durationMinutes} minutes)` : duration, format, participantsCount: type === "group" ? "Group session" : "1-on-1 session", language: arrayOfStrings(seeker.selectedLanguages).join(", ") || "Not provided", recurrence: "One-time session", proposedPrice: formatRequestPrice(totalRupees) },
+    attachments: [], history,
+    sessionAccess: raw.sessionAccess && typeof raw.sessionAccess === "object" ? raw.sessionAccess as RequestDetailModel["sessionAccess"] : undefined,
+    scheduledStartAt: raw.scheduledStartAt ? String(raw.scheduledStartAt) : undefined,
+    scheduledEndAt: raw.scheduledEndAt ? String(raw.scheduledEndAt) : undefined,
+    paymentStatus: String(raw.paymentStatus || payment.status || "not available").replaceAll("_", " "),
+    paymentDetails: {
+      consultationFee: formatRequestPrice(Number(amounts.consultationFee || 0) / 100),
+      platformFee: formatRequestPrice(Number(amounts.platformFee || 0) / 100),
+      gst: formatRequestPrice(Number(amounts.gst || 0) / 100),
+      creditsApplied: formatRequestPrice(Number(amounts.creditAmount || 0) / 100),
+      payable: formatRequestPrice(Number(amounts.payable || 0) / 100),
+    },
+  };
+}
 
 export function getRequestDetailById(requestId: string): RequestDetailModel {
   const list = getStoredRequests();
   const found = list.find((item) => item.id === requestId);
 
   if (!found) {
-    return REQUEST_DETAIL_DATA;
+    return { ...REQUEST_DETAIL_DATA, id: requestId, title: "Loading request…", subtitle: "", client: { ...REQUEST_DETAIL_DATA.client, name: "Loading…", role: "", company: "", location: "", timezone: "", rating: 0, totalSessions: 0, isVerified: false, isPro: false, isOrg: false, stats: { sessionsBooked: 0, totalSpent: "₹0", completionRate: "0%" } }, attachments: [], history: [] };
   }
 
   const raw = (found.rawItem || {}) as Record<string, unknown>;
@@ -316,5 +411,13 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
         : []),
     ],
     sessionAccess,
+    paymentStatus: String(raw.paymentStatus || "not available").replaceAll("_", " "),
+    paymentDetails: {
+      consultationFee: formatRequestPrice(Number(amounts.consultationFee || 0) / 100),
+      platformFee: formatRequestPrice(Number(amounts.platformFee || 0) / 100),
+      gst: formatRequestPrice(Number(amounts.gst || 0) / 100),
+      creditsApplied: formatRequestPrice(Number(amounts.creditAmount || 0) / 100),
+      payable: formatRequestPrice(Number(amounts.payable || 0) / 100),
+    },
   };
 }

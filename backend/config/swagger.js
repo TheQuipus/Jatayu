@@ -410,6 +410,13 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     '/api/expert/calendar-connections': {
       get: operation({ tag: 'Calendar Sync', summary: 'List Google and Microsoft calendar connection status', security: bearerSecurity }),
     },
+    '/api/expert/requests/{bookingId}': {
+      get: operation({ tag: 'Bookings', summary: 'Get one assigned booking request with dynamic seeker, schedule, payment, and status details', security: bearerSecurity,
+        parameters: [idParameter('bookingId', 'Booking ID')] }),
+    },
+    '/api/expert/earnings': {
+      get: operation({ tag: 'Bookings', summary: 'Get dynamic expert earnings, revenue charts, transactions, invoices, and payout configuration', security: bearerSecurity }),
+    },
     '/api/expert/calendar-connections/{provider}/connect': {
       post: operation({ tag: 'Calendar Sync', summary: 'Start delegated calendar OAuth connection', security: bearerSecurity,
         parameters: [{ in: 'path', name: 'provider', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }] }),

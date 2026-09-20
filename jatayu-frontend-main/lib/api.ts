@@ -481,6 +481,22 @@ export const connectExpertCalendar = (provider: "google" | "microsoft") => apiFe
 export const disconnectExpertCalendar = (provider: "google" | "microsoft") => apiFetch<{ message: string }>(`/api/expert/calendar-connections/${provider}`, { method: "DELETE" });
 export const syncExpertCalendar = (provider: "google" | "microsoft") => apiFetch<{ message: string; syncedBookings: number }>(`/api/expert/calendar-connections/${provider}/sync`, { method: "POST" });
 
+export type ExpertEarningsResponse = {
+  expertName: string;
+  summary: {
+    availableBalance: number; nextPayoutDate: string; totalEarned: number; annualGoalPercent: number;
+    thisMonthRevenue: number; thisMonthSessions: number; pendingPayout: number; totalInvoices: number;
+    avgPerSession: number; credits: number; platformFeePercent: number | null; growthPercent: number | null; year: number;
+  };
+  charts: Record<"day" | "month" | "year", Array<{ label: string; amount: number }>>;
+  payoutMethods: Array<{ id: string; type: "stripe" | "paypal" | "bank"; title: string; detail: string; badge?: string; isDefault?: boolean; status: "Verified" | "Active" | "Pending" }>;
+  payoutSchedule: { frequency: string; minimum: number; processing: string };
+  transactions: Array<{ id: string; description: string; subtext: string; date: string; method: "stripe" | "paypal" | "bank"; methodLabel: string; transactionId: string; amount: number; status: "Paid" | "Pending" | "Transit"; bookingId: string }>;
+  invoices: Array<{ id: string; number: string; client: string; issueDate: string; dueDate: string; amount: number; status: "Paid" | "Pending" | "Overdue"; bookingId: string; subject: string; scheduledAt: string; consultationFee: number; platformFee: number; gst: number; paymentMethod: string }>;
+};
+
+export const getExpertEarnings = () => apiFetch<ExpertEarningsResponse>("/api/expert/earnings", { method: "GET" });
+
 export type DigilockerKycStartResponse = {
   authorizationUrl: string;
   sandbox?: boolean;
@@ -1331,8 +1347,8 @@ export function normalizeClientRequest(item: Record<string, unknown>): ClientReq
     }
   }
 
-  if (!dateLabel) dateLabel = "Dec 20, 2024";
-  if (!durationLabel) durationLabel = "30 mins";
+  if (!dateLabel) dateLabel = "Not scheduled";
+  if (!durationLabel) durationLabel = "Duration unavailable";
 
   const consultationType = String(item.consultationType || "video").toLowerCase();
   const formatLabel = String(
@@ -1441,6 +1457,14 @@ export async function getExpertRequests(
     pagination,
     counts,
   };
+}
+
+export async function getExpertRequestById(bookingId: string): Promise<Record<string, unknown>> {
+  const response = await apiFetch<{ request: Record<string, unknown> }>(
+    `/api/expert/requests/${encodeURIComponent(bookingId)}`,
+    { method: "GET" },
+  );
+  return response.request;
 }
 
 export interface ExpertRequestDecisionPayload {

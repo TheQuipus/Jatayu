@@ -14,6 +14,9 @@ import {
   Hourglass,
   Inbox,
   Layers,
+  MessageSquare,
+  Megaphone,
+  Users,
   Video,
   X,
   XCircle,
@@ -252,6 +255,13 @@ export default function ExpertRequests() {
           ) : (
             filteredRequests.map((request) => {
               const isPoked = isRequestPoked(request);
+              const FormatIcon = request.formatLabel.toLowerCase().includes("text")
+                ? MessageSquare
+                : request.formatLabel.toLowerCase().includes("group")
+                  ? Users
+                  : request.formatLabel.toLowerCase().includes("shoutout")
+                    ? Megaphone
+                    : Video;
               return (
                 <article
                   key={request.id}
@@ -325,7 +335,7 @@ export default function ExpertRequests() {
                         {request.durationLabel}
                       </span>
                       <span className={styles.metaItem}>
-                        <Video size={14} aria-hidden="true" />
+                        <FormatIcon size={14} aria-hidden="true" />
                         {request.formatLabel}
                       </span>
                     </div>
