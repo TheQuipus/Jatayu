@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   Calendar,
@@ -23,17 +23,9 @@ import {
   X,
 } from "lucide-react";
 import {
-  EARNINGS_SUMMARY,
-  MONTHLY_REVENUE_DATA,
-  WEEKLY_REVENUE_DATA,
-  DAILY_REVENUE_DATA,
-  YEARLY_REVENUE_DATA,
-  PAYOUT_METHODS,
-  TRANSACTIONS_HISTORY,
-  INVOICES_LIST,
   type PayoutStatus,
-  type PayoutMethodType,
 } from "@/lib/expertEarningsStore";
+import { getExpertEarnings, type ExpertEarningsResponse } from "@/lib/api";
 import { printInvoicePdf } from "@/lib/invoicePdfGenerator";
 import styles from "./ExpertEarnings.module.css";
 
@@ -53,28 +45,43 @@ function formatShortMoney(amount: number): string {
 }
 
 export default function ExpertEarnings() {
+  const [earnings, setEarnings] = useState<ExpertEarningsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [chartView, setChartView] = useState<"day" | "month" | "year">("month");
   const [activeTab, setActiveTab] = useState<"history" | "invoices">("history");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
-  const [statementFrom, setStatementFrom] = useState("2024-11-01");
-  const [statementTo, setStatementTo] = useState("2024-12-31");
+  const [statementFrom, setStatementFrom] = useState(() => `${new Date().getFullYear()}-01-01`);
+  const [statementTo, setStatementTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [statementPreset, setStatementPreset] = useState<string>("all");
+
+  useEffect(() => {
+    let active = true;
+    void getExpertEarnings()
+      .then((result) => { if (active) setEarnings(result); })
+      .catch((loadError) => { if (active) setError(loadError instanceof Error ? loadError.message : "Unable to load earnings."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const formatMoney = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  const summary = earnings?.summary;
+  const transactions = (earnings?.transactions || []).map((item) => ({ ...item, rawDate: item.date.slice(0, 10), date: new Date(item.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), amountLabel: `+${formatMoney(item.amount)}` }));
+  const invoices = (earnings?.invoices || []).map((item) => ({ ...item, rawIssueDate: item.issueDate.slice(0, 10), issueDateLabel: new Date(item.issueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), dueDateLabel: new Date(item.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), amountLabel: formatMoney(item.amount) }));
 
   const applyPreset = (preset: string) => {
     setStatementPreset(preset);
+    const today = new Date();
+    const toInput = (date: Date) => date.toISOString().slice(0, 10);
     if (preset === "30d") {
-      setStatementFrom("2024-11-17");
-      setStatementTo("2024-12-17");
+      const from = new Date(today); from.setDate(today.getDate() - 30); setStatementFrom(toInput(from)); setStatementTo(toInput(today));
     } else if (preset === "quarter") {
-      setStatementFrom("2024-10-01");
-      setStatementTo("2024-12-31");
+      setStatementFrom(toInput(new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1))); setStatementTo(toInput(today));
     } else if (preset === "fy") {
-      setStatementFrom("2024-04-01");
-      setStatementTo("2025-03-31");
+      const year = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1; setStatementFrom(`${year}-04-01`); setStatementTo(toInput(today));
     } else if (preset === "all") {
-      setStatementFrom("2024-01-01");
-      setStatementTo("2024-12-31");
+      setStatementFrom(`${today.getFullYear()}-01-01`); setStatementTo(toInput(today));
     }
   };
 
@@ -83,26 +90,26 @@ export default function ExpertEarnings() {
       "==========================================================================",
       "                       JATAYU ACCOUNT STATEMENT                           ",
       "==========================================================================",
-      `Account Holder : Sarah Mitchell`,
+      `Account Holder : ${earnings?.expertName || "Expert"}`,
       `Statement Range: ${statementFrom} to ${statementTo}`,
       `Generated Date : ${new Date().toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}`,
       `Currency       : INR (₹)`,
-      `Available Bal  : ${EARNINGS_SUMMARY.availableBalance}`,
-      `Total Earnings : ${EARNINGS_SUMMARY.totalEarned}`,
+      `Available Bal  : ${formatMoney(summary?.availableBalance || 0)}`,
+      `Total Earnings : ${formatMoney(summary?.totalEarned || 0)}`,
       "==========================================================================",
       "",
       "Date        | Transaction ID | Description (Subtext)             | Method  | Status  | Amount",
       "------------+----------------+-----------------------------------+---------+---------+-----------",
-      ...TRANSACTIONS_HISTORY.map((t) =>
-        `${t.date.padEnd(11)} | ${t.transactionId.padEnd(14)} | ${(t.description + " - " + t.subtext).slice(0, 33).padEnd(33)} | ${t.methodLabel.padEnd(7)} | ${t.status.padEnd(7)} | ${t.amount}`
+      ...transactions.filter((t) => t.rawDate >= statementFrom && t.rawDate <= statementTo).map((t) =>
+        `${t.date.padEnd(11)} | ${t.transactionId.slice(0, 14).padEnd(14)} | ${(t.description + " - " + t.subtext).slice(0, 33).padEnd(33)} | ${t.methodLabel.padEnd(7)} | ${t.status.padEnd(7)} | ${t.amountLabel}`
       ),
       "------------+----------------+-----------------------------------+---------+---------+-----------",
       "",
       "Summary of Invoices in Period:",
       "Invoice No.   | Client             | Issue Date   | Due Date     | Status  | Amount",
       "--------------+--------------------+--------------+--------------+---------+-----------",
-      ...INVOICES_LIST.map((inv) =>
-        `${inv.number.padEnd(13)} | ${inv.client.slice(0, 18).padEnd(18)} | ${inv.issueDate.padEnd(12)} | ${inv.dueDate.padEnd(12)} | ${inv.status.padEnd(7)} | ${inv.amount}`
+      ...invoices.filter((inv) => inv.rawIssueDate >= statementFrom && inv.rawIssueDate <= statementTo).map((inv) =>
+        `${inv.number.padEnd(13)} | ${inv.client.slice(0, 18).padEnd(18)} | ${inv.issueDateLabel.padEnd(12)} | ${inv.dueDateLabel.padEnd(12)} | ${inv.status.padEnd(7)} | ${inv.amountLabel}`
       ),
       "==========================================================================",
       "                      END OF STATEMENT                                    ",
@@ -122,11 +129,7 @@ export default function ExpertEarnings() {
   };
 
   const revenuePoints =
-    chartView === "day"
-      ? DAILY_REVENUE_DATA
-      : chartView === "year"
-      ? YEARLY_REVENUE_DATA
-      : MONTHLY_REVENUE_DATA;
+    earnings?.charts[chartView] || [];
 
   // Calculate SVG paths for Revenue chart
   const amounts = revenuePoints.map((p) => p.amount);
@@ -151,16 +154,16 @@ export default function ExpertEarnings() {
   });
 
   const pts = revenuePoints.map((pt, i) => {
-    const x = padLeft + (i / (revenuePoints.length - 1)) * chartW;
+    const x = padLeft + (i / Math.max(1, revenuePoints.length - 1)) * chartW;
     const y = padTop + chartH - ((pt.amount - minVal) / range) * chartH;
     return { x, y, label: pt.label, amount: pt.amount };
   });
 
   const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const areaPath = `${linePath} L ${pts[pts.length - 1].x} ${padTop + chartH} L ${pts[0].x} ${padTop + chartH} Z`;
+  const areaPath = pts.length ? `${linePath} L ${pts[pts.length - 1].x} ${padTop + chartH} L ${pts[0].x} ${padTop + chartH} Z` : "";
 
   // Filter transactions
-  const filteredTransactions = TRANSACTIONS_HISTORY.filter((t) => {
+  const filteredTransactions = transactions.filter((t) => {
     if (statusFilter === "all") return true;
     return t.status.toLowerCase() === statusFilter.toLowerCase();
   });
@@ -191,6 +194,9 @@ export default function ExpertEarnings() {
     );
   };
 
+  if (loading) return <div className={styles.page}><div className={`container ${styles.pageInner}`}><p>Loading earnings…</p></div></div>;
+  if (error || !earnings || !summary) return <div className={styles.page}><div className={`container ${styles.pageInner}`}><p role="alert">{error || "Unable to load earnings."}</p></div></div>;
+
   return (
     <div className={styles.page}>
       <div className={`container ${styles.pageInner}`}>
@@ -218,15 +224,15 @@ export default function ExpertEarnings() {
             </div>
             <div>
               <div className={styles.balanceAmount}>
-                {EARNINGS_SUMMARY.availableBalance}
+                {formatMoney(summary.availableBalance)}
               </div>
               <div className={styles.balanceSubtext}>
                 <Clock size={13} />
-                <span>Next payout: {EARNINGS_SUMMARY.nextPayoutDate}</span>
+                <span>Next payout: {earnings.payoutMethods.length ? new Date(summary.nextPayoutDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Not scheduled"}</span>
               </div>
             </div>
             <div className={styles.cardActions}>
-              <button type="button" className={styles.withdrawBtn}>
+              <button type="button" className={styles.withdrawBtn} disabled={earnings.payoutMethods.length === 0 || summary.availableBalance < earnings.payoutSchedule.minimum} title={earnings.payoutMethods.length === 0 ? "Add a verified payout method first" : undefined}>
                 <ArrowUpRight size={14} /> Withdraw Funds
               </button>
             </div>
@@ -238,22 +244,22 @@ export default function ExpertEarnings() {
               <div className={styles.smallMetricIcon}>
                 <TrendingUp size={18} />
               </div>
-              <span className={styles.statBadgeGreen}>+18.4%</span>
+              {summary.growthPercent !== null && <span className={styles.statBadgeGreen}>{summary.growthPercent >= 0 ? "+" : ""}{summary.growthPercent}%</span>}
             </div>
             <div>
-              <div className={styles.statValue}>{EARNINGS_SUMMARY.totalEarned}</div>
-              <span className={styles.metricLabel}>Total Earned (2024)</span>
+              <div className={styles.statValue}>{formatMoney(summary.totalEarned)}</div>
+              <span className={styles.metricLabel}>Total Earned ({summary.year})</span>
             </div>
             <div className={styles.goalProgressBarWrap}>
               <div className={styles.progressBarBg}>
                 <div
                   className={styles.progressBarFill}
-                  style={{ width: `${EARNINGS_SUMMARY.annualGoalPercent}%` }}
+                  style={{ width: `${summary.annualGoalPercent}%` }}
                 />
               </div>
               <div className={styles.goalInfoRow}>
                 <span className={styles.progressLabel}>
-                  {EARNINGS_SUMMARY.annualGoalPercent}% of annual goal
+                  {summary.annualGoalPercent}% of annual goal
                 </span>
                 <button
                   type="button"
@@ -276,7 +282,7 @@ export default function ExpertEarnings() {
             </div>
             <div className={styles.smallMetricContent}>
               <span className={styles.smallMetricVal}>
-                {EARNINGS_SUMMARY.pendingPayout}
+                {formatMoney(summary.pendingPayout)}
               </span>
               <span className={styles.smallMetricLabel}>Pending Payout</span>
             </div>
@@ -288,7 +294,7 @@ export default function ExpertEarnings() {
             </div>
             <div className={styles.smallMetricContent}>
               <span className={styles.smallMetricVal}>
-                {EARNINGS_SUMMARY.totalInvoices}
+                {summary.totalInvoices}
               </span>
               <span className={styles.smallMetricLabel}>Total Invoices</span>
             </div>
@@ -300,7 +306,7 @@ export default function ExpertEarnings() {
             </div>
             <div className={styles.smallMetricContent}>
               <span className={styles.smallMetricVal}>
-                {EARNINGS_SUMMARY.avgPerSession}
+                {formatMoney(summary.avgPerSession)}
               </span>
               <span className={styles.smallMetricLabel}>Avg per Session</span>
             </div>
@@ -312,7 +318,7 @@ export default function ExpertEarnings() {
             </div>
             <div className={styles.smallMetricContent}>
               <span className={styles.smallMetricVal}>
-                {EARNINGS_SUMMARY.credits}
+                {summary.credits.toLocaleString("en-IN")}
               </span>
               <span className={styles.smallMetricLabel}>Credits</span>
             </div>
@@ -436,7 +442,7 @@ export default function ExpertEarnings() {
             </div>
 
             <div className={styles.methodsList}>
-              {PAYOUT_METHODS.map((method) => (
+              {earnings.payoutMethods.map((method) => (
                 <div
                   key={method.id}
                   className={`${styles.methodCard} ${
@@ -469,7 +475,9 @@ export default function ExpertEarnings() {
               ))}
             </div>
 
-            <button type="button" className={styles.addMethodDashed}>
+            {earnings.payoutMethods.length === 0 && <span className={styles.chartSubtitle}>No payout method configured.</span>}
+
+              <button type="button" className={styles.addMethodDashed} disabled title="Payout method setup will be enabled with the payout provider">
               + Add payout method
             </button>
 
@@ -477,17 +485,17 @@ export default function ExpertEarnings() {
               <span className={styles.scheduleLabel}>PAYOUT SCHEDULE</span>
               <div className={styles.scheduleRow}>
                 <span className={styles.scheduleKey}>Frequency</span>
-                <span className={styles.scheduleVal}>Weekly (Mondays)</span>
+                <span className={styles.scheduleVal}>{earnings.payoutSchedule.frequency}</span>
               </div>
               <div className={styles.scheduleRow}>
                 <span className={styles.scheduleKey}>Minimum</span>
-                <span className={styles.scheduleVal}>₹1,000</span>
+                <span className={styles.scheduleVal}>{formatMoney(earnings.payoutSchedule.minimum)}</span>
               </div>
               <div className={styles.scheduleRow}>
                 <span className={styles.scheduleKey}>Processing</span>
-                <span className={styles.scheduleVal}>1–3 business days</span>
+                <span className={styles.scheduleVal}>{earnings.payoutSchedule.processing}</span>
               </div>
-              <button type="button" className={styles.editScheduleBtn}>
+              <button type="button" className={styles.editScheduleBtn} disabled>
                 <Edit2 size={12} /> Edit Schedule
               </button>
             </div>
@@ -516,7 +524,7 @@ export default function ExpertEarnings() {
                   activeTab === "invoices" ? styles.tabBtnActive : ""
                 }`}
               >
-                Invoices <span className={styles.tabBadge}>18</span>
+                Invoices <span className={styles.tabBadge}>{summary.totalInvoices}</span>
               </button>
             </div>
 
@@ -592,7 +600,7 @@ export default function ExpertEarnings() {
                               : styles.amountTransit
                           }
                         >
-                          {txn.amount}
+                          {txn.amountLabel}
                         </span>
                       </td>
                     </tr>
@@ -615,13 +623,13 @@ export default function ExpertEarnings() {
                   </tr>
                 </thead>
                 <tbody>
-                  {INVOICES_LIST.map((inv) => (
+                  {invoices.map((inv) => (
                     <tr key={inv.id} className={styles.tableRow}>
                       <td className={styles.descTitle}>{inv.number}</td>
                       <td>{inv.client}</td>
-                      <td className={styles.dateCell}>{inv.issueDate}</td>
-                      <td className={styles.dateCell}>{inv.dueDate}</td>
-                      <td className={styles.amountPaid}>{inv.amount}</td>
+                      <td className={styles.dateCell}>{inv.issueDateLabel}</td>
+                      <td className={styles.dateCell}>{inv.dueDateLabel}</td>
+                      <td className={styles.amountPaid}>{inv.amountLabel}</td>
                       <td>
                         <span
                           className={
@@ -639,22 +647,20 @@ export default function ExpertEarnings() {
                           className={styles.invoiceDownloadBtn}
                           title={`Download invoice ${inv.number}`}
                           onClick={() => {
-                            const rawAmount = parseFloat(inv.amount.replace(/[^0-9.]/g, "")) || 10800;
-                            const fee = Math.round(rawAmount * 0.82);
-                            const gst = Math.round(rawAmount * 0.18);
+                            const rawAmount = inv.amount / 100;
                             printInvoicePdf({
                               invoiceId: inv.number,
                               referenceId: `REF-${inv.number.slice(-7)}`,
-                              issueDate: inv.issueDate,
+                              issueDate: inv.issueDateLabel,
                               clientName: inv.client,
-                              expertName: "Sarah Mitchell",
-                              consultationLabel: "Product Strategy Consultation",
-                              scheduledDate: inv.issueDate,
-                              consultationFee: fee,
-                              platformFee: 0,
-                              gst: gst,
+                              expertName: earnings.expertName,
+                              consultationLabel: inv.subject,
+                              scheduledDate: new Date(inv.scheduledAt).toLocaleString("en-IN"),
+                              consultationFee: inv.consultationFee / 100,
+                              platformFee: inv.platformFee / 100,
+                              gst: inv.gst / 100,
                               totalPaid: rawAmount,
-                              paymentMethod: "Bank Transfer",
+                              paymentMethod: inv.paymentMethod,
                               paymentStatus: inv.status === "Paid" ? "Paid" : "Pending",
                             });
                           }}
@@ -670,7 +676,7 @@ export default function ExpertEarnings() {
             )}
           </div>
 
-          <button type="button" className={styles.loadMoreBtn}>
+          <button type="button" className={styles.loadMoreBtn} disabled>
             <ChevronDown size={14} /> Load more transactions
           </button>
         </div>
@@ -786,13 +792,13 @@ export default function ExpertEarnings() {
                     <div className={styles.previewStatItem}>
                       <span className={styles.previewKey}>Account Balance:</span>
                       <span className={styles.previewVal}>
-                        {EARNINGS_SUMMARY.availableBalance}
+                        {formatMoney(summary.availableBalance)}
                       </span>
                     </div>
                     <div className={styles.previewStatItem}>
                       <span className={styles.previewKey}>Total Payouts:</span>
                       <span className={styles.previewVal}>
-                        {EARNINGS_SUMMARY.totalEarned}
+                        {formatMoney(summary.totalEarned)}
                       </span>
                     </div>
                   </div>

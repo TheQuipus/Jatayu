@@ -1,5 +1,6 @@
 import {
   decideExpertRequest,
+  getExpertRequestDetail,
   listExpertRequests,
 } from '../services/expert/expertRequestService.js';
 import { sendNotification } from '../services/notificationService.js';
@@ -20,6 +21,14 @@ function handleError(error, res, operation) {
   const [status, message] = ERROR_RESPONSES[error.message] || [500, `Unable to ${operation}`];
   if (status === 500) console.error(`Expert Request ${operation} Error:`, error);
   return res.status(status).json({ message, code: error.message });
+}
+
+export async function getRequest(req, res) {
+  try {
+    return res.status(200).json({ request: await getExpertRequestDetail(req.user.id, req.params.bookingId) });
+  } catch (error) {
+    return handleError(error, res, 'get request');
+  }
 }
 
 export async function getRequests(req, res) {

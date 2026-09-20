@@ -177,6 +177,7 @@
             "url": "{{baseUrl}}/api/expert/requests?status=all&page=1&limit=20&sort=newest"
           }
         },
+        { "name": "Get Request Details", "request": { "method": "GET", "description": "Returns the assigned booking with dynamic seeker profile, schedule, consultation type, amounts, payment status, response timing, and session access.", "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}" } },
         { "name": "List Upcoming Sessions", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests?status=upcoming&page=1&limit=20&sort=newest" } },
         { "name": "List Completed Session History", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests?status=completed&page=1&limit=20&sort=newest" } },
         { "name": "List Cancelled Session History", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests?status=cancelled&page=1&limit=20&sort=newest" } },
@@ -207,6 +208,13 @@
         ,{ "name": "Get Booking Chat History", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/messages?limit=50" } }
         ,{ "name": "Send Booking Chat Message", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"message\": \"Hello from the expert\",\n  \"clientMessageId\": \"{{$guid}}\"\n}" }, "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/messages" } }
         ,{ "name": "Mark Booking Chat Read", "request": { "method": "PATCH", "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/messages/read" } }
+      ]
+    },
+    {
+      "name": "Expert Earnings",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{expertToken}}", "type": "string" }] },
+      "item": [
+        { "name": "Get Earnings Dashboard", "request": { "method": "GET", "description": "Returns earnings derived from the authenticated expert's completed paid bookings and paid session extensions.", "url": "{{baseUrl}}/api/expert/earnings" } }
       ]
     },
     {

@@ -18,12 +18,16 @@ import {
   Info,
   Languages,
   MapPin,
+  MessageSquare,
+  Megaphone,
   Star,
   Video,
+  Users,
   X,
   Zap,
 } from "lucide-react";
-import { getRequestDetailById, type RequestDetailModel } from "@/lib/expertRequestDetailStore";
+import { getRequestDetailById, mapExpertRequestDetail, type RequestDetailModel } from "@/lib/expertRequestDetailStore";
+import { getExpertRequestById } from "@/lib/api";
 import ExpertReportForm from "@/app/expert/(app)/report/[requestId]/ExpertReportForm";
 import AcceptRequestModal from "./AcceptRequestModal";
 import DeclineRequestModal from "./DeclineRequestModal";
@@ -32,11 +36,11 @@ import ExpertActiveRoom from "./ExpertActiveRoom";
 import ContinueButton from "@/components/ui/ContinueButton";
 import SecondaryCTA from "@/components/ui/SecondaryCTA";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import { downloadRequestSummaryPdf } from "@/lib/requestSummaryPdf";
 import {
   updateStoredRequestStatus,
   getStoredRequests,
   updateRequestStatusAsync,
-  fetchExpertRequests,
   type ClientRequest,
 } from "@/lib/expertRequests";
 import styles from "@/components/seeker/bookings/BookingDetailInfo.module.css";
@@ -48,6 +52,9 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
 
   const [data, setData] = useState<RequestDetailModel>(() => getRequestDetailById(activeRequestId));
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState("");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState("");
 
   const [requestStatus, setRequestStatus] = useState<"new" | "pending" | "accepted" | "declined" | "completed" | "cancelled">(() => {
     if (typeof window !== "undefined") {
@@ -80,16 +87,12 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
   useEffect(() => {
     let isSubscribed = true;
     setLoading(true);
+    setLoadError("");
 
-    fetchExpertRequests({
-      status: "all",
-      page: 1,
-      limit: 20,
-      sort: "newest",
-    })
-      .then(() => {
+    getExpertRequestById(activeRequestId)
+      .then((request) => {
         if (isSubscribed) {
-          const detail = getRequestDetailById(activeRequestId);
+          const detail = mapExpertRequestDetail(request);
           setData(detail);
           setRequestStatus(detail.status);
           setLoading(false);
@@ -97,7 +100,10 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
       })
       .catch((err) => {
         console.error("Failed to load expert request detail from API:", err);
-        if (isSubscribed) setLoading(false);
+        if (isSubscribed) {
+          setLoadError(err instanceof Error ? err.message : "Unable to load request details.");
+          setLoading(false);
+        }
       });
 
     return () => {
@@ -124,6 +130,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
     if (data.sessionAccess?.opensAt) {
       return new Date(data.sessionAccess.opensAt).getTime();
     }
+    if (data.scheduledStartAt) return new Date(data.scheduledStartAt).getTime();
     const text = data.sessionDetails.requestedDate;
     if (text.includes("Tomorrow")) {
       const d = new Date();
@@ -136,7 +143,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
       return parsed;
     }
     return Date.now() + (1 * 60 * 60 + 45 * 60) * 1000;
-  }, [data.sessionDetails.requestedDate]);
+  }, [data.sessionDetails.requestedDate, data.scheduledStartAt, data.sessionAccess?.opensAt]);
 
   const countdownText = useMemo(() => {
     if (
@@ -191,7 +198,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
     title: data.title,
     description: data.proposal.summary,
     status: requestStatus,
-    price: 2400,
+    price: Number(data.sessionDetails.proposedPrice.replace(/[^0-9.]/g, "")) || 0,
     timeAgo: data.timeReceivedAgo,
     dateLabel: data.sessionDetails.requestedDate,
     durationLabel: data.sessionDetails.duration,
@@ -211,9 +218,37 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
     setShowDeclineModal(false);
   };
 
+  const handleDownloadSummary = async () => {
+    setDownloadingPdf(true);
+    setPdfError("");
+    try {
+      await downloadRequestSummaryPdf(data);
+    } catch (error) {
+      setPdfError(error instanceof Error ? error.message : "Unable to generate the PDF summary.");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const nameParts = data.client.name.split(" ");
   const firstName = nameParts[0] || "";
   const lastName = nameParts.slice(1).join(" ") || "";
+  const formatLower = data.sessionDetails.format.toLowerCase();
+  const SessionTypeIcon = formatLower.includes("text")
+    ? MessageSquare
+    : formatLower.includes("group")
+      ? Users
+      : formatLower.includes("shoutout")
+        ? Megaphone
+        : Video;
+
+  if (loading) {
+    return <section className={styles.detail}><div className={`container ${styles.detailInner}`}><p>Loading request details…</p></div></section>;
+  }
+
+  if (loadError) {
+    return <section className={styles.detail}><div className={`container ${styles.detailInner}`}><p role="alert">{loadError}</p><button type="button" onClick={() => router.push("/expert/requests")}>Back to Requests</button></div></section>;
+  }
 
   if (isInActiveRoom) {
     return (
@@ -286,9 +321,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                       <BadgeCheck size={18} className={styles.expertVerified} aria-hidden="true" />
                     )}
                   </p>
-                  <p className={styles.bookingExpertDesc}>
-                    {data.client.role} • {data.client.company}
-                  </p>
+                  {(data.client.role || data.client.company) && <p className={styles.bookingExpertDesc}>{[data.client.role, data.client.company].filter(Boolean).join(" • ")}</p>}
                 </div>
               </article>
 
@@ -298,20 +331,18 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                   <span className="t-muted">{lastName}</span>
                 </h1>
 
-                <p className={styles.roleSub}>
-                  {data.client.role} at <strong>{data.client.company}</strong>
-                </p>
+                {(data.client.role || data.client.company) && <p className={styles.roleSub}>{data.client.role}{data.client.company ? <> at <strong>{data.client.company}</strong></> : null}</p>}
 
                 <div className={styles.starDivider}>
                   <span className={styles.dividerStar}>✦</span>
                   <span className={styles.dividerLine} />
                 </div>
 
-                <div className={styles.ratingsRow}>
+                {(data.client.totalSessions > 0 || data.client.stats.sessionsBooked > 0) && <div className={styles.ratingsRow}>
                   <div className={styles.ratingItem}>
                     <Star size={16} fill="#EAB308" stroke="#EAB308" />
                     <span className={styles.ratingText}>
-                      <strong>{data.client.rating.toFixed(1)}</strong> ({data.client.totalSessions} sessions completed)
+                      <strong>{data.client.totalSessions}</strong> sessions completed
                     </span>
                   </div>
                   <div className={styles.ratingItem}>
@@ -320,7 +351,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                       <strong>{data.client.stats.sessionsBooked} Bookings</strong>
                     </span>
                   </div>
-                </div>
+                </div>}
 
                 <div className={styles.metaRow}>
                   <div className={styles.metaItem}>
@@ -467,7 +498,7 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
               <div className={styles.sessionSummary}>
                 <div className={styles.summaryMain}>
                   <span className={styles.summaryIconWrap} aria-hidden="true">
-                    <Video size={22} strokeWidth={2} />
+                    <SessionTypeIcon size={22} strokeWidth={2} />
                   </span>
                   <div className={styles.summaryCopy}>
                     <h1 className={styles.summaryTitle}>{data.sessionDetails.format}</h1>
@@ -513,34 +544,37 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
                 <div className={styles.panelBody}>
                   <div className={styles.paymentHead}>
                     <span className={styles.paymentStatusLabel}>Status</span>
-                    <span className={`${styles.paymentBadge} ${styles.paymentBadgePaid}`}>
-                      Escrow Authorized
-                    </span>
+                    <span className={`${styles.paymentBadge} ${styles.paymentBadgePaid}`}>{data.paymentStatus}</span>
                   </div>
 
                   <div className={styles.priceList}>
                     <div className={styles.priceRow}>
                       <span>Consultation Fee</span>
-                      <strong>{data.sessionDetails.proposedPrice}</strong>
+                      <strong>{data.paymentDetails?.consultationFee || data.sessionDetails.proposedPrice}</strong>
                     </div>
+                    {data.paymentDetails && <>
                     <div className={styles.priceRow}>
-                      <span>Escrow Guarantee</span>
-                      <strong>100% Secured</strong>
+                      <span>Platform Fee</span><strong>{data.paymentDetails.platformFee}</strong>
                     </div>
+                    <div className={styles.priceRow}><span>GST</span><strong>{data.paymentDetails.gst}</strong></div>
+                    <div className={styles.priceRow}><span>Credits Applied</span><strong>{data.paymentDetails.creditsApplied}</strong></div>
+                    </>}
                   </div>
 
                   <div className={styles.totalRow}>
                     <span>Total Payout</span>
-                    <strong>{data.sessionDetails.proposedPrice}</strong>
+                    <strong>{data.paymentDetails?.payable || data.sessionDetails.proposedPrice}</strong>
                   </div>
 
                   <SecondaryCTA
-                    label="Download Summary PDF"
+                    label={downloadingPdf ? "Generating PDF…" : "Download Summary PDF"}
                     showArrow={false}
                     leadingIcon={<Download size={14} aria-hidden="true" />}
-                    onClick={() => window.print()}
+                    onClick={() => void handleDownloadSummary()}
+                    disabled={downloadingPdf}
                     className={styles.sidebarInvoiceBtn}
                   />
+                  {pdfError && <p role="alert" className={styles.policyText}>{pdfError}</p>}
                 </div>
 
                 <div className={styles.bookingFooter} aria-hidden="true" />

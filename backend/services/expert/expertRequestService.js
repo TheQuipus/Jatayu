@@ -53,7 +53,7 @@ function publicPayment(payment) {
   return data;
 }
 
-export function serializeExpertRequest(booking, now = Date.now()) {
+export function serializeExpertRequest(booking, now = Date.now(), seekerStats = null) {
   const data = booking.toJSON ? booking.toJSON() : booking;
   const seeker = data.seeker || null;
   const payment = Array.isArray(data.payments) ? data.payments[0] : null;
@@ -75,6 +75,13 @@ export function serializeExpertRequest(booking, now = Date.now()) {
       location: seeker.location,
       category: seeker.category,
       selectedLanguages: seeker.selectedLanguages || [],
+      topics: seeker.topics || [],
+      needsText: seeker.needsText || null,
+      selectedNeedChips: seeker.selectedNeedChips || [],
+      additionalContext: seeker.additionalContext || null,
+      isEmailVerified: Boolean(seeker.isEmailVerified),
+      isPhoneVerified: Boolean(seeker.isPhoneVerified),
+      stats: seekerStats,
     } : null,
     amounts: {
       consultationFee: data.consultationFee,
@@ -167,10 +174,31 @@ async function loadExpertRequest(expertId, bookingId) {
   return Booking.findOne({
     where: { id: bookingId, expertId },
     include: [
-      { model: Seeker, as: 'seeker', attributes: ['id', 'fullName', 'profilePhotoSrc', 'location', 'category', 'selectedLanguages'] },
+      { model: Seeker, as: 'seeker', attributes: ['id', 'fullName', 'profilePhotoSrc', 'location', 'category', 'selectedLanguages', 'topics', 'needsText', 'selectedNeedChips', 'additionalContext', 'isEmailVerified', 'isPhoneVerified'] },
       { model: BookingPayment, as: 'payments', required: false },
     ],
   });
+}
+
+export async function getExpertRequestDetail(expertId, bookingId) {
+  await ensureExpert(expertId);
+  await completeEndedBookings();
+  const booking = await loadExpertRequest(expertId, bookingId);
+  if (!booking) throw new Error('REQUEST_NOT_FOUND');
+  const [sessionsBooked, completedSessions, totalSpent] = await Promise.all([
+    Booking.count({ where: { seekerId: booking.seekerId, expertId } }),
+    Booking.count({ where: { seekerId: booking.seekerId, expertId, status: 'completed' } }),
+    Booking.sum('totalAmount', { where: { seekerId: booking.seekerId, expertId, paymentStatus: { [Op.in]: ['paid', 'paid_with_credits', 'refunded', 'refund_pending'] } } }),
+  ]);
+  return {
+    ...serializeExpertRequest(booking, Date.now(), {
+      sessionsBooked,
+      completedSessions,
+      totalSpent: Number(totalSpent || 0),
+      completionRate: sessionsBooked > 0 ? Math.round((completedSessions / sessionsBooked) * 100) : 0,
+    }),
+    sessionAccess: await getAgoraSessionAccess(booking),
+  };
 }
 
 export async function decideExpertRequest(expertId, bookingId, input) {

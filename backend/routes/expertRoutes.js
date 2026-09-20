@@ -10,7 +10,7 @@ import {
   recommendOnboardingSkills,
 } from '../controllers/expertController.js';
 import { protect } from '../middleware/authMiddleware.js';
-import { getRequests, updateRequestDecision } from '../controllers/expertRequestController.js';
+import { getRequest, getRequests, updateRequestDecision } from '../controllers/expertRequestController.js';
 import {
   getDigilockerKycStatus,
   handleDigilockerCallback,
@@ -28,6 +28,7 @@ import { expertChat } from '../controllers/bookingChatController.js';
 import { exportAccountData, logoutCurrentSession, softDeleteAccount } from '../controllers/expertAccountController.js';
 import { getSecurity, updateTwoFactor, updatePassword, logoutOtherSessions, revokeSession, requestContactVerification, verifyContact, getNotificationPreferences, updateNotificationPreferences } from '../controllers/expertSecurityController.js';
 import { calendarCallback, connectCalendar, getCalendarConnections, removeCalendarConnection, syncCalendarNow } from '../controllers/expertCalendarController.js';
+import { getEarnings } from '../controllers/expertEarningsController.js';
 
 const router = express.Router();
 const securityAction = (handler) => async (req, res, next) => {
@@ -90,6 +91,7 @@ router.put('/notification-preferences', protect, securityAction(updateNotificati
 router.get('/account/export', protect, securityAction(exportAccountData));
 router.post('/account/logout', protect, securityAction(logoutCurrentSession));
 router.delete('/account', protect, securityAction(softDeleteAccount));
+router.get('/earnings', protect, getEarnings);
 router.get('/calendar-connections', protect, getCalendarConnections);
 router.post('/calendar-connections/:provider/connect', protect, connectCalendar);
 router.delete('/calendar-connections/:provider', protect, removeCalendarConnection);
@@ -103,6 +105,7 @@ router.post('/onboarding/recommend-skills', protect, recommendOnboardingSkills);
 router.post('/recommend-skills', protect, recommendOnboardingSkills);
 router.post('/onboarding/linkedin/connect', protect, connectLinkedin);
 router.get('/requests', protect, getRequests);
+router.get('/requests/:bookingId', protect, getRequest);
 router.patch('/requests/:bookingId/decision', protect, updateRequestDecision);
 router.post('/requests/:bookingId/session/token', protect, getExpertAgoraSession);
 router.post('/requests/:bookingId/session/complete', protect, completeExpertAgoraSession);
