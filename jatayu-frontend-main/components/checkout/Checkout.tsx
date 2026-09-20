@@ -864,6 +864,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   timezone={bookingOptions?.timezone}
                   slotDurationMinutes={bookingOptions?.slotDurationMinutes}
                   minimumLeadTimeMinutes={bookingOptions?.minimumLeadTimeMinutes}
+                  advanceBookingWindowDays={bookingOptions?.advanceBookingWindowDays}
                 />
               )}
 

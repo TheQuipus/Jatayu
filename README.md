@@ -254,6 +254,31 @@ The Postman files are available in `postman/`. Import both the collection and
 the local environment, select the local environment, and update its credentials
 and generated authentication tokens as needed.
 
+### External expert calendars
+
+Run the calendar table migration once:
+
+```bash
+cd backend
+npm run migrate:calendar-sync
+```
+
+Set a stable `CALENDAR_TOKEN_ENCRYPTION_KEY` in `backend/.env`. In Admin →
+Settings → Auth Credentials, configure and enable Google Calendar and/or
+Microsoft Outlook. Register these production redirect URIs with the providers:
+
+```text
+https://jatayuconnect.in/api/expert/calendar-connections/google/callback
+https://jatayuconnect.in/api/expert/calendar-connections/microsoft/callback
+```
+
+For local provider applications, register the equivalent
+`http://localhost:5000/...` URIs. Google needs Calendar API access and Microsoft
+needs delegated `Calendars.ReadWrite` permission. Experts connect their own
+account from Expert → Availability → Booking preferences. Future confirmed
+sessions and paid extensions are then created or updated automatically; “Sync
+now” backfills future confirmed sessions.
+
 ## 9. Useful commands
 
 Backend:

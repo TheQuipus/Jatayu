@@ -205,8 +205,6 @@ export function getRequestDetailById(requestId: string): RequestDetailModel {
     raw.expertProfessionalTitle ||
       found.expertProfessionalTitle ||
       raw.professionalTitle ||
-      seeker.category ||
-      raw.seekerCategory ||
       ""
   );
 

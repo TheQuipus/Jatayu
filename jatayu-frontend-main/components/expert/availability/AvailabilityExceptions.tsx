@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { fetchExpertProfileRecord } from "@/lib/expertProfileApi";
-import { updateProfile } from "@/lib/api";
-import { CalendarOff, Plus, Trash2, Check, Save } from "lucide-react";
+import { getExpertRequests, updateProfile } from "@/lib/api";
+import type { ClientRequest } from "@/lib/expertRequests";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import { CalendarOff, Plus, Trash2, Check, Save, Clock3 } from "lucide-react";
 import styles from "./ExpertAvailabilityPage.module.css";
 
 type ExceptionItem = {
@@ -29,6 +31,24 @@ function formatDate(dateString: string): string {
   });
 }
 
+function localDateKey(dateValue: string) {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatSessionDateTime(dateValue?: string) {
+  if (!dateValue) return "Scheduled time unavailable";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "Scheduled time unavailable";
+  return date.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function AvailabilityExceptions() {
   const [items, setItems] = useState<ExceptionItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -37,6 +57,10 @@ export default function AvailabilityExceptions() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loadFailed, setLoadFailed] = useState(false);
+  const [scheduledSessions, setScheduledSessions] = useState<ClientRequest[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsLoadFailed, setSessionsLoadFailed] = useState(false);
+  const [conflictingSessions, setConflictingSessions] = useState<ClientRequest[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -51,6 +75,23 @@ export default function AvailabilityExceptions() {
       }
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void getExpertRequests({ status: "accepted", page: 1, limit: 100, sort: "oldest" })
+      .then((response) => {
+        if (active) setScheduledSessions(response.requests);
+      })
+      .catch(() => {
+        if (active) setSessionsLoadFailed(true);
+      })
+      .finally(() => {
+        if (active) setSessionsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Form State
@@ -76,6 +117,23 @@ export default function AvailabilityExceptions() {
     if (!newTitle.trim() || !fromDate) return;
 
     if (toDate && toDate < fromDate) return;
+    if (sessionsLoading || sessionsLoadFailed) {
+      setError(sessionsLoading
+        ? "Please wait while scheduled sessions are checked."
+        : "Unable to verify scheduled sessions. Reload the page before adding time off.");
+      return;
+    }
+
+    const rangeEnd = toDate || fromDate;
+    const conflicts = scheduledSessions.filter((session) => {
+      const sessionStart = session.scheduledStartAt ? localDateKey(session.scheduledStartAt) : "";
+      const sessionEnd = session.scheduledEndAt ? localDateKey(session.scheduledEndAt) : sessionStart;
+      return Boolean(sessionStart && sessionStart <= rangeEnd && sessionEnd >= fromDate);
+    });
+    if (conflicts.length > 0) {
+      setConflictingSessions(conflicts);
+      return;
+    }
 
     const newItem: ExceptionItem = {
       id: Date.now(),
@@ -97,7 +155,7 @@ export default function AvailabilityExceptions() {
       <div className={styles.panelHeader}>
         <div>
           <span className={styles.sectionIndex}>02</span>
-          <h2>Time off and availability</h2>
+          <h2>Time off</h2>
           <p>Override your standard schedule for specific date ranges.</p>
         </div>
         <div className={styles.panelHeaderActions}>
@@ -137,7 +195,7 @@ export default function AvailabilityExceptions() {
       {loading && <p role="status">Loading time off…</p>}
       {isAdding && (
         <form onSubmit={handleCreateException} className={styles.addExceptionForm}>
-          <h4 className={styles.addExceptionFormTitle}>Add Time Off / Availability</h4>
+          <h4 className={styles.addExceptionFormTitle}>Add Time Off</h4>
           <div className={styles.addExceptionGrid}>
             <div className={styles.formField}>
               <label htmlFor="exception-title">Name / Reason</label>
@@ -191,7 +249,7 @@ export default function AvailabilityExceptions() {
             >
               Cancel
             </button>
-            <button type="submit" className={styles.confirmAddBtn} disabled={saving}>
+            <button type="submit" className={styles.confirmAddBtn} disabled={saving || sessionsLoading}>
               <Plus size={13} />
               <span>Add to list</span>
             </button>
@@ -232,6 +290,30 @@ export default function AvailabilityExceptions() {
           </article>
         ))}
       </div>
+
+      <ConfirmModal
+        isOpen={conflictingSessions.length > 0}
+        onClose={() => setConflictingSessions([])}
+        onConfirm={() => setConflictingSessions([])}
+        title="Time off is not available"
+        message={
+          <div className={styles.timeOffConflictContent}>
+            <p>You cannot take time off during this period because you have active or scheduled sessions:</p>
+            <ul className={styles.timeOffConflictList}>
+              {conflictingSessions.map((session) => (
+                <li key={session.id}>
+                  <strong>{session.clientName}</strong>
+                  <span>{session.title}</span>
+                  <time><Clock3 size={12} /> {formatSessionDateTime(session.scheduledStartAt)}</time>
+                </li>
+              ))}
+            </ul>
+          </div>
+        }
+        confirmText="Close"
+        cancelText="Change dates"
+        variant="warning"
+      />
     </section>
   );
 }

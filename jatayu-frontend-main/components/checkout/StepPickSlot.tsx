@@ -14,6 +14,7 @@ export type StepPickSlotProps = {
   timezone?: string;
   slotDurationMinutes?: number;
   minimumLeadTimeMinutes?: number;
+  advanceBookingWindowDays?: number;
 };
 
 export default function StepPickSlot({
@@ -27,6 +28,7 @@ export default function StepPickSlot({
   timezone,
   slotDurationMinutes,
   minimumLeadTimeMinutes,
+  advanceBookingWindowDays,
 }: StepPickSlotProps) {
   return (
     <div className={styles.stepContent}>
@@ -47,6 +49,7 @@ export default function StepPickSlot({
           timezone={timezone}
           slotDurationMinutes={slotDurationMinutes}
           minimumLeadTimeMinutes={minimumLeadTimeMinutes}
+          advanceBookingWindowDays={advanceBookingWindowDays}
         />
       </div>
     </div>

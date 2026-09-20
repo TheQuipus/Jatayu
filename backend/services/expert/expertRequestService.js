@@ -16,6 +16,7 @@ import {
   EXPERT_REQUEST_RESPONSE_WINDOW_MS,
 } from '../../config/expertRequests.js';
 import { getAgoraSessionAccess } from '../agoraService.js';
+import { syncBookingToExternalCalendars } from '../expertCalendarService.js';
 
 const DECLINE_REASON_CODES = new Set([
   'scheduling_conflict',
@@ -232,6 +233,7 @@ export async function decideExpertRequest(expertId, bookingId, input) {
 
   if (shouldRequestRefund) await requestBookingRefund(bookingId);
   const booking = await loadExpertRequest(expertId, bookingId);
+  if (booking?.status === 'confirmed') void syncBookingToExternalCalendars(booking).catch((error) => console.error('Calendar sync error:', error.message));
   return {
     ...serializeExpertRequest(booking),
     sessionAccess: await getAgoraSessionAccess(booking),

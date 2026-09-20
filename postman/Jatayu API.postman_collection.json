@@ -124,8 +124,8 @@
           "name": "Get Expert Booking Options",
           "request": {
             "method": "GET",
-            "description": "Returns authoritative formats, prices, weekly availability, timezone, and occupied slots. expertId may also be the expert name slug.",
-            "url": "{{baseUrl}}/api/seeker/experts/{{expertId}}/booking-options?days=28"
+            "description": "Returns authoritative formats, prices, weekly availability, timezone, occupied slots, the expert-specific effective minimum lead time, advance booking window, auto-accept setting, and instant-booking setting. expertId may also be the expert name slug.",
+            "url": "{{baseUrl}}/api/seeker/experts/{{expertId}}/booking-options?days=90"
           }
         },
         {
@@ -207,6 +207,19 @@
         ,{ "name": "Get Booking Chat History", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/messages?limit=50" } }
         ,{ "name": "Send Booking Chat Message", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"message\": \"Hello from the expert\",\n  \"clientMessageId\": \"{{$guid}}\"\n}" }, "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/messages" } }
         ,{ "name": "Mark Booking Chat Read", "request": { "method": "PATCH", "url": "{{baseUrl}}/api/expert/requests/{{bookingId}}/messages/read" } }
+      ]
+    },
+    {
+      "name": "Expert Calendar Sync",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{expertToken}}", "type": "string" }] },
+      "item": [
+        { "name": "List Calendar Connections", "request": { "method": "GET", "url": "{{baseUrl}}/api/expert/calendar-connections" } },
+        { "name": "Connect Google Calendar", "request": { "method": "POST", "description": "Returns authorizationUrl. Open it in a browser while logged in to Google.", "url": "{{baseUrl}}/api/expert/calendar-connections/google/connect" } },
+        { "name": "Sync Google Calendar Now", "request": { "method": "POST", "url": "{{baseUrl}}/api/expert/calendar-connections/google/sync" } },
+        { "name": "Disconnect Google Calendar", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/expert/calendar-connections/google" } },
+        { "name": "Connect Microsoft Outlook", "request": { "method": "POST", "description": "Returns authorizationUrl. Open it in a browser while logged in to Microsoft.", "url": "{{baseUrl}}/api/expert/calendar-connections/microsoft/connect" } },
+        { "name": "Sync Microsoft Outlook Now", "request": { "method": "POST", "url": "{{baseUrl}}/api/expert/calendar-connections/microsoft/sync" } },
+        { "name": "Disconnect Microsoft Outlook", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/expert/calendar-connections/microsoft" } }
       ]
     },
     {

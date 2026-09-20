@@ -18,6 +18,8 @@ import DigilockerDocument from './DigilockerDocument.js';
 import Notification from './Notification.js';
 import ExpertSession from './ExpertSession.js';
 import ExpertSecurityChallenge from './ExpertSecurityChallenge.js';
+import ExpertCalendarConnection from './ExpertCalendarConnection.js';
+import BookingCalendarEvent from './seeker/BookingCalendarEvent.js';
 
 // Expert-module relationships (same database connection)
 Expert.hasMany(Credential, { foreignKey: 'expertId', as: 'credentials', onDelete: 'CASCADE' });
@@ -29,6 +31,8 @@ Expert.hasMany(ExpertSession, { foreignKey: 'expertId', as: 'sessions', onDelete
 ExpertSession.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
 Expert.hasMany(ExpertSecurityChallenge, { foreignKey: 'expertId', as: 'securityChallenges', onDelete: 'CASCADE' });
 ExpertSecurityChallenge.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
+Expert.hasMany(ExpertCalendarConnection, { foreignKey: 'expertId', as: 'calendarConnections', onDelete: 'CASCADE' });
+ExpertCalendarConnection.belongsTo(Expert, { foreignKey: 'expertId', as: 'expert' });
 
 Expert.hasOne(DigilockerVerification, {
   foreignKey: 'expertId',
@@ -65,6 +69,8 @@ Booking.hasOne(BookingExtension, { foreignKey: 'bookingId', as: 'extension', onD
 BookingExtension.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 Booking.hasMany(BookingMessage, { foreignKey: 'bookingId', as: 'messages', onDelete: 'CASCADE' });
 BookingMessage.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
+Booking.hasMany(BookingCalendarEvent, { foreignKey: 'bookingId', as: 'calendarEvents', onDelete: 'CASCADE' });
+BookingCalendarEvent.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 
 export {
   expertDb,
@@ -90,4 +96,6 @@ export {
   Notification,
   ExpertSession,
   ExpertSecurityChallenge,
+  ExpertCalendarConnection,
+  BookingCalendarEvent,
 };

@@ -92,9 +92,9 @@ function AuthProviderAccordion({
             />
           </Field>
 
-          {providerKey === "linkedin" ? (
+          {providerKey === "linkedin" || providerKey === "google" ? (
             <Field
-              label="LinkedIn Client Secret"
+              label={`${label} Client Secret`}
               hint="Stored in backend settings and masked in API responses. Leave unchanged to keep it."
             >
               <input
@@ -102,7 +102,7 @@ function AuthProviderAccordion({
                 className={styles.input}
                 value={draft.clientSecret || ""}
                 onChange={(event) => onChange({ ...draft, clientSecret: event.target.value })}
-                placeholder="Enter LinkedIn client secret"
+                placeholder={`Enter ${label} client secret`}
                 autoComplete="new-password"
               />
             </Field>
@@ -140,6 +140,11 @@ function AuthProviderAccordion({
                   onChange={(event) => onChange({ ...draft, enableSignIn: event.target.checked })}
                 />
               </label>
+              <Field label="Google Calendar Redirect URI" hint="Add this exact URI to the Google OAuth web client.">
+                <input className={styles.input} value={draft.redirectUri}
+                  onChange={(event) => onChange({ ...draft, redirectUri: event.target.value })}
+                  placeholder="https://jatayuconnect.in/api/expert/calendar-connections/google/callback" />
+              </Field>
 
               <label className={styles.toggleField}>
                 <span className={styles.toggleCopy}>
@@ -214,6 +219,18 @@ export default function AuthCredentialsPanel({
             }
           />
         ))}
+        <div className={styles.accordion}>
+          <div className={styles.accordionBody}>
+            <span className={styles.accordionTitle}>Microsoft Outlook Calendar</span>
+            <label className={styles.toggleField}><span className={styles.toggleCopy}><span className={styles.toggleLabel}>Enable Outlook Calendar</span></span>
+              <input type="checkbox" className={styles.toggle} checked={draft.microsoftCalendar.enabled}
+                onChange={(event) => onChange({ ...draft, microsoftCalendar: { ...draft.microsoftCalendar, enabled: event.target.checked } })} /></label>
+            {([['Tenant ID', 'tenantId'], ['Client ID', 'clientId'], ['Client Secret', 'clientSecret'], ['Redirect URI', 'redirectUri']] as const).map(([label, key]) => (
+              <Field key={key} label={label}><input type={key === 'clientSecret' ? 'password' : 'text'} className={styles.input}
+                value={draft.microsoftCalendar[key]} onChange={(event) => onChange({ ...draft, microsoftCalendar: { ...draft.microsoftCalendar, [key]: event.target.value } })} /></Field>
+            ))}
+          </div>
+        </div>
         <div className={styles.accordion}>
           <button
             type="button"

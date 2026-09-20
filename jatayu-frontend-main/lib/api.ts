@@ -467,6 +467,20 @@ export const exportExpertAccountData = () => apiFetch<Record<string, unknown>>("
 export const logoutExpertCurrentSession = () => apiFetch<{ message: string }>("/api/expert/account/logout", { method: "POST" });
 export const deleteExpertAccount = (confirmation: string) => apiFetch<{ message: string; recoverable: boolean }>("/api/expert/account", { method: "DELETE", body: JSON.stringify({ confirmation }) });
 
+export type ExpertCalendarConnection = {
+  provider: "google" | "microsoft";
+  available: boolean;
+  status: "connected" | "disconnected" | "error";
+  accountEmail: string | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+};
+
+export const getExpertCalendarConnections = () => apiFetch<{ connections: ExpertCalendarConnection[] }>("/api/expert/calendar-connections", { method: "GET" });
+export const connectExpertCalendar = (provider: "google" | "microsoft") => apiFetch<{ authorizationUrl: string }>(`/api/expert/calendar-connections/${provider}/connect`, { method: "POST" });
+export const disconnectExpertCalendar = (provider: "google" | "microsoft") => apiFetch<{ message: string }>(`/api/expert/calendar-connections/${provider}`, { method: "DELETE" });
+export const syncExpertCalendar = (provider: "google" | "microsoft") => apiFetch<{ message: string; syncedBookings: number }>(`/api/expert/calendar-connections/${provider}/sync`, { method: "POST" });
+
 export type DigilockerKycStartResponse = {
   authorizationUrl: string;
   sandbox?: boolean;
@@ -1364,9 +1378,7 @@ export function normalizeClientRequest(item: Record<string, unknown>): ClientReq
         : undefined,
     expertProfessionalTitle: item.expertProfessionalTitle
       ? String(item.expertProfessionalTitle)
-      : seekerObj.category
-        ? String(seekerObj.category)
-        : undefined,
+      : undefined,
     scheduledStartAt: item.scheduledStartAt ? String(item.scheduledStartAt) : undefined,
     scheduledEndAt: item.scheduledEndAt ? String(item.scheduledEndAt) : undefined,
     rawItem: item,

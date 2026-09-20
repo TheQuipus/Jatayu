@@ -263,10 +263,10 @@ export default function ExpertRequestDetail({ requestId }: { requestId?: string 
             {/* Booking Hero (Client Profile Card & Info Header) */}
             <div className={styles.bookingHero}>
               <article className={styles.bookingExpertCard}>
-                {data.expertProfessionalTitle || data.client.role ? (
+                {data.client.role ? (
                   <div className={styles.expertCategoryBadge}>
                     <span className={styles.expertCategoryDot} />
-                    {(data.expertProfessionalTitle || data.client.role).toUpperCase()}
+                    {data.client.role.toUpperCase()}
                   </div>
                 ) : null}
                 <div className={styles.bookingExpertImageWrap}>

@@ -77,6 +77,13 @@ export type AuthCredentialsSettings = {
   google: ProviderAuthCredentials;
   meta: ProviderAuthCredentials;
   linkedin: ProviderAuthCredentials;
+  microsoftCalendar: {
+    enabled: boolean;
+    tenantId: string;
+    clientId: string;
+    clientSecret: string;
+    redirectUri: string;
+  };
   digilocker: DigilockerSettings;
 };
 
@@ -255,7 +262,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     google: {
       clientId: "",
       clientSecret: "",
-      redirectUri: "https://jatayu.com/api/auth/google/callback",
+      redirectUri: "https://jatayuconnect.in/api/expert/calendar-connections/google/callback",
       authorizedDomains: "jatayu.com",
       enableSignIn: true,
       enableCalendar: false,
@@ -275,6 +282,13 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
       authorizedDomains: "jatayu.com",
       enableSignIn: false,
       enableCalendar: false,
+    },
+    microsoftCalendar: {
+      enabled: false,
+      tenantId: "common",
+      clientId: "",
+      clientSecret: "",
+      redirectUri: "https://jatayuconnect.in/api/expert/calendar-connections/microsoft/callback",
     },
     digilocker: {
       enabled: false,
@@ -468,6 +482,7 @@ function mergeWithDefaults(partial: Partial<AdminSettings>): AdminSettings {
       google: { ...DEFAULT_ADMIN_SETTINGS.auth.google, ...partial.auth?.google },
       meta: { ...DEFAULT_ADMIN_SETTINGS.auth.meta, ...partial.auth?.meta },
       linkedin: { ...DEFAULT_ADMIN_SETTINGS.auth.linkedin, ...partial.auth?.linkedin },
+      microsoftCalendar: { ...DEFAULT_ADMIN_SETTINGS.auth.microsoftCalendar, ...partial.auth?.microsoftCalendar },
       digilocker: { ...DEFAULT_ADMIN_SETTINGS.auth.digilocker, ...partial.auth?.digilocker },
     },
     ai: { ...DEFAULT_ADMIN_SETTINGS.ai, ...partial.ai },
