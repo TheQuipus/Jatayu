@@ -589,6 +589,55 @@
   border-color: color-mix(in srgb, var(--pomegranate) 20%, transparent);
 }
 
+.timeOffConflictContent > p {
+  margin: 0 0 12px;
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.timeOffConflictList {
+  max-height: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.timeOffConflictList li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--mercury);
+  border-radius: 9px;
+  background: var(--seashell);
+  text-align: left;
+}
+
+.timeOffConflictList strong {
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.timeOffConflictList span,
+.timeOffConflictList time {
+  color: var(--dove-gray);
+  font-family: var(--font-body);
+  font-size: 11px;
+}
+
+.timeOffConflictList time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 /* ==========================================================================
    03 Time Off & Holidays Panel
    ========================================================================== */
@@ -852,6 +901,13 @@
   box-shadow: 0 0 0 2px rgba(229, 59, 23, 0.14);
 }
 
+.preferenceError {
+  margin: 14px 22px 0;
+  color: var(--pomegranate);
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
 /* ==========================================================================
    Side Column: Sticky Calendar & Sync
    ========================================================================== */
@@ -1020,6 +1076,149 @@
   height: 6px;
   border-radius: 50%;
   background: var(--silver-chalice);
+}
+
+.selectedDaySessions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--mercury);
+}
+
+.selectedDaySessionsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.selectedDaySessionsHeader h3,
+.selectedDaySessionsHeader p {
+  margin: 0;
+}
+
+.selectedDaySessionsHeader h3 {
+  color: var(--bunker);
+  font-family: var(--font-display);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.selectedDaySessionsHeader p {
+  margin-top: 3px;
+  color: var(--dove-gray);
+  font-family: var(--font-body);
+  font-size: 11px;
+}
+
+.selectedDaySessionsHeader > span {
+  min-width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--seashell);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.selectedSessionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selectedSessionCard {
+  padding: 11px 12px;
+  border: 1px solid var(--mercury);
+  border-radius: 10px;
+  background: var(--seashell);
+}
+
+.selectedSessionTopline,
+.selectedSessionFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sessionStatusActive,
+.sessionStatusScheduled {
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.sessionStatusActive {
+  color: #147a39;
+  background: #e8f7ed;
+}
+
+.sessionStatusScheduled {
+  color: #8a4b08;
+  background: #fff3df;
+}
+
+.selectedSessionTime,
+.selectedSessionFooter span,
+.selectedSessionFooter a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.selectedSessionTime,
+.selectedSessionFooter span {
+  color: var(--dove-gray);
+}
+
+.selectedSessionCard > strong {
+  display: block;
+  margin-top: 9px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.selectedSessionCard > p {
+  margin: 3px 0 9px;
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.selectedSessionFooter a {
+  color: var(--pomegranate);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sessionEmpty,
+.sessionError {
+  margin: 0;
+  padding: 12px;
+  border-radius: 9px;
+  background: var(--seashell);
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.sessionEmpty {
+  color: var(--dove-gray);
+}
+
+.sessionError {
+  color: var(--pomegranate);
 }
 
 /* Calendar Sync Widget */

@@ -27,6 +27,7 @@ import {
 import { expertChat } from '../controllers/bookingChatController.js';
 import { exportAccountData, logoutCurrentSession, softDeleteAccount } from '../controllers/expertAccountController.js';
 import { getSecurity, updateTwoFactor, updatePassword, logoutOtherSessions, revokeSession, requestContactVerification, verifyContact, getNotificationPreferences, updateNotificationPreferences } from '../controllers/expertSecurityController.js';
+import { calendarCallback, connectCalendar, getCalendarConnections, removeCalendarConnection, syncCalendarNow } from '../controllers/expertCalendarController.js';
 
 const router = express.Router();
 const securityAction = (handler) => async (req, res, next) => {
@@ -89,6 +90,11 @@ router.put('/notification-preferences', protect, securityAction(updateNotificati
 router.get('/account/export', protect, securityAction(exportAccountData));
 router.post('/account/logout', protect, securityAction(logoutCurrentSession));
 router.delete('/account', protect, securityAction(softDeleteAccount));
+router.get('/calendar-connections', protect, getCalendarConnections);
+router.post('/calendar-connections/:provider/connect', protect, connectCalendar);
+router.delete('/calendar-connections/:provider', protect, removeCalendarConnection);
+router.post('/calendar-connections/:provider/sync', protect, syncCalendarNow);
+router.get('/calendar-connections/:provider/callback', calendarCallback);
 router.put('/profile', protect, upload.single('profilePhoto'), updateProfile);
 router.post('/submit', protect, submitOnboarding);
 router.post('/onboarding/ai-suggest', protect, suggestOnboardingIdentity);

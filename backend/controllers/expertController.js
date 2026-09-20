@@ -1,6 +1,8 @@
-import { Expert, Credential, Availability, Admin, sequelize } from '../models/index.js';
+import { Op } from 'sequelize';
+import { Expert, Credential, Availability, Admin, Booking, Seeker, sequelize } from '../models/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
-import { validateTimeOff } from '../utils/expertTimeOff.js';
+import { expertTimeOffSlots, validateTimeOff } from '../utils/expertTimeOff.js';
+import { normalizeExpertBookingPreferences } from '../config/expertBookingPreferences.js';
 import {
   AiNotConfiguredError,
   suggestExpertIdentityCopy,
@@ -100,6 +102,28 @@ function normalizeOnboardingMetadata(value) {
   return normalized;
 }
 
+async function findTimeOffBookingConflicts(expertId, timeOff, requestedTimezone) {
+  if (!timeOff?.length) return [];
+  const expert = await Expert.findByPk(expertId, { attributes: ['id', 'timezone'] });
+  if (!expert) return null;
+  const ranges = expertTimeOffSlots({
+    timezone: requestedTimezone || expert.timezone || 'Asia/Kolkata',
+    onboardingMetadata: { timeOff },
+  });
+  return Booking.findAll({
+    where: {
+      expertId,
+      status: 'confirmed',
+      [Op.or]: ranges.map((range) => ({
+        scheduledStartAt: { [Op.lt]: new Date(range.endAt) },
+        scheduledEndAt: { [Op.gt]: new Date(range.startAt) },
+      })),
+    },
+    include: [{ model: Seeker, as: 'seeker', attributes: ['id', 'fullName'] }],
+    order: [['scheduledStartAt', 'ASC']],
+  });
+}
+
 export const updateProfile = async (req, res) => {
   const expertId = req.user.id;
   const body = req.body;
@@ -128,11 +152,38 @@ export const updateProfile = async (req, res) => {
     if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'timeOff')) {
       onboardingMetadata.timeOff = validateTimeOff(onboardingMetadata.timeOff);
     }
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'bookingPreferences')) {
+      onboardingMetadata.bookingPreferences = normalizeExpertBookingPreferences(
+        onboardingMetadata.bookingPreferences,
+      );
+    }
   } catch (error) {
     return res.status(422).json({ message: error.message });
   }
 
   try {
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'timeOff')) {
+      const conflicts = await findTimeOffBookingConflicts(
+        expertId,
+        onboardingMetadata.timeOff,
+        timezone,
+      );
+      if (conflicts === null) return res.status(404).json({ message: 'Expert not found' });
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          message: 'Time off overlaps an active or scheduled session',
+          code: 'TIME_OFF_BOOKING_CONFLICT',
+          conflicts: conflicts.map((booking) => ({
+            bookingId: booking.id,
+            seekerName: booking.seeker?.fullName || 'Seeker',
+            subject: booking.subject,
+            scheduledStartAt: booking.scheduledStartAt,
+            scheduledEndAt: booking.scheduledEndAt,
+          })),
+        });
+      }
+    }
+
     const expertExists = await sequelize.transaction(async (transaction) => {
       const expert = await Expert.findByPk(expertId, { transaction, lock: transaction.LOCK.UPDATE });
       if (!expert) return false;

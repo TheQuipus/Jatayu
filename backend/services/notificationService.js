@@ -13,7 +13,7 @@ export function emitRealtime(recipientType, recipientId, event, payload) {
 }
 
 export function expertNotificationCategory(eventType) {
-  if (/^(booking\.(requested|poked)|session\.extension_requested)/.test(eventType)) return 'sessionRequests';
+  if (/^(booking\.(requested|poked|confirmed)|session\.extension_requested)/.test(eventType)) return 'sessionRequests';
   if (/^(session\.(reminder|starting|completed))/.test(eventType)) return 'reminders';
   if (/^(chat\.|message\.)/.test(eventType)) return 'messages';
   if (/^(payout\.|settlement\.|earning\.)/.test(eventType)) return 'payouts';

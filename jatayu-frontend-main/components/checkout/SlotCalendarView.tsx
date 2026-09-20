@@ -5,8 +5,6 @@ import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import {
   getOffsetFromDate,
   getSlotDateById,
-  isSlotDateOffsetSelectable,
-  MAX_SLOT_DAY_OFFSET,
   parseSlotDateOffset,
   type TimeSlot,
 } from "@/lib/booking";
@@ -28,6 +26,7 @@ type SlotCalendarViewProps = {
   timezone?: string;
   slotDurationMinutes?: number;
   minimumLeadTimeMinutes?: number;
+  advanceBookingWindowDays?: number;
 };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -75,14 +74,14 @@ function dateFromOffset(offset: number): Date {
   return date;
 }
 
-function clampWeekStartOffset(startOffset: number): number {
-  const maxStart = Math.max(0, MAX_SLOT_DAY_OFFSET - 7);
+function clampWeekStartOffset(startOffset: number, maximumDays: number): number {
+  const maxStart = Math.max(0, maximumDays - 7);
   return Math.min(Math.max(0, startOffset), maxStart);
 }
 
-function getRollingWeekStartOffset(offset: number): number {
-  const clamped = Math.max(0, Math.min(offset, MAX_SLOT_DAY_OFFSET - 1));
-  return clampWeekStartOffset(Math.floor(clamped / 7) * 7);
+function getRollingWeekStartOffset(offset: number, maximumDays: number): number {
+  const clamped = Math.max(0, Math.min(offset, maximumDays - 1));
+  return clampWeekStartOffset(Math.floor(clamped / 7) * 7, maximumDays);
 }
 
 function isDayMatchingAvailabilities(date: Date, availabilities?: ExpertAvailability[]): boolean {
@@ -209,7 +208,7 @@ function getMatchingAvailableDays(
   );
   const isRuleBased = Boolean(validRules && validRules.length > 0);
 
-  for (let offset = 0; offset <= maxOffset; offset++) {
+  for (let offset = 0; offset < maxOffset; offset++) {
     const date = dateFromOffset(offset);
     const dateId = `date-${offset}`;
     const dayMatches = isDayMatchingAvailabilities(date, availabilities);
@@ -260,8 +259,9 @@ function buildWeekDays(
   timezone?: string,
   slotDurationMinutes?: number,
   minimumLeadTimeMinutes?: number,
+  maximumDays = 28,
 ): { weekDays: DayColumn[]; startIndex: number; totalMatching: number; allDays: DayColumn[] } {
-  const allDays = getMatchingAvailableDays(today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes);
+  const allDays = getMatchingAvailableDays(today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes, maximumDays);
   let startIndex = allDays.findIndex((d) => d.offset >= weekStartOffset);
   if (startIndex === -1) startIndex = 0;
 
@@ -277,6 +277,7 @@ function buildMonthCells(
   timezone?: string,
   slotDurationMinutes?: number,
   minimumLeadTimeMinutes?: number,
+  maximumDays = 28,
 ): MonthCell[] {
   const firstOfMonth = startOfMonth(viewMonth);
   const gridStart = new Date(firstOfMonth);
@@ -288,7 +289,7 @@ function buildMonthCells(
     const offset = getOffsetFromDate(date);
     const dateId = `date-${offset}`;
     const dayMatches = isDayMatchingAvailabilities(date, availabilities);
-    const selectable = isSlotDateOffsetSelectable(offset) && dayMatches;
+    const selectable = offset >= 0 && offset < maximumDays && dayMatches;
     const availableCount = selectable
       ? getSlotsForDateAndAvailabilities(
           date, dateId, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes,
@@ -338,13 +339,15 @@ export default function SlotCalendarView({
   timezone,
   slotDurationMinutes,
   minimumLeadTimeMinutes,
+  advanceBookingWindowDays = 28,
 }: SlotCalendarViewProps) {
+  const maximumDays = Math.max(1, Math.min(365, advanceBookingWindowDays));
   const today = useMemo(() => startOfDay(new Date()), []);
   const selectedOffset = parseSlotDateOffset(selectedDate);
 
   const [viewMode, setViewMode] = useState<CalendarViewMode>("week");
   const [weekStartOffset, setWeekStartOffset] = useState(() =>
-    getRollingWeekStartOffset(selectedOffset),
+    getRollingWeekStartOffset(selectedOffset, maximumDays),
   );
   const [viewMonth, setViewMonth] = useState(() =>
     startOfMonth(dateFromOffset(selectedOffset)),
@@ -368,26 +371,31 @@ export default function SlotCalendarView({
   const { weekDays, startIndex, totalMatching, allDays } = useMemo(
     () => buildWeekDays(
       weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes,
+      maximumDays,
     ),
-    [weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes],
+    [weekStartOffset, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes, maximumDays],
   );
   const monthCells = useMemo(
     () => buildMonthCells(
       viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes,
+      maximumDays,
     ),
-    [viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes],
+    [viewMonth, today, availabilities, occupiedSlots, timezone, slotDurationMinutes, minimumLeadTimeMinutes, maximumDays],
   );
 
   const availableMonths = useMemo(() => {
     const result: { label: string; date: Date }[] = [];
     const start = startOfMonth(today);
-    for (let i = 0; i < 6; i++) {
+    const finalDate = dateFromOffset(maximumDays - 1);
+    const monthCount = (finalDate.getFullYear() - start.getFullYear()) * 12
+      + finalDate.getMonth() - start.getMonth() + 1;
+    for (let i = 0; i < monthCount; i++) {
       const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
       const label = d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
       result.push({ label, date: d });
     }
     return result;
-  }, [today]);
+  }, [maximumDays, today]);
 
   const selectedMonthObj = availableMonths.find(
     (m) =>
@@ -412,7 +420,7 @@ export default function SlotCalendarView({
     viewMode === "week"
       ? startIndex + 7 < totalMatching
       : startOfMonth(viewMonth).getTime() <
-        startOfMonth(dateFromOffset(MAX_SLOT_DAY_OFFSET - 1)).getTime();
+        startOfMonth(dateFromOffset(maximumDays - 1)).getTime();
 
   const handlePrev = () => {
     if (!canGoPrev) return;
@@ -437,7 +445,7 @@ export default function SlotCalendarView({
   const handleViewModeChange = (mode: CalendarViewMode) => {
     setViewMode(mode);
     if (mode === "week") {
-      setWeekStartOffset(getRollingWeekStartOffset(selectedOffset));
+      setWeekStartOffset(getRollingWeekStartOffset(selectedOffset, maximumDays));
     } else {
       setViewMonth(startOfMonth(dateFromOffset(selectedOffset)));
     }
@@ -446,7 +454,7 @@ export default function SlotCalendarView({
   const handleMonthDaySelect = (cell: MonthCell) => {
     if (!cell.selectable) return;
     onSelectDate(cell.dateId);
-    setWeekStartOffset(getRollingWeekStartOffset(cell.offset));
+    setWeekStartOffset(getRollingWeekStartOffset(cell.offset, maximumDays));
   };
 
   const handleSlotClick = (dateId: string, slot: TimeSlot) => {
@@ -471,7 +479,7 @@ export default function SlotCalendarView({
     const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
     const targetOffset = Math.max(0, diffDays);
 
-    setWeekStartOffset(clampWeekStartOffset(getRollingWeekStartOffset(targetOffset)));
+    setWeekStartOffset(clampWeekStartOffset(getRollingWeekStartOffset(targetOffset, maximumDays), maximumDays));
     onSelectDate(`date-${targetOffset}`);
   };
 

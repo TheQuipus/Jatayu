@@ -68,6 +68,7 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     { name: 'Health' },
     { name: 'Expert Auth' },
     { name: 'Expert' },
+    { name: 'Calendar Sync' },
     { name: 'Seeker Auth' },
     { name: 'Seeker' },
     { name: 'Bookings' },
@@ -263,7 +264,10 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     '/api/seeker/experts/{expertId}/booking-options': {
       get: operation({
         tag: 'Bookings', summary: 'Get expert availability and booking options', security: bearerSecurity,
-        parameters: [idParameter('expertId', 'Expert ID')],
+        parameters: [
+          idParameter('expertId', 'Expert ID'),
+          { name: 'days', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 90, default: 28 }, description: 'Requested availability range. The expert advance-booking window may reduce it.' },
+        ],
       }),
     },
     '/api/seeker/bookings': {
@@ -402,6 +406,25 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
         tag: 'Transcription', summary: 'Get any stored booking transcript as an administrator', security: bearerSecurity,
         parameters: [idParameter('bookingId', 'Booking ID')],
       }),
+    },
+    '/api/expert/calendar-connections': {
+      get: operation({ tag: 'Calendar Sync', summary: 'List Google and Microsoft calendar connection status', security: bearerSecurity }),
+    },
+    '/api/expert/calendar-connections/{provider}/connect': {
+      post: operation({ tag: 'Calendar Sync', summary: 'Start delegated calendar OAuth connection', security: bearerSecurity,
+        parameters: [{ in: 'path', name: 'provider', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }] }),
+    },
+    '/api/expert/calendar-connections/{provider}/callback': {
+      get: operation({ tag: 'Calendar Sync', summary: 'OAuth provider callback (redirect URI)',
+        parameters: [{ in: 'path', name: 'provider', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }, { in: 'query', name: 'code', schema: { type: 'string' } }, { in: 'query', name: 'state', schema: { type: 'string' } }] }),
+    },
+    '/api/expert/calendar-connections/{provider}/sync': {
+      post: operation({ tag: 'Calendar Sync', summary: 'Synchronize future confirmed bookings now', security: bearerSecurity,
+        parameters: [{ in: 'path', name: 'provider', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }] }),
+    },
+    '/api/expert/calendar-connections/{provider}': {
+      delete: operation({ tag: 'Calendar Sync', summary: 'Disconnect an external calendar', security: bearerSecurity,
+        parameters: [{ in: 'path', name: 'provider', required: true, schema: { type: 'string', enum: ['google', 'microsoft'] } }] }),
     },
     '/api/payments/razorpay/config': {
       get: operation({ tag: 'Payments', summary: 'Get public Razorpay Checkout configuration' }),

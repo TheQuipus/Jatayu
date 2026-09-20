@@ -10,12 +10,26 @@ import {
 import { getBookingPokeConfig } from '../../config/bookingPokes.js';
 import { sendNotification } from '../../services/notificationService.js';
 
-function notifyExpertOfBooking(booking, seekerName) {
-  if (booking.status !== 'awaiting_expert') return Promise.resolve();
-  return sendNotification({ recipientType: 'expert', recipientId: booking.expertId,
-    eventType: 'booking.requested', dedupeKey: `booking.requested:${booking.id}`,
-    title: 'New booking request', body: `${seekerName || 'A seeker'} requested a ${booking.consultationType} consultation.`,
-    href: `/expert/requests/${booking.id}/`, data: { bookingId: booking.id } });
+function notifyBookingCreated(booking, seekerName) {
+  if (booking.status === 'awaiting_expert') {
+    return sendNotification({ recipientType: 'expert', recipientId: booking.expertId,
+      eventType: 'booking.requested', dedupeKey: `booking.requested:${booking.id}`,
+      title: 'New booking request', body: `${seekerName || 'A seeker'} requested a ${booking.consultationType} consultation.`,
+      href: `/expert/requests/${booking.id}/`, data: { bookingId: booking.id } });
+  }
+  if (booking.status === 'confirmed') {
+    return Promise.all([
+      sendNotification({ recipientType: 'expert', recipientId: booking.expertId,
+        eventType: 'booking.confirmed', dedupeKey: `booking.auto_confirmed:expert:${booking.id}`,
+        title: 'Booking automatically confirmed', body: `${seekerName || 'A seeker'} booked an available ${booking.consultationType} session.`,
+        href: `/expert/requests/${booking.id}/`, data: { bookingId: booking.id } }),
+      sendNotification({ recipientType: 'seeker', recipientId: booking.seekerId,
+        eventType: 'booking.accepted', dedupeKey: `booking.auto_confirmed:seeker:${booking.id}`,
+        title: 'Booking confirmed', body: 'Your booking was automatically accepted by the expert.',
+        href: `/seeker/bookings/${booking.id}/`, data: { bookingId: booking.id } }),
+    ]);
+  }
+  return Promise.resolve();
 }
 
 const ERROR_RESPONSES = {
@@ -31,6 +45,7 @@ const ERROR_RESPONSES = {
   EXPERT_UNAVAILABLE: [409, 'Expert is not available at the requested time'],
   SLOT_UNAVAILABLE: [409, 'This slot is no longer available'],
   FORMAT_NOT_OFFERED: [422, 'The expert does not offer the selected consultation type'],
+  BOOKING_OUTSIDE_ADVANCE_WINDOW: [422, 'The requested time is outside the expert booking window'],
   MISSING_PAYMENT_FIELDS: [400, 'Razorpay order ID, payment ID, and signature are required'],
   INVALID_PAYMENT_SIGNATURE: [400, 'Invalid Razorpay payment signature'],
   PAYMENT_MISMATCH: [409, 'Payment does not match this booking'],
@@ -50,14 +65,17 @@ function handleBookingError(error, res, operation) {
     ...(error.minimumLeadTimeMinutes !== undefined
       ? { minimumLeadTimeMinutes: error.minimumLeadTimeMinutes, earliestStartAt: error.earliestStartAt }
       : {}),
+    ...(error.advanceBookingWindowDays !== undefined
+      ? { advanceBookingWindowDays: error.advanceBookingWindowDays, latestStartAt: error.latestStartAt }
+      : {}),
   });
 }
 
 export async function getBookingOptions(req, res) {
   try {
     const requestedDays = req.query.days === undefined ? 28 : Number.parseInt(req.query.days, 10);
-    if (!Number.isInteger(requestedDays) || requestedDays < 1 || requestedDays > 31) {
-      return res.status(422).json({ message: 'days must be between 1 and 31' });
+    if (!Number.isInteger(requestedDays) || requestedDays < 1 || requestedDays > 90) {
+      return res.status(422).json({ message: 'days must be between 1 and 90' });
     }
     const options = await getExpertBookingOptions(req.params.expertId, req.query.from, requestedDays);
     if (!options) return res.status(404).json({ message: 'Approved expert not found' });
@@ -71,7 +89,7 @@ export async function createOrder(req, res) {
   try {
     const result = await createBookingOrder(req.user.id, req.body);
     const payment = result.payment;
-    if (!result.reused) void notifyExpertOfBooking(result.booking, req.user.fullName).catch(console.error);
+    if (!result.reused) void notifyBookingCreated(result.booking, req.user.fullName).catch(console.error);
     return res.status(result.reused ? 200 : 201).json({
       booking: serializeBooking(result.booking, await getBookingPokeConfig()),
       checkoutRequired: result.booking.payableAmount > 0
@@ -91,11 +109,12 @@ export async function createOrder(req, res) {
 export async function verifyPayment(req, res) {
   try {
     const booking = await verifyBookingPayment(req.user.id, req.params.bookingId, req.body);
-    void notifyExpertOfBooking(booking, req.user.fullName).catch(console.error);
     return res.status(200).json({
-      message: booking.status === 'awaiting_expert'
-        ? 'Payment confirmed and booking request sent to the expert'
-        : 'Payment verified and awaiting capture confirmation',
+      message: booking.status === 'confirmed'
+        ? 'Payment confirmed and booking automatically accepted'
+        : booking.status === 'awaiting_expert'
+          ? 'Payment confirmed and booking request sent to the expert'
+          : 'Payment verified and awaiting capture confirmation',
       booking: serializeBooking(booking, await getBookingPokeConfig()),
     });
   } catch (error) {

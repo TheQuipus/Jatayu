@@ -33,6 +33,43 @@ export type BackendExpertProfile = {
   submittedAt?: string | null;
 };
 
+export type ExpertBookingPreferences = {
+  autoAcceptBookings: boolean;
+  allowInstantBookings: boolean;
+  syncCalendar: boolean;
+  automatedReminders: boolean;
+  minimumNoticeMinutes: number;
+  advanceBookingWindowDays: number;
+};
+
+export const DEFAULT_EXPERT_BOOKING_PREFERENCES: ExpertBookingPreferences = {
+  autoAcceptBookings: false,
+  allowInstantBookings: false,
+  syncCalendar: true,
+  automatedReminders: true,
+  minimumNoticeMinutes: 120,
+  advanceBookingWindowDays: 90,
+};
+
+export function mapExpertBookingPreferences(profile: BackendExpertProfile): ExpertBookingPreferences {
+  const metadata = asRecord(profile.onboardingMetadata);
+  const stored = asRecord(metadata.bookingPreferences);
+  const minimumNoticeMinutes = Number(stored.minimumNoticeMinutes);
+  const advanceBookingWindowDays = Number(stored.advanceBookingWindowDays);
+  return {
+    autoAcceptBookings: stored.autoAcceptBookings === true,
+    allowInstantBookings: stored.allowInstantBookings === true,
+    syncCalendar: true,
+    automatedReminders: stored.automatedReminders !== false,
+    minimumNoticeMinutes: Number.isInteger(minimumNoticeMinutes) && minimumNoticeMinutes >= 0
+      ? minimumNoticeMinutes
+      : DEFAULT_EXPERT_BOOKING_PREFERENCES.minimumNoticeMinutes,
+    advanceBookingWindowDays: Number.isInteger(advanceBookingWindowDays) && advanceBookingWindowDays > 0
+      ? advanceBookingWindowDays
+      : DEFAULT_EXPERT_BOOKING_PREFERENCES.advanceBookingWindowDays,
+  };
+}
+
 export type ExpertDashboardProfile = {
   profile: ExpertProfileData;
   reviewStatus: string;

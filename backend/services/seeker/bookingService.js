@@ -13,8 +13,13 @@ import {
 import { getRazorpayClient } from '../../config/razorpay.js';
 import { verifyRazorpayPaymentSignature } from '../payment/razorpayService.js';
 import { getBookingRules } from '../../config/bookingRules.js';
+import {
+  effectiveExpertLeadTimeMinutes,
+  getExpertBookingPreferences,
+} from '../../config/expertBookingPreferences.js';
 import { getAgoraSessionAccess } from '../agoraService.js';
 import { sendNotification } from '../notificationService.js';
+import { syncBookingToExternalCalendars } from '../expertCalendarService.js';
 import {
   DEFAULT_BOOKING_POKE_CONFIG,
   getBookingPokeConfig,
@@ -216,7 +221,14 @@ export async function getExpertBookingOptions(expertIdentifier, from, days = 28)
   await expirePendingBookings();
   const start = from ? new Date(from) : new Date();
   if (Number.isNaN(start.getTime())) throw new Error('INVALID_FROM_DATE');
-  const end = new Date(start.getTime() + days * 86400000);
+  const bookingRules = await getBookingRules();
+  const preferences = getExpertBookingPreferences(expert);
+  const effectiveDays = Math.min(days, preferences.advanceBookingWindowDays);
+  const minimumLeadTimeMinutes = effectiveExpertLeadTimeMinutes(
+    expert,
+    bookingRules.minimumLeadTimeMinutes,
+  );
+  const end = new Date(start.getTime() + effectiveDays * 86400000);
   const occupied = await Booking.findAll({
     where: {
       expertId: expert.id,
@@ -227,12 +239,14 @@ export async function getExpertBookingOptions(expertIdentifier, from, days = 28)
     order: [['scheduledStartAt', 'ASC']],
   });
   const prices = parseJson(expert.formatPrices, {});
-  const bookingRules = await getBookingRules();
   return {
     expertId: expert.id,
     timezone: expert.timezone || 'Asia/Kolkata',
     slotDurationMinutes: SLOT_DURATION_MINUTES,
-    minimumLeadTimeMinutes: bookingRules.minimumLeadTimeMinutes,
+    minimumLeadTimeMinutes,
+    advanceBookingWindowDays: preferences.advanceBookingWindowDays,
+    autoAcceptBookings: preferences.autoAcceptBookings,
+    allowInstantBookings: preferences.allowInstantBookings,
     formats: (parseJson(expert.selectedFormats, []) || []).map(normalizeType),
     formatPrices: prices,
     availabilities: (expert.availabilities || []).map((item) => ({
@@ -264,17 +278,30 @@ export async function createBookingOrder(seekerId, input) {
     throw new Error('INVALID_BOOKING_DURATION');
   }
   const startAt = new Date(input.scheduledStartAt);
+  const expert = await resolveApprovedExpert(input.expertId);
+  if (!expert) throw new Error('EXPERT_NOT_FOUND');
   const bookingRules = await getBookingRules();
-  const earliestStartAt = Date.now() + bookingRules.minimumLeadTimeMinutes * 60 * 1000;
+  const preferences = getExpertBookingPreferences(expert);
+  const effectiveLeadTimeMinutes = effectiveExpertLeadTimeMinutes(
+    expert,
+    bookingRules.minimumLeadTimeMinutes,
+  );
+  const now = Date.now();
+  const earliestStartAt = now + effectiveLeadTimeMinutes * 60 * 1000;
   if (Number.isNaN(startAt.getTime()) || startAt.getTime() < earliestStartAt) {
     const error = new Error('INVALID_BOOKING_TIME');
-    error.minimumLeadTimeMinutes = bookingRules.minimumLeadTimeMinutes;
+    error.minimumLeadTimeMinutes = effectiveLeadTimeMinutes;
     error.earliestStartAt = new Date(earliestStartAt).toISOString();
     throw error;
   }
+  const latestStartAt = now + preferences.advanceBookingWindowDays * 86400000;
+  if (startAt.getTime() >= latestStartAt) {
+    const error = new Error('BOOKING_OUTSIDE_ADVANCE_WINDOW');
+    error.advanceBookingWindowDays = preferences.advanceBookingWindowDays;
+    error.latestStartAt = new Date(latestStartAt).toISOString();
+    throw error;
+  }
   const endAt = new Date(startAt.getTime() + requestedDuration * 60000);
-  const expert = await resolveApprovedExpert(input.expertId);
-  if (!expert) throw new Error('EXPERT_NOT_FOUND');
   if (!isWithinExpertAvailability(expert, startAt, requestedDuration)) throw new Error('EXPERT_UNAVAILABLE');
   const consultationFee = priceFor(expert, consultationType);
   if (!consultationFee) throw new Error('FORMAT_NOT_OFFERED');
@@ -311,6 +338,8 @@ export async function createBookingOrder(seekerId, input) {
         : 0;
       const creditAmount = creditsUsed * creditValue;
       const payableAmount = totalAmount - creditAmount;
+      const paidWithCredits = payableAmount === 0;
+      const autoConfirmed = paidWithCredits && preferences.autoAcceptBookings;
       const created = await Booking.create({
         id: bookingId,
         seekerId,
@@ -333,11 +362,12 @@ export async function createBookingOrder(seekerId, input) {
         creditAmount,
         totalAmount,
         payableAmount,
-        status: payableAmount === 0 ? 'awaiting_expert' : 'payment_pending',
-        paymentStatus: payableAmount === 0 ? 'paid_with_credits' : 'pending',
-        expertRequestedAt: payableAmount === 0 ? new Date() : null,
-        confirmedAt: null,
-        expiresAt: payableAmount === 0 ? null : new Date(Date.now() + BOOKING_EXPIRY_MINUTES * 60000),
+        status: paidWithCredits ? (autoConfirmed ? 'confirmed' : 'awaiting_expert') : 'payment_pending',
+        paymentStatus: paidWithCredits ? 'paid_with_credits' : 'pending',
+        expertRequestedAt: paidWithCredits ? new Date() : null,
+        expertRespondedAt: autoConfirmed ? new Date() : null,
+        confirmedAt: autoConfirmed ? new Date() : null,
+        expiresAt: paidWithCredits ? null : new Date(Date.now() + BOOKING_EXPIRY_MINUTES * 60000),
       }, { transaction });
 
       if (creditsUsed > 0) {
@@ -365,7 +395,10 @@ export async function createBookingOrder(seekerId, input) {
     throw error;
   }
 
-  if (booking.payableAmount === 0) return { booking, payment: null, reused: false };
+  if (booking.payableAmount === 0) {
+    if (booking.status === 'confirmed') void syncBookingToExternalCalendars(booking).catch((error) => console.error('Calendar sync error:', error.message));
+    return { booking, payment: null, reused: false };
+  }
   try {
     const order = await getRazorpayClient().orders.create({
       amount: booking.payableAmount,
@@ -422,15 +455,21 @@ export async function verifyBookingPayment(seekerId, bookingId, input) {
 }
 
 export async function confirmBookingPayment(bookingId, paymentId) {
+  const pendingBooking = await Booking.findByPk(bookingId, { attributes: ['expertId'] });
+  const expert = pendingBooking
+    ? await Expert.findByPk(pendingBooking.expertId, { attributes: ['id', 'onboardingMetadata'] })
+    : null;
+  const autoAcceptBookings = getExpertBookingPreferences(expert).autoAcceptBookings;
   const booking = await seekerDb.transaction(async (transaction) => {
     const booking = await Booking.findByPk(bookingId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!booking || ['awaiting_expert', 'confirmed', 'declined'].includes(booking.status)) return booking;
     const payment = await BookingPayment.findOne({ where: { bookingId }, transaction, lock: transaction.LOCK.UPDATE });
     if (!payment) return null;
-    booking.status = 'awaiting_expert';
+    booking.status = autoAcceptBookings ? 'confirmed' : 'awaiting_expert';
     booking.paymentStatus = 'paid';
     booking.expertRequestedAt = booking.expertRequestedAt || new Date();
-    booking.confirmedAt = null;
+    booking.expertRespondedAt = autoAcceptBookings ? (booking.expertRespondedAt || new Date()) : null;
+    booking.confirmedAt = autoAcceptBookings ? (booking.confirmedAt || new Date()) : null;
     booking.expiresAt = null;
     payment.status = 'paid';
     payment.razorpayPaymentId = paymentId || payment.razorpayPaymentId;
@@ -445,6 +484,19 @@ export async function confirmBookingPayment(bookingId, paymentId) {
       eventType: 'booking.requested', dedupeKey: `booking.requested:${booking.id}`,
       title: 'New booking request', body: `${seeker?.fullName || 'A seeker'} requested a ${booking.consultationType} consultation.`,
       href: `/expert/requests/${booking.id}/`, data: { bookingId: booking.id } });
+  } else if (booking?.status === 'confirmed') {
+    const seeker = await Seeker.findByPk(booking.seekerId, { attributes: ['fullName'] });
+    await Promise.all([
+      sendNotification({ recipientType: 'expert', recipientId: booking.expertId,
+        eventType: 'booking.confirmed', dedupeKey: `booking.auto_confirmed:expert:${booking.id}`,
+        title: 'Booking automatically confirmed', body: `${seeker?.fullName || 'A seeker'} booked an available ${booking.consultationType} session.`,
+        href: `/expert/requests/${booking.id}/`, data: { bookingId: booking.id } }),
+      sendNotification({ recipientType: 'seeker', recipientId: booking.seekerId,
+        eventType: 'booking.accepted', dedupeKey: `booking.auto_confirmed:seeker:${booking.id}`,
+        title: 'Booking confirmed', body: 'Your booking was automatically accepted by the expert.',
+        href: `/seeker/bookings/${booking.id}/`, data: { bookingId: booking.id } }),
+    ]);
+    void syncBookingToExternalCalendars(booking).catch((error) => console.error('Calendar sync error:', error.message));
   }
   return booking;
 }

@@ -1,6 +1,7 @@
 import { Booking, BookingExtension, seekerDb } from '../models/index.js';
 import { getRazorpayClient } from '../config/razorpay.js';
 import { verifyRazorpayPaymentSignature } from './payment/razorpayService.js';
+import { syncBookingToExternalCalendars } from './expertCalendarService.js';
 
 export async function approveExtension(expertId, bookingId, decision, minutes) {
   const booking = await Booking.findOne({ where: { id: bookingId, expertId, status: 'confirmed' } });
@@ -33,7 +34,7 @@ export async function verifyExtensionPayment(seekerId, bookingId, input) {
   if (!verifyRazorpayPaymentSignature({ orderId: input.razorpayOrderId, paymentId: input.razorpayPaymentId, signature: input.razorpaySignature })) throw new Error('INVALID_PAYMENT_SIGNATURE');
   const payment = await getRazorpayClient().payments.fetch(input.razorpayPaymentId);
   if (payment.order_id !== extension.razorpayOrderId || Number(payment.amount) !== extension.totalAmount || payment.status !== 'captured') throw new Error('PAYMENT_MISMATCH');
-  return seekerDb.transaction(async (transaction) => {
+  const result = await seekerDb.transaction(async (transaction) => {
     const lockedBooking = await Booking.findByPk(bookingId, { transaction, lock: transaction.LOCK.UPDATE });
     const lockedExtension = await BookingExtension.findOne({ where: { bookingId }, transaction, lock: transaction.LOCK.UPDATE });
     if (lockedExtension.status === 'paid') return { booking: lockedBooking, extension: lockedExtension };
@@ -44,4 +45,6 @@ export async function verifyExtensionPayment(seekerId, bookingId, input) {
     await lockedExtension.save({ transaction }); await lockedBooking.save({ transaction });
     return { booking: lockedBooking, extension: lockedExtension };
   });
+  void syncBookingToExternalCalendars(result.booking).catch((error) => console.error('Calendar sync error:', error.message));
+  return result;
 }

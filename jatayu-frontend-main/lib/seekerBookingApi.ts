@@ -14,6 +14,9 @@ export type BookingOptions = {
   timezone: string;
   slotDurationMinutes: number;
   minimumLeadTimeMinutes: number;
+  advanceBookingWindowDays: number;
+  autoAcceptBookings: boolean;
+  allowInstantBookings: boolean;
   formats: string[];
   formatPrices: Record<string, string | number>;
   availabilities: BookingAvailability[];
@@ -180,7 +183,7 @@ async function bookingFetch<T>(path: string, options: RequestInit = {}): Promise
 
 export async function fetchBookingOptions(expertId: string): Promise<BookingOptions> {
   const response = await bookingFetch<{ bookingOptions: BookingOptions }>(
-    `/api/seeker/experts/${encodeURIComponent(expertId)}/booking-options?days=28`,
+    `/api/seeker/experts/${encodeURIComponent(expertId)}/booking-options?days=90`,
   );
   return response.bookingOptions;
 }

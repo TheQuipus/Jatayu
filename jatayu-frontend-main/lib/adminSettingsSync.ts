@@ -67,8 +67,8 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
 
   const google: ProviderAuthCredentials = {
     clientId: readString(map, "GOOGLE_CLIENT_ID"),
-    clientSecret: "",
-    redirectUri: readString(map, "GOOGLE_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.google.redirectUri),
+    clientSecret: readString(map, "GOOGLE_CALENDAR_CLIENT_SECRET"),
+    redirectUri: readString(map, "GOOGLE_CALENDAR_REDIRECT_URI", readString(map, "GOOGLE_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.google.redirectUri)),
     authorizedDomains: readString(
       map,
       "GOOGLE_AUTHORIZED_DOMAINS",
@@ -153,6 +153,13 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
       google,
       meta,
       linkedin,
+      microsoftCalendar: {
+        enabled: readBool(map, "MICROSOFT_CALENDAR_ENABLED", false),
+        tenantId: readString(map, "MICROSOFT_CALENDAR_TENANT_ID", "common"),
+        clientId: readString(map, "MICROSOFT_CALENDAR_CLIENT_ID"),
+        clientSecret: readString(map, "MICROSOFT_CALENDAR_CLIENT_SECRET"),
+        redirectUri: readString(map, "MICROSOFT_CALENDAR_REDIRECT_URI", DEFAULT_ADMIN_SETTINGS.auth.microsoftCalendar.redirectUri),
+      },
       digilocker: {
         enabled: readBool(map, "DIGILOCKER_ENABLED", false),
         sandbox: readBool(map, "DIGILOCKER_SANDBOX", true),
@@ -191,6 +198,13 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     GOOGLE_AUTHORIZED_DOMAINS: settings.auth.google.authorizedDomains,
     GOOGLE_LOGIN_ENABLED: String(settings.auth.google.enableSignIn),
     GOOGLE_ENABLE_CALENDAR: String(settings.auth.google.enableCalendar),
+    GOOGLE_CALENDAR_CLIENT_SECRET: settings.auth.google.clientSecret || "",
+    GOOGLE_CALENDAR_REDIRECT_URI: settings.auth.google.redirectUri,
+    MICROSOFT_CALENDAR_ENABLED: String(settings.auth.microsoftCalendar.enabled),
+    MICROSOFT_CALENDAR_TENANT_ID: settings.auth.microsoftCalendar.tenantId,
+    MICROSOFT_CALENDAR_CLIENT_ID: settings.auth.microsoftCalendar.clientId,
+    MICROSOFT_CALENDAR_CLIENT_SECRET: settings.auth.microsoftCalendar.clientSecret,
+    MICROSOFT_CALENDAR_REDIRECT_URI: settings.auth.microsoftCalendar.redirectUri,
     LINKEDIN_CLIENT_ID: settings.auth.linkedin.clientId,
     LINKEDIN_CLIENT_SECRET: settings.auth.linkedin.clientSecret || "",
     LINKEDIN_REDIRECT_URIS: settings.auth.linkedin.redirectUri,
