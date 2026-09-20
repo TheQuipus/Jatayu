@@ -74,11 +74,13 @@ export default function NotificationPanel() {
       current.map((n) => (n.id === id ? { ...n, unread: false } : n))
     );
     void readNotification(id).catch(() => undefined);
+    window.dispatchEvent(new CustomEvent("jatayu:notifications-changed"));
   };
 
   const markAllRead = () => {
     setNotifications((current) => current.map((n) => ({ ...n, unread: false })));
     void readAllNotifications().catch(() => undefined);
+    window.dispatchEvent(new CustomEvent("jatayu:notifications-changed", { detail: { unreadCount: 0 } }));
   };
 
   useEffect(() => {

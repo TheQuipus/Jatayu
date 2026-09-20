@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   CalendarClock,
@@ -26,24 +27,10 @@ type ExpertNotification = {
   unread: boolean;
   action?: string;
   secondaryAction?: string;
+  href?: string | null;
 };
 
 type CategoryFilter = "all" | "requests_sessions" | "message" | "payment" | "review";
-
-const INITIAL_NOTIFICATIONS: ExpertNotification[] = [
-  { id: 1, type: "request", title: "New Session Request", description: "Riya Mehta has requested a 45-minute product strategy consultation for Tuesday morning.", time: "2 min ago", group: "New", unread: true, action: "Accept", secondaryAction: "View details" },
-  { id: 2, type: "message", title: "New Message from Aarav Malhotra", description: "I’ve shared the revised brief. Could you take a quick look before our call?", time: "18 min ago", group: "New", unread: true, action: "Reply", secondaryAction: "Open chat" },
-  { id: 3, type: "payment", title: "Payout Processed", description: "Your payout of ₹4,800 for Session #JT-2048 has been processed successfully.", time: "42 min ago", group: "New", unread: true, action: "View earnings" },
-  { id: 4, type: "session", title: "Session Starts Soon", description: "Your session with Kabir Shah begins today at 4:30 PM. Join a few minutes early.", time: "1 hr ago", group: "New", unread: true, action: "View session" },
-  { id: 5, type: "request", title: "Request Rescheduled", description: "Ananya Bose moved the career coaching session to Friday, 11:00 AM.", time: "2 hrs ago", group: "New", unread: true, action: "Review change" },
-  { id: 6, type: "message", title: "New Message from Sneha Iyer", description: "Thank you for the resource list—it was exactly what I needed.", time: "Yesterday", group: "Earlier", unread: false },
-  { id: 7, type: "review", title: "New 5-star Review", description: "Devika left a review: “Clear, practical advice and a very thoughtful session.”", time: "Yesterday", group: "Earlier", unread: false, action: "View review" },
-  { id: 8, type: "system", title: "Complete Your Expert Profile", description: "Add a short introduction video to improve your profile visibility and trust score.", time: "2 days ago", group: "Earlier", unread: false, action: "Update profile" },
-  { id: 9, type: "session", title: "Session Completed", description: "Your mentorship session with Neel Kapoor is now marked complete.", time: "3 days ago", group: "Earlier", unread: false },
-  { id: 10, type: "payment", title: "Invoice Available", description: "Your invoice for the July payout cycle is ready to download.", time: "5 days ago", group: "Earlier", unread: false, action: "View invoice" },
-  { id: 11, type: "message", title: "Follow-up from Ishaan", description: "Would you be available for another session next week?", time: "6 days ago", group: "Earlier", unread: false },
-  { id: 12, type: "system", title: "Availability Reminder", description: "Your calendar has no open slots next week. Add availability to keep receiving requests.", time: "1 week ago", group: "Earlier", unread: false, action: "Add availability" },
-];
 
 const ICONS = {
   request: UserRound,
@@ -62,18 +49,49 @@ const SUMMARY: { id: CategoryFilter; label: string; icon: typeof Bell; toneClass
   { id: "review", label: "Reviews", icon: Star, toneClass: "review" },
 ];
 
+function mapNotification(item: AppNotification): ExpertNotification {
+  const eventType = item.eventType || "";
+  const bookingId = typeof item.data?.bookingId === "string" ? item.data.bookingId : undefined;
+  const type: NotificationType = /^(booking\.)/.test(eventType)
+    ? "request"
+    : /^(session\.)/.test(eventType)
+      ? "session"
+      : /^(chat\.|message\.)/.test(eventType)
+        ? "message"
+        : /^(payment\.|payout\.|earning\.|settlement\.|refund\.)/.test(eventType)
+          ? "payment"
+          : /^(review\.)/.test(eventType)
+            ? "review"
+            : "system";
+  const href = item.href || (bookingId ? `/expert/requests/${bookingId}/` : null);
+
+  return {
+    id: item.id,
+    type,
+    title: item.title,
+    description: item.body,
+    time: new Date(item.createdAt).toLocaleString(),
+    group: Date.now() - new Date(item.createdAt).getTime() < 86400000 ? "New" : "Earlier",
+    unread: !item.readAt,
+    action: href ? "View details" : undefined,
+    href,
+  };
+}
+
 export default function ExpertNotifications() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<ExpertNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [statusFilter, setStatusFilter] = useState<"all" | "unread" | "read">("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [pushUpdates, setPushUpdates] = useState(true);
 
-  const unreadCount = notifications.filter((notification) => notification.unread).length;
-  const readCount = notifications.length - unreadCount;
+  const readCount = Math.max(0, totalCount - unreadCount);
 
   const getCategoryCount = (id: CategoryFilter) => {
-    if (id === "all") return notifications.length;
+    if (id === "all") return totalCount;
     if (id === "requests_sessions") {
       return notifications.filter((n) => n.type === "request" || n.type === "session").length;
     }
@@ -100,25 +118,39 @@ export default function ExpertNotifications() {
     });
   }, [categoryFilter, notifications, statusFilter]);
 
-  const mapNotification = (item: AppNotification): ExpertNotification => ({
-    id: item.id, type: item.title.toLowerCase().includes("booking") ? "request" : "system",
-    title: item.title, description: item.body, time: new Date(item.createdAt).toLocaleString(),
-    group: Date.now() - new Date(item.createdAt).getTime() < 86400000 ? "New" : "Earlier", unread: !item.readAt,
-    action: item.href ? "View details" : undefined,
-  });
   useEffect(() => {
-    fetchNotifications().then((data) => setNotifications(data.items.map(mapNotification))).catch(() => undefined);
-    const receive = (event: Event) => setNotifications((current) => [mapNotification((event as CustomEvent<AppNotification>).detail), ...current]);
+    fetchNotifications().then((data) => {
+      setNotifications(data.items.map(mapNotification));
+      setUnreadCount(data.unreadCount);
+      setTotalCount(data.pagination?.total ?? data.items.length);
+    }).catch(() => undefined);
+    const receive = (event: Event) => {
+      const incoming = mapNotification((event as CustomEvent<AppNotification>).detail);
+      setNotifications((current) => current.some((item) => item.id === incoming.id) ? current : [incoming, ...current]);
+      setUnreadCount((count) => count + (incoming.unread ? 1 : 0));
+      setTotalCount((count) => count + 1);
+    };
     window.addEventListener("jatayu:notification", receive); return () => window.removeEventListener("jatayu:notification", receive);
   }, []);
 
   const markRead = (id: string | number) => {
+    const wasUnread = notifications.some((notification) => notification.id === id && notification.unread);
     setNotifications((current) =>
       current.map((notification) =>
         notification.id === id ? { ...notification, unread: false } : notification
       )
     );
+    if (wasUnread) {
+      const nextCount = Math.max(0, unreadCount - 1);
+      setUnreadCount(nextCount);
+      window.dispatchEvent(new CustomEvent("jatayu:notifications-changed", { detail: { unreadCount: nextCount } }));
+    }
     void readNotification(String(id)).catch(() => undefined);
+  };
+
+  const viewDetails = (notification: ExpertNotification) => {
+    markRead(notification.id);
+    if (notification.href?.startsWith("/")) router.push(notification.href);
   };
 
   return (
@@ -142,6 +174,8 @@ export default function ExpertNotifications() {
                 setNotifications((current) =>
                   current.map((notification) => ({ ...notification, unread: false }))
                 );
+                setUnreadCount(0);
+                window.dispatchEvent(new CustomEvent("jatayu:notifications-changed", { detail: { unreadCount: 0 } }));
                 void readAllNotifications().catch(() => undefined);
               }}
               disabled={!unreadCount}
@@ -192,7 +226,7 @@ export default function ExpertNotifications() {
                 className={`${styles.filterBtn} ${statusFilter === "all" ? styles.filterActive : ""}`}
                 onClick={() => setStatusFilter("all")}
               >
-                All ({notifications.length})
+                All ({totalCount})
               </button>
               <button
                 type="button"
@@ -251,7 +285,7 @@ export default function ExpertNotifications() {
                                     type="button"
                                     onClick={(event) => {
                                       event.stopPropagation();
-                                      markRead(notification.id);
+                                      viewDetails(notification);
                                     }}
                                   >
                                     {notification.action}
@@ -263,7 +297,7 @@ export default function ExpertNotifications() {
                                     className={styles.secondary}
                                     onClick={(event) => {
                                       event.stopPropagation();
-                                      markRead(notification.id);
+                                      viewDetails(notification);
                                     }}
                                   >
                                     {notification.secondaryAction}
