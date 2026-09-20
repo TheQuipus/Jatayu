@@ -376,11 +376,11 @@ export const MAIN_NAV: ExpertNavItem[] = [
     label: "Availability & Calendar",
     href: "/expert/availability/",
   },
-  { id: "requests", label: "Requests", href: "/expert/requests/", badge: 3 },
+  { id: "requests", label: "Requests", href: "/expert/requests/" },
   { id: "earnings", label: "Earnings", href: "/expert/earnings/" },
   { id: "reviews", label: "Reviews", href: "/expert/reviews/" },
   { id: "achievements", label: "Achievements", href: "/expert/achievements/" },
-  { id: "notifications", label: "Notifications", href: "/expert/notifications/", badge: 5 },
+  { id: "notifications", label: "Notifications", href: "/expert/notifications/" },
 ];
 
 export const EXPERT_SETTINGS_HREF = "/expert/settings/";

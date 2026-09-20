@@ -36,6 +36,7 @@ import { fetchExpertProfileData } from "@/lib/expertProfileApi";
 import { clearAuthSession } from "@/lib/expertAuth";
 import { getStoredRequests } from "@/lib/expertRequests";
 import { getExpertRequests } from "@/lib/api";
+import { fetchNotificationUnreadCount } from "@/lib/notificationApi";
 import styles from "./ExpertShell.module.css";
 
 const NAV_ICONS = {
@@ -89,8 +90,6 @@ function NavLink({
   const isActive = isNavItemActive(item.id, pathname, item.href, currentHash);
 
   return (
-    <>
-      <RealtimeNotificationToast />
     <Link
       href={item.href}
       className={`${styles.navLink} ${isActive ? styles.navLinkActive : ""} ${isCollapsed ? styles.navLinkCollapsed : ""
@@ -108,7 +107,6 @@ function NavLink({
         </span>
       ) : null}
     </Link>
-    </>
   );
 }
 
@@ -126,13 +124,14 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     }
     return 0;
   });
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
 
   useEffect(() => {
     let isSubscribed = true;
     getExpertRequests({ status: "all", page: 1, limit: 20, sort: "newest" })
       .then((res) => {
         if (isSubscribed) {
-          setRequestsBadgeCount(res.requests.length);
+          setRequestsBadgeCount(res.counts?.all ?? res.pagination.total);
         }
       })
       .catch((err) => {
@@ -144,6 +143,30 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     };
   }, [pathname]);
 
+  useEffect(() => {
+    let isSubscribed = true;
+    const refreshCount = () => {
+      void fetchNotificationUnreadCount()
+        .then((count) => {
+          if (isSubscribed) setNotificationUnreadCount(count);
+        })
+        .catch((err) => console.error("Failed to fetch notification count for shell:", err));
+    };
+    const handleChanged = (event: Event) => {
+      const count = (event as CustomEvent<{ unreadCount?: number }>).detail?.unreadCount;
+      if (typeof count === "number") setNotificationUnreadCount(Math.max(0, count));
+      else refreshCount();
+    };
+    refreshCount();
+    window.addEventListener("jatayu:notification", refreshCount);
+    window.addEventListener("jatayu:notifications-changed", handleChanged);
+    return () => {
+      isSubscribed = false;
+      window.removeEventListener("jatayu:notification", refreshCount);
+      window.removeEventListener("jatayu:notifications-changed", handleChanged);
+    };
+  }, []);
+
   const dynamicMainNav = useMemo(() => {
     return MAIN_NAV.map((item) => {
       if (item.id === "requests") {
@@ -152,9 +175,10 @@ export default function ExpertShell({ children }: ExpertShellProps) {
           badge: requestsBadgeCount,
         };
       }
+      if (item.id === "notifications") return { ...item, badge: notificationUnreadCount };
       return item;
     });
-  }, [requestsBadgeCount]);
+  }, [notificationUnreadCount, requestsBadgeCount]);
 
   useEffect(() => {
     setCurrentHash(window.location.hash);
@@ -205,6 +229,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
 
   return (
     <ExpertShellContext.Provider value={shellContext}>
+      <RealtimeNotificationToast />
       <div className={styles.shell}>
         <aside
           className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`}
