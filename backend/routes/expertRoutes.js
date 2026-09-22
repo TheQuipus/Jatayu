@@ -1,4 +1,5 @@
 import express from 'express';
+import { reviewAction, expertReviews, replyToReview } from '../controllers/reviewController.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -79,6 +80,8 @@ const upload = multer({
 
 // Profile endpoints
 router.get('/me', protect, getProfile);
+router.get('/reviews', protect, reviewAction(expertReviews));
+router.put('/reviews/:reviewId/reply', protect, reviewAction(replyToReview));
 router.get('/security', protect, securityAction(getSecurity));
 router.patch('/security/two-factor', protect, securityAction(updateTwoFactor));
 router.patch('/security/password', protect, securityAction(updatePassword));

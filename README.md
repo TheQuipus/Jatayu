@@ -347,3 +347,8 @@ the REST API.
 - Give each developer their own local database password and provider test
   credentials where possible.
 - Never use production payment credentials for local development.
+# Booking reviews
+
+After deploying this update, run `cd backend` and `npm run migrate:booking-reviews`, then restart the backend and rebuild the frontend.
+
+Reviews live in the seeker database. Only the booking owner can review a completed session, once per booking (1–5 stars and an optional comment up to 5000 characters). Identical retries are safe; changing an existing review returns 409. The assigned expert can list/filter reviews and save a reply. Review creation and replies generate in-app notifications. Each new review awards 15 credits atomically with a unique booking ledger reference. Identical retries award zero additional credits. Existing reviews are not retroactively rewarded. Recommendation/NPS and category scores are not collected by the existing form and are displayed as unavailable.

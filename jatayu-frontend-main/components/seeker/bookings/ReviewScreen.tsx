@@ -14,7 +14,7 @@ import styles from "./ReviewScreen.module.css";
 
 type ReviewScreenProps = {
   booking: BookingDetail;
-  onSubmit: (rating: number, comment: string) => void;
+  onSubmit: (rating: number, comment: string) => void | Promise<number>;
   onCancel?: () => void;
 };
 
@@ -29,6 +29,9 @@ export default function ReviewScreen({
   const [animatedStar, setAnimatedStar] = useState<number | null>(null);
   const [comment, setComment] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [creditsAwarded, setCreditsAwarded] = useState(0);
+  const [error, setError] = useState('');
   const [submittedData, setSubmittedData] = useState<{ rating: number; comment: string } | null>(null);
 
   const activeTarget = hoveredRating !== null ? hoveredRating : rating;
@@ -45,15 +48,22 @@ export default function ReviewScreen({
     return () => clearTimeout(timer);
   }, [activeTarget]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) {
       alert("Please select a star rating first.");
       return;
     }
-    onSubmit(rating, comment.trim());
+    if (saving) return;
+    setSaving(true);
+    setError('');
+    try {
+    setCreditsAwarded((await onSubmit(rating, comment.trim())) || 0);
     setSubmittedData({ rating, comment: comment.trim() });
     setIsSubmitted(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to save review');
+    } finally { setSaving(false); }
   };
 
   const ratingLabels: Record<number, string> = {
@@ -126,12 +136,12 @@ export default function ReviewScreen({
                   autoplay={true}
                   style={{ width: 28, height: 28 }}
                 />
-                <span>+15 Credits Earned</span>
+                <span>{creditsAwarded > 0 ? `+${creditsAwarded} Credits Earned` : 'Review already submitted'}</span>
               </div>
               <p className={styles.submittedDesc}>
                 Thank you for sharing your experience with <strong>{booking.expert.name}</strong>.
                 <br />
-                You have earned <strong>15 credits</strong> for your feedback!
+                {creditsAwarded > 0 ? `You have earned ${creditsAwarded} credits for your feedback!` : 'Your review has already been saved.'}
               </p>
 
               <div className={styles.submittedSummaryBox}>
@@ -307,10 +317,11 @@ export default function ReviewScreen({
               </div>
 
               <div className={styles.formActions}>
+                {error && <p role="alert">{error}</p>}
                 <ContinueButton
                   type="submit"
-                  label="Submit Feedback"
-                  disabled={rating === 0}
+                  label={saving ? 'Submitting…' : 'Submit Feedback'}
+                  disabled={rating === 0 || saving}
                   className={styles.submitReviewBtn}
                 />
               </div>

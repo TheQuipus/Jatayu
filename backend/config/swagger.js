@@ -106,6 +106,16 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     },
   },
   paths: {
+    '/api/seeker/bookings/{bookingId}/review': {
+      get: operation({ tag: 'Reviews', summary: 'Get own booking review and eligibility', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')] }),
+      post: operation({ tag: 'Reviews', summary: 'Review a completed booking once; identical retries return existing review', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')], requestBody: jsonBody('rating: integer 1–5; comment: optional string, maximum 5000 characters'), responses: { 201: response('Saved; creditsAwarded: 15 and creditBalance returned'), 200: response('Identical retry; creditsAwarded: 0'), 404: response('Booking not owned or missing'), 409: response('Incomplete booking or already reviewed'), 422: response('Invalid input') } }),
+    },
+    '/api/expert/reviews': {
+      get: operation({ tag: 'Reviews', summary: 'Own reviews, summary and rating trends', security: bearerSecurity, parameters: ['page', 'limit', 'filter', 'sort'].map((name) => ({ in: 'query', name, schema: { type: 'string' }, description: name === 'filter' ? 'all | needsReply | fiveStar | recent (30 days)' : name === 'sort' ? 'recent | highest | lowest' : 'Pagination; limit at most 100' })) }),
+    },
+    '/api/expert/reviews/{reviewId}/reply': {
+      put: operation({ tag: 'Reviews', summary: 'Save reply to own review', security: bearerSecurity, parameters: [idParameter('reviewId', 'Review ID')], requestBody: jsonBody('reply: string, 1–5000 characters') }),
+    },
     '/health': {
       get: operation({ tag: 'Health', summary: 'Check backend health' }),
     },

@@ -29,6 +29,99 @@
   ],
   "item": [
     {
+      "name": "Session Reviews",
+      "item": [
+        {
+          "name": "Get booking review",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}/review"
+          }
+        },
+        {
+          "name": "Submit booking review",
+          "request": {
+            "description": "New completed-session reviews award 15 credits atomically. Response includes creditsAwarded and creditBalance. Identical retries return creditsAwarded: 0 without another ledger entry. Existing reviews are not retroactively rewarded.",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{seekerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/seeker/bookings/{{bookingId}}/review",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Clear and helpful advice.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) pm.collectionVariables.set('reviewId', pm.response.json().review.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Expert reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{expertToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/expert/reviews?page=1&limit=20&filter=all&sort=recent"
+          }
+        },
+        {
+          "name": "Reply to review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{expertToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/expert/reviews/{{reviewId}}/reply",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reply\": \"Thank you for your feedback.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "System",
       "item": [
         { "name": "Health", "request": { "method": "GET", "url": "{{baseUrl}}/health" } },

@@ -52,8 +52,10 @@ type BookingDetailInfoProps = {
   booking: BookingDetail;
   sessionState: "detail" | "active" | "review" | "completed";
   onJoinSession: () => void;
-  onSubmitReview: (rating: number, comment: string) => void;
+  onSubmitReview: (rating: number, comment: string) => Promise<number>;
+  canReview?: boolean;
   submittedReview: {
+    reply?: string | null;
     rating: number;
     comment: string;
     date: string;
@@ -81,6 +83,7 @@ export default function BookingDetailInfo({
   onJoinSession,
   onSubmitReview,
   submittedReview,
+  canReview = false,
   notes,
   isAdmin = false,
 }: BookingDetailInfoProps) {
@@ -118,10 +121,10 @@ export default function BookingDetailInfo({
 
   useEffect(() => {
     setMounted(true);
-    if (searchParams?.get("action") === "review") {
+    if (searchParams?.get("action") === "review" && canReview) {
       setIsReviewModalOpen(true);
     }
-  }, [searchParams]);
+  }, [searchParams, canReview]);
 
   const [openAccIndex, setOpenAccIndex] = useState<number | null>(0);
   const [activeContentTab, setActiveContentTab] = useState<"transcript" | "video" | "chat" | "notes">("transcript");
@@ -532,7 +535,7 @@ ${notes || `1. Valuation & Cap Table:
             ) : (
               <div className={styles.detailPositiveFeedbackBox}>
                 <span className={styles.detailInputLabel}>Write a review</span>
-                <p className={styles.detailEarnCreditsHint}>Earn credits for sharing your review!</p>
+                <p className={styles.detailEarnCreditsHint}>Share your experience with this expert.</p>
                 <textarea
                   placeholder="Share details about your experience..."
                   value={feedback.comment}
@@ -553,10 +556,12 @@ ${notes || `1. Valuation & Cap Table:
     );
   };
 
-  const handleCompletedReviewSubmit = () => {
+  const handleCompletedReviewSubmit = async () => {
     if (completedRating === 0) return;
-    onSubmitReview(completedRating, completedComment.trim());
+    try {
+    await onSubmitReview(completedRating, completedComment.trim());
     handleCloseReviewModal();
+    } catch (error) { window.alert(error instanceof Error ? error.message : 'Unable to save review'); }
   };
 
   const renderCompletedFeedbackForm = () => {
@@ -747,7 +752,7 @@ ${notes || `1. Valuation & Cap Table:
                           Reason: {booking.cancellationReason || "Cancelled due to an unforeseen schedule conflict by the expert."}
                         </p>
 
-                        {!submittedReview && (
+                        {canReview && !submittedReview && (
                           <>
                             <div className={styles.reviewEarnNotice}>
                               Review now and earn 15 credits
@@ -786,19 +791,23 @@ ${notes || `1. Valuation & Cap Table:
 
                         {!submittedReview ? (
                           <>
-                            {/* <ContinueButton
+                            <ContinueButton
                               label="Review now and earn 15 credits"
+                              disabled={!canReview}
                               onClick={() => setIsReviewModalOpen(true)}
                               className={styles.giveReviewBtn}
-                            /> */}
+                            />
                           </>
                         ) : (
-                          <span className={styles.chewyReviewedTag}>
-                            <CheckCircle2 size={14} /> Reviewed
-                          </span>
+                          <div>
+                            <span className={styles.chewyReviewedTag}><CheckCircle2 size={14} /> Reviewed · {submittedReview.rating}/5</span>
+                            <p>{submittedReview.comment}</p>
+                            <small>{submittedReview.date}</small>
+                            {submittedReview.reply && <p><strong>Expert reply:</strong> {submittedReview.reply}</p>}
+                          </div>
                         )}
                         <div className={styles.reviewEarnNotice}>
-                          Review now and earn 15 credits
+                          {submittedReview ? 'Thank you for your review' : 'Review now and earn 15 credits'}
                           <span className={styles.coinLottieWrap}>
                             <Lottie
                               animationData={coinAnimation}
@@ -1528,9 +1537,7 @@ ${notes || `1. Valuation & Cap Table:
           >
             <ReviewScreen
               booking={booking}
-              onSubmit={(rating, comment) => {
-                onSubmitReview(rating, comment);
-              }}
+              onSubmit={onSubmitReview}
               onCancel={handleCloseReviewModal}
             />
           </div>

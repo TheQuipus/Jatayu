@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getExpertReviews, replyToReview, type ExpertReviewResponse } from '@/lib/reviewApi';
 import {
   Award,
   CheckCircle2,
@@ -20,14 +21,6 @@ import {
   MessageCircle,
 } from "lucide-react";
 import {
-  REVIEWS_SUMMARY,
-  NET_PROMOTER_SCORE,
-  CATEGORY_SCORES,
-  DAILY_RATING_TREND,
-  WEEKLY_RATING_TREND,
-  MONTHLY_RATING_TREND,
-  ACHIEVEMENT_BADGES,
-  INITIAL_REVIEWS,
   type ReviewItem,
 } from "@/lib/expertReviewsStore";
 import styles from "./ExpertReviews.module.css";
@@ -35,19 +28,46 @@ import styles from "./ExpertReviews.module.css";
 export default function ExpertReviews() {
   const [trendView, setTrendView] = useState<"daily" | "weekly" | "monthly">("monthly");
   const [activeTab, setActiveTab] = useState<"all" | "needsReply" | "fiveStar" | "recent">("all");
-  const [reviews, setReviews] = useState<ReviewItem[]>(INITIAL_REVIEWS);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [data, setData] = useState<ExpertReviewResponse | null>(null);
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState('recent');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    getExpertReviews(page, activeTab, sort).then((result) => {
+      if (!active) return;
+      setData(result);
+      setReviews(result.items.map((item) => ({ id: item.id, clientName: item.clientName || 'Seeker', clientRole: '', clientCompany: '', avatar: '', rating: item.rating,
+        date: new Date(item.createdAt).toLocaleDateString('en-IN'), sessionTitle: item.sessionTitle || 'Consultation', comment: item.comment, tags: [],
+        status: item.reply ? 'Replied' : 'Needs Reply', ...(item.reply ? { reply: { text: item.reply, date: new Date(item.repliedAt || item.createdAt).toLocaleDateString('en-IN') } } : {}),
+      })));
+    }).catch((error) => { if (active) setError(error.message); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [page, activeTab, sort, revision]);
+  const REVIEWS_SUMMARY = { ...(data?.summary || { overallRating: 0, totalReviews: 0, responseRatePercent: 0, avgReplyTimeHours: 0, starDistribution: [5,4,3,2,1].map((stars) => ({ stars, count: 0, percent: 0 })) }), recommendationPercent: '—', badgeLabel: 'Session feedback' };
+  const CATEGORY_SCORES = ['Expertise', 'Communication', 'Punctuality', 'Value for Money', 'Clarity of Guidance', 'Professionalism'].map((label) => ({ label: `${label} (not collected)`, score: 0, maxScore: 5 }));
+  const NET_PROMOTER_SCORE = { score: '—', totalSurveyed: 0, promotersPercent: 0, passivesPercent: 0, detractorsPercent: 0, promotersCount: 0, passivesCount: 0, detractorsCount: 0 };
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyInput, setReplyInput] = useState<string>("");
 
-  const trendPoints =
-    trendView === "daily"
-      ? DAILY_RATING_TREND
-      : trendView === "weekly"
-      ? WEEKLY_RATING_TREND
-      : MONTHLY_RATING_TREND;
+  const trendPoints = Array.from({ length: trendView === 'daily' ? 7 : 6 }, (_, index) => {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    if (trendView === 'monthly') { start.setDate(1); start.setMonth(start.getMonth() - (5 - index)); }
+    else start.setDate(start.getDate() - ((trendView === 'daily' ? 6 : 5) - index) * (trendView === 'weekly' ? 7 : 1));
+    const end = new Date(start);
+    if (trendView === 'monthly') end.setMonth(end.getMonth() + 1); else end.setDate(end.getDate() + (trendView === 'weekly' ? 7 : 1));
+    const rows = (data?.trend || []).filter((item) => new Date(item.createdAt) >= start && new Date(item.createdAt) < end);
+    return { label: start.toLocaleDateString('en-IN', trendView === 'monthly' ? { month: 'short' } : { day: 'numeric', month: 'short' }), rating: rows.length ? rows.reduce((sum, item) => sum + item.rating, 0) / rows.length : 0 };
+  });
 
   // Calculate SVG Rating Trend chart path with Star Y-Axis
-  const minVal = 4.4;
+  const minVal = 0;
   const maxVal = 5.05;
   const range = maxVal - minVal;
 
@@ -84,8 +104,12 @@ export default function ExpertReviews() {
   });
 
   // Handle submit reply
-  const handleSubmitReply = (reviewId: string) => {
-    if (!replyInput.trim()) return;
+  const handleSubmitReply = async (reviewId: string) => {
+    if (!replyInput.trim() || replyBusy) return;
+    setReplyBusy(true);
+    setError('');
+    try {
+    await replyToReview(reviewId, replyInput.trim());
 
     setReviews((prev) =>
       prev.map((r) => {
@@ -105,6 +129,9 @@ export default function ExpertReviews() {
 
     setActiveReplyId(null);
     setReplyInput("");
+    setRevision((value) => value + 1);
+    } catch (error) { setError(error instanceof Error ? error.message : 'Unable to save reply'); }
+    finally { setReplyBusy(false); }
   };
 
   const renderBadgeIcon = (iconType: string) => {
@@ -118,6 +145,8 @@ export default function ExpertReviews() {
 
   return (
     <div className={styles.page}>
+      {error && <p role="alert">{error}</p>}
+      {loading && <p role="status">Loading reviews…</p>}
       <div className={`container ${styles.pageInner}`}>
         {/* --------------------------------------------------
             1. HEADER AREA
@@ -264,7 +293,7 @@ export default function ExpertReviews() {
                   <div className={styles.categoryTopRow}>
                     <span className={styles.categoryName}>{cat.label}</span>
                     <span className={styles.categoryScoreVal}>
-                      {cat.score}/{cat.maxScore}
+                      —
                     </span>
                   </div>
                   <div className={styles.categoryBarBg}>
@@ -392,9 +421,9 @@ export default function ExpertReviews() {
               </div>
 
               <div className={styles.npsScoreBlock}>
-                <span className={styles.npsBigNumber}>+{NET_PROMOTER_SCORE.score}</span>
+                <span className={styles.npsBigNumber}>{NET_PROMOTER_SCORE.score}</span>
                 <span className={styles.totalReviewsCount}>
-                  Calculated from {NET_PROMOTER_SCORE.totalSurveyed} post-session surveys this month
+                  Recommendation surveys have not been collected
                 </span>
               </div>
 
@@ -476,28 +505,28 @@ export default function ExpertReviews() {
             <div className={styles.tabsGroup}>
               <button
                 type="button"
-                onClick={() => setActiveTab("all")}
+                onClick={() => { setPage(1); setActiveTab("all"); }}
                 className={`${styles.tabBtn} ${
                   activeTab === "all" ? styles.tabBtnActive : ""
                 }`}
               >
-                All Reviews <span className={styles.tabBadge}>({reviews.length})</span>
+                All Reviews <span className={styles.tabBadge}>({data?.summary.totalReviews || 0})</span>
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("needsReply")}
+                onClick={() => { setPage(1); setActiveTab("needsReply"); }}
                 className={`${styles.tabBtn} ${
                   activeTab === "needsReply" ? styles.tabBtnActive : ""
                 }`}
               >
                 Needs Reply{" "}
                 <span className={styles.tabBadge}>
-                  ({reviews.filter((r) => r.status === "Needs Reply").length})
+                  ({data?.summary.needsReply || 0})
                 </span>
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("fiveStar")}
+                onClick={() => { setPage(1); setActiveTab("fiveStar"); }}
                 className={`${styles.tabBtn} ${
                   activeTab === "fiveStar" ? styles.tabBtnActive : ""
                 }`}
@@ -506,7 +535,7 @@ export default function ExpertReviews() {
               </button>
             </div>
 
-            <select className={styles.selectDropdown} defaultValue="recent">
+            <select className={styles.selectDropdown} value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }}>
               <option value="recent">Most Recent</option>
               <option value="highest">Highest Rated</option>
               <option value="lowest">Lowest Rated</option>
@@ -515,6 +544,12 @@ export default function ExpertReviews() {
 
           {/* Reviews List */}
           <div className={styles.reviewsList}>
+            {!loading && !reviews.length && <p>No reviews found.</p>}
+            <div>
+              <button disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
+              <span> Page {page} of {Math.max(1, data?.pagination.pages || 1)} </span>
+              <button disabled={loading || page >= (data?.pagination.pages || 1)} onClick={() => setPage((value) => value + 1)}>Next</button>
+            </div>
             {filteredReviews.map((rev) => (
               <div key={rev.id} className={styles.reviewItemCard}>
                 <div className={styles.reviewHeader}>
