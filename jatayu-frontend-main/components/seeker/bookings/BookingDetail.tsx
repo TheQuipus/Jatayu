@@ -7,6 +7,7 @@ import { useSeekerBreadcrumbs } from "@/components/seeker/SeekerShellContext";
 import type { BookingDetail } from "@/lib/seekerDashboard";
 import ActiveRoom from "./ActiveRoom";
 import ReviewScreen from "./ReviewScreen";
+import { getBookingReview, submitBookingReview } from '@/lib/reviewApi';
 import BookingDetailInfo from "./BookingDetailInfo";
 import { useAgoraRoom, type AgoraTextMessage } from "@/hooks/useAgoraRoom";
 
@@ -67,7 +68,9 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
     rating: number;
     comment: string;
     date: string;
+    reply?: string | null;
   } | null>(null);
+  const [canReview, setCanReview] = useState(false);
 
   // Notes autosave simulation
   useEffect(() => {
@@ -92,17 +95,31 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
     if (sent) setNewMessage("");
   };
 
-  const handleSubmitReview = (rating: number, comment: string) => {
+  useEffect(() => {
+    let active = true;
+    setSubmittedReview(null);
+    setCanReview(false);
+    getBookingReview(booking.id).then(({ review, canReview }) => {
+      if (active) setCanReview(canReview);
+      if (active && review) setSubmittedReview({ rating: review.rating, comment: review.comment, date: new Date(review.createdAt).toLocaleDateString('en-IN'), reply: review.reply });
+    }).catch((error) => console.error('Unable to load review:', error.message));
+    return () => { active = false; };
+  }, [booking.id, sessionState]);
+
+  const handleSubmitReview = async (rating: number, comment: string) => {
+    const { review, creditsAwarded } = await submitBookingReview(booking.id, rating, comment);
+    setCanReview(false);
     setSubmittedReview({
-      rating,
-      comment,
-      date: new Date().toLocaleDateString("en-IN", {
+      rating: review.rating,
+      comment: review.comment,
+      date: new Date(review.createdAt).toLocaleDateString("en-IN", {
         day: "numeric",
         month: "short",
         year: "numeric"
       })
     });
     setSessionState('completed');
+    return creditsAwarded;
   };
 
   const breadcrumbNode = useMemo(() => {
@@ -156,6 +173,7 @@ export default function BookingDetailView({ booking }: BookingDetailViewProps) {
       onJoinSession={() => setSessionState('active')}
       onSubmitReview={handleSubmitReview}
       submittedReview={submittedReview}
+      canReview={canReview}
       notes={notes}
     />
   );

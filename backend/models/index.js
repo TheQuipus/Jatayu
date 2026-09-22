@@ -8,6 +8,7 @@ import Admin from './Admin.js';
 import SeekerCreditTransaction from './seeker/SeekerCreditTransaction.js';
 import RazorpayWebhookEvent from './seeker/RazorpayWebhookEvent.js';
 import Booking from './seeker/Booking.js';
+import BookingReview from './seeker/BookingReview.js';
 import BookingPayment from './seeker/BookingPayment.js';
 import BookingTranscriptSession from './seeker/BookingTranscriptSession.js';
 import BookingTranscriptSegment from './seeker/BookingTranscriptSegment.js';
@@ -59,6 +60,8 @@ SeekerCreditTransaction.belongsTo(Seeker, { foreignKey: 'seekerId', as: 'seeker'
 
 Seeker.hasMany(Booking, { foreignKey: 'seekerId', as: 'bookings', onDelete: 'CASCADE' });
 Booking.belongsTo(Seeker, { foreignKey: 'seekerId', as: 'seeker' });
+Booking.hasOne(BookingReview, { foreignKey: 'bookingId', as: 'review' });
+BookingReview.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 Booking.hasMany(BookingPayment, { foreignKey: 'bookingId', as: 'payments', onDelete: 'CASCADE' });
 BookingPayment.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 Booking.hasOne(BookingTranscriptSession, { foreignKey: 'bookingId', as: 'transcriptSession', onDelete: 'CASCADE' });
@@ -86,6 +89,7 @@ export {
   SeekerCreditTransaction,
   RazorpayWebhookEvent,
   Booking,
+  BookingReview,
   BookingPayment,
   BookingTranscriptSession,
   BookingTranscriptSegment,

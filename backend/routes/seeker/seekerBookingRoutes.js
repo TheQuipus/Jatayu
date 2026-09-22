@@ -1,4 +1,5 @@
 import express from 'express';
+import { reviewAction, getBookingReview, submitReview } from '../../controllers/reviewController.js';
 import { protectSeeker } from '../../middleware/seeker/seekerAuthMiddleware.js';
 import {
   createOrder,
@@ -21,6 +22,8 @@ import { seekerChat } from '../../controllers/bookingChatController.js';
 const router = express.Router();
 
 router.use(protectSeeker);
+router.get('/bookings/:bookingId/review', reviewAction(getBookingReview));
+router.post('/bookings/:bookingId/review', reviewAction(submitReview));
 router.get('/experts/:expertId/booking-options', getBookingOptions);
 router.get('/bookings', listBookings);
 router.post('/bookings/orders', createOrder);

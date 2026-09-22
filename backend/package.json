@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "migrate:booking-reviews": "node scripts/migrateBookingReviews.js",
     "dev": "node --watch server.js",
     "migrate:seeker-credits": "node scripts/migrateSeekerCredits.js",
     "migrate:seeker-bookings": "node scripts/migrateSeekerBookings.js",
