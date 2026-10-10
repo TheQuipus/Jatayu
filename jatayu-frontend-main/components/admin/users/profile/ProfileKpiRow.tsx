@@ -2,6 +2,7 @@
 
 import { Clock, Star, Video, Wallet } from "lucide-react";
 import type { ExpertUser, SeekerUser } from "@/lib/adminUserManagement";
+import type { AdminSeekerDetail } from "@/lib/adminSeekerApi";
 import styles from "./ProfileKpiRow.module.css";
 
 type ProfileKpiRowProps = {
@@ -9,6 +10,7 @@ type ProfileKpiRowProps = {
   isExpert: boolean;
   totalSessionsCount: number;
   moneyValue: number;
+  seekerMetrics?: AdminSeekerDetail["metrics"];
 };
 
 export default function ProfileKpiRow({
@@ -16,13 +18,15 @@ export default function ProfileKpiRow({
   isExpert,
   totalSessionsCount,
   moneyValue,
+  seekerMetrics,
 }: ProfileKpiRowProps) {
   const expertUser = isExpert ? (user as ExpertUser) : undefined;
-
-  const videoCount = Math.floor(totalSessionsCount * 0.5);
-  const liveChatCount = Math.floor(totalSessionsCount * 0.25);
-  const audioCount = Math.floor(totalSessionsCount * 0.15);
-  const messagingCount = Math.max(0, totalSessionsCount - videoCount - liveChatCount - audioCount);
+  const fallbackCount = isExpert ? totalSessionsCount : 0;
+  const videoCount = seekerMetrics?.consultationTypes.video ?? fallbackCount;
+  const liveChatCount = seekerMetrics?.consultationTypes.text ?? 0;
+  const audioCount = seekerMetrics?.consultationTypes.audio ?? 0;
+  const messagingCount = seekerMetrics?.consultationTypes.shoutout ?? 0;
+  const averageDuration = seekerMetrics?.avgSessionDurationMinutes ?? 0;
 
   return (
     <div className={styles.kpiRow}>
@@ -33,7 +37,7 @@ export default function ProfileKpiRow({
             <Video size={20} />
           </div>
         </div>
-        <h3 className={styles.kpiValue}>{totalSessionsCount}</h3>
+        <h3 className={styles.kpiValue}>{isExpert ? totalSessionsCount : (seekerMetrics?.completedBookings ?? totalSessionsCount)}</h3>
         <div className={styles.breakdownRow}>
           <span className={styles.breakdownItem}>
             <strong>{videoCount}</strong> Video Call
@@ -57,8 +61,8 @@ export default function ProfileKpiRow({
             <Clock size={20} />
           </div>
         </div>
-        <h3 className={styles.kpiValue}>{isExpert && expertUser ? `${expertUser.completedSessions * 0.75}h` : "18.5h"}</h3>
-        <div className={styles.kpiSubDetail}>Avg. 45 min/session</div>
+        <h3 className={styles.kpiValue}>{isExpert && expertUser ? `${expertUser.completedSessions * 0.75}h` : `${((seekerMetrics?.totalDurationMinutes || 0) / 60).toFixed(1)}h`}</h3>
+        <div className={styles.kpiSubDetail}>{isExpert ? "Avg. 45 min/session" : (averageDuration ? `Avg. ${averageDuration} min/session` : "No completed sessions")}</div>
       </div>
 
       <div className={styles.kpiCard}>
@@ -68,9 +72,9 @@ export default function ProfileKpiRow({
             <Star size={20} />
           </div>
         </div>
-        <h3 className={styles.kpiValue}>{isExpert && expertUser ? expertUser.rating.toFixed(1) : "4.8"}</h3>
+        <h3 className={styles.kpiValue}>{isExpert && expertUser ? expertUser.rating.toFixed(1) : seekerMetrics?.avgRatingGiven?.toFixed(1) || "—"}</h3>
         <div className={styles.kpiSubDetail}>
-          From {isExpert && expertUser ? expertUser.reviewCount : "19"} reviews
+          From {isExpert && expertUser ? expertUser.reviewCount : seekerMetrics?.ratingCount || 0} reviews
         </div>
       </div>
 

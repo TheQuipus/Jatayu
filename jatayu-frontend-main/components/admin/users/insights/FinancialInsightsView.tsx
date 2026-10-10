@@ -21,11 +21,14 @@ import {
   UserCheck,
   Zap,
 } from "lucide-react";
-import { getSeekerById } from "@/lib/adminUserManagement";
+import type { SeekerUser } from "@/lib/adminUserManagement";
+import type { AdminSeekerBooking, AdminSeekerDetail } from "@/lib/adminSeekerApi";
 import styles from "./FinancialInsightsView.module.css";
 
 type FinancialInsightsViewProps = {
-  userId: string;
+  seeker?: SeekerUser;
+  bookings?: AdminSeekerBooking[];
+  credits?: AdminSeekerDetail["credits"];
 };
 
 type SessionType = "all" | "call" | "video" | "text";
@@ -51,9 +54,9 @@ type Offer = {
   description: string;
 };
 
-export default function FinancialInsightsView({ userId }: FinancialInsightsViewProps) {
-  const seeker = getSeekerById(userId);
+export default function FinancialInsightsView({ seeker, bookings = [], credits }: FinancialInsightsViewProps) {
 
+  const [now] = useState(() => Date.now());
   // States
   const [selectedSessionType, setSelectedSessionType] = useState<SessionType>("all");
   const [timeframe, setTimeframe] = useState<"6" | "12" | "3">("6");
@@ -71,71 +74,37 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
-  // Offers List State (in-memory mock database that changes dynamically)
-  const [offers, setOffers] = useState<Offer[]>([
-    {
-      id: "off-1",
-      code: "WELCOME200",
-      type: "flat",
-      value: 200,
-      targetCategory: "All Categories",
-      targetSessionType: "All Sessions",
-      status: "Active",
-      expiryDate: "Sep 30, 2026",
-      dateCreated: "Aug 01, 2026",
-      redemptions: 0,
-      description: "Flat ₹200 discount for first-time premium users on the platform.",
-    },
-    {
-      id: "off-2",
-      code: "ASTROVIP25",
-      type: "percent",
-      value: 25,
-      targetCategory: "Vedic Astrology",
-      targetSessionType: "Live Calls",
-      status: "Active",
-      expiryDate: "Oct 15, 2026",
-      dateCreated: "Aug 20, 2026",
-      redemptions: 1,
-      description: "25% discount on Vedic Astrology Live Calls for active seekers.",
-    }
-  ]);
+  // Offers remain empty until persisted offer management is introduced.
+  const [offers, setOffers] = useState<Offer[]>([]);
 
-  // Seeker Specific Mock Data Generator
-  const totalSpent = seeker?.totalSpent || 0;
+  const paidBookings = useMemo(() => bookings.filter((booking) => ["paid", "paid_with_credits"].includes(booking.paymentStatus)), [bookings]);
+  const totalSpent = useMemo(() => paidBookings.reduce((total, booking) => total + booking.amount, 0), [paidBookings]);
 
   const rawMonthlyData: MonthData[] = useMemo(() => {
-    if (totalSpent === 0) {
-      return [
-        { name: "Jan", call: 0, video: 0, text: 0 },
-        { name: "Feb", call: 0, video: 0, text: 0 },
-        { name: "Mar", call: 0, video: 0, text: 0 },
-        { name: "Apr", call: 0, video: 0, text: 0 },
-        { name: "May", call: 0, video: 0, text: 0 },
-        { name: "Jun", call: 0, video: 0, text: 0 },
-      ];
+    const months: MonthData[] = [];
+    const currentDate = new Date(now);
+    for (let offset = 5; offset >= 0; offset -= 1) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - offset, 1);
+      months.push({ name: date.toLocaleDateString("en-IN", { month: "short" }), call: 0, video: 0, text: 0 });
     }
-
-    // Distribute totalSpent proportionally across months to make it realistic
-    // Aarav sk-1 spent 18500
-    // Sneha sk-4 spent 34000
-    const factor = totalSpent / 18500;
-    return [
-      { name: "Jan", call: Math.round(1200 * factor), video: Math.round(800 * factor), text: Math.round(500 * factor) },
-      { name: "Feb", call: Math.round(1800 * factor), video: Math.round(1200 * factor), text: Math.round(800 * factor) },
-      { name: "Mar", call: Math.round(800 * factor), video: Math.round(400 * factor), text: Math.round(300 * factor) },
-      { name: "Apr", call: Math.round(2200 * factor), video: Math.round(1100 * factor), text: Math.round(900 * factor) },
-      { name: "May", call: Math.round(1600 * factor), video: Math.round(900 * factor), text: Math.round(600 * factor) },
-      { name: "Jun", call: Math.round(1900 * factor), video: Math.round(1000 * factor), text: Math.round(500 * factor) },
-    ];
-  }, [totalSpent]);
+    paidBookings.forEach((booking) => {
+      const bookedAt = new Date(booking.scheduledStartAt);
+      const index = months.findIndex((month, position) => {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - (5 - position), 1);
+        return date.getFullYear() === bookedAt.getFullYear() && date.getMonth() === bookedAt.getMonth();
+      });
+      if (index < 0) return;
+      if (booking.consultationType === "video") months[index].video += booking.amount;
+      else if (booking.consultationType === "audio") months[index].call += booking.amount;
+      else months[index].text += booking.amount;
+    });
+    return months;
+  }, [paidBookings, now]);
 
   // Filter timeframe
   const monthlyData = useMemo(() => {
-    if (timeframe === "3") {
-      return rawMonthlyData.slice(3); // Apr, May, Jun
-    }
-    return rawMonthlyData; // 6 months (currently maximum in mock data)
+    if (timeframe === "3") return rawMonthlyData.slice(-3);
+    return rawMonthlyData;
   }, [rawMonthlyData, timeframe]);
 
   // Get active values for Y-axis rendering
@@ -144,7 +113,6 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
       if (selectedSessionType === "call") return d.call;
       if (selectedSessionType === "video") return d.video;
       if (selectedSessionType === "text") return d.text;
-      return d.call + d.video + d.text; // all
       return d.call + d.video + d.text;
     });
   }, [monthlyData, selectedSessionType]);
@@ -164,7 +132,7 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
   const points = useMemo(() => {
     if (activeSeries.length === 0) return [];
     return activeSeries.map((val, idx) => {
-      const x = paddingX + (idx / (activeSeries.length - 1)) * chartW;
+      const x = paddingX + (idx / Math.max(1, activeSeries.length - 1)) * chartW;
       const ratio = val / maxVal;
       const y = svgH - paddingY - ratio * chartH;
       return { x, y, val };
@@ -196,24 +164,23 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
     return str;
   }, [points]);
 
-  const averageOrderValue = useMemo(() => {
-    if (!seeker?.totalBookings || seeker.totalBookings === 0) return 0;
-    return Math.round(totalSpent / seeker.totalBookings);
-  }, [totalSpent, seeker]);
+  const averageOrderValue = useMemo(() => paidBookings.length ? Math.round(totalSpent / paidBookings.length) : 0, [totalSpent, paidBookings]);
 
   const churnRisk = useMemo(() => {
-    if (!seeker || seeker.totalBookings === 0) return { score: "Critical", class: styles.riskHigh, label: "High Risk (Inactive)" };
-    if (seeker.status === "suspended") return { score: "N/A", class: styles.riskMuted, label: "Account Suspended" };
-    if (seeker.totalBookings < 3) return { score: "High", class: styles.riskHigh, label: "High Risk (Low Engagement)" };
-    if (seeker.totalBookings < 8) return { score: "Medium", class: styles.riskMedium, label: "Moderate Risk" };
-    return { score: "Low", class: styles.riskLow, label: "Healthy Retention" };
-  }, [seeker]);
+    if (seeker?.status === "suspended") return { score: "N/A", class: styles.riskMuted, label: "Account Suspended" };
+    if (!bookings.length) return { score: "Critical", class: styles.riskHigh, label: "No bookings yet" };
+    const latest = Math.max(...bookings.map((booking) => new Date(booking.scheduledStartAt).getTime()));
+    const daysSince = Math.max(0, Math.floor((now - latest) / 86400000));
+    if (daysSince > 60) return { score: "High", class: styles.riskHigh, label: daysSince + " days since last session" };
+    if (daysSince > 30) return { score: "Medium", class: styles.riskMedium, label: daysSince + " days since last session" };
+    return { score: "Low", class: styles.riskLow, label: "Active in the last " + Math.max(1, daysSince) + " days" };
+  }, [bookings, seeker?.status, now]);
 
   const priceTierAffinity = useMemo(() => {
-    if (userId === "skr-1") return { budget: 20, standard: 50, premium: 30 };
-    if (userId === "skr-4") return { budget: 10, standard: 40, premium: 50 };
-    return { budget: 40, standard: 40, premium: 20 };
-  }, [userId]);
+    const tier = (seeker?.budgetTier || "").toLowerCase();
+    return { budget: tier.includes("budget") ? 100 : 0, standard: tier.includes("standard") ? 100 : 0, premium: tier.includes("premium") ? 100 : 0 };
+  }, [seeker?.budgetTier]);
+  const creditUsageRatio = useMemo(() => credits?.earned ? Math.min(100, Math.round(((credits.spent || 0) / credits.earned) * 100)) : 0, [credits]);
 
   const themeColor = useMemo(() => {
     if (selectedSessionType === "call") return "#22c55e";
@@ -333,7 +300,7 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
           <h2 className={`${styles.kpiNumber} ${churnRisk.class}`}>{churnRisk.score}</h2>
           <div className={styles.kpiDetailRow}>
             <span>{churnRisk.label}</span>
-            <span>Avg. 14 days gap</span>
+            <span>Based on booking history</span>
           </div>
         </div>
 
@@ -363,10 +330,10 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
               <Gift size={14} />
             </span>
           </div>
-          <h2 className={styles.kpiNumber}>{seeker?.totalBookings && seeker.totalBookings > 4 ? "82%" : "40%"}</h2>
+          <h2 className={styles.kpiNumber}>{creditUsageRatio + "%"}</h2>
           <div className={styles.kpiDetailRow}>
-            <span>Of orders paid via Wallet</span>
-            <span style={{ color: "#2563eb", fontWeight: 600 }}>High loyalty</span>
+            <span>Credits used from ledger</span>
+            <span style={{ color: "#2563eb", fontWeight: 600 }}>Current usage</span>
           </div>
         </div>
       </div>
@@ -551,7 +518,7 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
                 <Gift size={20} />
               </div>
               <div>
-                <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Personalized Offer Generator</h3>
+                <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Personalized Offer Preview</h3>
                 <p className={styles.cardSubtitle} style={{ marginTop: "2px" }}>
                   Create coupon codes or wallet bonuses tailored to seeker behavior
                 </p>
@@ -765,7 +732,7 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
               ) : (
                 <>
                   <Send size={15} />
-                  <span>Issue Personalized Offer</span>
+                  <span>Preview Offer (not saved)</span>
                 </>
               )}
             </button>
@@ -776,7 +743,7 @@ export default function FinancialInsightsView({ userId }: FinancialInsightsViewP
         <div className={styles.card} style={{ marginTop: "24px" }}>
         <div className={styles.offersHeaderRow}>
           <div>
-            <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Active Targeted Offers</h3>
+            <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Offer Previews (not saved)</h3>
             <p className={styles.cardSubtitle}>Directly generated promo actions for this seeker account</p>
           </div>
           <span className={styles.activeOffersCount}>

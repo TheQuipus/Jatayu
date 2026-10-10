@@ -53,6 +53,8 @@ export type SeekerUser = {
   agreedToTerms?: boolean;
   profileBio?: string;
   walletBalance?: number;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
 };
 
 export const ADMIN_USERS_EXPERTS_HREF = "/admin/users/experts";

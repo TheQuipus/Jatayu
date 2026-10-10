@@ -31,9 +31,8 @@ export default function ProfileHeroCard({
 
   const userLanguages = isExpert
     ? ["Hindi", "English", "Marathi"]
-    : (seekerUser?.languages && seekerUser.languages.length > 0
-      ? seekerUser.languages
-      : ["English", "Hindi"]);
+    : (seekerUser?.languages ?? []);
+  const isVerified = isExpert || Boolean(seekerUser?.isEmailVerified || seekerUser?.isPhoneVerified);
 
   return (
     <div className={styles.heroCard}>
@@ -47,9 +46,9 @@ export default function ProfileHeroCard({
               height={96}
               className={styles.heroAvatar}
             />
-            <span className={styles.avatarBadge} title="Verified Profile">
+            {isVerified && <span className={styles.avatarBadge} title="Verified Profile">
               <Check size={14} />
-            </span>
+            </span>}
           </div>
 
           <div className={styles.heroHeaderInfo}>
@@ -59,7 +58,7 @@ export default function ProfileHeroCard({
                   <h2 className={styles.heroName}>{user.name}</h2>
                 </div>
                 <p className={styles.metaText}>
-                  <MapPin size={13} style={{ display: "inline", verticalAlign: "middle" }} /> {userLocation} · Member since {joinedDate} · Last active {lastActive}
+                  <MapPin size={13} style={{ display: "inline", verticalAlign: "middle" }} /> {userLocation} · Member since {joinedDate} · {isExpert ? "Last active" : "Last updated"} {lastActive}
                 </p>
               </div>
             </div>
@@ -70,11 +69,11 @@ export default function ProfileHeroCard({
           <p className={styles.bioText}>
             {isExpert
               ? (expertUser?.bio || "Experienced domain consultant helping clients navigate complex challenges with actionable guidance.")
-              : (seekerUser?.profileBio || seekerUser?.needsText || "Entrepreneur & business strategist passionate about connecting with top domain experts who can accelerate key decision-making.")}
+              : (seekerUser?.profileBio || seekerUser?.needsText || "No profile details provided.")}
           </p>
 
           <div className={styles.chipGroup}>
-            <span className={styles.chip}>{categoryName}</span>
+            {categoryName && <span className={styles.chip}>{categoryName}</span>}
             {isExpert && expertUser?.subCategory && <span className={styles.chip}>{expertUser.subCategory}</span>}
             {!isExpert && seekerUser?.budgetTier && (
               <span className={styles.chip} style={{ background: "rgba(230, 81, 0, 0.08)", color: "var(--tango)", borderColor: "rgba(230, 81, 0, 0.2)" }}>
