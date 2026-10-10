@@ -28,12 +28,15 @@ export function resolveDbName(moduleEnvVar, defaultName) {
   return process.env[moduleEnvVar] || process.env.DB_NAME || defaultName;
 }
 
-export function createSequelize(databaseName) {
+export function createSequelize(databaseName, modulePrefix) {
+  const user = (modulePrefix && process.env[`${modulePrefix}_DB_USER`]) || process.env.DB_USER;
+  const configuredPassword = modulePrefix && process.env[`${modulePrefix}_DB_PASSWORD`];
+  const passwordValue = configuredPassword ?? process.env.DB_PASSWORD;
   // Empty DB_PASSWORD must be null so mysql2 does not send "using password: YES".
-  const password = process.env.DB_PASSWORD ? process.env.DB_PASSWORD : null;
+  const password = passwordValue || null;
   return new Sequelize(
     databaseName,
-    process.env.DB_USER,
+    user,
     password,
     sharedOptions,
   );
