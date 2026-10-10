@@ -39,7 +39,7 @@ type UserManagementProps = {
 };
 
 export default function UserManagement({ subSection }: UserManagementProps) {
-  const { ready, experts, seekers, updateExpertStatus, updateSeekerStatus } = useUserManagement();
+  const { ready, experts, seekers, seekerCounts, error, updatingId, updateExpertStatus, updateSeekerStatus } = useUserManagement();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -52,11 +52,11 @@ export default function UserManagement({ subSection }: UserManagementProps) {
   const suspendedExperts = experts.filter((e) => e.status === "suspended").length;
 
   // Seeker statistics
-  const totalSeekers = seekers.length;
-  const activeSeekers = seekers.filter((s) => s.status === "active").length;
-  const suspendedSeekers = seekers.filter((s) => s.status === "suspended").length;
-  const deletedSeekers = seekers.filter((s) => s.status === "deleted").length;
-  const flaggedSeekers = seekers.filter((s) => s.status === "flagged").length;
+  const totalSeekers = seekerCounts.all ?? seekers.length;
+  const activeSeekers = seekerCounts.active ?? seekers.filter((s) => s.status === "active").length;
+  const suspendedSeekers = seekerCounts.suspended ?? seekers.filter((s) => s.status === "suspended").length;
+  const deletedSeekers = seekerCounts.deleted ?? seekers.filter((s) => s.status === "deleted").length;
+  const flaggedSeekers = seekerCounts.flagged ?? seekers.filter((s) => s.status === "flagged").length;
   const totalBookingsCount = seekers.reduce((sum, s) => sum + s.totalBookings, 0);
 
   // Categories list for filter
@@ -123,6 +123,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
           </div>
         </div>
 
+      {error && <p role="alert">{error}</p>}
       {/* KPI Metrics Bar */}
       {subSection === "experts" ? (
         <div className={styles.metricsGrid}>
@@ -237,7 +238,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                   <th><span className={styles.thFilterSelect}>Expert Name & Contact</span></th>
                   <th><span className={styles.thFilterSelect}>Domain & Specialty</span></th>
                   <th><span className={styles.thFilterSelect}>Status</span></th>
-                  <th><span className={styles.thFilterSelect}>Last Active</span></th>
+                  <th><span className={styles.thFilterSelect}>Last Updated</span></th>
                   <th><span className={styles.thFilterSelect}>Sessions</span></th>
                   <th><span className={styles.thFilterSelect}>Money</span></th>
                   <th><span className={styles.thFilterSelect}>Actions</span></th>
@@ -336,7 +337,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                   <th className={styles.colNum}>#</th>
                   <th><span className={styles.thFilterSelect}>Seeker Name & Contact</span></th>
                   <th><span className={styles.thFilterSelect}>Status</span></th>
-                  <th><span className={styles.thFilterSelect}>Last Active</span></th>
+                  <th><span className={styles.thFilterSelect}>Last Updated</span></th>
                   <th><span className={styles.thFilterSelect}>Sessions</span></th>
                   <th><span className={styles.thFilterSelect}>Money</span></th>
                   <th><span className={styles.thFilterSelect}>Actions</span></th>
@@ -356,7 +357,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                       <td>
                         <div className={styles.userCell}>
                           <Image
-                            src={skr.avatar}
+                            src={skr.avatar || "/assets/img/manportrait.png"}
                             alt={skr.name}
                             width={36}
                             height={36}
@@ -373,12 +374,13 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                       </td>
                       <td>
                         {skr.status === "active" && <span className={styles.badgeActive}>Active</span>}
+                        {skr.status === "pending" && <span className={styles.badgeHold}>Pending</span>}
                         {skr.status === "suspended" && <span className={styles.badgeSuspended}>Suspended</span>}
                         {skr.status === "deleted" && <span className={styles.badgeDeleted}>Deleted</span>}
                         {skr.status === "flagged" && <span className={styles.badgeFlagged}>Flagged</span>}
                       </td>
                       <td>
-                        <span className={styles.lastActiveText}>{skr.lastActive}</span>
+                        <span className={styles.lastActiveText}>{skr.lastActive ? new Date(skr.lastActive).toLocaleDateString("en-IN") : "Not available"}</span>
                       </td>
                       <td>
                         <span className={styles.sessionsText}>{skr.totalBookings} bookings</span>
@@ -401,7 +403,8 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                             <button
                               type="button"
                               className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                              onClick={() => updateSeekerStatus(skr.id, "suspended")}
+                              disabled={Boolean(updatingId)}
+                              onClick={() => void updateSeekerStatus(skr.id, "suspended")}
                               title="Suspend Account"
                             >
                               <Ban size={14} /> Suspend
@@ -410,7 +413,8 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                             <button
                               type="button"
                               className={styles.actionBtn}
-                              onClick={() => updateSeekerStatus(skr.id, "active")}
+                              disabled={Boolean(updatingId) || skr.status === "deleted"}
+                              onClick={() => void updateSeekerStatus(skr.id, "active")}
                               title="Activate Account"
                             >
                               <CheckCircle2 size={14} className={styles.activateIcon} /> Activate

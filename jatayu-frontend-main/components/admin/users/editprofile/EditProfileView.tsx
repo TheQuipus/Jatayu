@@ -22,28 +22,28 @@ export default function EditProfileView({ user, isExpert }: EditProfileViewProps
   const expertUser = isExpert ? (user as ExpertUser) : undefined;
   const seekerUser = !isExpert ? (user as SeekerUser) : undefined;
 
-  const fullName = user?.name || "User";
+  const fullName = user.name;
   const avatar = user?.avatar || "/assets/img/manportrait.png";
-  const email = user?.email || "user@example.com";
-  const phone = user?.phone || "+91 98765 43210";
-  const joinedDate = user?.joinedDate || "Jan 2025";
+  const email = user.email;
+  const phone = user.phone || "Not provided";
+  const joinedDate = user.joinedDate ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(user.joinedDate)) : "Not available";
 
   if (!isExpert && seekerUser) {
-    const category = seekerUser.category || seekerUser.preferredCategory || "Career & Work";
-    const needsSubject = seekerUser.needsSubject || "Strategic Mentorship & Guidance";
-    const needsText = seekerUser.needsText || "Looking for actionable domain guidance, structured advice, and strategic mentorship.";
+    const category = seekerUser.category || seekerUser.preferredCategory || "Not selected";
+    const needsSubject = seekerUser.needsSubject || "Not provided";
+    const needsText = seekerUser.needsText || "Not provided";
     const formats = seekerUser.formats && seekerUser.formats.length > 0
       ? seekerUser.formats
-      : ["1:1 Video Call", "Text Messaging"];
-    const budgetTier = seekerUser.budgetTier || "Standard";
-    const budgetRange = seekerUser.budgetRange || "₹2,500–₹8,000/min";
+      : ["Not selected"];
+    const budgetTier = seekerUser.budgetTier || "Not specified";
+    const budgetRange = seekerUser.budgetRange || "Not specified";
     const languages = seekerUser.languages && seekerUser.languages.length > 0
       ? seekerUser.languages
-      : ["English", "Hindi"];
-    const city = seekerUser.city || "Mumbai";
-    const location = seekerUser.location || `${city}, India`;
-    const profileBio = seekerUser.profileBio || seekerUser.needsText || "Active seeker looking for verified domain expert consultations.";
-    const onboardingComplete = seekerUser.onboardingComplete !== false;
+      : ["Not specified"];
+    const city = seekerUser.city || "Location not provided";
+    const location = seekerUser.location || city;
+    const profileBio = seekerUser.profileBio || seekerUser.needsText || "Not provided";
+    const onboardingComplete = Boolean(seekerUser.onboardingComplete);
 
     return (
       <div className={styles.profileMgmtView}>
@@ -97,7 +97,7 @@ export default function EditProfileView({ user, isExpert }: EditProfileViewProps
                 <span className={styles.fieldLabel}>Email Address</span>
                 <div className={styles.readOnlyFieldWrap}>
                   <span className={styles.fieldValue}>{email}</span>
-                  <span className={styles.verifiedTag}>Verified</span>
+                  {seekerUser.isEmailVerified ? <span className={styles.verifiedTag}>Verified</span> : <span className={styles.fieldValue}>Not verified</span>}
                 </div>
               </div>
 
@@ -105,7 +105,7 @@ export default function EditProfileView({ user, isExpert }: EditProfileViewProps
                 <span className={styles.fieldLabel}>Phone Number</span>
                 <div className={styles.readOnlyFieldWrap}>
                   <span className={styles.fieldValue}>{phone}</span>
-                  <span className={styles.verifiedTag}>Verified</span>
+                  {seekerUser.isPhoneVerified ? <span className={styles.verifiedTag}>Verified</span> : <span className={styles.fieldValue}>Not verified</span>}
                 </div>
               </div>
             </div>

@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import {
   ADMIN_USERS_EXPERTS_HREF,
   ADMIN_USERS_SEEKERS_HREF,
   getExpertById,
-  getSeekerById,
   type ExpertUser,
   type SeekerUser,
 } from "@/lib/adminUserManagement";
@@ -28,6 +27,7 @@ import WalletView from "./wallet/WalletView";
 import AdminBookingCalendar from "./bookings/AdminBookingCalendar";
 import FinancialInsightsView from "./insights/FinancialInsightsView";
 import styles from "./UserProfileDetail.module.css";
+import { getAdminSeeker, updateAdminSeekerStatus, type AdminSeekerDetail } from "@/lib/adminSeekerApi";
 
 type UserProfileDetailProps = {
   userId: string;
@@ -39,9 +39,23 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const expert = userType === "expert" ? getExpertById(userId) : undefined;
-  const seeker = userType === "seeker" ? getSeekerById(userId) : undefined;
+  const [detailState, setDetailState] = useState<{ id: string; detail: AdminSeekerDetail | null; error: string } | null>(null);
+  const [actionError, setActionError] = useState("");
+  const seekerDetail = detailState?.id === userId ? detailState.detail : null;
+  const detailLoading = userType === "seeker" && detailState?.id !== userId;
+  const setSeekerDetail = (detail: AdminSeekerDetail) => setDetailState({ id: detail.seeker.id, detail, error: "" });
 
+  useEffect(() => {
+    if (userType !== "seeker") return;
+    let active = true;
+    getAdminSeeker(userId)
+      .then((detail) => { if (active) setDetailState({ id: userId, detail, error: "" }); })
+      .catch((error) => { if (active) setDetailState({ id: userId, detail: null, error: error instanceof Error ? error.message : "Unable to load seeker record" }); });
+    return () => { active = false; };
+  }, [userId, userType]);
+
+  const expert = userType === "expert" ? getExpertById(userId) : undefined;
+  const seeker = userType === "seeker" ? seekerDetail?.seeker : undefined;
   const user = expert || seeker;
 
   const normalizeTab = (t: string | null) => {
@@ -57,7 +71,8 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   };
 
   const activeTab = normalizeTab(searchParams.get("tab"));
-  const [status, setStatus] = useState<string>(user?.status || "active");
+  const [expertStatus, setExpertStatus] = useState<string>(user?.status || "active");
+  const status = userType === "expert" ? expertStatus : user?.status || "pending";
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
   const handleSelectTab = (tab: string) => {
@@ -68,6 +83,12 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
     currentParams.set("tab", tab);
     router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false });
   };
+
+  if (detailLoading) {
+    return <div className={styles.container}><div style={{ padding: "60px 20px", textAlign: "center" }}>Loading seeker record...</div></div>;
+  }
+
+  if (detailState?.id === userId && detailState.error) return <div className={styles.container}><p role="alert">{detailState.error}</p></div>;
 
   if (!user) {
     return (
@@ -92,16 +113,27 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   const expertUser = user as ExpertUser;
   const seekerUser = user as SeekerUser;
 
-  const userLocation = isExpert ? (expertUser.location || "Mumbai, India") : (seekerUser.location || `${seekerUser.city || "Mumbai"}, India`);
-  const joinedDate = user.joinedDate || "Jan 2025";
-  const lastActive = user.lastActive || "Recently active";
+  const formatDate = (value?: string) => value && !Number.isNaN(new Date(value).getTime()) ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)) : "Not available";
+  const userLocation = isExpert ? (expertUser.location || "Location not provided") : (seekerUser.location || seekerUser.city || "Location not provided");
+  const joinedDate = formatDate(user.joinedDate);
+  const lastActive = formatDate(user.lastActive);
 
   const totalSessionsCount = isExpert ? expertUser.totalSessions : seekerUser.totalBookings;
   const moneyValue = isExpert ? expertUser.totalEarnings : seekerUser.totalSpent;
   const categoryName = isExpert ? expertUser.category : (seekerUser.category || seekerUser.preferredCategory);
 
-  const handleToggleStatus = () => {
-    setStatus((prev) => (prev === "active" ? "suspended" : "active"));
+  const handleToggleStatus = async () => {
+    const nextStatus = status === "active" ? "suspended" : "active";
+    if (isExpert) {
+      setExpertStatus(nextStatus);
+      return;
+    }
+    try {
+      const result = await updateAdminSeekerStatus(userId, nextStatus);
+      if (seekerDetail) setSeekerDetail({ ...seekerDetail, seeker: result.seeker });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to update seeker status");
+    }
   };
 
   const isWidePageTab =
@@ -117,6 +149,7 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
 
   return (
     <div className={styles.container}>
+      {actionError && <p role="alert">{actionError}</p>}
       {/* Top Header / Breadcrumb */}
       <div className={styles.topBar}>
         <Link href={isExpert ? ADMIN_USERS_EXPERTS_HREF : ADMIN_USERS_SEEKERS_HREF} className={styles.backLink}>
@@ -144,19 +177,27 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
               onSelectBooking={setSelectedBookingId}
               user={user}
               isExpert={isExpert}
+              bookings={seekerDetail?.bookings}
             />
           </div>
         ) : activeTab === "wallet" || activeTab === "payments" ? (
           <div className={styles.walletContentArea}>
-            <WalletView />
+            <WalletView
+              key={userId}
+              seekerId={isExpert ? undefined : userId}
+              credits={seekerDetail?.credits}
+              onCreditsAdded={async () => {
+                if (!isExpert) setSeekerDetail(await getAdminSeeker(userId));
+              }}
+            />
           </div>
         ) : activeTab === "insights" ? (
           <div className={styles.walletContentArea}>
-            <FinancialInsightsView userId={userId} />
+            <FinancialInsightsView seeker={isExpert ? undefined : seekerUser} bookings={seekerDetail?.bookings} credits={seekerDetail?.credits} />
           </div>
         ) : activeTab === "notifications" ? (
           <div className={styles.walletContentArea}>
-            <NotificationsView />
+            <NotificationsView key={userId} seekerId={isExpert ? undefined : userId} onNotificationsChanged={async () => { if (!isExpert) setSeekerDetail(await getAdminSeeker(userId)); }} />
           </div>
         ) : activeTab === "help" ? (
           <div className={styles.walletContentArea}>
@@ -190,15 +231,17 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
                 isExpert={isExpert}
                 totalSessionsCount={totalSessionsCount}
                 moneyValue={moneyValue}
+                seekerMetrics={seekerDetail?.metrics}
               />
 
               <ProfileRecentBookings
                 isExpert={isExpert}
+                bookings={seekerDetail?.bookings}
                 setActiveTab={handleSelectTab}
                 onSelectBooking={setSelectedBookingId}
               />
 
-              {!isExpert && <ProfileEngagement />}
+              {!isExpert && <ProfileEngagement engagement={seekerDetail?.engagement} />}
             </main>
 
             {/* Right Sidebar */}
@@ -207,6 +250,7 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
               status={status}
               setActiveTab={handleSelectTab}
               handleToggleStatus={handleToggleStatus}
+              seekerDetail={seekerDetail}
             />
           </>
         )}

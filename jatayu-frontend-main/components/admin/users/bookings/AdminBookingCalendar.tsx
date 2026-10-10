@@ -18,12 +18,15 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import type { ConsultationType } from "@/lib/booking";
+import type { Expert } from "@/lib/experts";
 import {
   UPCOMING_BOOKINGS,
   getBookingById,
+  type BookingDetail,
   type CalendarBooking,
 } from "@/lib/seekerDashboard";
 import type { ExpertUser, SeekerUser } from "@/lib/adminUserManagement";
+import type { AdminSeekerBooking } from "@/lib/adminSeekerApi";
 import AdminBookingDetailInfo from "./AdminBookingDetailInfo";
 import styles from "./AdminBookingCalendar.module.css";
 
@@ -99,12 +102,35 @@ function formatRangeLabel(days: Date[]): string {
 
 type StatusFilter = "all" | "confirmed" | "pending" | "completed" | "cancelled";
 
+function toBookingDetail(booking: AdminSeekerBooking): BookingDetail {
+  const start = new Date(booking.scheduledStartAt);
+  const end = new Date(booking.scheduledEndAt);
+  const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  const status = booking.status === "awaiting_expert" ? "pending" : booking.status === "declined" ? "cancelled" : booking.status;
+  const consultationType = booking.consultationType as ConsultationType;
+  return {
+    id: booking.id,
+    expert: { id: booking.expertId, name: booking.expertName, price: 0, image: booking.expertProfilePhotoSrc || "/assets/img/manportrait.png", desc: booking.expertProfessionalTitle || "Expert consultant", category: "", role: booking.expertProfessionalTitle || "Expert", rating: 0, reviewsCount: 0, sessionsCompleted: 0, languages: [], location: "", replyTime: "Not available", bio: "", topics: [] } as unknown as Expert,
+    specialty: booking.expertProfessionalTitle || "Consultation",
+    dayOffset: Math.round((startOfDay(start).getTime() - startOfDay(new Date()).getTime()) / 86400000),
+    startHour: start.getHours(), startMinute: start.getMinutes(), durationMinutes,
+    status: (["confirmed", "pending", "cancelled", "completed"].includes(status) ? status : "pending") as CalendarBooking["status"],
+    referenceId: booking.id, consultationType, consultationLabel: consultationType.replace(/_/g, " "),
+    placedOnLabel: new Date(booking.createdAt).toLocaleDateString("en-IN"),
+    scheduledDateLabel: start.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
+    scheduledTimeLabel: start.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+    durationLabel: durationMinutes + " mins", paymentStatus: ["paid", "paid_with_credits"].includes(booking.paymentStatus) ? "paid" : "pending",
+    consultationFee: booking.consultationFee, platformFee: booking.platformFee, gst: booking.gst, walletApplied: booking.creditsUsed, totalPaid: booking.amount, invoiceId: booking.id, calendarUrl: "", subject: booking.subject, context: booking.context, attachments: [], placedDaysAgo: Math.max(0, Math.floor((Date.now() - new Date(booking.createdAt).getTime()) / 86400000)), cancellationReason: booking.status === "declined" ? "Declined by expert" : undefined,
+  };
+}
+
 type AdminBookingCalendarProps = {
   className?: string;
   selectedBookingId?: string | null;
   onSelectBooking?: (id: string | null) => void;
   user?: ExpertUser | SeekerUser;
   isExpert?: boolean;
+  bookings?: AdminSeekerBooking[];
 };
 
 export default function AdminBookingCalendar({
@@ -113,6 +139,7 @@ export default function AdminBookingCalendar({
   onSelectBooking,
   user,
   isExpert = false,
+  bookings,
 }: AdminBookingCalendarProps) {
   const router = useRouter();
   const [internalSelectedBookingId, setInternalSelectedBookingId] = useState<string | null>(null);
@@ -134,7 +161,28 @@ export default function AdminBookingCalendar({
   const [pageStart, setPageStart] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const allBookings = UPCOMING_BOOKINGS;
+  const allBookings = useMemo(() => {
+    if (!bookings) return UPCOMING_BOOKINGS;
+    return bookings.map((booking) => {
+      const start = new Date(booking.scheduledStartAt);
+      const end = new Date(booking.scheduledEndAt);
+      const dayOffset = Math.round((startOfDay(start).getTime() - today.getTime()) / 86400000);
+      const normalizedStatus = booking.status === "awaiting_expert" ? "pending" : booking.status === "declined" ? "cancelled" : booking.status;
+      return {
+        id: booking.id,
+        expert: { id: booking.expertId, name: booking.expertName, image: booking.expertProfilePhotoSrc || "/assets/img/manportrait.png" } as unknown as Expert,
+        specialty: booking.subject,
+        dayOffset,
+        startHour: start.getHours(),
+        startMinute: start.getMinutes(),
+        durationMinutes: Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000)),
+        status: (["confirmed", "pending", "cancelled", "completed"].includes(normalizedStatus) ? normalizedStatus : "pending") as CalendarBooking["status"],
+        consultationType: booking.consultationType,
+        scheduledStartAt: booking.scheduledStartAt,
+        scheduledEndAt: booking.scheduledEndAt,
+      };
+    });
+  }, [bookings, today]);
 
   const filteredBookings = useMemo(() => {
     if (statusFilter === "all") return allBookings;
@@ -143,7 +191,7 @@ export default function AdminBookingCalendar({
 
   const allBookingOffsets = useMemo(() => {
     const offsetsWithBookings = Array.from(
-      new Set(filteredBookings.map((b) => Math.max(0, b.dayOffset)))
+      new Set(filteredBookings.map((b) => b.dayOffset))
     ).sort((a, b) => a - b);
 
     if (!offsetsWithBookings.includes(0)) {
@@ -191,13 +239,14 @@ export default function AdminBookingCalendar({
 
   // If a booking is selected, render the Session Detail view directly inside Admin Panel
   if (activeBookingId) {
-    const booking = getBookingById(activeBookingId);
-    if (booking) {
+    const storedBooking = bookings?.find((item) => item.id === activeBookingId);
+    const bookingDetail = storedBooking ? toBookingDetail(storedBooking) : bookings ? undefined : getBookingById(activeBookingId);
+    if (bookingDetail) {
       return (
         <div className={`${styles.calendarWrapper} ${className}`.trim()}>
           <AdminBookingDetailInfo
-            booking={booking}
-            sessionState={booking.status === "completed" ? "completed" : "detail"}
+            booking={bookingDetail}
+            sessionState={bookingDetail.status === "completed" ? "completed" : "detail"}
             onJoinSession={() => alert("Admin Monitoring: Session room")}
             onSubmitReview={() => {}}
             submittedReview={null}
@@ -329,7 +378,7 @@ export default function AdminBookingCalendar({
                   {dayBookings.length === 0 ? null : (
                     dayBookings.map((booking) => {
                       const consultationType: ConsultationType =
-                        (booking as any).consultationType || "text";
+                        (("consultationType" in booking ? booking.consultationType : undefined) || "text") as ConsultationType;
                       const IconComp = CONSULTATION_ICONS[consultationType] || MessageSquare;
 
                       let cardClass = styles.bookingCardConfirmed;

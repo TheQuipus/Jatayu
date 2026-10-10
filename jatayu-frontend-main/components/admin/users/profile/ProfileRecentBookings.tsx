@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import type { AdminSeekerBooking } from "@/lib/adminSeekerApi";
 import styles from "./ProfileRecentBookings.module.css";
 
 type ProfileRecentBookingsProps = {
   isExpert: boolean;
+  bookings?: AdminSeekerBooking[];
   setActiveTab?: (tab: string) => void;
   onSelectBooking?: (id: string | null) => void;
 };
@@ -41,9 +43,12 @@ const RECENT_SESSIONS = [
 
 export default function ProfileRecentBookings({
   isExpert,
+  bookings,
   setActiveTab,
   onSelectBooking,
 }: ProfileRecentBookingsProps) {
+  const sessions = bookings ? bookings.slice(0, 3).map((booking) => ({ id: booking.id, topic: booking.subject, person: booking.expertName, dateTime: new Date(booking.scheduledStartAt).toLocaleString("en-IN"), duration: `${Math.max(0, Math.round((new Date(booking.scheduledEndAt).getTime() - new Date(booking.scheduledStartAt).getTime()) / 60000))} mins`, status: booking.status, amount: `₹${booking.amount.toLocaleString("en-IN")}` })) : RECENT_SESSIONS;
+
   const handleOpenBooking = (bookingId: string) => {
     if (onSelectBooking) {
       onSelectBooking(bookingId);
@@ -88,7 +93,7 @@ export default function ProfileRecentBookings({
           </tr>
         </thead>
         <tbody>
-          {RECENT_SESSIONS.map((session) => (
+          {sessions.map((session) => (
             <tr
               key={session.id}
               onClick={() => handleOpenBooking(session.id)}

@@ -13,6 +13,7 @@ import {
   listApplicationDigilockerDocuments,
 } from '../controllers/adminDigilockerDocumentController.js';
 import { getAdminTranscript } from '../controllers/agoraTranscriptionController.js';
+import { adminSeekerAction, getAdminSeeker, grantAdminSeekerCredits, listAdminSeekerNotifications, listAdminSeekers, markAdminSeekerNotificationRead, updateAdminSeekerStatus } from '../controllers/adminSeekerController.js';
 
 const router = express.Router();
 
@@ -22,6 +23,12 @@ router.get('/auth/me', protectAdmin, getAdminMe);
 router.get('/settings', protectAdmin, getSettings);
 router.put('/settings', protectAdmin, updateSettings);
 router.get('/bookings/:bookingId/transcript', protectAdmin, getAdminTranscript);
+router.get('/seekers', protectAdmin, adminSeekerAction(listAdminSeekers));
+router.get('/seekers/:seekerId', protectAdmin, adminSeekerAction(getAdminSeeker));
+router.patch('/seekers/:seekerId/status', protectAdmin, adminSeekerAction(updateAdminSeekerStatus));
+router.post('/seekers/:seekerId/credits', protectAdmin, adminSeekerAction(grantAdminSeekerCredits));
+router.get('/seekers/:seekerId/notifications', protectAdmin, adminSeekerAction(listAdminSeekerNotifications));
+router.patch('/seekers/:seekerId/notifications/:notificationId/read', protectAdmin, adminSeekerAction(markAdminSeekerNotificationRead));
 
 router.get('/applications/stats', protectAdmin, getApplicationStats);
 router.get('/applications', protectAdmin, listApplications);
