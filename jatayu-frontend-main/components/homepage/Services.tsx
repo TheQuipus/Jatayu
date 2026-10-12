@@ -106,7 +106,7 @@ export default function Services() {
   return (
     <>
 
-      <section className={`${styles.services} dark`} data-nav-surface="dark">
+      <section className={`${styles.services} lightfold`} data-nav-surface="light">
         <div className={`container ${styles.servicesInner}`}>
           <div className={`${styles.speaks} ${styles.speaksFirst}`}>
             <div className={styles.speaksTop}>

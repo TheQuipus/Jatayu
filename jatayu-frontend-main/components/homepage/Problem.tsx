@@ -431,7 +431,7 @@ export default function Problem() {
   return (
     <>
       <HeroLines />
-      <div className={styles.problemWrapper}>
+      <div className={`${styles.problemWrapper} darkfold`} data-nav-surface="dark">
         <section ref={sectionRef} className={styles.problem}>
           <div ref={innerRef} className={`container ${styles.problemInner}`}>
 

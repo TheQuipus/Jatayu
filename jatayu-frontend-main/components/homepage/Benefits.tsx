@@ -16,7 +16,7 @@ const partnerLogos = [
 export default function Benefits() {
   return (
     <>
-      <section className={styles.benefits}>
+      <section className={`${styles.benefits} darkfold`} data-nav-surface="dark">
         <div className="container">
           <div className={styles.benefitsHead}>
             <span className="eyebrow eyebrow--light">
