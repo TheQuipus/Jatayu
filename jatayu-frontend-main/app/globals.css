@@ -348,6 +348,30 @@ main {
   color: var(--fold-text);
 }
 
+.whitefold {
+  --fold-background: var(--gallery);
+  --fold-text: var(--ink);
+  --fold-muted: var(--dove-gray);
+  --fold-line: rgba(8, 10, 16, 0.3);
+  --fold-line-mark: rgba(8, 10, 16, 0.55);
+  --fold-pill-border: rgba(8, 10, 16, 0.16);
+  --fold-pill-hover-border: rgba(8, 10, 16, 0.4);
+  --fold-card: var(--white);
+  --fold-card-text: var(--bunker);
+  --fold-card-muted: var(--dove-gray);
+  --fold-card-border: var(--mercury);
+  --fold-active-card: var(--bunker);
+  --fold-active-text: var(--white);
+  --fold-active-muted: rgba(255, 255, 255, 0.7);
+  --fold-eyebrow-background: var(--mercury);
+  --fold-eyebrow-text: var(--dove-gray);
+  --fold-fade: var(--white);
+  --fold-card-fade: var(--gallery);
+  --fold-avatar-border: var(--white);
+  background: var(--fold-background);
+  color: var(--fold-text);
+}
+
 .darkfold {
   --fold-background: var(--bunker);
   --fold-text: var(--white);
@@ -372,20 +396,20 @@ main {
   color: var(--fold-text);
 }
 
-:is(.lightfold, .darkfold) :is(.t-dark, .t-white) {
+:is(.lightfold, .whitefold, .darkfold) :is(.t-dark, .t-white) {
   color: var(--fold-text);
 }
 
-:is(.lightfold, .darkfold) .t-muted {
+:is(.lightfold, .whitefold, .darkfold) .t-muted {
   color: var(--fold-muted);
 }
 
-:is(.lightfold, .darkfold) :is(.eyebrow--light, .eyebrow--dark) {
+:is(.lightfold, .whitefold, .darkfold) :is(.eyebrow--light, .eyebrow--dark) {
   background: var(--fold-eyebrow-background);
   color: var(--fold-eyebrow-text);
 }
 
-.section-grid-wrap:has(> .lightfold) {
+.section-grid-wrap:has(> :is(.lightfold, .whitefold)) {
   --section-grid-line-color: #FFFFFF !important;
 }
 

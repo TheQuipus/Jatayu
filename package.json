@@ -1,0 +1,14 @@
+{
+  "name": "jatayu",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npm run dev",
+    "dev": "concurrently --kill-others --names backend,frontend --prefix-colors blue,green \"npm --prefix backend run dev\" \"npm --prefix jatayu-frontend-main run dev\"",
+    "build": "npm --prefix jatayu-frontend-main run build",
+    "install:all": "npm ci --prefix backend && npm ci --prefix jatayu-frontend-main"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

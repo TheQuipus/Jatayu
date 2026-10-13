@@ -41,9 +41,9 @@ export default function Home() {
   return (
     <main id="top">
       <SectionWithGrid color="#17191E" fadeLines><Hero /></SectionWithGrid>
+      <SectionWithGrid color="#17191E"><Services /></SectionWithGrid>     
       <SectionWithGrid color="#fff"><Problem /></SectionWithGrid>
       <SectionWithGrid color="#fff"><Portfolio /></SectionWithGrid>
-      <SectionWithGrid color="#17191E"><Services /></SectionWithGrid>
       <SectionWithGrid color="#17191E"><ExpertAdvice /></SectionWithGrid>
       <SectionWithGrid color="#fff"><Trust /></SectionWithGrid>
       <SectionWithGrid color="#fff"><Benefits /></SectionWithGrid>
