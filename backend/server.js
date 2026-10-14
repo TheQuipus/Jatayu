@@ -24,6 +24,7 @@ import { getRazorpayClient, validateRazorpayConfig } from './config/razorpay.js'
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 import { createOpenApiDocument } from './config/swagger.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import passwordRecoveryRoutes from './routes/passwordRecoveryRoutes.js';
 import { sendNotification, sendUpcomingExpertReminders, setNotificationSocketServer } from './services/notificationService.js';
 import { Booking, BookingExtension } from './models/index.js';
 import { approveExtension } from './services/bookingExtensionService.js';
@@ -89,6 +90,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/public/experts', publicExpertRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/password-recovery', passwordRecoveryRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

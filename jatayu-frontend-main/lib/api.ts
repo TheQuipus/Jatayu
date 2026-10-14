@@ -12,6 +12,27 @@ import { parseUtcDate, formatUtcToLocalDate, formatUtcToLocalTime, formatUtcRela
 
 const BASE_URL = publicApiBase();
 
+export type PasswordRecoveryRole = "admin" | "expert" | "user";
+
+export function requestPasswordReset(payload: { role: PasswordRecoveryRole; email: string }) {
+  return apiFetch<{ message: string }>("/api/password-recovery/request", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function resetPassword(payload: {
+  role: PasswordRecoveryRole;
+  userId: string;
+  token: string;
+  password: string;
+}) {
+  return apiFetch<{ message: string }>("/api/password-recovery/reset", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;
