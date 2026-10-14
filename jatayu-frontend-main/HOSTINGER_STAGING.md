@@ -60,7 +60,7 @@ described as a completely clean HTTP trace.
 
 Staging admin credentials are in the ignored private backend file
 `backend/private-storage/hostinger/staging.env`. The current application uses
-temporary OTP `123456` for admin login.
+the email verification code sent after submitting valid admin credentials.
 
 Full onboarding, payments, external OAuth callbacks and video sessions have not
 been tested as part of this deployment. Some existing dashboard metrics are

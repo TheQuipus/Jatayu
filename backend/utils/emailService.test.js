@@ -33,8 +33,7 @@ test('email configuration uses admin settings exclusively', async (t) => {
   assert.equal(await isSmtpConfigured(), true, 'admin database aliases remain supported');
 
   saved.set('EMAIL_ENABLED', 'false');
-  // A disabled admin switch must return before transport creation, despite EMAIL_ENABLED=true in env.
-  await sendGenericEmail({ recipientEmail: 'test@example.com', subject: 'Disabled test' });
+  await assert.rejects(sendGenericEmail({ recipientEmail: 'test@example.com', subject: 'Disabled test' }), /disabled/);
 });
 
 test('SMTP sender defaults to the mailbox saved in admin', async (t) => {

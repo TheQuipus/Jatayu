@@ -161,8 +161,7 @@ export async function sendGenericEmail({ recipientEmail, recipientName, subject,
   const brevoApiKey = await getSetting('BREVO_API_KEY');
 
   if (!emailEnabled) {
-    console.log(`[Email Dev Log] Email disabled. To: ${recipientEmail} | Subject: ${subject}`);
-    return;
+    throw new Error('Email delivery is disabled in admin settings.');
   }
 
   // --- Brevo API path ---
@@ -202,14 +201,6 @@ export async function sendGenericEmail({ recipientEmail, recipientName, subject,
   const smtpConfigured = await isSmtpConfigured();
 
   if (!smtpConfigured) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`\n======================================================`);
-      console.log(`[Email Dev Log] To: ${recipientEmail}`);
-      console.log(`Subject: ${subject}`);
-      console.log(`HTML Body Preview:\n${htmlContent}`);
-      console.log(`======================================================\n`);
-      return;
-    }
     throw new Error('Email is not configured. Set SMTP credentials or configure Brevo API key in admin settings.');
   }
 

@@ -1,4 +1,5 @@
 import { Setting } from '../models/index.js';
+import { ADMIN_OTP_PREFIX } from '../utils/adminLoginOtp.js';
 
 const SECRET_SETTING_KEYS = new Set([
   'AI_API_KEY',
@@ -25,7 +26,7 @@ export const SECRET_VALUE_MASK = '********';
 export const getSettings = async (req, res) => {
   try {
     const dbSettings = await Setting.findAll();
-    return res.status(200).json(dbSettings.map((setting) => {
+    return res.status(200).json(dbSettings.filter((setting) => !setting.key.startsWith(ADMIN_OTP_PREFIX)).map((setting) => {
       const item = setting.toJSON();
       if (SECRET_SETTING_KEYS.has(item.key) && item.value) {
         item.value = SECRET_VALUE_MASK;
@@ -47,6 +48,7 @@ export const updateSettings = async (req, res) => {
 
   try {
     for (const [key, value] of Object.entries(settings)) {
+      if (key.startsWith(ADMIN_OTP_PREFIX)) continue;
       // A masked value means "keep the existing secret". Empty values are
       // also ignored so saving another settings section cannot erase secrets.
       if (SECRET_SETTING_KEYS.has(key) && (value === SECRET_VALUE_MASK || value === '')) {
