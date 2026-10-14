@@ -24,6 +24,7 @@ export type SmsSettings = {
 };
 
 export type SmtpSettings = {
+  fromEmail: string;
   host: string;
   port: string;
   username: string;
@@ -224,6 +225,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
     senderId: "JATAYU",
   },
   smtp: {
+    fromEmail: "",
     host: "smtp.gmail.com",
     port: "587",
     username: "",

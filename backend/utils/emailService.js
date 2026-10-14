@@ -1,6 +1,7 @@
 import dns from 'dns';
 import nodemailer from 'nodemailer';
-import { getSetting, getSettingBool } from './settingsHelper.js';
+// Email configuration is owned by admin settings, including credentials and provider selection.
+import { getDatabaseSetting as getSetting, getDatabaseSettingBool as getSettingBool } from './settingsHelper.js';
 
 function ipv4Lookup(hostname, options, callback) {
   dns.lookup(hostname, { family: 4, all: false }, callback);
@@ -155,7 +156,7 @@ async function sendViaSmtp({ recipientEmail, recipientName, otpCode, fromEmail, 
 export async function sendGenericEmail({ recipientEmail, recipientName, subject, htmlContent, textContent }) {
   const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
   const emailProvider = await getSetting('EMAIL_PROVIDER', 'smtp');
-  const fromEmail = await getSetting('FROM_EMAIL', 'noreply@jatayu.com');
+  const fromEmail = await getSetting('FROM_EMAIL') || await getSetting('SMTP_USER');
   const fromName = await getSetting('EMAIL_FROM_NAME', 'Jatayu');
   const brevoApiKey = await getSetting('BREVO_API_KEY');
 

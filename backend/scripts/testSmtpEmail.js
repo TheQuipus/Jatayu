@@ -5,7 +5,7 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { sequelize } from '../models/index.js';
-import { getSetting } from '../utils/settingsHelper.js';
+import { getDatabaseSetting as getSetting } from '../utils/settingsHelper.js';
 
 dotenv.config();
 

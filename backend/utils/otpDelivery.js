@@ -1,6 +1,6 @@
 import { triggerNotification } from './templateNotificationService.js';
 import { isSmsProviderConfigured } from './smsService.js';
-import { getSettingBool } from './settingsHelper.js';
+import { getDatabaseSettingBool as getSettingBool } from './settingsHelper.js';
 
 export class OtpDeliveryError extends Error {
   constructor(message) {
