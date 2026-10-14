@@ -75,6 +75,21 @@ export default function SmtpSettingsPanel({
           </Field>
         </div>
 
+        <Field label="Sender Email">
+          <input
+            id="smtp-from-email"
+            aria-label="Sender Email"
+            className={styles.input}
+            type="email"
+            value={draft.fromEmail}
+            onChange={(event) => onChange({ ...draft, fromEmail: event.target.value })}
+            placeholder="jatayusayshello@thequipus.com"
+            autoComplete="off"
+            aria-describedby="smtp-from-email-help"
+          />
+          <p id="smtp-from-email-help">Use an address your email provider allows you to send from. Leave blank to use the SMTP username.</p>
+        </Field>
+
         <Field label="Encryption">
           <select
             className={styles.select}
@@ -108,6 +123,7 @@ export default function SmtpSettingsPanel({
                 <th>Port</th>
                 <th>Encryption</th>
                 <th>Username</th>
+                <th>Sender Email</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -121,6 +137,7 @@ export default function SmtpSettingsPanel({
                   </code>
                 </td>
                 <td>{saved.username || "—"}</td>
+                <td>{saved.fromEmail || saved.username || "—"}</td>
                 <td>
                   <span className={styles.badgeActive}>Active</span>
                 </td>

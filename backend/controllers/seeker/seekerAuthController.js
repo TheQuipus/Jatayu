@@ -4,7 +4,7 @@ import { Seeker } from '../../models/index.js';
 import dotenv from 'dotenv';
 import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../../utils/smsService.js';
 import { deliverOtpChannels, handleOtpDeliveryError } from '../../utils/otpDelivery.js';
-import { getSettingBool } from '../../utils/settingsHelper.js';
+import { getSettingBool, getDatabaseSettingBool } from '../../utils/settingsHelper.js';
 import {
   getGoogleAuthConfig,
   isDefaultProfilePhoto,
@@ -402,7 +402,7 @@ export const linkedinLogin = async (req, res) => {
 
 export const getPublicConfig = async (req, res) => {
   try {
-    const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
+    const emailEnabled = await getDatabaseSettingBool('EMAIL_ENABLED', true);
     const smsEnabled = await getSettingBool('SMS_ENABLED', true);
     const linkedin = await getLinkedinAuthConfig();
     const google = await getGoogleAuthConfig();
