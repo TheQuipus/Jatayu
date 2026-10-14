@@ -75,7 +75,7 @@ export async function requestContactVerification(req, res) {
   const duplicate = await Expert.findOne({ where: { [type]: value, id: { [Op.ne]: req.user.id } } });
   if (duplicate) return res.status(409).json({ message: `That ${type} is already registered` });
   const expert = await Expert.findByPk(req.user.id);
-  const code = process.env.NODE_ENV === 'production' ? String(crypto.randomInt(100000, 1000000)) : '123456';
+  const code = String(crypto.randomInt(100000, 1000000));
   await ExpertSecurityChallenge.update({ usedAt: new Date() }, { where: { expertId: expert.id, type, usedAt: null } });
   const challenge = await ExpertSecurityChallenge.create({ expertId: expert.id, type, value, codeHash: hashCode(code), expiresAt: new Date(Date.now() + 10 * 60000) });
   await deliverOtpChannels({ email: type === 'email' ? value : null, phone: type === 'phone' ? value : null, fullName: expert.fullName, otpCode: code, logPrefix: 'Security OTP' });

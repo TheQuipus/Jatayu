@@ -1,8 +1,7 @@
+import { randomInt } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Expert } from '../models/index.js';
 import dotenv from 'dotenv';
-import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../utils/smsService.js';
-import { isSmtpConfigured } from '../utils/emailService.js';
 import { deliverOtpChannels, handleOtpDeliveryError } from '../utils/otpDelivery.js';
 import { getSettingBool, getDatabaseSettingBool } from '../utils/settingsHelper.js';
 import {
@@ -76,20 +75,14 @@ function serializeAuthUser(expert) {
   };
 }
 
-// Keep track of active OTPs in memory for demo/verification steps (in-production we'd store in DB or Redis with TTL)
+// Cache active OTPs locally; onboarding metadata persists codes and expiry across restarts.
 const tempOtps = new Map();
 
 function generateOtpCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return String(randomInt(100000, 1000000));
 }
 
 async function createOtpCode() {
-  const smsConfigured = await isSmsProviderConfigured();
-  const smtpConfigured = await isSmtpConfigured();
-  if (!smsConfigured && !smtpConfigured) {
-    console.log('[OTP] SMS and SMTP not configured — using temporary OTP 123456');
-    return TEMP_SMS_OTP;
-  }
   return generateOtpCode();
 }
 
@@ -112,15 +105,6 @@ async function issueOtp(expert) {
   const otp = await createOtpCode();
   await storeOtp(expert, otp);
   await deliverOtp(expert, otp);
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`\n======================================================`);
-    console.log(`[OTP Dev] Expert: ${expert.fullName}`);
-    console.log(`Email: ${expert.email}`);
-    console.log(`Phone: ${expert.phone || '(none)'}`);
-    console.log(`Verification Code: ${otp}`);
-    console.log(`======================================================\n`);
-  }
 
   return otp;
 }
@@ -175,15 +159,12 @@ export const register = async (req, res) => {
       status: 'draft'
     });
 
-    const otp = await issueOtp(expert);
+    await issueOtp(expert);
 
     console.log(`\n======================================================`);
     console.log(`[OTP Sent] Expert Registered: ${fullName}`);
     console.log(`Email: ${email}`);
     console.log(`Phone: ${phone}`);
-    if (otp === TEMP_SMS_OTP) {
-      console.log(`Temporary OTP (until SMS configured): ${TEMP_SMS_OTP}`);
-    }
     console.log(`======================================================\n`);
 
     return res.status(201).json({
@@ -221,10 +202,7 @@ export const verifyOtp = async (req, res) => {
       storedOtp = readOtpFromModel(expert);
     }
 
-    // Accept stored OTP, or temporary 123456 when SMS provider is not yet configured
-    const smsConfigured = await isSmsProviderConfigured();
-    const isTempOtpValid = !smsConfigured && code === TEMP_SMS_OTP;
-    const isCodeValid = isTempOtpValid || isStoredOtpValid(storedOtp, code);
+    const isCodeValid = isStoredOtpValid(storedOtp, code);
 
     if (!isCodeValid) {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
@@ -282,9 +260,9 @@ export const resendOtp = async (req, res) => {
       return res.status(404).json({ message: 'Expert not found' });
     }
 
-    const otp = await issueOtp(expert);
+    await issueOtp(expert);
 
-    console.log(`[OTP Resent] Expert: ${expert.email} | OTP: ${otp === TEMP_SMS_OTP ? TEMP_SMS_OTP : '(sent via provider)'}`);
+    console.log(`[OTP Resent] Expert: ${expert.email} | OTP: (sent via provider)`);
 
     return res.status(200).json({
       message: 'Verification code resent to your email and phone.',

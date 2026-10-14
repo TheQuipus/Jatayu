@@ -649,9 +649,11 @@ export interface AdminAuthResponse {
   user: AdminAuthUser;
 }
 
-export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthResponse> {
+export type AdminOtpRequiredResponse = { requiresOtp: true; message: string };
+
+export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthResponse | AdminOtpRequiredResponse> {
   try {
-    return await apiFetch<AdminAuthResponse>("/api/admin/auth/login", {
+    return await apiFetch<AdminAuthResponse | AdminOtpRequiredResponse>("/api/admin/auth/login", {
       method: "POST",
       body: JSON.stringify(payload),
     });

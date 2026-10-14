@@ -17,7 +17,7 @@ import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 type FieldKey = "email" | "password";
 
 const OTP_LENGTH = 6;
-const TEMP_ADMIN_OTP = "123456";
+
 
 const emptyTouched: Record<FieldKey, boolean> = {
   email: false,
@@ -50,6 +50,7 @@ function isCredentialsComplete(email: string, password: string): boolean {
 
 export default function AdminLogin() {
   const router = useRouter();
+  const [otpRequested, setOtpRequested] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
@@ -60,6 +61,10 @@ export default function AdminLogin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (otpRequested) inputRefs.current[0]?.focus();
+  }, [otpRequested]);
 
   useEffect(() => {
     const token = getAdminToken();
@@ -74,7 +79,7 @@ export default function AdminLogin() {
 
   const values = { email, password };
   const otpComplete = digits.every((digit) => digit !== "");
-  const canSubmit = isCredentialsComplete(email, password) && otpComplete;
+  const canSubmit = isCredentialsComplete(email, password) && (!otpRequested || otpComplete);
 
   const markTouched = (field: FieldKey) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -86,7 +91,7 @@ export default function AdminLogin() {
   };
 
   const otpError =
-    (otpTouched || submitAttempted) && !otpComplete ? "Enter the 6-digit code" : null;
+    otpRequested && (otpTouched || submitAttempted) && !otpComplete ? "Enter the 6-digit code" : null;
 
   const inputWrapClass = (field: FieldKey, extraClass?: string) =>
     [
@@ -134,7 +139,7 @@ export default function AdminLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitAttempted(true);
-    setOtpTouched(true);
+    setOtpTouched(otpRequested);
     setSubmitError(null);
 
     if (!canSubmit || isSubmitting) return;
@@ -145,9 +150,16 @@ export default function AdminLogin() {
       const response = await adminLogin({
         email: normalizeEmail(email),
         password,
-        otp: digits.join(""),
+        ...(otpRequested ? { otp: digits.join("") } : {}),
       });
 
+      if ("requiresOtp" in response) {
+        setOtpRequested(true);
+        setSubmitAttempted(false);
+        setOtpTouched(false);
+        setDigits(Array(OTP_LENGTH).fill(""));
+        return;
+      }
       setAdminToken(response.token);
       router.push(ADMIN_DASHBOARD_HREF);
     } catch (error) {
@@ -191,7 +203,8 @@ export default function AdminLogin() {
                     className={register.textFieldWithIcon}
                     placeholder="admin@thequipus.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isSubmitting}
+                    onChange={(e) => { setEmail(e.target.value); setOtpRequested(false); setDigits(Array(OTP_LENGTH).fill("")); }}
                     onBlur={() => markTouched("email")}
                     autoComplete="username"
                     aria-invalid={Boolean(fieldError("email"))}
@@ -216,7 +229,8 @@ export default function AdminLogin() {
                     className={`${register.textFieldWithIcon} ${formStyles.textFieldWithToggle}`}
                     placeholder="Enter your password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isSubmitting}
+                    onChange={(e) => { setPassword(e.target.value); setOtpRequested(false); setDigits(Array(OTP_LENGTH).fill("")); }}
                     onBlur={() => markTouched("password")}
                     autoComplete="current-password"
                     aria-invalid={Boolean(fieldError("password"))}
@@ -245,7 +259,7 @@ export default function AdminLogin() {
               </div>
             </div>
 
-            <div className={otpStyles.otpFieldGroup}>
+            {otpRequested && <div className={otpStyles.otpFieldGroup}>
               <span className={otpStyles.otpFieldLabel}>OTP</span>
               <div className={otpStyles.otpInputRow} onPaste={handleOtpPaste}>
                 {digits.map((digit, index) => (
@@ -277,10 +291,12 @@ export default function AdminLogin() {
               ) : null}
               <p className={otpStyles.otpResendText}>
                 <span className={otpStyles.otpResendMuted}>
-                  Temporary OTP: {TEMP_ADMIN_OTP} (until Google Authenticator is configured)
+                  Enter the verification code sent to your email.
                 </span>
               </p>
-            </div>
+            </div>}
+
+            {otpRequested && <button type="button" disabled={isSubmitting} onClick={() => { setOtpRequested(false); setDigits(Array(OTP_LENGTH).fill("")); setSubmitAttempted(false); setSubmitError(null); }}>Back / request a new code</button>}
 
             {submitError ? (
               <p className={register.fieldErrorBelow} role="alert">
@@ -290,7 +306,7 @@ export default function AdminLogin() {
 
             <ContinueButton
               type="submit"
-              label={isSubmitting ? "Logging in..." : "Login"}
+              label={isSubmitting ? "Please wait..." : otpRequested ? "Verify and Login" : "Send verification code"}
               aria-disabled={!canSubmit || isSubmitting}
               className={`${formStyles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : formStyles.registerSubmitBtnInactive}`}
               arrowSize={16}

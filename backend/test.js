@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline/promises';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -36,7 +37,9 @@ async function runTests() {
     console.log('✓ Registration passed\n');
 
     const expertId = registerData.expertId;
-    const otpCode = '123456';
+    const prompt = createInterface({ input: process.stdin, output: process.stdout });
+    const otpCode = await prompt.question('Enter the verification code delivered for this registration: ');
+    prompt.close();
 
     // 3. Verify OTP
     console.log(`Verifying OTP for expert: ${expertId}...`);

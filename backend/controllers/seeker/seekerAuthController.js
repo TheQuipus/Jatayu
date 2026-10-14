@@ -1,8 +1,8 @@
+import { randomInt } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Seeker } from '../../models/index.js';
 import dotenv from 'dotenv';
-import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../../utils/smsService.js';
 import { deliverOtpChannels, handleOtpDeliveryError } from '../../utils/otpDelivery.js';
 import { getSettingBool, getDatabaseSettingBool } from '../../utils/settingsHelper.js';
 import {
@@ -26,15 +26,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_
 const seekerTempOtps = new Map();
 
 function generateOtpCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return String(randomInt(100000, 1000000));
 }
 
 async function createOtpCode() {
-  const smsConfigured = await isSmsProviderConfigured();
-  if (!smsConfigured) {
-    console.log('[Seeker OTP] SMS provider not configured — using temporary OTP 123456');
-    return TEMP_SMS_OTP;
-  }
   return generateOtpCode();
 }
 
@@ -58,15 +53,6 @@ async function issueOtp(seeker) {
   const otp = await createOtpCode();
   await storeOtp(seeker, otp);
   await deliverOtp(seeker, otp);
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`\n======================================================`);
-    console.log(`[OTP Dev] Seeker: ${seeker.fullName}`);
-    console.log(`Email: ${seeker.email}`);
-    console.log(`Phone: ${seeker.phone || '(none)'}`);
-    console.log(`Verification Code: ${otp}`);
-    console.log(`======================================================\n`);
-  }
 
   return otp;
 }
@@ -122,14 +108,11 @@ export const register = async (req, res) => {
         });
       }
 
-      const otp = await issueOtp(existingEmail);
+      await issueOtp(existingEmail);
 
       console.log(`\n======================================================`);
       console.log(`[Seeker OTP Resent] Existing seeker re-submitted registration: ${existingEmail.fullName}`);
       console.log(`Email: ${existingEmail.email}`);
-      if (otp === TEMP_SMS_OTP) {
-        console.log(`Temporary OTP (until SMS configured): ${TEMP_SMS_OTP}`);
-      }
       console.log(`======================================================\n`);
 
       return res.status(200).json({
@@ -160,15 +143,12 @@ export const register = async (req, res) => {
       status: 'draft',
     });
 
-    const otp = await issueOtp(seeker);
+    await issueOtp(seeker);
 
     console.log(`\n======================================================`);
     console.log(`[Seeker OTP Sent] Registered: ${fullName}`);
     console.log(`Email: ${email}`);
     console.log(`Phone: ${phone}`);
-    if (otp === TEMP_SMS_OTP) {
-      console.log(`Temporary OTP (until SMS configured): ${TEMP_SMS_OTP}`);
-    }
     console.log(`======================================================\n`);
 
     return res.status(201).json({
@@ -203,9 +183,7 @@ export const verifyOtp = async (req, res) => {
       storedOtp = readOtpFromModel(seeker);
     }
 
-    const smsConfigured = await isSmsProviderConfigured();
-    const isTempOtpValid = !smsConfigured && code === TEMP_SMS_OTP;
-    const isCodeValid = isTempOtpValid || isStoredOtpValid(storedOtp, code);
+    const isCodeValid = isStoredOtpValid(storedOtp, code);
 
     if (!isCodeValid) {
       return res.status(400).json({ message: 'Invalid or expired verification code' });
@@ -245,9 +223,9 @@ export const resendOtp = async (req, res) => {
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
-    const otp = await issueOtp(seeker);
+    await issueOtp(seeker);
 
-    console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: ${otp === TEMP_SMS_OTP ? TEMP_SMS_OTP : '(sent via provider)'}`);
+    console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: (sent via provider)`);
 
     return res.status(200).json({
       message: 'Verification code resent to your email and phone.',
