@@ -82,6 +82,7 @@ function LoginPageContent({ role }: { role: LoginRole }) {
     <LoginShell>
       <SeekerLoginStep
         onContinue={handleSeekerContinue}
+        onRequiresOtp={() => router.push("/seeker/seeker-onboarding/?resume=otp")}
         registerHref="/seeker/seeker-onboarding/"
       />
     </LoginShell>
