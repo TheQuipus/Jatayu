@@ -2,137 +2,68 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, CheckCircle2, ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
+import AdminLoginLeftPanel from "@/components/admin/AdminLoginLeftPanel";
 import SeekerRegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
 import ExpertRegisterLeftPanel from "@/components/expert/onboarding/RegisterLeftPanel";
 import register from "@/components/seeker/onboarding/register.shared.module.css";
 import formStyles from "@/components/seeker/onboarding/RegisterStep.module.css";
+import recoveryStyles from "./PasswordRecovery.module.css";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
+import { requestPasswordReset, type PasswordRecoveryRole } from "@/lib/api";
 
 type ForgotPasswordFormProps = {
   loginHref?: string;
-  role?: string;
+  role?: PasswordRecoveryRole;
 };
 
-export default function ForgotPasswordForm({
-  loginHref,
-  role = "user",
-}: ForgotPasswordFormProps) {
-  const isExpert = role?.toLowerCase() === "expert";
-  const effectiveLoginHref =
-    loginHref ||
-    (isExpert
-      ? "/login?role=expert"
-      : role?.toLowerCase() === "admin"
-      ? "/admin"
-      : "/login?role=user");
-
+export default function ForgotPasswordForm({ loginHref, role = "user" }: ForgotPasswordFormProps) {
+  const effectiveLoginHref = loginHref || (role === "expert" ? "/login?role=expert" : role === "admin" ? "/admin" : "/login?role=user");
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
-
-  const emailError = (touched || submitAttempted) ? getEmailValidationError(email) : null;
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const emailError = touched || submitAttempted ? getEmailValidationError(email) : null;
   const canSubmit = !getEmailValidationError(email);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setSubmitAttempted(true);
-
+    setSubmitError(null);
     if (!canSubmit || isSubmitting) return;
-
     setIsSubmitting(true);
-    // Simulate API network call to send reset email
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsSubmitting(false);
-    setIsSent(true);
+    try {
+      await requestPasswordReset({ role, email: normalizeEmail(email) });
+      setIsSent(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to send the reset email.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const leftPanel = role === "admin"
+    ? <AdminLoginLeftPanel />
+    : role === "expert"
+      ? <ExpertRegisterLeftPanel variant="login" />
+      : <SeekerRegisterLeftPanel variant="login" />;
 
   return (
     <section className={register.registerCard}>
-      {isExpert ? (
-        <ExpertRegisterLeftPanel variant="login" />
-      ) : (
-        <SeekerRegisterLeftPanel variant="login" />
-      )}
-
+      {leftPanel}
       <div className={register.registerRight}>
         {isSent ? (
-          <div className={formStyles.registerForm}>
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "50%",
-                  background: "rgba(18, 136, 7, 0.15)",
-                  border: "1px solid rgba(18, 136, 7, 0.4)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#128807",
-                  marginBottom: 16,
-                }}
-              >
-                <CheckCircle2 size={32} />
-              </div>
-              <h2 style={{ fontSize: 22, fontWeight: 600, color: "#fff", marginBottom: 8 }}>
-                Check Your Email
-              </h2>
-              <p style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.7)", lineHeight: 1.5 }}>
-                We have sent a password reset link to{" "}
-                <strong style={{ color: "#fff" }}>{normalizeEmail(email)}</strong>.
-              </p>
-            </div>
-
-            <div
-              style={{
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                borderRadius: 8,
-                padding: 16,
-                marginBottom: 20,
-                textAlign: "center",
-              }}
-            >
-              <p style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.6)", marginBottom: 12 }}>
-                Demo Environment: Click below to simulate opening the reset email link.
-              </p>
-              <Link
-                href={`/reset-password?email=${encodeURIComponent(normalizeEmail(email))}&token=demo-token&role=${role || "user"}`}
-                style={{ textDecoration: "none" }}
-              >
-                <ContinueButton
-                  label="Open Reset Password Link"
-                  className={formStyles.registerSubmitBtn}
-                  arrowSize={16}
-                />
-              </Link>
-            </div>
-
-            <Link href={effectiveLoginHref} style={{ textDecoration: "none" }}>
-              <button
-                type="button"
-                className={register.authToggleBtn}
-                style={{
-                  width: "100%",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  background: "transparent",
-                  border: "1px solid rgba(255, 255, 255, 0.2)",
-                  borderRadius: 8,
-                  padding: "10px 16px",
-                  color: "#fff",
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                <ArrowLeft size={16} /> Back to Login
-              </button>
+          <div className={`${formStyles.registerForm} ${recoveryStyles.centered}`} role="status">
+            <div className={recoveryStyles.successIcon}><CheckCircle2 size={32} /></div>
+            <h1 className={recoveryStyles.title}>Check Your Email</h1>
+            <p className={recoveryStyles.description}>
+              If an account exists for that email, a password reset link has been sent. The link expires in 10 minutes.
+            </p>
+            <Link href={effectiveLoginHref} className={recoveryStyles.backButton}>
+              <ArrowLeft size={16} /> Back to Login
             </Link>
           </div>
         ) : (
@@ -140,50 +71,39 @@ export default function ForgotPasswordForm({
             <p className={formStyles.registerFormIntro}>
               Enter your email address and we&apos;ll send you a link to reset your password.
             </p>
-
             <form className={formStyles.registerForm} onSubmit={handleSubmit} noValidate>
               <div className={register.fieldGroup}>
-                <label className={register.registerFieldLabel} htmlFor="forgotEmail">
-                  Email Address
-                </label>
+                <label className={register.registerFieldLabel} htmlFor="forgotEmail">Email Address</label>
                 <div className={register.inputFieldWrap}>
-                  <div
-                    className={`${register.inputWithIconWrap} ${emailError ? register.inputWithIconWrapError : ""
-                      }`}
-                  >
+                  <div className={`${register.inputWithIconWrap} ${emailError ? register.inputWithIconWrapError : ""}`}>
                     <Mail className={register.inputInnerIcon} size={16} />
                     <input
                       id="forgotEmail"
                       type="email"
                       className={register.textFieldWithIcon}
-                      placeholder="Aryan23@gmail.com"
+                      placeholder="you@example.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(event) => setEmail(event.target.value)}
                       onBlur={() => setTouched(true)}
                       autoComplete="email"
                       aria-invalid={Boolean(emailError)}
+                      disabled={isSubmitting}
                       autoFocus
                     />
                   </div>
-                  {emailError && (
-                    <span className={register.fieldErrorBelow}>{emailError}</span>
-                  )}
+                  {emailError ? <span className={register.fieldErrorBelow}>{emailError}</span> : null}
                 </div>
               </div>
-
+              {submitError ? <p className={register.fieldErrorBelow} role="alert">{submitError}</p> : null}
               <ContinueButton
                 type="submit"
                 label={isSubmitting ? "Sending..." : "Send Reset Link"}
                 disabled={!canSubmit || isSubmitting}
-                className={`${formStyles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : formStyles.registerSubmitBtnInactive
-                  }`}
+                className={`${formStyles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : formStyles.registerSubmitBtnInactive}`}
                 arrowSize={16}
               />
-
               <p className={register.authToggle}>
-                <Link href={effectiveLoginHref} className={register.authToggleBtn}>
-                  Back to Login
-                </Link>
+                <Link href={effectiveLoginHref} className={register.authToggleBtn}>Back to Login</Link>
               </p>
             </form>
           </>
