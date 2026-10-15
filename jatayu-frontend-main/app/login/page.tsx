@@ -46,7 +46,7 @@ function LoginPageContent({ role }: { role: LoginRole }) {
     if (typeof destination === "string" && destination.startsWith("/")) {
       window.location.assign(destination);
     } else {
-      window.location.assign("/seeker/seeker-onboarding/");
+      window.location.assign(`/seeker/seeker-onboarding/?step=${encodeURIComponent(destination)}`);
     }
   };
 
