@@ -366,7 +366,7 @@ function SeekerOnboardingPageContent() {
       }
     }
 
-    if (resume === "category" && isSeekerAuthenticated()) {
+    if (isSeekerAuthenticated() && !params.get("step")) {
       clearPendingSeekerOtpSession();
       const storedUser = getStoredSeekerUser();
       if (storedUser) {
