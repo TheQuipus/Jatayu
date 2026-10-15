@@ -308,14 +308,9 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'incorrect credentials' });
     }
 
+    // Signup verification is mandatory; later logins respect the expert's 2FA setting.
     if (expert.onboardingStep === 'otp' || expert.twoFactorEnabled) {
-      try {
-        await issueOtp(expert);
-      } catch (deliveryError) {
-        const deliveryResponse = handleOtpDeliveryError(deliveryError, res, 'Login');
-        if (deliveryResponse) return deliveryResponse;
-        throw deliveryError;
-      }
+      await issueOtp(expert);
 
       return res.status(403).json({
         message: 'Please verify your account with the OTP sent to your email and phone.',
@@ -326,14 +321,14 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generate JWT
     const token = await issueExpertToken(expert, req, 'password');
-
     return res.status(200).json({
       token,
-      user: serializeAuthUser(expert)
+      user: serializeAuthUser(expert),
     });
   } catch (error) {
+    const deliveryResponse = handleOtpDeliveryError(error, res, 'Login');
+    if (deliveryResponse) return deliveryResponse;
     console.error('Login Error:', error);
     return res.status(500).json({ message: 'Server error during login', error: error.message });
   }

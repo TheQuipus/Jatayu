@@ -48,7 +48,7 @@ const Expert = expertDb.define('Expert', {
   twoFactorEnabled: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
-    defaultValue: false
+    defaultValue: true
   },
   notificationPreferences: {
     type: DataTypes.JSON,
