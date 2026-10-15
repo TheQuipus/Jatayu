@@ -264,29 +264,20 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    if (seeker.onboardingStep === 'otp') {
-      try {
-        await issueOtp(seeker);
-      } catch (deliveryError) {
-        const deliveryResponse = handleOtpDeliveryError(deliveryError, res, 'Seeker login');
-        if (deliveryResponse) return deliveryResponse;
-        throw deliveryError;
-      }
+    // Password validation starts a fresh OTP challenge on every login.
+    // Only verifyOtp may issue the authenticated session for this flow.
+    await issueOtp(seeker);
 
-      return res.status(403).json({
-        message: 'Please verify your account with the OTP sent to your email and phone.',
-        requiresOtp: true,
-        seekerId: seeker.id,
-        email: seeker.email,
-        phone: seeker.phone,
-      });
-    }
-
-    return res.status(200).json({
-      token: buildSeekerToken(seeker),
-      user: buildSeekerUser(seeker),
+    return res.status(403).json({
+      message: 'Please verify your account with the OTP sent to your email and phone.',
+      requiresOtp: true,
+      seekerId: seeker.id,
+      email: seeker.email,
+      phone: seeker.phone,
     });
   } catch (error) {
+    const deliveryResponse = handleOtpDeliveryError(error, res, 'Seeker login');
+    if (deliveryResponse) return deliveryResponse;
     console.error('Seeker Login Error:', error);
     return res.status(500).json({ message: 'Server error during login', error: error.message });
   }
