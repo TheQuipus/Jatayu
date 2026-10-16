@@ -65,6 +65,7 @@ import {
 import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expertOnboardingStatus";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import { generateUUID } from "@/lib/uuid";
+import { normalizeBackendProfile, type BackendExpertProfile } from "@/lib/expertProfileApi";
 import {
   deriveLocationFromTimezone,
 } from "@/lib/expertApplicationMedia";
@@ -232,7 +233,10 @@ function ExpertOnboardingPageContent() {
   }, []);
 
   function hydrateFromProfile(profile: ExpertOnboardingProfile) {
-    const user = profile;
+    const user = {
+      ...profile,
+      ...normalizeBackendProfile(profile as BackendExpertProfile),
+    } as ExpertOnboardingProfile;
     if (user.fullName) setRegisteredName(user.fullName);
     if (user.email) setRegisteredEmail(user.email);
     if (user.phone) setRegisteredPhone(user.phone);

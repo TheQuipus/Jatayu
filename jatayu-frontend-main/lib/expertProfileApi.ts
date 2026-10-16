@@ -114,7 +114,7 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
-function normalizeBackendProfile(expert: BackendExpertProfile): BackendExpertProfile {
+export function normalizeBackendProfile(expert: BackendExpertProfile): BackendExpertProfile {
   const raw = expert as BackendExpertProfile & Record<string, unknown>;
   const availabilities = Array.isArray(raw.availabilities) ? raw.availabilities : [];
   return {
