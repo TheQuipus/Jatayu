@@ -121,8 +121,13 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   scrollbar-gutter: stable;
+}
+
+html.lenis,
+html.lenis body {
+  scroll-behavior: auto;
 }
 
 body {

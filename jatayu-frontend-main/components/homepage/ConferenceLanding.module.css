@@ -1,0 +1,352 @@
+/* ============================================================
+   ConferenceLanding.module.css
+   ============================================================ */
+
+/* ── Root section ─────────────────────────────────────────── */
+.section {
+  position: relative;
+  height: 1399px;
+  background: #080a10;
+  overflow: hidden;
+  padding-top: 100px;
+}
+
+/* ── Decorative vertical grid lines ──────────────────────── */
+.linesBox {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.line {
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* ── Hero text block ──────────────────────────────────────── */
+.heroContent {
+  position: relative;
+  z-index: 5;
+  text-align: center;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.heroSubtitle {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.1vw, 14px);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.heroTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(64px, 10vw, 148px);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+/* ── scroll-wrap ──────────────────────────────────────────── */
+.scrollWrap {
+  position: relative;
+  z-index: 4;
+  width: 100%;
+  height: 550px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 80px;
+  transform-style: preserve-3d;
+}
+
+.rotationCircleWrap {
+  width: 100%;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Perspective container */
+.rotationCircleBox {
+  width: 1200px;
+  max-width: 1200px;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The spinning hub — rotateY is applied via inline style */
+.animationBox {
+  position: relative;
+  width: 1200px;
+  height: 0;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 1000px;
+  transform-style: flat;
+}
+
+/* ── Individual panels ────────────────────────────────────── */
+/*
+  7 items evenly spread: 360 / 7 ≈ 51.429°
+  Angle per item: 0, 51.43, 102.86, 154.29, 205.71, 257.14, 308.57
+
+  translateZ sets the carousel radius.
+  Each panel is centred on the hub (negative margin = half panel size).
+*/
+.animationItem {
+  position: absolute;
+  top: -350px;
+  left: -1100px;
+  width: 3400px;
+  height: 700px;
+  flex: 0 0 auto;
+  will-change: transform;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transform-style: preserve-3d;
+}
+
+.item01 { transform: rotateY(30deg); }
+.item02 { transform: rotateY(60deg); }
+.item03 { transform: rotateY(90deg); }
+.item04 { transform: rotateY(120deg); }
+.item05 { transform: rotateY(150deg); }
+.item06 { transform: rotateY(180deg); }
+
+/* ── Image boxes ──────────────────────────────────────────── */
+.animationImageBox {
+  width: 700px;
+  height: 1000px;
+  flex: 0 1 auto;
+  transform-style: preserve-3d;
+}
+
+.imageBoxLeft {
+  transform: rotateY(90deg);
+}
+
+.imageBoxRight {
+  transform: rotateY(-90deg);
+}
+
+/* .boxTop is taller (portrait) — mirrors the reference ._01 box */
+.boxTop {
+  height: 1000px;
+}
+
+.animationItemImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  max-width: 100%;
+}
+
+/* ── Bottom info bar ──────────────────────────────────────── */
+.heroBottomBox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-top: 28px;
+  padding-bottom: 48px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
+}
+
+.heroInfoBox {
+  display: flex;
+  gap: 48px;
+}
+
+.heroInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoTitle {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.infoText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--white);
+}
+
+.heroBtnBox {
+  flex: none;
+}
+
+.primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--white);
+  background: var(--thunderbird);
+  border-radius: 40px;
+  padding: 13px 28px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.22s ease, transform 0.22s ease;
+  box-shadow: 0 4px 24px rgba(214, 54, 20, 0.35);
+}
+
+.primaryBtn:hover {
+  background: var(--pomegranate);
+  transform: translateY(-2px);
+}
+
+.btnArrow {
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.primaryBtn:hover .btnArrow {
+  transform: translateX(4px);
+}
+
+.heroAuthorWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.heroAuthorBox {
+  display: flex;
+  align-items: center;
+}
+
+.authorImg {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #080a10;
+  margin-left: -10px;
+}
+
+.authorImg:first-child {
+  margin-left: 0;
+}
+
+.authorPlus {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--shark);
+  border: 2px solid #080a10;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+  margin-left: -10px;
+}
+
+.authorText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .section {
+    height: 100svh;
+    min-height: 760px;
+    padding-top: 60px;
+  }
+
+  .heroContent {
+    padding-top: 0;
+  }
+
+  .heroBottomBox {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .heroAuthorWrap {
+    align-items: flex-start;
+  }
+
+  .heroInfoBox {
+    gap: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .scrollWrap {
+    height: 340px;
+    margin-top: 56px;
+  }
+
+  .rotationCircleBox,
+  .animationBox {
+    width: 800px;
+  }
+
+  .animationItem {
+    top: -250px;
+    left: -750px;
+    width: 2300px;
+    height: 500px;
+  }
+
+  .animationImageBox,
+  .boxTop {
+    width: 475px;
+    height: 680px;
+  }
+}

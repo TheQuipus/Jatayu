@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import ConferenceLanding from "@/components/homepage/ConferenceLanding";
 import Hero from "@/components/homepage/Hero";
 import Problem from "@/components/homepage/Problem";
 import Portfolio from "@/components/homepage/Portfolio";
@@ -13,6 +14,7 @@ import Faq from "@/components/homepage/Faq";
 import Insights from "@/components/homepage/Insights";
 import Contact from "@/components/ui/Contact";
 import Footer from "@/components/ui/Footer";
+import SmoothScroll from "@/components/ui/SmoothScroll";
 
 type SectionWithGridProps = {
   color: string;
@@ -40,6 +42,8 @@ function SectionWithGrid({ color, children, fadeLines = false }: SectionWithGrid
 export default function Home() {
   return (
     <main id="top">
+      <SmoothScroll />
+      <ConferenceLanding />
       <SectionWithGrid color="#17191E" fadeLines><Hero /></SectionWithGrid>
       <SectionWithGrid color="#17191E"><Services /></SectionWithGrid>     
       <SectionWithGrid color="#fff"><Problem /></SectionWithGrid>
