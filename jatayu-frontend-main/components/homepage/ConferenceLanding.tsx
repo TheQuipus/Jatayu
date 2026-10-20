@@ -1,7 +1,7 @@
 "use client";
 
 import styles from "./ConferenceLanding.module.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 
 const AVATARS = [
   "https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/699958ab03c92db0829d26ed_1.avif",
@@ -51,14 +51,13 @@ export default function ConferenceLanding() {
 
   return (
     <section ref={sectionRef} className={styles.section} data-nav-surface="dark">
-      {/* Decorative vertical lines */}
-      <div className={styles.linesBox} aria-hidden="true">
-        <div />
-        <div className={styles.line} />
-        <div className={styles.line} />
-        <div className={styles.line} />
-        <div className={styles.line} />
-        <div />
+      {/* Decorative vertical grid lines — behind scroll wrap, pointer-events none */}
+      <div
+        className="section-grid-lines"
+        aria-hidden="true"
+        style={{ "--section-grid-line-color": "#FFFFFF3D" } as CSSProperties}
+      >
+        <span /><span /><span /><span /><span />
       </div>
 
       {/* Hero text */}
