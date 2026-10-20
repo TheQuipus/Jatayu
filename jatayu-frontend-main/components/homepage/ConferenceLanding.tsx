@@ -55,7 +55,7 @@ export default function ConferenceLanding() {
       <div
         className="section-grid-lines"
         aria-hidden="true"
-        style={{ "--section-grid-line-color": "#FFFFFF3D" } as CSSProperties}
+        style={{ "--section-grid-line-color": "#17191E" } as CSSProperties}
       >
         <span /><span /><span /><span /><span />
       </div>
