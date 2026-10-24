@@ -7,6 +7,12 @@ import { Admin, Setting } from '../models/index.js';
 import { adminLogin } from './adminAuthController.js';
 
 test('admin validates credentials before sending a single-use email OTP', async (t) => {
+  const previous = process.env.ADMIN_LOGIN_OTP_ENABLED;
+  delete process.env.ADMIN_LOGIN_OTP_ENABLED;
+  t.after(() => {
+    if (previous === undefined) delete process.env.ADMIN_LOGIN_OTP_ENABLED;
+    else process.env.ADMIN_LOGIN_OTP_ENABLED = previous;
+  });
   const admin = { id: 'test-admin', email: 'admin@example.com', password: await bcrypt.hash('correct-password', 4), role: 'admin' };
   const settings = new Map(Object.entries({ SMTP_HOST: 'smtp.example.com', SMTP_USER: 'sender@example.com', SMTP_PASS: 'test-secret', SMTP_PORT: '465' }));
   const rows = new Map();
@@ -54,4 +60,29 @@ test('admin validates credentials before sending a single-use email OTP', async 
   assert.equal((await login('correct-password', expiredCode)).statusCode, 401);
   settings.set('EMAIL_ENABLED', 'false');
   assert.equal((await login('correct-password')).statusCode, 503, 'disabled email must not issue a login token');
+});
+
+test('admin can disable OTP explicitly while still requiring valid credentials', async (t) => {
+  const previous = process.env.ADMIN_LOGIN_OTP_ENABLED;
+  process.env.ADMIN_LOGIN_OTP_ENABLED = 'false';
+  t.after(() => {
+    if (previous === undefined) delete process.env.ADMIN_LOGIN_OTP_ENABLED;
+    else process.env.ADMIN_LOGIN_OTP_ENABLED = previous;
+  });
+  const admin = { id: 'test-admin', email: 'admin@example.com', password: await bcrypt.hash('correct-password', 4), role: 'admin' };
+  t.mock.method(Admin, 'findOne', async () => admin);
+  t.mock.method(Setting, 'findByPk', async () => { throw new Error('OTP settings must not be accessed'); });
+  const login = async (password) => {
+    const res = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+    await adminLogin({ body: { email: admin.email, password } }, res);
+    return res;
+  };
+  assert.equal((await login('wrong-password')).statusCode, 401);
+  const response = await login('correct-password');
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.token);
+  assert.equal(response.body.user.id, admin.id);
+  assert.equal(response.body.requiresOtp, undefined);
+  t.mock.method(Admin, 'findOne', async () => null);
+  assert.equal((await login('correct-password')).statusCode, 401);
 });

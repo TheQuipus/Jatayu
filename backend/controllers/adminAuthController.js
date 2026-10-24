@@ -29,16 +29,18 @@ export const adminLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    if (otp === undefined) {
-      try {
-        await requestAdminOtp(admin);
-      } catch (error) {
-        return res.status(503).json({ message: error.message });
+    if (process.env.ADMIN_LOGIN_OTP_ENABLED !== 'false') {
+      if (otp === undefined) {
+        try {
+          await requestAdminOtp(admin);
+        } catch (error) {
+          return res.status(503).json({ message: error.message });
+        }
+        return res.status(202).json({ requiresOtp: true, message: 'Verification code sent to your email.' });
       }
-      return res.status(202).json({ requiresOtp: true, message: 'Verification code sent to your email.' });
-    }
-    if (!await verifyAdminOtp(admin.id, otp)) {
-      return res.status(401).json({ message: 'Invalid or expired verification code. Request a new code if needed.' });
+      if (!await verifyAdminOtp(admin.id, otp)) {
+        return res.status(401).json({ message: 'Invalid or expired verification code. Request a new code if needed.' });
+      }
     }
 
     const token = jwt.sign(
