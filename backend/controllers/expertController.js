@@ -3,6 +3,7 @@ import { Expert, Credential, Availability, Admin, Booking, Seeker, sequelize } f
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { expertTimeOffSlots, validateTimeOff } from '../utils/expertTimeOff.js';
 import { normalizeExpertBookingPreferences } from '../config/expertBookingPreferences.js';
+import { isValidPortfolioUrl } from '../utils/portfolioUrl.js';
 import {
   AiNotConfiguredError,
   suggestExpertIdentityCopy,
@@ -149,6 +150,13 @@ export const updateProfile = async (req, res) => {
   let onboardingMetadata;
   try {
     onboardingMetadata = normalizeOnboardingMetadata(body.onboardingMetadata);
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'portfolio')) {
+      const portfolio = onboardingMetadata.portfolio;
+      if (portfolio !== null && portfolio !== undefined && String(portfolio).trim() !== '' &&
+        (typeof portfolio !== 'string' || !isValidPortfolioUrl(portfolio))) {
+        throw new TypeError('Portfolio URL must be a valid absolute HTTP or HTTPS URL');
+      }
+    }
     if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'timeOff')) {
       onboardingMetadata.timeOff = validateTimeOff(onboardingMetadata.timeOff);
     }
