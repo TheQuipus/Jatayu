@@ -1,7 +1,14 @@
-.services { 
+.services {
+  position: relative;
+  z-index: 5;
   padding: 120px 0;
   background: var(--fold-background);
   color: var(--fold-text);
+}
+
+/* Stacking context is the wrap, not this section. */
+:global(.section-grid-wrap):has(.services) {
+  z-index: 5;
 }
 
 .servicesSeeker {

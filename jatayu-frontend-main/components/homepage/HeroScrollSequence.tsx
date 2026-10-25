@@ -218,6 +218,7 @@ export default function HeroScrollSequence({ sectionRef }: HeroScrollSequencePro
       const proxy = { frame: 0 };
 
       // Pin the section itself (same pattern as Problem) so pinSpacing works.
+      // Keep Hero above later sections (Problem cards) while the sequence is pinned.
       tween = gsap.to(proxy, {
         frame: FRAME_COUNT - 1,
         ease: "none",
@@ -230,6 +231,9 @@ export default function HeroScrollSequence({ sectionRef }: HeroScrollSequencePro
           scrub: 0.45,
           anticipatePin: 1,
           invalidateOnRefresh: true,
+          onToggle: (self) => {
+            gsap.set(section, { zIndex: self.isActive ? 20 : "" });
+          },
           onUpdate: (self) => {
             progressRef.current = self.progress;
           },
@@ -243,6 +247,9 @@ export default function HeroScrollSequence({ sectionRef }: HeroScrollSequencePro
 
       trigger = tween.scrollTrigger ?? null;
       void drawFrame(0);
+      // Hero's pin spacer shifts every fold below it. Refresh so their starts
+      // are measured after that spacer exists.
+      ScrollTrigger.refresh();
     };
 
     sizeCanvas();

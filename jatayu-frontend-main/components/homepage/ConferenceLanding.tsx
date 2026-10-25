@@ -10,6 +10,9 @@ const AVATARS = [
   "https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/699958f55e3a1a63d1bd0ef0_4.avif",
 ];
 
+/** Set to `true` to restore the When/Where/CTA bottom bar. Carousel does not depend on this. */
+const SHOW_HERO_BOTTOM_BAR = false;
+
 export default function ConferenceLanding() {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollWrapRef = useRef<HTMLDivElement>(null);
@@ -18,9 +21,9 @@ export default function ConferenceLanding() {
   useEffect(() => {
     const section = sectionRef.current;
     const scrollWrap = scrollWrapRef.current;
-    const bottomBox = bottomBoxRef.current;
-    if (!section || !scrollWrap || !bottomBox) return;
+    if (!section || !scrollWrap) return;
 
+    const bottomBox = bottomBoxRef.current;
     const items = Array.from(scrollWrap.querySelectorAll<HTMLElement>(`.${styles.animationItem}`));
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -38,7 +41,7 @@ export default function ConferenceLanding() {
     };
 
     scrollWrap.style.opacity = "1";
-    bottomBox.style.opacity = "1";
+    if (bottomBox) bottomBox.style.opacity = "1";
     updateRotation();
     window.addEventListener("scroll", updateRotation, { passive: true });
     window.addEventListener("resize", updateRotation);
@@ -218,49 +221,51 @@ export default function ConferenceLanding() {
         </div>
       </div>
 
-      {/* Bottom info bar */}
-      <div ref={bottomBoxRef} className={`container ${styles.heroBottomBox}`} style={{ opacity: 0 }}>
-        <div className={styles.heroInfoBox}>
-          <div className={styles.heroInfo}>
-            <p className={styles.infoTitle}>When?</p>
-            <p className={styles.infoText}>
-              Dec 24 2026
-              <br />
-              08:00 AM
-            </p>
+      {/* Bottom info bar — toggle SHOW_HERO_BOTTOM_BAR above to restore */}
+      {SHOW_HERO_BOTTOM_BAR && (
+        <div ref={bottomBoxRef} className={`container ${styles.heroBottomBox}`} style={{ opacity: 0 }}>
+          <div className={styles.heroInfoBox}>
+            <div className={styles.heroInfo}>
+              <p className={styles.infoTitle}>When?</p>
+              <p className={styles.infoText}>
+                Dec 24 2026
+                <br />
+                08:00 AM
+              </p>
+            </div>
+            <div className={styles.heroInfo}>
+              <p className={styles.infoTitle}>Where?</p>
+              <p className={styles.infoText}>
+                Mumbai, India
+                <br />
+                Bandra Kurla Complex
+              </p>
+            </div>
           </div>
-          <div className={styles.heroInfo}>
-            <p className={styles.infoTitle}>Where?</p>
-            <p className={styles.infoText}>
-              Mumbai, India
-              <br />
-              Bandra Kurla Complex
-            </p>
-          </div>
-        </div>
 
-        <div className={styles.heroBtnBox}>
-          <a href="#Event-Section" className={styles.primaryBtn}>
-            <span>View Agenda</span>
-            <span className={styles.btnArrow}>→</span>
-          </a>
-        </div>
-
-        <div className={styles.heroAuthorWrap}>
-          <div className={styles.heroAuthorBox}>
-            {AVATARS.map((src, i) => (
-              <img
-                key={i}
-                src={src}
-                alt="Conference participant"
-                className={styles.authorImg}
-                loading="lazy"
-              />
-            ))}
+          <div className={styles.heroBtnBox}>
+            <a href="#Event-Section" className={styles.primaryBtn}>
+              <span>View Agenda</span>
+              <span className={styles.btnArrow}>→</span>
+            </a>
           </div>
-          <p className={styles.authorText}>More than 5,000 participants</p>
+
+          <div className={styles.heroAuthorWrap}>
+            <div className={styles.heroAuthorBox}>
+              {AVATARS.map((src, i) => (
+                <img
+                  key={i}
+                  src={src}
+                  alt="Conference participant"
+                  className={styles.authorImg}
+                  loading="lazy"
+                />
+              ))}
+            </div>
+            <p className={styles.authorText}>More than 5,000 participants</p>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

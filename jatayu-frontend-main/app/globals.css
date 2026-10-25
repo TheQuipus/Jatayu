@@ -414,11 +414,11 @@ main {
   color: var(--fold-eyebrow-text);
 }
 
-.section-grid-wrap:has(> :is(.lightfold, .whitefold)) {
+.section-grid-wrap:has(:is(.lightfold, .whitefold)) {
   --section-grid-line-color: #FFFFFF !important;
 }
 
-.section-grid-wrap:has(> .darkfold) {
+.section-grid-wrap:has(.darkfold) {
   --section-grid-line-color: #17191E !important;
 }
 

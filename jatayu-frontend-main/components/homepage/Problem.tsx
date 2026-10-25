@@ -109,7 +109,8 @@ function formatQuote(quote: string): string {
 
 export default function Problem() {
   const pathname = usePathname();
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const kickerRef = useRef<HTMLParagraphElement>(null);
@@ -127,9 +128,10 @@ export default function Problem() {
       ScrollTrigger.refresh();
     }, 100);
 
+    const wrapper = wrapperRef.current;
     const section = sectionRef.current;
     const inner = innerRef.current;
-    if (!section || !inner) return;
+    if (!wrapper || !section || !inner) return;
 
     // Filter null values from arrays
     const cards = cardsRef.current.filter((c): c is HTMLDivElement => c !== null);
@@ -138,9 +140,6 @@ export default function Problem() {
     const previewWrap = previewWrapRef.current;
 
     if (cards.length === 0 || !cardsContainer || !previewWrap) return;
-
-    const getNavHeight = () =>
-      parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--nav-height")) || 84;
 
     const mm = gsap.matchMedia();
 
@@ -289,21 +288,36 @@ export default function Problem() {
 
       let lastActiveIndex = -1;
 
+      // Refresh measures this fold while Hero's pin spacer is reverted, so the
+      // stored start is short by that pin and the fold locks on over Services.
+      const gridWrap = wrapper.closest(".section-grid-wrap");
+      const previousWrap = gridWrap?.previousElementSibling instanceof HTMLElement
+        ? gridWrap.previousElementSibling
+        : null;
+
       const timeline = gsap.timeline({
         scrollTrigger: {
-          trigger: section,
-          start: () => `top top+=${getNavHeight()}`,
+          trigger: wrapper,
+          start: "top top",
           end: "+=5000",
           pin: true,
+          pinSpacing: true,
           scrub: 1,
-          anticipatePin: 1, // Prevent browser layout jitter on pin start
+          anticipatePin: 0,
           invalidateOnRefresh: true,
-          onEnter: () => gsap.set(section, { top: getNavHeight() }),
-          onEnterBack: () => gsap.set(section, { top: getNavHeight() }),
           onRefresh: (self) => {
-            if (self.isActive) {
-              gsap.set(section, { top: getNavHeight() });
-            }
+            const spacer = wrapper.parentElement?.classList.contains("pin-spacer")
+              ? wrapper.parentElement
+              : wrapper;
+            const foldTop = spacer.getBoundingClientRect().top + window.scrollY;
+            const servicesClear = previousWrap
+              ? previousWrap.getBoundingClientRect().bottom + window.scrollY
+              : foldTop;
+            const start = Math.round(Math.max(foldTop, servicesClear));
+            if (Math.abs(self.start - start) > 1) self.setPositions(start, start + 5000, true);
+          },
+          onToggle: (self) => {
+            gsap.set(gridWrap ?? wrapper, { zIndex: self.isActive ? 20 : "" });
           },
         },
         onUpdate: function () {
@@ -422,22 +436,25 @@ export default function Problem() {
 
     return () => {
       clearTimeout(timer);
-      // Revert matches and cleanup
+      // Revert only this section's matchMedia / ScrollTriggers — never kill Hero's.
       mm.revert();
-      ScrollTrigger.getAll().forEach(t => t.kill());
     };
   }, [pathname]);
 
   return (
     <>
       <HeroLines />
-      <div className={`${styles.problemWrapper} darkfold`} data-nav-surface="dark">
+      <div
+        ref={wrapperRef}
+        className={`${styles.problemWrapper} lightfold`}
+        data-nav-surface="light"
+      >
         <section ref={sectionRef} className={styles.problem}>
           <div ref={innerRef} className={`container ${styles.problemInner}`}>
 
             {/* Original problemHead DOM tree structure completely restored */}
             <div className={styles.problemHead}>
-              <span ref={eyebrowRef} className="eyebrow eyebrow--light">
+              <span ref={eyebrowRef} className="eyebrow eyebrow--dark">
                 <i className="dot"></i>{CONFIG.defaultText.eyebrow}
               </span>
               <h2

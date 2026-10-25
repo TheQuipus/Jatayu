@@ -1,12 +1,17 @@
 .problemWrapper {
+  position: relative;
+  z-index: 1;
   background: var(--fold-background);
   color: var(--fold-text);
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .problem {
   position: relative;
-  z-index: 3;
+  z-index: 1;
   padding: 60px 0 calc(120px + 95px);
+  background: var(--fold-background);
 }
 
 .problemInner {
@@ -238,12 +243,14 @@
 /* Responsive Storytelling styles */
 @media (min-width: 1025px) {
   .problemWrapper {
-    padding-top: 120px;
+    padding-top: var(--nav-height);
     padding-bottom: 120px;
+    height: 100svh;
+    min-height: 100svh;
   }
 
   .problem {
-    height: calc(100vh - var(--nav-height));
+    height: 100%;
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -253,7 +260,7 @@
   .problemInner {
     position: relative;
     width: 100%;
-    height: calc(100vh - var(--nav-height));
+    height: 100%;
     display: grid;
     align-content: start;
   }
