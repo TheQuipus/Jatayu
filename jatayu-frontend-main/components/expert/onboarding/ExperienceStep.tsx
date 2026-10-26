@@ -474,10 +474,11 @@ export default function ExperienceStep({
                         </div>
 
                         {!employmentPositions.some((p, pIdx) => pIdx !== index && p.currentlyWorking) && (
-                          <label className={styles.checkboxRow}>
+                          <div className={styles.checkboxRow}>
                             <input
                               type="checkbox"
                               className={styles.checkboxInput}
+                              aria-label="Currently working here"
                               checked={Boolean(position.currentlyWorking)}
                               onChange={(event) => {
                                 const checked = event.target.checked;
@@ -494,7 +495,7 @@ export default function ExperienceStep({
                               }}
                             />
                             <span className={styles.checkboxLabel}>Currently working here</span>
-                          </label>
+                          </div>
                         )}
 
                         <div className={styles.fieldGroup}>

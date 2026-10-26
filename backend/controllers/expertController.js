@@ -4,6 +4,8 @@ import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { expertTimeOffSlots, validateTimeOff } from '../utils/expertTimeOff.js';
 import { normalizeExpertBookingPreferences } from '../config/expertBookingPreferences.js';
 import { isValidPortfolioUrl } from '../utils/portfolioUrl.js';
+import { validatePortfolioSamples } from '../utils/portfolioSamples.js';
+import { validateExpertCertificates } from '../utils/expertCertificates.js';
 import {
   AiNotConfiguredError,
   suggestExpertIdentityCopy,
@@ -66,7 +68,7 @@ function parseJsonField(value) {
   return value;
 }
 
-const MAX_ONBOARDING_METADATA_BYTES = 64 * 1024;
+const MAX_ONBOARDING_METADATA_BYTES = 7 * 1024 * 1024;
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -98,7 +100,7 @@ function normalizeOnboardingMetadata(value) {
     throw new TypeError('onboardingMetadata must be a JSON object');
   }
   if (Buffer.byteLength(JSON.stringify(normalized), 'utf8') > MAX_ONBOARDING_METADATA_BYTES) {
-    throw new RangeError('onboardingMetadata must not exceed 64 KB');
+    throw new RangeError('onboardingMetadata must not exceed 7 MB');
   }
   return normalized;
 }
@@ -156,6 +158,12 @@ export const updateProfile = async (req, res) => {
         (typeof portfolio !== 'string' || !isValidPortfolioUrl(portfolio))) {
         throw new TypeError('Portfolio URL must be a valid absolute HTTP or HTTPS URL');
       }
+    }
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'portfolioSamples')) {
+      onboardingMetadata.portfolioSamples = validatePortfolioSamples(onboardingMetadata.portfolioSamples);
+    }
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'certificates')) {
+      onboardingMetadata.certificates = validateExpertCertificates(onboardingMetadata.certificates);
     }
     if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'timeOff')) {
       onboardingMetadata.timeOff = validateTimeOff(onboardingMetadata.timeOff);
