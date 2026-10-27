@@ -43,7 +43,7 @@ export default function ExpertAvailability({
   const styles = variant === "app" ? appStyles : onboardingStyles;
   const theme = variant === "app" ? "light" : "dark";
   const [timezone, setTimezone] = useState(initialTimezone || "Asia/Kolkata");
-  const [slots, setSlots] = useState<TimeSlot[]>([DEFAULT_SLOT]);
+  const [slots, setSlots] = useState<TimeSlot[]>(() => initialSlots ?? [DEFAULT_SLOT]);
   const timezoneLabel = useMemo(() => formatTimezoneLabel(timezone), [timezone]);
 
   useEffect(() => {
@@ -59,8 +59,10 @@ export default function ExpertAvailability({
 
   useEffect(() => {
     onValidityChange?.(isValid);
-    if (isValid && timezone) onScheduleChange?.({ timezone, slots });
-  }, [isValid, onScheduleChange, onValidityChange, slots, timezone]);
+    if (variant === "onboarding" || (isValid && timezone)) {
+      onScheduleChange?.({ timezone, slots });
+    }
+  }, [isValid, onScheduleChange, onValidityChange, slots, timezone, variant]);
 
   const conflicts = (slotId: string, from: string, to: string, days: string[]) =>
     wouldSlotConflict(slots, slotId, from, to, days);

@@ -12,6 +12,7 @@ function load(file) {
   const loaded = { exports: {} };
   vm.runInNewContext(outputText, {
     module: loaded, exports: loaded.exports,
+    URL,
     require: (name) => {
       if (['@/lib/api', '@/lib/expertStore'].includes(name)) return {};
       throw new Error(`Unexpected dependency: ${name}`);
@@ -22,6 +23,17 @@ function load(file) {
 
 const { normalizeBackendProfile } = load('lib/expertProfileApi.ts');
 const { formatPreferencesPricingSummary } = load('components/expert/onboarding/preferencesData.ts');
+const { isValidPortfolioUrl } = load('lib/portfolioUrl.ts');
+
+test('portfolio URL validation accepts absolute web URLs and rejects malformed values', () => {
+  for (const value of ['https://example.com', 'https://github.com/username']) {
+    assert.equal(isValidPortfolioUrl(value), true);
+  }
+  for (const value of ['hello', 'abc.com', 'https://']) {
+    assert.equal(isValidPortfolioUrl(value), false);
+  }
+  assert.equal(isValidPortfolioUrl(''), false);
+});
 
 for (const serialized of [false, true]) {
   test(`resumed review renders saved preferences (serialized=${serialized})`, () => {

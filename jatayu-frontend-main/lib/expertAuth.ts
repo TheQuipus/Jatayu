@@ -44,6 +44,34 @@ const ONBOARDING_STEPS: ExpertOnboardingStep[] = [
   "success",
 ];
 
+const PERSISTED_ONBOARDING_STEPS = [
+  "category",
+  "skills",
+  "experience",
+  "identity",
+  "credentials",
+  "preferences",
+  "audience",
+  "availability",
+  "review",
+  "success",
+] as const;
+
+export function getCompletedOnboardingStepFlags(
+  onboardingStep: string | undefined,
+): Record<number, boolean> {
+  const nextStepIndex = PERSISTED_ONBOARDING_STEPS.indexOf(
+    onboardingStep as (typeof PERSISTED_ONBOARDING_STEPS)[number],
+  );
+  if (nextStepIndex < 0) return {};
+
+  const completedSteps: Record<number, boolean> = {};
+  for (let step = 1; step <= Math.min(nextStepIndex, 9); step += 1) {
+    completedSteps[step] = true;
+  }
+  return completedSteps;
+}
+
 const EXPERT_USER_KEY = "jatayu_expert_user";
 
 export function persistAuthSession(response: AuthResponse): AuthUser {
@@ -95,6 +123,10 @@ export type PendingOtpSession = {
   fullName?: string;
   flow?: OtpFlow;
 };
+
+export function isSignupOtpSession(session: PendingOtpSession): boolean {
+  return session.flow !== "login";
+}
 
 export function savePendingOtpSession(session: PendingOtpSession): void {
   if (typeof window === "undefined") return;

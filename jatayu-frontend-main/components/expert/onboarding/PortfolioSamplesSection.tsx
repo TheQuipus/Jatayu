@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, FileText, Lightbulb, Upload, X } from "lucide-react";
 import type { PortfolioSampleFile } from "@/lib/expertApplicationSubmission";
+import { getPortfolioSampleFileError } from "@/lib/portfolioSampleValidation";
 import { generateUUID } from "@/lib/uuid";
 import styles from "./PortfolioSamplesSection.module.css";
 
@@ -20,9 +21,6 @@ const PORTFOLIO_TIPS = [
   "Talk/Interview links",
 ];
 
-const MAX_FILE_BYTES = 20 * 1024 * 1024;
-const ACCEPTED_EXTENSIONS = [".pdf", ".docx", ".ppt", ".pptx", ".jpg", ".jpeg", ".png"];
-
 function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -33,11 +31,6 @@ function formatFileSize(bytes: number): string {
 function getFileExtension(name: string): string {
   const dot = name.lastIndexOf(".");
   return dot >= 0 ? name.slice(dot + 1).toUpperCase() : "FILE";
-}
-
-function isAcceptedFile(file: File): boolean {
-  const lower = file.name.toLowerCase();
-  return ACCEPTED_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -57,6 +50,7 @@ export default function PortfolioSamplesSection({
   onSamplesChange,
 }: PortfolioSamplesSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileError, setFileError] = useState("");
 
   useEffect(() => {
     const uploading = samples.find((sample) => sample.status === "uploading");
@@ -87,22 +81,31 @@ export default function PortfolioSamplesSection({
   }, [onSamplesChange, samples]);
 
   const handleAddFile = async (file: File) => {
-    if (!isAcceptedFile(file) || file.size > MAX_FILE_BYTES) return;
+    const validationError = getPortfolioSampleFileError(file);
+    if (validationError) {
+      setFileError(validationError);
+      return;
+    }
+    setFileError("");
 
-    const id = generateUUID();
-    const url = await readFileAsDataUrl(file);
-    const nextSample: PortfolioSampleFile = {
-      id,
-      fileName: file.name,
-      fileSize: formatFileSize(file.size),
-      fileType: getFileExtension(file.name),
-      description: "",
-      url,
-      status: "uploading",
-      progress: 0,
-    };
+    try {
+      const id = generateUUID();
+      const url = await readFileAsDataUrl(file);
+      const nextSample: PortfolioSampleFile = {
+        id,
+        fileName: file.name,
+        fileSize: formatFileSize(file.size),
+        fileType: getFileExtension(file.name),
+        description: "",
+        url,
+        status: "uploading",
+        progress: 0,
+      };
 
-    onSamplesChange([...samples, nextSample]);
+      onSamplesChange([...samples, nextSample]);
+    } catch {
+      setFileError("Could not read the selected file. Please try again.");
+    }
   };
 
   const removeSample = (id: string) => {
@@ -125,7 +128,7 @@ export default function PortfolioSamplesSection({
         >
           <Upload size={20} strokeWidth={1.5} className={styles.addCardIcon} />
           <span className={styles.addCardTitle}>Add Portfolio Item</span>
-          <span className={styles.addCardHint}>PDF, DOCX · Max 5MB</span>
+          <span className={styles.addCardHint}>PDF, DOCX · Max 5 MB</span>
         </button>
       ) : (
         <>
@@ -191,6 +194,10 @@ export default function PortfolioSamplesSection({
         </>
       )}
 
+      {fileError ? (
+        <p className={styles.fileError} role="alert">{fileError}</p>
+      ) : null}
+
       <div className={styles.tipsBox}>
         <p className={styles.tipsTitle}>
           <Lightbulb size={14} aria-hidden="true" />
@@ -209,7 +216,7 @@ export default function PortfolioSamplesSection({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.docx,.ppt,.pptx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,image/jpeg,image/png"
+        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className={styles.hiddenFileInput}
         onChange={(event) => {
           const file = event.target.files?.[0];

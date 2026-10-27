@@ -174,6 +174,28 @@ test('expert login keeps unknown, incorrect-password, and social-only responses 
   assert.equal(unknown.body.message, 'Invalid email or password');
 });
 
+test('password login returns the persisted onboarding step for resume routing', async (t) => {
+  const expert = {
+    id: 'resume-expert',
+    email: 'resume@example.com',
+    fullName: 'Resume Expert',
+    phone: '+919999999999',
+    profilePhotoSrc: '/assets/img/manportrait.png',
+    linkedinId: null,
+    onboardingStep: 'audience',
+    status: 'draft',
+    twoFactorEnabled: false,
+    password: await bcrypt.hash('TestPassword1!', 4),
+  };
+  t.mock.method(Expert, 'findOne', async () => expert);
+
+  const res = response();
+  await login({ body: { email: expert.email, password: 'TestPassword1!' } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.user.onboardingStep, 'audience');
+});
+
 for (const onboardingStep of ['budget', 'completed']) {
   test(`2FA disabled allows password login at ${onboardingStep}`, async (t) => {
     const expert = {

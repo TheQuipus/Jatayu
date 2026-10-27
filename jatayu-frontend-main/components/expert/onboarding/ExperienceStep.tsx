@@ -35,6 +35,7 @@ import {
   type EmploymentPosition,
 } from "@/lib/expertEmployment";
 import type { PortfolioSampleFile } from "@/lib/expertApplicationSubmission";
+import { isValidPortfolioUrl } from "@/lib/portfolioUrl";
 import { useLinkedinProfileSync } from "@/hooks/useLinkedinProfileSync";
 import type { LinkedinConnectResponse } from "@/lib/api";
 import shared from "./onboarding.shared.module.css";
@@ -105,7 +106,7 @@ export default function ExperienceStep({
     const hasAtLeastOneFilled =
       employmentPositions.some(isEmploymentPositionValid) ||
       educationDegrees.some((deg) => isEducationDegreeStarted(deg) && isEducationDegreeValid(deg)) ||
-      Boolean(linkedin.trim() || portfolio.trim() || portfolioSamples.length > 0);
+      Boolean(linkedin.trim() || (portfolio.trim() && isValidPortfolioUrl(portfolio)) || portfolioSamples.length > 0);
 
     return allPositionsValid && allDegreesValid && hasAtLeastOneFilled;
   }, [employmentPositions, educationDegrees, linkedin, portfolio, portfolioSamples]);
@@ -120,6 +121,12 @@ export default function ExperienceStep({
   const [syncedThisSession, setSyncedThisSession] = useState(false);
   const isSynced = linkedinConnected || syncedThisSession;
   const [linkedinError, setLinkedinError] = useState("");
+  const portfolioInvalid = Boolean(portfolio.trim()) && !isValidPortfolioUrl(portfolio);
+
+  const handleContinue = () => {
+    if (portfolioInvalid) return;
+    onContinue();
+  };
 
   const handleLinkedinSuccess = useCallback((response: LinkedinConnectResponse) => {
     setLinkedinError("");
@@ -467,10 +474,11 @@ export default function ExperienceStep({
                         </div>
 
                         {!employmentPositions.some((p, pIdx) => pIdx !== index && p.currentlyWorking) && (
-                          <label className={styles.checkboxRow}>
+                          <div className={styles.checkboxRow}>
                             <input
                               type="checkbox"
                               className={styles.checkboxInput}
+                              aria-label="Currently working here"
                               checked={Boolean(position.currentlyWorking)}
                               onChange={(event) => {
                                 const checked = event.target.checked;
@@ -487,7 +495,7 @@ export default function ExperienceStep({
                               }}
                             />
                             <span className={styles.checkboxLabel}>Currently working here</span>
-                          </label>
+                          </div>
                         )}
 
                         <div className={styles.fieldGroup}>
@@ -701,13 +709,20 @@ export default function ExperienceStep({
                     <input
                       id="experience-portfolio-input"
                       type="text"
-                      className={styles.textFieldWithIcon}
+                      className={`${styles.textFieldWithIcon} ${portfolioInvalid ? styles.textFieldError : ""}`}
                       placeholder="yourwebsite.com"
                       value={portfolio ?? ""}
                       onChange={(event) => onPortfolioChange(event.target.value)}
                       autoComplete="url"
+                      aria-invalid={portfolioInvalid}
+                      aria-describedby={portfolioInvalid ? "experience-portfolio-error" : undefined}
                     />
                   </div>
+                  {portfolioInvalid ? (
+                    <span id="experience-portfolio-error" className={styles.fieldErrorText} role="alert">
+                      Enter a valid URL, including https:// (for example, https://example.com).
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
@@ -741,10 +756,10 @@ export default function ExperienceStep({
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
           </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
+          <button type="button" className={shared.textBtn} onClick={handleContinue}>
             Skip
           </button>
-          <ContinueButton onClick={onContinue} disabled={!isStepComplete} />
+          <ContinueButton onClick={handleContinue} disabled={!isStepComplete || portfolioInvalid} />
         </div>
       </div>
     </section>
