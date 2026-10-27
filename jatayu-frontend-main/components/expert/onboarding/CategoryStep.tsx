@@ -29,7 +29,6 @@ type CategoryStepProps = {
   onSelectCategory: (id: string) => void;
   onAddCustomCategory: (label: string, aiSkills?: string[]) => void;
   onRemoveCustomCategory: (id: string) => void;
-  onBack: () => void;
   onContinue: () => void;
   onJumpToStep?: (step: number) => void;
 };
@@ -42,7 +41,6 @@ export default function CategoryStep({
   onSelectCategory,
   onAddCustomCategory,
   onRemoveCustomCategory,
-  onBack,
   onContinue,
   onJumpToStep,
 }: CategoryStepProps) {
@@ -334,9 +332,6 @@ export default function CategoryStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
           <ContinueButton onClick={onContinue} disabled={!selectedCategory} />
         </div>
       </div>

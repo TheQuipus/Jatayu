@@ -123,6 +123,7 @@ export function submitExpertApplication(
     portfolioLinks: draft.portfolioLinks ?? [],
     governmentId: draft.governmentId,
     kycVideoUrl: draft.kycVideoUrl,
+    kycPhotos: draft.kycPhotos,
     certificates: draft.certificates ?? [],
     formats: draft.formats ?? [],
     lengths: draft.lengths ?? [],

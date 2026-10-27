@@ -9,16 +9,14 @@ import {
   FileText,
   MessageSquare,
   Check,
-  Sparkles,
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
-import Lottie from "lottie-react";
-import checkmarkAnimation from "@/public/Lottie/Checkmark.json";
 import shared from "./onboarding.shared.module.css";
 import styles from "./PreferencesStep.module.css";
 import {
+  areRequiredSessionPreferencesValid,
   CONSULTATION_FORMATS,
   SESSION_LENGTHS,
 } from "./preferencesData";
@@ -65,15 +63,7 @@ export default function PreferencesStep({
 }: PreferencesStepProps) {
   const formatPriceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const hasPricesForAllSelected = selectedFormats.every((id) => {
-    const price = formatPrices[id];
-    return price && parseInt(price, 10) > 0;
-  });
-
-  const canContinue =
-    selectedFormats.length > 0 &&
-    hasPricesForAllSelected &&
-    selectedLengths.length > 0;
+  const canContinue = areRequiredSessionPreferencesValid(selectedFormats, formatPrices);
 
   useEffect(() => {
     onStepCompleteChange?.(6, canContinue);
@@ -187,19 +177,12 @@ export default function PreferencesStep({
                   />
                 </svg>
 
-                {isSelected && Boolean(formatPrices[fmt.id]?.trim()) && (
-                  <div
-                    className={`${styles.formatCheckbox} ${styles.formatCheckboxSelected}`}
-                    style={{ width: 28, height: 28, top: 16, right: 16 }}
-                    aria-hidden="true"
-                  >
-                    <Lottie
-                      animationData={checkmarkAnimation}
-                      loop={false}
-                      style={{ width: "100%", height: "100%" }}
-                    />
-                  </div>
-                )}
+                <div
+                  className={`${styles.formatCheckbox} ${isSelected ? styles.formatCheckboxSelected : ""}`}
+                  aria-hidden="true"
+                >
+                  {isSelected && <Check size={10} strokeWidth={3} />}
+                </div>
 
                 <div className={styles.formatCardBody}>
                   <div className={styles.formatCardInner}>
@@ -265,7 +248,7 @@ export default function PreferencesStep({
         style={{ marginBottom: "28px" }}
       >
         <h2 className={styles.preferencesSectionLabel}>
-          Preferred Session Lengths
+          Preferred Session Lengths (Optional)
         </h2>
         <div className={styles.lengthsRow}>
           {lengths.map((len) => {

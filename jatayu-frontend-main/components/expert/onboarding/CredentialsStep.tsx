@@ -21,10 +21,12 @@ import shared from "./onboarding.shared.module.css";
 import styles from "./CredentialsStep.module.css";
 import CertificateDocxViewer from "./CertificateDocxViewer";
 import type {
+  ExpertKycPhotos,
   ExpertCertificate,
   GovernmentIdData,
   GovernmentIdType,
 } from "@/lib/expertApplicationSubmission";
+import { areKycPhotosComplete } from "@/lib/expertKycPhotos";
 import {
   EXPERT_CERTIFICATE_MIME_TYPE,
   getExpertCertificateFileError,
@@ -35,6 +37,8 @@ type CredentialsStepProps = {
   userName: string;
   kycVideoSrc: string;
   onKycVideoChange: (src: string) => void;
+  kycPhotos: ExpertKycPhotos;
+  onKycPhotosChange: (photos: ExpertKycPhotos) => void;
   governmentId: GovernmentIdData | null;
   onGovernmentIdChange: (data: GovernmentIdData | null) => void;
   certificates: ExpertCertificate[];
@@ -135,6 +139,8 @@ export default function CredentialsStep({
   userName,
   kycVideoSrc,
   onKycVideoChange,
+  kycPhotos,
+  onKycPhotosChange,
   governmentId,
   onGovernmentIdChange,
   certificates,
@@ -172,8 +178,9 @@ export default function CredentialsStep({
   const [digilockerLoading, setDigilockerLoading] = useState(true);
   const [digilockerError, setDigilockerError] = useState<string | null>(null);
   const hasKycVideo = Boolean(kycVideoSrc);
+  const hasManualKycPhotos = areKycPhotosComplete(kycPhotos);
   const hasGovernmentId = Boolean(selectedIdType) && Boolean(idFront);
-  const canContinue = hasGovernmentId || hasKycVideo || digilockerVerified;
+  const canContinue = hasGovernmentId || hasKycVideo || hasManualKycPhotos || digilockerVerified;
 
   useEffect(() => {
     let active = true;
@@ -442,7 +449,12 @@ export default function CredentialsStep({
         <div className={styles.sectionsStack}>
           {/* 1. Identity Verification */}
           <article>
-            <KycVerificationPanel videoSrc={kycVideoSrc} onVideoChange={onKycVideoChange} />
+            <KycVerificationPanel
+              videoSrc={kycVideoSrc}
+              onVideoChange={onKycVideoChange}
+              manualPhotos={kycPhotos}
+              onManualPhotosChange={onKycPhotosChange}
+            />
           </article>
 
           {/* 2. Government ID */}
