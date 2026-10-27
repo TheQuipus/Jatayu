@@ -12,6 +12,8 @@ import styles from "./AvailabilityStep.module.css";
 
 type AvailabilityStepProps = {
   userName: string;
+  initialTimezone?: string;
+  initialSlots?: TimeSlot[];
   stepCompletion: boolean[];
   onStepCompleteChange?: (step: number, complete: boolean) => void;
   onBack: () => void;
@@ -22,6 +24,8 @@ type AvailabilityStepProps = {
 
 export default function AvailabilityStep({
   userName,
+  initialTimezone,
+  initialSlots,
   stepCompletion,
   onStepCompleteChange,
   onBack,
@@ -52,6 +56,8 @@ export default function AvailabilityStep({
 
         <ExpertAvailability
           variant="onboarding"
+          initialTimezone={initialTimezone}
+          initialSlots={initialSlots}
           onValidityChange={(isValid) => {
             setCanContinue(isValid);
             onStepCompleteChange?.(8, isValid);

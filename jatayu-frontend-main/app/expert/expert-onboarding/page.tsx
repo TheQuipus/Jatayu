@@ -51,9 +51,11 @@ import {
   clearExpertAuthOnly,
   clearPendingOtpSession,
   getPostAuthDestination,
+  getCompletedOnboardingStepFlags,
   getStoredAuthUser,
   isAuthenticated,
   isNavigationHref,
+  isSignupOtpSession,
   parseCredentialsFromProfile,
   persistAuthSession,
   readPendingOtpSession,
@@ -152,6 +154,7 @@ function ExpertOnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<OnboardingStep>("register");
+  const [routeInitialized, setRouteInitialized] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [employmentPositions, setEmploymentPositions] = useState<EmploymentPosition[]>([
@@ -186,7 +189,7 @@ function ExpertOnboardingPageContent() {
   const [languages, setLanguages] = useState<string[]>([]);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
   const [timezone, setTimezone] = useState("");
-  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[]>([]);
+  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[] | null>(null);
   const [acceptCustomRequests, setAcceptCustomRequests] = useState(false);
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
   const [accountStatus, setAccountStatus] = useState<ExpertAccountStatus | null>(null);
@@ -225,7 +228,7 @@ function ExpertOnboardingPageContent() {
     setLanguages([]);
     setSelectedAudiences([]);
     setTimezone("");
-    setAvailabilitySlots([]);
+    setAvailabilitySlots(null);
     setAcceptCustomRequests(false);
     setAccountStatus(null);
     setAuthUser(null);
@@ -329,6 +332,7 @@ function ExpertOnboardingPageContent() {
 
     setAuthUser(user);
     setAccountStatus(buildExpertAccountStatus(user));
+    setInternalStepComplete(getCompletedOnboardingStepFlags(user.onboardingStep));
   }
 
   const handleLinkedinProfileFetched = useCallback((response: LinkedinConnectResponse) => {
@@ -393,8 +397,8 @@ function ExpertOnboardingPageContent() {
 
   const stepCompletion = useMemo(
     () => [
-      Boolean(selectedCategory),
-      selectedSkills.length > 0,
+      Boolean(internalStepComplete[1] || selectedCategory),
+      Boolean(internalStepComplete[2] || selectedSkills.length > 0),
       Boolean(internalStepComplete[3]),
       Boolean(internalStepComplete[4]),
       Boolean(internalStepComplete[5]),
@@ -408,6 +412,7 @@ function ExpertOnboardingPageContent() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    setRouteInitialized(true);
     const params = new URLSearchParams(window.location.search);
     const flow = params.get("flow");
     const resume = params.get("resume");
@@ -440,7 +445,7 @@ function ExpertOnboardingPageContent() {
       const pending = readPendingOtpSession();
       if (pending) {
         otpFlowLockRef.current = true;
-        signupFlowRef.current = true;
+        signupFlowRef.current = isSignupOtpSession(pending);
         setExpertId(pending.expertId);
         setRegisteredEmail(pending.email);
         setRegisteredPhone(pending.phone);
@@ -465,6 +470,7 @@ function ExpertOnboardingPageContent() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!routeInitialized) return;
     let targetQuery = "";
     if (step === "register") {
       targetQuery = "?flow=signup";
@@ -479,7 +485,7 @@ function ExpertOnboardingPageContent() {
     if (window.location.pathname + window.location.search !== targetUrl) {
       window.history.replaceState(null, "", targetUrl);
     }
-  }, [step]);
+  }, [routeInitialized, step]);
 
   useEffect(() => {
     if (loginIntentRef.current) return;
@@ -590,6 +596,7 @@ function ExpertOnboardingPageContent() {
       phone,
       email,
       fullName,
+      flow: "signup",
     });
     setExpertId(nextExpertId);
     setRegisteredPhone(phone);
@@ -616,6 +623,7 @@ function ExpertOnboardingPageContent() {
       email,
       phone,
       fullName,
+      flow: "login",
     });
     setExpertId(nextExpertId);
     setRegisteredEmail(email);
@@ -625,12 +633,27 @@ function ExpertOnboardingPageContent() {
     clearExpertAuthOnly();
   };
 
-  const handleLoginComplete = (response: AuthResponse) => {
+  const handleLoginComplete = async (response: AuthResponse) => {
     clearPendingOtpSession();
     otpFlowLockRef.current = false;
     signupFlowRef.current = false;
     loginIntentRef.current = false;
-    handleAuthSuccess(response);
+    const authUser = persistAuthSession(response);
+    setExpertId(authUser.id);
+    setRegisteredName(authUser.fullName);
+    setRegisteredEmail(authUser.email);
+    if (authUser.phone) setRegisteredPhone(authUser.phone);
+    setAuthUser(authUser);
+    setAccountStatus(buildExpertAccountStatus(authUser));
+
+    try {
+      const profile = await getProfile();
+      const snapshot = asOnboardingProfile(profile);
+      hydrateFromProfile(snapshot);
+      routeAfterAuth(snapshot);
+    } catch {
+      routeAfterAuth(authUser);
+    }
   };
 
   const handleOtpComplete = (response: AuthResponse) => {
@@ -675,6 +698,20 @@ function ExpertOnboardingPageContent() {
   const handleBackToRegister = () => {
     signupFlowRef.current = true;
     setStep("register");
+  };
+
+  const handleBackFromOtp = () => {
+    const pending = readPendingOtpSession();
+    clearPendingOtpSession();
+    otpFlowLockRef.current = false;
+    if (pending && !isSignupOtpSession(pending)) {
+      loginIntentRef.current = true;
+      signupFlowRef.current = false;
+      setStep("login");
+      router.replace(EXPERT_LOGIN_HREF);
+      return;
+    }
+    handleBackToRegister();
   };
 
   const handleSwitchToLogin = (emailPrefill?: string) => {
@@ -927,12 +964,20 @@ function ExpertOnboardingPageContent() {
     setStep("audience");
   };
 
+  const handleAvailabilityScheduleChange = useCallback(
+    ({ timezone: nextTimezone, slots }: { timezone: string; slots: TimeSlot[] }) => {
+      setTimezone(nextTimezone);
+      setAvailabilitySlots(slots);
+    },
+    [],
+  );
+
   const handleAvailabilityContinue = async () => {
     try {
       await saveProfileStep({
         step: "review",
         timezone,
-        availabilitySlots: availabilitySlots.map((slot) => ({
+        availabilitySlots: (availabilitySlots ?? []).map((slot) => ({
           days: slot.days,
           from: slot.from,
           to: slot.to,
@@ -1093,7 +1138,7 @@ function ExpertOnboardingPageContent() {
           expertId={otpExpertId}
           phone={otpPhone}
           email={otpEmail}
-          onBack={handleBackToRegister}
+          onBack={handleBackFromOtp}
           onContinue={handleOtpComplete}
         />
       ) : null}
@@ -1250,6 +1295,8 @@ function ExpertOnboardingPageContent() {
       {step === "audience" && (
         <AudienceStep
           userName={registeredName}
+          initialLanguages={languages}
+          initialAudiences={selectedAudiences}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToPreferences}
@@ -1265,14 +1312,13 @@ function ExpertOnboardingPageContent() {
       {step === "availability" && (
         <AvailabilityStep
           userName={registeredName}
+          initialTimezone={timezone || undefined}
+          initialSlots={availabilitySlots ?? undefined}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToAudience}
           onContinue={handleAvailabilityContinue}
-          onScheduleChange={({ timezone: nextTimezone, slots }) => {
-            setTimezone(nextTimezone);
-            setAvailabilitySlots(slots);
-          }}
+          onScheduleChange={handleAvailabilityScheduleChange}
           onJumpToStep={handleJumpToStepNumber}
         />
       )}
@@ -1299,7 +1345,7 @@ function ExpertOnboardingPageContent() {
           languages={languages}
           selectedAudiences={selectedAudiences}
           timezone={timezone}
-          availabilitySlots={availabilitySlots}
+          availabilitySlots={availabilitySlots ?? []}
           selectedFormats={selectedFormats}
           selectedLengths={selectedLengths}
           formatPrices={formatPrices}

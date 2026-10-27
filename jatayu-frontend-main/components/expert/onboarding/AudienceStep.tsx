@@ -11,6 +11,8 @@ import styles from "./AudienceStep.module.css";
 
 type AudienceStepProps = {
   userName: string;
+  initialLanguages: string[];
+  initialAudiences: string[];
   stepCompletion: boolean[];
   onStepCompleteChange?: (step: number, complete: boolean) => void;
   onBack: () => void;
@@ -25,6 +27,20 @@ type AudienceType = {
   desc: string;
   icon: any;
 };
+
+const PRESET_LANGUAGES = [
+  "English",
+  "Hindi",
+  "Bengali",
+  "Marathi",
+  "Telugu",
+  "Tamil",
+  "Gujarati",
+  "Kannada",
+  "Malayalam",
+  "Odia",
+  "Punjabi",
+];
 
 const audiences: AudienceType[] = [
   {
@@ -55,6 +71,8 @@ const audiences: AudienceType[] = [
 
 export default function AudienceStep({
   userName,
+  initialLanguages,
+  initialAudiences,
   stepCompletion,
   onStepCompleteChange,
   onBack,
@@ -62,9 +80,11 @@ export default function AudienceStep({
   onContinueWithAudience,
   onJumpToStep,
 }: AudienceStepProps) {
-  const [languages, setLanguages] = useState<string[]>([]);
-  const [customLanguages, setCustomLanguages] = useState<string[]>([]);
-  const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>(() => initialLanguages);
+  const [customLanguages, setCustomLanguages] = useState<string[]>(() =>
+    initialLanguages.filter((language) => !PRESET_LANGUAGES.includes(language)),
+  );
+  const [selectedAudiences, setSelectedAudiences] = useState<string[]>(() => initialAudiences);
   const [newLanguage, setNewLanguage] = useState("");
   const [showInput, setShowInput] = useState(false);
 
@@ -79,19 +99,7 @@ export default function AudienceStep({
     onContinue();
   };
 
-  const presetLanguages = [
-    "English",
-    "Hindi",
-    "Bengali",
-    "Marathi",
-    "Telugu",
-    "Tamil",
-    "Gujarati",
-    "Kannada",
-    "Malayalam",
-    "Odia",
-    "Punjabi",
-  ];
+  const presetLanguages = PRESET_LANGUAGES;
 
   const handleToggleLanguage = (lang: string) => {
     if (languages.includes(lang)) {

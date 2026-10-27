@@ -9,6 +9,7 @@ import {
   BookOpen,
   IdCard,
   Car,
+  FileText,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -18,11 +19,16 @@ import ContinueButton from "@/components/ui/ContinueButton";
 import KycVerificationPanel from "./KycVerificationPanel";
 import shared from "./onboarding.shared.module.css";
 import styles from "./CredentialsStep.module.css";
+import CertificateDocxViewer from "./CertificateDocxViewer";
 import type {
   ExpertCertificate,
   GovernmentIdData,
   GovernmentIdType,
 } from "@/lib/expertApplicationSubmission";
+import {
+  EXPERT_CERTIFICATE_MIME_TYPE,
+  getExpertCertificateFileError,
+} from "@/lib/expertCertificateValidation";
 import { getDigilockerKycStatus, startDigilockerKyc } from "@/lib/api";
 
 type CredentialsStepProps = {
@@ -66,7 +72,6 @@ const ID_TYPES: { id: GovernmentIdType; label: string; icon: LucideIcon }[] = [
 ];
 
 const MAX_DOC_BYTES = 5 * 1024 * 1024;
-const MAX_CERT_BYTES = 2 * 1024 * 1024;
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
@@ -157,6 +162,11 @@ export default function CredentialsStep({
     certificatesToEntries(certificates),
   );
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [certificateUploadError, setCertificateUploadError] = useState<string | null>(null);
+  const [certificateToPreview, setCertificateToPreview] = useState<{
+    url: string;
+    fileName: string;
+  } | null>(null);
   const [digilockerConfigured, setDigilockerConfigured] = useState(false);
   const [digilockerVerified, setDigilockerVerified] = useState(false);
   const [digilockerLoading, setDigilockerLoading] = useState(true);
@@ -307,6 +317,36 @@ export default function CredentialsStep({
     </div>
   );
 
+  const renderCertificatePreview = (
+    url: string,
+    fileName: string,
+    onPreview: () => void,
+    onRemove: () => void,
+  ) => (
+    <div className={styles.certificateFilePreview}>
+      <button
+        type="button"
+        onClick={onPreview}
+        className={styles.certificatePreviewButton}
+        aria-label={`Preview ${fileName || "certificate.docx"}`}
+      >
+        <FileText size={30} aria-hidden="true" />
+        <span className={styles.certificateFileName}>
+          {fileName || "Certificate DOCX"}
+        </span>
+        <span className={styles.certificatePreviewLabel}>Click to preview</span>
+      </button>
+      <button
+        type="button"
+        className={styles.docPreviewRemoveBtn}
+        aria-label={`Remove ${fileName || "certificate.docx"}`}
+        onClick={onRemove}
+      >
+        <X size={14} aria-hidden="true" />
+      </button>
+    </div>
+  );
+
   const updateCertificateEntry = (id: string, patch: Partial<CertificateEntry>) => {
     setCertificateEntries((prev) =>
       prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
@@ -314,17 +354,23 @@ export default function CredentialsStep({
   };
 
   const handleCertificateFile = async (entryId: string, file: File) => {
-    const isImage = file.type.startsWith("image/");
-    const isPdf = file.type === "application/pdf";
-    if (!isImage && !isPdf) return;
-    if (file.size > MAX_CERT_BYTES) return;
+    const fileError = getExpertCertificateFileError(file);
+    if (fileError) {
+      setCertificateUploadError(fileError);
+      return;
+    }
 
-    const url = await readFileAsDataUrl(file);
-    updateCertificateEntry(entryId, {
-      fileName: file.name,
-      fileSize: formatFileSize(file.size),
-      fileUrl: url,
-    });
+    try {
+      const url = await readFileAsDataUrl(file);
+      updateCertificateEntry(entryId, {
+        fileName: file.name,
+        fileSize: formatFileSize(file.size),
+        fileUrl: url,
+      });
+      setCertificateUploadError(null);
+    } catch {
+      setCertificateUploadError("Could not read the certificate file. Please try again.");
+    }
   };
 
   const handleRemoveCertificateFile = (id: string) => {
@@ -569,7 +615,7 @@ export default function CredentialsStep({
                       id={`cert-name-${entry.id}`}
                       type="text"
                       className={styles.certificateField}
-                      placeholder="Certificate name"
+                      placeholder="Degree, diploma, licence"
                       value={entry.name}
                       onChange={(e) =>
                         updateCertificateEntry(entry.id, { name: e.target.value })
@@ -593,10 +639,13 @@ export default function CredentialsStep({
                         }`}
                     >
                       {entry.fileUrl ? (
-                        renderDocPreview(
+                        renderCertificatePreview(
                           entry.fileUrl,
                           entry.fileName || "",
-                          entry.fileName || "Certificate preview",
+                          () => setCertificateToPreview({
+                            url: entry.fileUrl ?? "",
+                            fileName: entry.fileName || "certificate.docx",
+                          }),
                           () => handleRemoveCertificateFile(entry.id),
                         )
                       ) : (
@@ -606,7 +655,7 @@ export default function CredentialsStep({
                           onClick={() => certFileInputRefs.current[entry.id]?.click()}
                         >
                           <span className={styles.certUploadTitle}>Upload</span>
-                          <span className={styles.certUploadHint}>PDF, PNG max 2 mb</span>
+                          <span className={styles.certUploadHint}>DOCX only, max 2 MB</span>
                         </button>
                       )}
                     </div>
@@ -616,7 +665,7 @@ export default function CredentialsStep({
                         certFileInputRefs.current[entry.id] = el;
                       }}
                       type="file"
-                      accept="image/jpeg,image/png,application/pdf"
+                      accept={`.docx,${EXPERT_CERTIFICATE_MIME_TYPE}`}
                       className={styles.hiddenFileInput}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -637,7 +686,7 @@ export default function CredentialsStep({
               </button>
             </div>
 
-            <p className={styles.idPrivacyNote}>
+            <p className={`${styles.idPrivacyNote} ${styles.certificateInfoNote}`}>
               Verified certificates unlock the &apos;Credentials Verified&apos; badge on your profile
               — seekers filter for this.
             </p>
@@ -645,10 +694,18 @@ export default function CredentialsStep({
         </div>
       </div>
 
-      {validationError && (
-        <p role="alert" style={{ color: "#ff6b6b", textAlign: "center", margin: "12px 24px 0 24px", fontSize: "14px", fontWeight: 500 }}>
-          {validationError}
+      {(certificateUploadError || validationError) && (
+        <p role="alert" style={{ color: "var(--pomegranate)", textAlign: "center", margin: "12px 24px 0 24px", fontSize: "14px", fontWeight: 500 }}>
+          {certificateUploadError || validationError}
         </p>
+      )}
+
+      {certificateToPreview && (
+        <CertificateDocxViewer
+          url={certificateToPreview.url}
+          fileName={certificateToPreview.fileName}
+          onClose={() => setCertificateToPreview(null)}
+        />
       )}
 
       <div className={shared.onboardingFooter}>

@@ -497,10 +497,11 @@ export default function ReviewStep({
       </div>
 
       <div className={styles.termsBar}>
-        <label className={styles.termsLabel}>
+        <div className={styles.termsLabel}>
           <input
             type="checkbox"
             className={styles.termsCheckbox}
+            aria-label="By submitting, you agree to our terms and privacy policy"
             checked={agreedToTerms}
             onChange={(e) => setAgreedToTerms(e.target.checked)}
           />
@@ -509,7 +510,7 @@ export default function ReviewStep({
             <a href="/terms" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>OUR TERMS</a> AND{" "}
             <a href="/privacy" target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>PRIVACY POLICY</a>
           </span>
-        </label>
+        </div>
       </div>
 
       {/* Footer */}      </div>
