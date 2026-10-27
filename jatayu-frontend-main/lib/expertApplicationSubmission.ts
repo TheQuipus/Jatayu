@@ -29,6 +29,8 @@ export type GovernmentIdData = {
   back?: GovernmentIdUpload;
 };
 
+export type { ExpertKycPhotos } from "./expertKycPhotos";
+
 export type PortfolioSampleFile = {
   id: string;
   fileName: string;
@@ -68,11 +70,7 @@ export type ExpertApplicationSubmission = {
   portfolioLinks: PortfolioLink[];
   governmentId?: GovernmentIdData;
   kycVideoUrl?: string;
-  kycPhotos?: {
-    left?: string;
-    centre?: string;
-    right?: string;
-  };
+  kycPhotos?: import("./expertKycPhotos").ExpertKycPhotos;
   certificates: ExpertCertificate[];
   formats: string[];
   lengths: string[];

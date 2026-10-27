@@ -2,16 +2,33 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ShieldCheck, X } from "lucide-react";
+import { Camera, Check, RotateCcw, ShieldCheck, X } from "lucide-react";
 import ShinyText from "@/components/ui/ShinyText";
 import styles from "./KycVerificationPanel.module.css";
+import {
+  areKycPhotosComplete,
+  getKycPhoto,
+  isCurrentKycSession,
+  isKycPoseMatch,
+  manualPhotosAfterCancelledSession,
+  MANUAL_KYC_POSES,
+  nextMissingKycPoseIndex,
+  runKycPoseDetection,
+  withKycPhoto,
+  type ExpertKycPhotos,
+  type KycPoseDetectionLock,
+  type KycPose,
+} from "@/lib/expertKycPhotos";
 
 type KycVerificationPanelProps = {
   videoSrc: string;
   onVideoChange: (src: string) => void;
+  manualPhotos: ExpertKycPhotos;
+  onManualPhotosChange: (photos: ExpertKycPhotos) => void;
 };
 
-type PanelPhase = "intro" | "requesting" | "denied" | "guided" | "processing" | "complete";
+type PanelPhase = "intro" | "requesting" | "denied" | "guided" | "manualReview" | "processing" | "complete";
+type VerificationMode = "automatic" | "manual";
 
 type PoseKey = "center" | "left" | "right";
 
@@ -47,7 +64,17 @@ const KYC_STEPS = [
   },
 ] as const;
 
-const PREVIEW_POSES: { key: PoseKey; label: string }[] = [
+const MANUAL_KYC_STEPS: {
+  pose: KycPose;
+  instruction: string;
+  sub: string;
+}[] = [
+  { pose: "left", instruction: "Face to your left", sub: "When ready, capture a photo of this position." },
+  { pose: "center", instruction: "Face the camera", sub: "When ready, capture a photo of this position." },
+  { pose: "right", instruction: "Face to your right", sub: "When ready, capture a photo of this position." },
+];
+
+const PREVIEW_POSES: { key: KycPose; label: string }[] = [
   { key: "left", label: "Left" },
   { key: "center", label: "Center" },
   { key: "right", label: "Right" },
@@ -89,14 +116,21 @@ function clearStoredPoseFrames() {
   }
 }
 
-function captureMirroredFrame(video: HTMLVideoElement): string | null {
+function captureMirroredFrame(
+  video: HTMLVideoElement,
+  maxDimension?: number,
+  quality = 0.85,
+): string | null {
   if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
     return null;
   }
 
   const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  const scale = maxDimension
+    ? Math.min(1, maxDimension / Math.max(video.videoWidth, video.videoHeight))
+    : 1;
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
 
   const context = canvas.getContext("2d");
   if (!context) return null;
@@ -107,7 +141,7 @@ function captureMirroredFrame(video: HTMLVideoElement): string | null {
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   try {
-    return canvas.toDataURL("image/jpeg", 0.85);
+    return canvas.toDataURL("image/jpeg", quality);
   } catch {
     return null;
   }
@@ -237,28 +271,49 @@ async function detectHeadPoseInFrame(video: HTMLVideoElement): Promise<{
 export default function KycVerificationPanel({
   videoSrc,
   onVideoChange,
+  manualPhotos,
+  onManualPhotosChange,
 }: KycVerificationPanelProps) {
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const cameraRequestPromiseRef = useRef<Promise<MediaStream> | null>(null);
   const prevVideoSrcRef = useRef(videoSrc);
+  const automaticVideoBaselineRef = useRef(videoSrc);
+  const cameraStartingRef = useRef(false);
+  const cameraRequestIdRef = useRef(0);
+  const manualRetakeRef = useRef(false);
+  const manualConfirmingRef = useRef(false);
+  const manualSessionBaselineRef = useRef<ExpertKycPhotos | null>(null);
+  const poseCheckInFlightRef = useRef<KycPoseDetectionLock>({ sessionId: null });
+  const automaticCompletionStartedRef = useRef(false);
   const [mounted, setMounted] = useState(false);
 
-  const [phase, setPhase] = useState<PanelPhase>(videoSrc ? "complete" : "intro");
+  const initialManualComplete = areKycPhotosComplete(manualPhotos);
+  const [verificationMode, setVerificationMode] = useState<VerificationMode>(
+    initialManualComplete && !videoSrc ? "manual" : "automatic",
+  );
+  const [phase, setPhase] = useState<PanelPhase>(
+    videoSrc || initialManualComplete ? "complete" : "intro",
+  );
   const [stepIndex, setStepIndex] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [faceDetected, setFaceDetected] = useState(false);
   const [poseFrames, setPoseFrames] = useState<PoseFrames>(() =>
     videoSrc ? readStoredPoseFrames() : EMPTY_POSE_FRAMES,
   );
+  const [reviewFrame, setReviewFrame] = useState("");
+  const [cameraError, setCameraError] = useState("");
+  const [isManualRetake, setIsManualRetake] = useState(false);
 
   const [detectedPose, setDetectedPose] = useState<HeadPose>("none");
   const [holdProgress, setHoldProgress] = useState(0);
   const holdProgressRef = useRef(0);
 
   const isModalOpen =
-    phase === "requesting" || phase === "guided" || phase === "processing" || phase === "denied";
+    phase === "requesting" || phase === "guided" || phase === "manualReview" ||
+    phase === "processing" || phase === "denied";
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -268,24 +323,92 @@ export default function KycVerificationPanel({
     }
   }, []);
 
+  const stopCameraSession = useCallback((updateUi = true) => {
+    cameraRequestIdRef.current += 1;
+    cameraStartingRef.current = false;
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      if (recorder.state !== "inactive") {
+        try {
+          recorder.stop();
+        } catch (error) {
+          if (!(error instanceof DOMException && error.name === "InvalidStateError")) {
+            throw error;
+          }
+        }
+      }
+    }
+    chunksRef.current = [];
+    stopStream();
+    if (updateUi) {
+      setCountdown(null);
+      setFaceDetected(false);
+      setDetectedPose("none");
+      setHoldProgress(0);
+      holdProgressRef.current = 0;
+    }
+  }, [stopStream]);
+
+  const discardPendingAutomaticResult = useCallback(() => {
+    if (phase !== "processing" || videoSrc === automaticVideoBaselineRef.current) return;
+    if (videoSrc.startsWith("blob:")) {
+      URL.revokeObjectURL(videoSrc);
+    }
+    const baselineVideo = automaticVideoBaselineRef.current;
+    prevVideoSrcRef.current = baselineVideo;
+    onVideoChange(baselineVideo);
+  }, [onVideoChange, phase, videoSrc]);
+
   const resetVerification = useCallback(() => {
+    stopCameraSession();
+    automaticCompletionStartedRef.current = false;
     if (videoSrc.startsWith("blob:")) {
       URL.revokeObjectURL(videoSrc);
     }
     onVideoChange("");
-    recorderRef.current = null;
-    chunksRef.current = [];
-    stopStream();
+    manualRetakeRef.current = false;
+    setIsManualRetake(false);
+    setReviewFrame("");
+    setCameraError("");
     setStepIndex(0);
-    setCountdown(null);
-    setFaceDetected(false);
-    setDetectedPose("none");
-    setHoldProgress(0);
-    holdProgressRef.current = 0;
     setPoseFrames(EMPTY_POSE_FRAMES);
     clearStoredPoseFrames();
     setPhase("intro");
-  }, [onVideoChange, stopStream, videoSrc]);
+  }, [onVideoChange, stopCameraSession, videoSrc]);
+
+  const cancelManualCapture = useCallback(() => {
+    stopCameraSession();
+    const baseline = manualSessionBaselineRef.current;
+    if (baseline) {
+      onManualPhotosChange(manualPhotosAfterCancelledSession(manualPhotos, baseline));
+    }
+    manualSessionBaselineRef.current = null;
+    manualRetakeRef.current = false;
+    setIsManualRetake(false);
+    setReviewFrame("");
+    setCameraError("");
+    setStepIndex(0);
+    setPhase("intro");
+  }, [manualPhotos, onManualPhotosChange, stopCameraSession]);
+
+  const cancelAutomaticVerification = useCallback(() => {
+    discardPendingAutomaticResult();
+    stopCameraSession();
+    automaticCompletionStartedRef.current = false;
+    manualSessionBaselineRef.current = null;
+    setReviewFrame("");
+    setCameraError("");
+    setStepIndex(0);
+    setPhase("intro");
+  }, [discardPendingAutomaticResult, stopCameraSession]);
+
+  const closeCameraFlow = useCallback(() => {
+    if (verificationMode === "manual") cancelManualCapture();
+    else cancelAutomaticVerification();
+  }, [cancelAutomaticVerification, cancelManualCapture, verificationMode]);
 
   const captureCurrentPose = useCallback(() => {
     const video = liveVideoRef.current;
@@ -308,9 +431,9 @@ export default function KycVerificationPanel({
 
   useEffect(() => {
     return () => {
-      stopStream();
+      stopCameraSession(false);
     };
-  }, [stopStream]);
+  }, [stopCameraSession]);
 
   useEffect(() => {
     const previous = prevVideoSrcRef.current;
@@ -336,28 +459,34 @@ export default function KycVerificationPanel({
     if (!isModalOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && phase !== "processing") {
-        resetVerification();
+      if (event.key === "Escape") {
+        closeCameraFlow();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isModalOpen, phase, resetVerification]);
+  }, [isModalOpen, closeCameraFlow]);
 
   const finishRecording = useCallback(() => {
+    if (automaticCompletionStartedRef.current) return;
+    automaticCompletionStartedRef.current = true;
     const recorder = recorderRef.current;
     if (!recorder || recorder.state === "inactive") {
       setPhase("processing");
       return;
     }
 
+    const sessionId = cameraRequestIdRef.current;
     recorder.onstop = () => {
+      if (!isCurrentKycSession(sessionId, cameraRequestIdRef.current)) return;
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
       if (videoSrc.startsWith("blob:")) {
         URL.revokeObjectURL(videoSrc);
       }
       onVideoChange(URL.createObjectURL(blob));
+      recorderRef.current = null;
+      chunksRef.current = [];
       stopStream();
       setPhase("processing");
     };
@@ -366,7 +495,7 @@ export default function KycVerificationPanel({
   }, [onVideoChange, stopStream, videoSrc]);
 
   useEffect(() => {
-    if (phase !== "guided") {
+    if (phase !== "guided" || verificationMode !== "automatic") {
       setFaceDetected(false);
       setDetectedPose("none");
       setHoldProgress(0);
@@ -375,43 +504,46 @@ export default function KycVerificationPanel({
     }
 
     let cancelled = false;
+    const sessionId = cameraRequestIdRef.current;
 
     const checkPose = async () => {
       const video = liveVideoRef.current;
       if (!video || cancelled) return;
+      await runKycPoseDetection(
+        poseCheckInFlightRef.current,
+        sessionId,
+        () => !cancelled && isCurrentKycSession(sessionId, cameraRequestIdRef.current),
+        () => detectHeadPoseInFrame(video),
+        (result) => {
+          setFaceDetected(result.faceDetected);
+          setDetectedPose(result.pose);
 
-      const result = await detectHeadPoseInFrame(video);
-      if (cancelled) return;
+          const targetPose = KYC_STEPS[stepIndex].pose;
+          const isPoseMatch = isKycPoseMatch(targetPose, result.pose, result.faceDetected);
 
-      setFaceDetected(result.faceDetected);
-      setDetectedPose(result.pose);
+          if (isPoseMatch) {
+            const next = Math.min(100, holdProgressRef.current + 25);
+            holdProgressRef.current = next;
+            setHoldProgress(next);
 
-      const targetPose = KYC_STEPS[stepIndex].pose;
-      const isPoseMatch =
-        result.faceDetected &&
-        (result.pose === targetPose || (targetPose === "center" && result.pose !== "none"));
-
-      if (isPoseMatch) {
-        const next = Math.min(100, holdProgressRef.current + 25);
-        holdProgressRef.current = next;
-        setHoldProgress(next);
-
-        if (next >= 100) {
-          captureCurrentPose();
-          const isLastStep = stepIndex >= KYC_STEPS.length - 1;
-          if (isLastStep) {
-            finishRecording();
-            return;
+            if (next >= 100) {
+              captureCurrentPose();
+              const isLastStep = stepIndex >= KYC_STEPS.length - 1;
+              if (isLastStep) {
+                finishRecording();
+                return;
+              }
+              setStepIndex((current) => current + 1);
+              holdProgressRef.current = 0;
+              setHoldProgress(0);
+            }
+          } else {
+            const next = Math.max(0, holdProgressRef.current - 15);
+            holdProgressRef.current = next;
+            setHoldProgress(next);
           }
-          setStepIndex((current) => current + 1);
-          holdProgressRef.current = 0;
-          setHoldProgress(0);
-        }
-      } else {
-        const next = Math.max(0, holdProgressRef.current - 15);
-        holdProgressRef.current = next;
-        setHoldProgress(next);
-      }
+        },
+      );
     };
 
     void checkPose();
@@ -423,7 +555,7 @@ export default function KycVerificationPanel({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [captureCurrentPose, finishRecording, phase, stepIndex]);
+  }, [captureCurrentPose, finishRecording, phase, stepIndex, verificationMode]);
 
   useEffect(() => {
     if (phase !== "guided") return;
@@ -440,21 +572,73 @@ export default function KycVerificationPanel({
     return () => window.clearTimeout(timer);
   }, [phase]);
 
-  const beginVerification = async () => {
+  const beginVerification = async (
+    mode: VerificationMode,
+    startIndex = mode === "manual" ? nextMissingKycPoseIndex(manualPhotos) : 0,
+    isRetake = false,
+  ) => {
+    if (cameraStartingRef.current || streamRef.current) return;
+    const pendingRequest = cameraRequestPromiseRef.current;
+    if (pendingRequest) {
+      const transitionId = cameraRequestIdRef.current;
+      setVerificationMode(mode);
+      setPhase("requesting");
+      void pendingRequest.then(
+        () => {
+          if (isCurrentKycSession(transitionId, cameraRequestIdRef.current)) {
+            void beginVerification(mode, startIndex, isRetake);
+          }
+        },
+        () => {
+          if (isCurrentKycSession(transitionId, cameraRequestIdRef.current)) {
+            void beginVerification(mode, startIndex, isRetake);
+          }
+        },
+      );
+      return;
+    }
+    setVerificationMode(mode);
+    if (mode === "manual" && manualSessionBaselineRef.current === null) {
+      manualSessionBaselineRef.current = manualPhotos;
+    }
+    if (mode === "automatic" && typeof MediaRecorder === "undefined") {
+      setCameraError(
+        "Automatic verification is not supported in this browser. Use manual photo capture or try a browser that supports video recording.",
+      );
+      setPhase("denied");
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("This browser does not support camera access. Try a current browser with camera permission.");
       setPhase("denied");
       return;
     }
 
+    cameraStartingRef.current = true;
+    automaticCompletionStartedRef.current = false;
+    const requestId = cameraRequestIdRef.current + 1;
+    cameraRequestIdRef.current = requestId;
+    setCameraError("");
+    setStepIndex(startIndex);
+    setPhase("requesting");
+    if (mode === "automatic") {
+      automaticVideoBaselineRef.current = videoSrc;
+    }
+    let request: Promise<MediaStream> | null = null;
     try {
-      setPhase("requesting");
-      const stream = await navigator.mediaDevices.getUserMedia({
+      request = navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
+      cameraRequestPromiseRef.current = request;
+      const stream = await request;
+      if (!isCurrentKycSession(requestId, cameraRequestIdRef.current)) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
 
-      if (typeof MediaRecorder !== "undefined") {
+      if (mode === "automatic" && typeof MediaRecorder !== "undefined") {
         chunksRef.current = [];
         let recorder: MediaRecorder;
         try {
@@ -469,21 +653,137 @@ export default function KycVerificationPanel({
         recorder.start(250);
       }
 
-      setStepIndex(0);
-      setCountdown(KYC_STEPS[0].duration);
+      setStepIndex(startIndex);
+      setCountdown(mode === "automatic" ? KYC_STEPS[0].duration : null);
       setFaceDetected(false);
-      setPoseFrames(EMPTY_POSE_FRAMES);
-      clearStoredPoseFrames();
+      if (mode === "automatic") {
+        setPoseFrames(EMPTY_POSE_FRAMES);
+        clearStoredPoseFrames();
+      }
+      manualRetakeRef.current = isRetake;
+      setIsManualRetake(isRetake);
       setPhase("guided");
-    } catch {
-      stopStream();
+    } catch (error) {
+      if (!isCurrentKycSession(requestId, cameraRequestIdRef.current)) return;
+      stopCameraSession();
+      const errorName = error instanceof DOMException ? error.name : "";
+      setCameraError(
+        errorName === "NotAllowedError" || errorName === "SecurityError"
+          ? "Camera permission was denied. Allow camera access in your browser settings, then try again."
+          : "The camera could not be started. Check that it is connected and not being used by another app.",
+      );
       setPhase("denied");
+    } finally {
+      if (isCurrentKycSession(requestId, cameraRequestIdRef.current)) {
+        cameraStartingRef.current = false;
+      }
+      if (request && cameraRequestPromiseRef.current === request) {
+        cameraRequestPromiseRef.current = null;
+      }
     }
   };
 
-  const currentStep = KYC_STEPS[stepIndex];
+  const switchVerificationMode = (mode: VerificationMode) => {
+    if (verificationMode === "automatic") {
+      discardPendingAutomaticResult();
+    }
+    if (verificationMode === "manual" && mode !== "manual") {
+      const baseline = manualSessionBaselineRef.current;
+      if (baseline) onManualPhotosChange(baseline);
+      manualSessionBaselineRef.current = null;
+    } else if (mode === "manual") {
+      manualSessionBaselineRef.current = manualPhotos;
+    }
+    const pendingRequest = cameraRequestPromiseRef.current;
+    stopCameraSession();
+    manualRetakeRef.current = false;
+    setIsManualRetake(false);
+    setReviewFrame("");
+    setCameraError("");
+    setStepIndex(0);
+    const transitionId = cameraRequestIdRef.current;
+    if (pendingRequest) {
+      void pendingRequest.then(
+        () => {
+          if (isCurrentKycSession(transitionId, cameraRequestIdRef.current)) {
+            void beginVerification(mode);
+          }
+        },
+        () => {
+          if (isCurrentKycSession(transitionId, cameraRequestIdRef.current)) {
+            void beginVerification(mode);
+          }
+        },
+      );
+    } else {
+      void beginVerification(mode);
+    }
+  };
+
+  const handleManualCapture = () => {
+    const video = liveVideoRef.current;
+    if (!video) {
+      setCameraError("The camera preview is not ready yet. Please wait and try again.");
+      return;
+    }
+    const captured = captureMirroredFrame(video, 720, 0.72);
+    if (!captured) {
+      setCameraError("Could not capture the photo. Keep the camera preview visible and try again.");
+      return;
+    }
+    setCameraError("");
+    setReviewFrame(captured);
+    setPhase("manualReview");
+  };
+
+  const confirmManualCapture = () => {
+    if (!reviewFrame || manualConfirmingRef.current) return;
+    const pose = MANUAL_KYC_POSES[stepIndex];
+    if (!pose) return;
+    manualConfirmingRef.current = true;
+    const nextPhotos = withKycPhoto(manualPhotos, pose, reviewFrame);
+    onManualPhotosChange(nextPhotos);
+    setReviewFrame("");
+    manualConfirmingRef.current = false;
+
+    if (manualRetakeRef.current) {
+      manualRetakeRef.current = false;
+      setIsManualRetake(false);
+      manualSessionBaselineRef.current = null;
+      stopStream();
+      setPhase("complete");
+      return;
+    }
+
+    const nextIndex = stepIndex + 1;
+    if (nextIndex >= MANUAL_KYC_STEPS.length) {
+      manualSessionBaselineRef.current = null;
+      stopStream();
+      setPhase("complete");
+      return;
+    }
+    setStepIndex(nextIndex);
+    setPhase("guided");
+  };
+
+  const startManualRetake = (pose: KycPose) => {
+    const index = MANUAL_KYC_POSES.indexOf(pose);
+    manualRetakeRef.current = true;
+    setIsManualRetake(true);
+    void beginVerification("manual", index, true);
+  };
+
+  const currentStep = verificationMode === "manual"
+    ? MANUAL_KYC_STEPS[stepIndex]
+    : KYC_STEPS[stepIndex];
   const isScanning = faceDetected && countdown !== null && countdown <= 2;
-  const showCompleteState = Boolean(videoSrc) && !isModalOpen;
+  const manualComplete = areKycPhotosComplete(manualPhotos);
+  const displayMode: VerificationMode =
+    manualComplete && !videoSrc && phase === "intro" ? "manual" : verificationMode;
+  const showCompleteState =
+    phase === "complete" &&
+    (displayMode === "manual" ? manualComplete : Boolean(videoSrc)) &&
+    !isModalOpen;
 
   const cameraModal =
     mounted && isModalOpen
@@ -493,11 +793,17 @@ export default function KycVerificationPanel({
             <div className={styles.modalLoading}>
               <div className={styles.spinner} aria-hidden="true" />
               <p className={styles.processingText}>Starting camera…</p>
-              <button type="button" className={styles.modalCloseBtn} onClick={resetVerification} aria-label="Close">
+                  <button type="button" className={styles.modalCloseBtn} onClick={closeCameraFlow} aria-label="Cancel capture session">
                 <X size={18} />
               </button>
-            </div>
-          ) : null}
+                  <div className={styles.modalModeActions}>
+                    <button type="button" className={styles.secondaryCaptureBtn} onClick={() => switchVerificationMode(verificationMode === "manual" ? "automatic" : "manual")}>
+                      Switch to {verificationMode === "manual" ? "automatic verification" : "manual capture"}
+                    </button>
+                    <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>Cancel</button>
+                  </div>
+                </div>
+              ) : null}
 
           {phase === "denied" ? (
             <div className={styles.modalDenied}>
@@ -506,14 +812,26 @@ export default function KycVerificationPanel({
               </div>
               <h3 className={styles.modalDeniedTitle}>Camera access required</h3>
               <p className={styles.modalDeniedText}>
-                Allow camera access in your browser settings and try again.
+                {cameraError || "Allow camera access in your browser settings and try again."}
               </p>
-              <button type="button" className={styles.beginBtn} onClick={() => void beginVerification()}>
-                Try again
-              </button>
-              <button type="button" className={styles.modalCloseBtn} onClick={resetVerification} aria-label="Close">
+              {!(verificationMode === "automatic" && typeof MediaRecorder === "undefined") && (
+                <button type="button" className={styles.beginBtn} onClick={() => void beginVerification(
+                  verificationMode,
+                  verificationMode === "manual" ? stepIndex : 0,
+                  isManualRetake,
+                )}>
+                  Try again
+                </button>
+              )}
+              <button type="button" className={styles.modalCloseBtn} onClick={closeCameraFlow} aria-label="Close">
                 <X size={18} />
               </button>
+              <div className={styles.modalModeActions}>
+                <button type="button" className={styles.secondaryCaptureBtn} onClick={() => switchVerificationMode(verificationMode === "manual" ? "automatic" : "manual")}>
+                  Switch to {verificationMode === "manual" ? "automatic verification" : "manual capture"}
+                </button>
+                <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>Cancel</button>
+              </div>
             </div>
           ) : null}
 
@@ -524,25 +842,50 @@ export default function KycVerificationPanel({
                 <button
                   type="button"
                   className={styles.cancelBtn}
-                  onClick={resetVerification}
+                  onClick={closeCameraFlow}
                   aria-label="Cancel verification"
                 >
                   <X size={16} />
                 </button>
 
                 <div className={styles.sessionTop}>
-                  <div className={styles.stepDots}>
-                    {KYC_STEPS.map((_, index) => (
+                  <div className={styles.sessionProgress}>
+                    {verificationMode === "manual" && (
+                      <span>
+                        {isManualRetake ? "Retaking" : `Capture ${stepIndex + 1} of 3`}
+                      </span>
+                    )}
+                    <div className={styles.stepDots}>
+                    {MANUAL_KYC_STEPS.map(({ pose }, index) => (
                       <span
-                        key={index}
-                        className={`${styles.stepDot} ${index < stepIndex
-                            ? styles.stepDotDone
-                            : index === stepIndex
+                        key={pose}
+                        className={`${styles.stepDot} ${verificationMode === "manual"
+                            ? getKycPhoto(manualPhotos, pose) && index !== stepIndex
+                              ? styles.stepDotDone
+                              : index === stepIndex
+                                ? styles.stepDotActive
+                                : ""
+                            : index < stepIndex
+                              ? styles.stepDotDone
+                              : index === stepIndex
                               ? styles.stepDotActive
                               : ""
                           }`}
                       />
                     ))}
+                    </div>
+                  </div>
+                  <div className={styles.sessionModeActions}>
+                    <button
+                      type="button"
+                      className={styles.secondaryCaptureBtn}
+                      onClick={() => switchVerificationMode(verificationMode === "manual" ? "automatic" : "manual")}
+                    >
+                      Switch to {verificationMode === "manual" ? "automatic verification" : "manual capture"}
+                    </button>
+                    <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>
+                      Cancel
+                    </button>
                   </div>
                 </div>
 
@@ -563,7 +906,7 @@ export default function KycVerificationPanel({
                   </div>
                 </div>
 
-                <div className={styles.countdownWrap}>
+                {verificationMode === "automatic" ? <div className={styles.countdownWrap}>
                   <div
                     className={`${styles.poseStatusBadge} ${detectedPose === currentStep.pose
                         ? styles.poseStatusBadgeMatched
@@ -596,7 +939,76 @@ export default function KycVerificationPanel({
                       style={{ width: `${holdProgress}%` }}
                     />
                   </div>
-                </div>
+                </div> : (
+                  <div className={styles.manualCaptureControls}>
+                    <p className={styles.manualCaptureHint}>
+                      Manual capture records a photo only; it does not verify identity or confirm head orientation.
+                    </p>
+                    {cameraError && <p className={styles.cameraError} role="alert">{cameraError}</p>}
+                    <button
+                      type="button"
+                      className={styles.captureBtn}
+                      onClick={handleManualCapture}
+                    >
+                      <Camera size={18} />
+                      Capture photo
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {phase === "manualReview" ? (
+            <div className={styles.manualReview}>
+              <p className={styles.instruction}>
+                Review your {MANUAL_KYC_STEPS[stepIndex]?.pose} photo
+              </p>
+              <img
+                className={styles.manualReviewImage}
+                src={reviewFrame}
+                alt={`Captured ${MANUAL_KYC_STEPS[stepIndex]?.pose} position`}
+              />
+              <p className={styles.manualCaptureHint}>
+                This photo is not an identity or head-pose verification result.
+              </p>
+              {cameraError && <p className={styles.cameraError} role="alert">{cameraError}</p>}
+              <div className={styles.manualReviewActions}>
+                <button
+                  type="button"
+                  className={styles.secondaryCaptureBtn}
+                  onClick={() => {
+                    setReviewFrame("");
+                    setCameraError("");
+                    setPhase("guided");
+                  }}
+                >
+                  <RotateCcw size={16} />
+                  Retake
+                </button>
+                <button
+                  type="button"
+                  className={styles.captureBtn}
+                  onClick={confirmManualCapture}
+                  disabled={!reviewFrame}
+                >
+                  <Check size={16} />
+                  Confirm photo
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryCaptureBtn}
+                  onClick={() => switchVerificationMode("automatic")}
+                >
+                  Switch to automatic verification
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryCaptureBtn}
+                  onClick={cancelManualCapture}
+                >
+                  Cancel manual capture
+                </button>
               </div>
             </div>
           ) : null}
@@ -604,10 +1016,18 @@ export default function KycVerificationPanel({
           {phase === "processing" ? (
             <div className={styles.processing}>
               <div className={styles.spinner} aria-hidden="true" />
-              <p className={styles.processingText}>Verifying your identity</p>
+              <p className={styles.processingText}>Completing automatic verification</p>
               <p className={styles.processingSub}>
                 Matching your live capture with submitted documents
               </p>
+              <div className={styles.modalModeActions}>
+                <button type="button" className={styles.secondaryCaptureBtn} onClick={() => switchVerificationMode("manual")}>
+                  Switch to manual capture
+                </button>
+                <button type="button" className={styles.secondaryCaptureBtn} onClick={cancelAutomaticVerification}>
+                  Cancel automatic verification
+                </button>
+              </div>
             </div>
           ) : null}
         </div>,
@@ -625,13 +1045,18 @@ export default function KycVerificationPanel({
             <div className={styles.introIconWrap}>
               <ShieldCheck size={22} strokeWidth={1.5} />
             </div>
-            <h3 className={styles.introTitle}>Verify your identity</h3>
+            <h3 className={styles.introTitle}>Choose a verification method</h3>
             <p className={styles.introPrivacy}>
-              Encrypted and used only for verification <br /> never shown on your public profile.
+              Automatic verification checks head poses. Manual capture submits photos for review only.
             </p>
-            <button type="button" className={styles.beginBtn} onClick={() => void beginVerification()}>
+            <button
+              type="button"
+              className={styles.beginBtn}
+              disabled={typeof MediaRecorder === "undefined"}
+              onClick={() => void beginVerification("automatic")}
+            >
               <ShinyText
-                text="BEGIN VERIFICATION"
+                text="AUTOMATIC POSE VERIFICATION"
                 iconSize={14}
                 speed={2.5}
                 color="#E53B17"
@@ -640,6 +1065,19 @@ export default function KycVerificationPanel({
                 className={styles.beginBtnShinyText}
               />
             </button>
+            <button
+              type="button"
+              className={styles.manualModeBtn}
+              onClick={() => void beginVerification("manual")}
+            >
+              <Camera size={16} />
+              Manual photo capture
+            </button>
+            <p className={styles.manualModeNote}>
+              {typeof MediaRecorder === "undefined"
+                ? "Automatic verification is unavailable in this browser. Manual photos are submitted for review and do not verify identity or pose."
+                : "Manual photos are submitted for review and do not verify identity or pose."}
+            </p>
           </div>
         ) : null}
 
@@ -649,9 +1087,13 @@ export default function KycVerificationPanel({
               <div className={styles.poseGrid}>
                 {PREVIEW_POSES.map(({ key, label }) => (
                   <div key={key} className={styles.poseCard}>
-                    {poseFrames[key] ? (
+                    {(displayMode === "manual"
+                      ? getKycPhoto(manualPhotos, key)
+                      : poseFrames[key]) ? (
                       <img
-                        src={poseFrames[key]}
+                        src={displayMode === "manual"
+                          ? getKycPhoto(manualPhotos, key)
+                          : poseFrames[key]}
                         alt={`${label} pose capture`}
                         className={styles.poseImage}
                       />
@@ -659,23 +1101,63 @@ export default function KycVerificationPanel({
                       <div className={styles.posePlaceholder} aria-hidden="true" />
                     )}
                     <span className={styles.poseLabel}>{label}</span>
+                    {displayMode === "manual" && getKycPhoto(manualPhotos, key) && (
+                      <button
+                        type="button"
+                        className={styles.poseRetakeBtn}
+                        onClick={() => startManualRetake(key)}
+                        aria-label={`Retake ${label} photo`}
+                      >
+                        <RotateCcw size={12} />
+                        Retake
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
             <div className={styles.completeFooter}>
               <div className={styles.completeMeta}>
-                <p className={styles.completeTitle}>Identity verification submitted</p>
-                <p className={styles.completeHint}>Our team will review within 24–48 hours</p>
+                <p className={styles.completeTitle}>
+                  {displayMode === "manual" ? "Manual photos captured" : "Identity verification submitted"}
+                </p>
+                <p className={styles.completeHint}>
+                  {displayMode === "manual"
+                    ? "Photos are included for team review; they do not independently verify identity or pose."
+                    : "Our team will review within 24–48 hours"}
+                </p>
               </div>
-              <button type="button" className={styles.retakeBtn} onClick={resetVerification}>
-                Retake
-              </button>
+              {displayMode === "automatic" && (
+                <button type="button" className={styles.retakeBtn} onClick={resetVerification}>
+                  Restart automatic verification
+                </button>
+              )}
+            </div>
+            <div className={styles.completeModeActions}>
+              {displayMode === "manual" ? (
+                <button
+                  type="button"
+                  className={styles.manualModeBtn}
+                  onClick={() => switchVerificationMode("automatic")}
+                >
+                  <ShieldCheck size={16} />
+                  Switch to automatic verification
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.manualModeBtn}
+                  onClick={() => switchVerificationMode("manual")}
+                >
+                  <Camera size={16} />
+                  Switch to manual capture
+                </button>
+              )}
             </div>
           </div>
         ) : null}
 
-        {phase === "requesting" || phase === "guided" || phase === "processing" ? (
+        {phase === "requesting" || phase === "guided" || phase === "manualReview" || phase === "processing" ? (
           <div className={styles.inlineActive}>
             <div className={styles.spinner} aria-hidden="true" />
             <p className={styles.inlineActiveText}>Camera session in progress…</p>

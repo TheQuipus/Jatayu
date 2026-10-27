@@ -56,7 +56,7 @@ test('login fetches and hydrates the full saved profile before routing to its sa
   assert.match(loginHandler, /await getProfile\(\)/);
   assert.match(loginHandler, /hydrateFromProfile\(snapshot\)/);
   assert.match(loginHandler, /routeAfterAuth\(snapshot\)/);
-  assert.match(page, /setInternalStepComplete\(getCompletedOnboardingStepFlags\(user\.onboardingStep\)\)/);
+  assert.match(page, /setSavedStepCompletion\(getCompletedOnboardingStepFlags\(user\.onboardingStep\)\)/);
   const hydration = page.match(/function hydrateFromProfile\([\s\S]*?\n  \}/)?.[0];
   assert.ok(hydration, 'profile hydration function should be present');
   assert.match(hydration, /setSelectedCategory\(known\.id\)/);

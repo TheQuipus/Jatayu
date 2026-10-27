@@ -1,4 +1,5 @@
 import shared from "./onboarding.shared.module.css";
+import { canNavigateToOnboardingStep } from "@/lib/expertOnboardingNavigation";
 
 export const EXPERT_ONBOARDING_STEPS = [
   "category",
@@ -42,8 +43,10 @@ export default function OnboardingProgressBar({
           const stepNumber = index + 1;
           const isCurrent = stepNumber === currentStep;
           const isFilled = Boolean(stepCompletion[index]);
-          const isPrevious = stepNumber < currentStep;
-          const isClickable = Boolean(onStepClick && isPrevious);
+          const isClickable = Boolean(
+            onStepClick &&
+            canNavigateToOnboardingStep(stepNumber, currentStep, stepCompletion),
+          );
 
           return (
             <button

@@ -195,6 +195,9 @@ export function mapBackendExpertToApplication(
     portfolioLinks: [],
     governmentId: metadata.governmentId as GovernmentIdData | undefined,
     kycVideoUrl: typeof metadata.kycVideoUrl === "string" ? metadata.kycVideoUrl : undefined,
+    kycPhotos: metadata.kycPhotos && typeof metadata.kycPhotos === "object"
+      ? metadata.kycPhotos as ExpertApplicationSubmission["kycPhotos"]
+      : undefined,
     certificates: Array.isArray(metadata.certificates)
       ? (metadata.certificates as ExpertCertificate[])
       : [],

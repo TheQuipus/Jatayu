@@ -8,6 +8,7 @@ import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./AudienceStep.module.css";
+import { toggleAudienceSelection } from "@/lib/expertAudience";
 
 type AudienceStepProps = {
   userName: string;
@@ -152,21 +153,10 @@ export default function AudienceStep({
     setLanguages(languages.filter((item) => item.toLowerCase() !== lang.toLowerCase()));
   };
 
-  const maxAudiences = 3;
-  const remainingAudiences = maxAudiences - selectedAudiences.length;
-  const audienceInstructionText =
-    selectedAudiences.length === maxAudiences
-      ? "Selected audience type"
-      : `Select up to ${remainingAudiences} primary audience type${remainingAudiences === 1 ? "" : "s"}`;
+  const audienceInstructionText = "Select any number of primary audience types";
 
   const handleToggleAudience = (id: string) => {
-    if (selectedAudiences.includes(id)) {
-      setSelectedAudiences(selectedAudiences.filter((a) => a !== id));
-    } else {
-      if (selectedAudiences.length < maxAudiences) {
-        setSelectedAudiences([...selectedAudiences, id]);
-      }
-    }
+    setSelectedAudiences((current) => toggleAudienceSelection(current, id));
   };
 
   return (

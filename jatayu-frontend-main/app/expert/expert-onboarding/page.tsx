@@ -34,9 +34,15 @@ import {
   createEmptyEducationDegree,
   createEmptyEmploymentPosition,
   deriveExperienceLevel,
+  isEducationDegreeStarted,
+  isEducationDegreeValid,
+  isEmploymentPositionValid,
   type EducationDegree,
   type EmploymentPosition,
 } from "@/lib/expertEmployment";
+import { isAvailabilityStepEmpty, isAvailabilityValid } from "@/lib/expertAvailability";
+import { isValidPortfolioUrl } from "@/lib/portfolioUrl";
+import { areRequiredSessionPreferencesValid } from "@/components/expert/onboarding/preferencesData";
 import {
   getProfile,
   submitOnboarding,
@@ -77,10 +83,17 @@ import {
 } from "@/lib/expertApplicationsStore";
 import type {
   ExpertCertificate,
+  ExpertKycPhotos,
   GovernmentIdData,
   PortfolioLink,
   PortfolioSampleFile,
 } from "@/lib/expertApplicationSubmission";
+import { normalizeKycPhotos } from "@/lib/expertKycPhotos";
+import { areKycPhotosComplete } from "@/lib/expertKycPhotos";
+import {
+  canNavigateToOnboardingStep,
+  getExpertOnboardingStepCompletion,
+} from "@/lib/expertOnboardingNavigation";
 import type { TimeSlot } from "@/lib/expertAvailability";
 import { EXPERT_SKILLS_BY_CATEGORY as skillsByCategory } from "@/lib/expertSkillCatalog";
 
@@ -179,13 +192,15 @@ function ExpertOnboardingPageContent() {
   const [registeredName, setRegisteredName] = useState("");
   const [expertId, setExpertId] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [internalStepComplete, setInternalStepComplete] = useState<Record<number, boolean>>({});
+  const [savedStepCompletion, setSavedStepCompletion] = useState<Record<number, boolean>>({});
+  const [liveStepCompletion, setLiveStepCompletion] = useState<Record<number, boolean>>({});
   const [linkedin, setLinkedin] = useState("");
   const [portfolio, setPortfolio] = useState("");
   const [portfolioSamples, setPortfolioSamples] = useState<PortfolioSampleFile[]>([]);
   const [certificates, setCertificates] = useState<ExpertCertificate[]>([]);
   const [governmentId, setGovernmentId] = useState<GovernmentIdData | null>(null);
   const [kycVideoUrl, setKycVideoUrl] = useState("");
+  const [kycPhotos, setKycPhotos] = useState<ExpertKycPhotos>({});
   const [languages, setLanguages] = useState<string[]>([]);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
   const [timezone, setTimezone] = useState("");
@@ -218,13 +233,15 @@ function ExpertOnboardingPageContent() {
     setRegisteredName("");
     setExpertId("");
     setProfileError(null);
-    setInternalStepComplete({});
+    setSavedStepCompletion({});
+    setLiveStepCompletion({});
     setLinkedin("");
     setPortfolio("");
     setPortfolioSamples([]);
     setCertificates([]);
     setGovernmentId(null);
     setKycVideoUrl("");
+    setKycPhotos({});
     setLanguages([]);
     setSelectedAudiences([]);
     setTimezone("");
@@ -234,6 +251,15 @@ function ExpertOnboardingPageContent() {
     setAuthUser(null);
     clearExpertApplicationDraft();
   }, []);
+
+  const clearStepPassed = (step: number) => {
+    setSavedStepCompletion((prev) => (
+      prev[step] ? { ...prev, [step]: false } : prev
+    ));
+    setLiveStepCompletion((prev) => (
+      prev[step] ? { ...prev, [step]: false } : prev
+    ));
+  };
 
   function hydrateFromProfile(profile: ExpertOnboardingProfile) {
     const user = {
@@ -322,6 +348,7 @@ function ExpertOnboardingPageContent() {
       setAcceptCustomRequests(metadata.acceptCustomRequests);
     }
     if (typeof metadata.kycVideoUrl === "string") setKycVideoUrl(metadata.kycVideoUrl);
+    setKycPhotos(normalizeKycPhotos(metadata.kycPhotos));
     if (isGovernmentIdData(metadata.governmentId)) setGovernmentId(metadata.governmentId);
     if (Array.isArray(metadata.certificates)) {
       setCertificates(metadata.certificates as ExpertCertificate[]);
@@ -332,7 +359,8 @@ function ExpertOnboardingPageContent() {
 
     setAuthUser(user);
     setAccountStatus(buildExpertAccountStatus(user));
-    setInternalStepComplete(getCompletedOnboardingStepFlags(user.onboardingStep));
+    setSavedStepCompletion(getCompletedOnboardingStepFlags(user.onboardingStep));
+    setLiveStepCompletion({});
   }
 
   const handleLinkedinProfileFetched = useCallback((response: LinkedinConnectResponse) => {
@@ -389,25 +417,134 @@ function ExpertOnboardingPageContent() {
   }
 
   const handleStepCompleteChange = useCallback((step: number, complete: boolean) => {
-    setInternalStepComplete((prev) => {
+    setLiveStepCompletion((prev) => {
       if (prev[step] === complete) return prev;
       return { ...prev, [step]: complete };
     });
   }, []);
 
-  const stepCompletion = useMemo(
+  const validity = useMemo(() => {
+    const isPositionStarted = (position: EmploymentPosition) =>
+      Boolean(
+        position.jobTitle.trim() ||
+        position.company.trim() ||
+        position.startMonth ||
+        position.startYear ||
+        position.endMonth ||
+        position.endYear ||
+        position.responsibilities.trim() ||
+        position.currentlyWorking,
+      );
+    const positionsValid = employmentPositions.every(
+      (position) => !isPositionStarted(position) || isEmploymentPositionValid(position),
+    );
+    const degreesValid = educationDegrees.every(
+      (degree) => !isEducationDegreeStarted(degree) || isEducationDegreeValid(degree),
+    );
+    const experienceHasValidEntry =
+      employmentPositions.some(isEmploymentPositionValid) ||
+      educationDegrees.some(
+        (degree) => isEducationDegreeStarted(degree) && isEducationDegreeValid(degree),
+      ) ||
+      Boolean(
+        linkedin.trim() ||
+        (portfolio.trim() && isValidPortfolioUrl(portfolio)) ||
+        portfolioSamples.length > 0,
+      );
+
+    return [
+      Boolean(selectedCategory),
+      selectedSkills.length > 0,
+      positionsValid && degreesValid && experienceHasValidEntry,
+      Boolean(professionalTitle.trim() && tagLine.trim() && bio.trim()),
+      Boolean(
+        (governmentId?.type && governmentId.front) ||
+        kycVideoUrl ||
+        areKycPhotosComplete(kycPhotos),
+      ),
+      areRequiredSessionPreferencesValid(selectedFormats, formatPrices),
+      languages.length > 0 && selectedAudiences.length > 0,
+      isAvailabilityValid(timezone, availabilitySlots ?? []),
+      false,
+    ];
+  }, [
+    selectedCategory,
+    selectedSkills,
+    employmentPositions,
+    educationDegrees,
+    linkedin,
+    portfolio,
+    portfolioSamples,
+    professionalTitle,
+    tagLine,
+    bio,
+    governmentId,
+    kycVideoUrl,
+    kycPhotos,
+    selectedFormats,
+    formatPrices,
+    languages,
+    selectedAudiences,
+    timezone,
+    availabilitySlots,
+  ]);
+
+  const emptyOptionalSteps = useMemo(
     () => [
-      Boolean(internalStepComplete[1] || selectedCategory),
-      Boolean(internalStepComplete[2] || selectedSkills.length > 0),
-      Boolean(internalStepComplete[3]),
-      Boolean(internalStepComplete[4]),
-      Boolean(internalStepComplete[5]),
-      Boolean(internalStepComplete[6]),
-      Boolean(internalStepComplete[7]),
-      Boolean(internalStepComplete[8]),
-      Boolean(internalStepComplete[9]),
+      false,
+      selectedSkills.length === 0,
+      employmentPositions.every((position) => !position.jobTitle.trim() && !position.company.trim() &&
+        !position.startMonth && !position.startYear && !position.endMonth && !position.endYear &&
+        !position.responsibilities.trim() && !position.currentlyWorking) &&
+        educationDegrees.every((degree) => !isEducationDegreeStarted(degree)) &&
+        !linkedin.trim() && !portfolio.trim() && portfolioSamples.length === 0,
+      !professionalTitle.trim() && !tagLine.trim() && !bio.trim(),
+      !governmentId && !kycVideoUrl && !areKycPhotosComplete(kycPhotos) && certificates.length === 0,
+      false,
+      false,
+      isAvailabilityStepEmpty(timezone, availabilitySlots ?? []),
+      false,
     ],
-    [selectedCategory, selectedSkills, internalStepComplete],
+    [
+      selectedSkills,
+      employmentPositions,
+      educationDegrees,
+      linkedin,
+      portfolio,
+      portfolioSamples,
+      professionalTitle,
+      tagLine,
+      bio,
+      governmentId,
+      kycVideoUrl,
+      kycPhotos,
+      certificates,
+      availabilitySlots,
+    ],
+  );
+  const saved = useMemo(
+    () => Array.from({ length: EXPERT_ONBOARDING_STEPS.length }, (_, index) =>
+      Boolean(savedStepCompletion[index + 1]),
+    ),
+    [savedStepCompletion],
+  );
+  const live = useMemo(
+    () => [
+      Boolean(liveStepCompletion[1] || selectedCategory),
+      Boolean(liveStepCompletion[2] || selectedSkills.length > 0),
+      Boolean(liveStepCompletion[3]),
+      Boolean(liveStepCompletion[4]),
+      Boolean(liveStepCompletion[5]),
+      Boolean(liveStepCompletion[6]),
+      Boolean(liveStepCompletion[7]),
+      Boolean(liveStepCompletion[8]),
+      Boolean(liveStepCompletion[9]),
+    ],
+    [liveStepCompletion, selectedCategory, selectedSkills],
+  );
+  const stepCompletion = useMemo(
+    () => getExpertOnboardingStepCompletion(validity, emptyOptionalSteps, saved, live),
+    [validity, emptyOptionalSteps, saved, live],
   );
 
   useEffect(() => {
@@ -753,6 +890,7 @@ function ExpertOnboardingPageContent() {
         bio: typeof payload.bio === "string" ? payload.bio : undefined,
         governmentId: governmentId ?? undefined,
         kycVideoUrl,
+        kycPhotos,
         certificates,
       });
     } catch {
@@ -805,6 +943,7 @@ function ExpertOnboardingPageContent() {
           skillsByCategory[existing.id] = cleanSkillsList(aiSkills);
         }
         setSelectedSkills([]);
+        clearStepPassed(2);
       }
       return;
     }
@@ -816,6 +955,15 @@ function ExpertOnboardingPageContent() {
     setCustomCategories((prev) => [...prev, { id, label: trimmed, icon: Briefcase }]);
     setSelectedCategory(id);
     setSelectedSkills([]);
+    clearStepPassed(2);
+  };
+
+  const handleSelectCategory = (id: string) => {
+    if (selectedCategory !== id) {
+      setSelectedCategory(id);
+      setSelectedSkills([]);
+      clearStepPassed(2);
+    }
   };
 
   const handleRemoveCustomCategory = (id: string) => {
@@ -823,6 +971,7 @@ function ExpertOnboardingPageContent() {
     if (selectedCategory === id) {
       setSelectedCategory("");
       setSelectedSkills([]);
+      clearStepPassed(2);
     }
     setCustomSkills((prev) => {
       if (!(id in prev)) return prev;
@@ -906,6 +1055,7 @@ function ExpertOnboardingPageContent() {
         onboardingMetadata: {
           governmentId,
           kycVideoUrl,
+          kycPhotos,
           certificates,
         },
       });
@@ -1032,9 +1182,12 @@ function ExpertOnboardingPageContent() {
 
   const handleJumpToStepNumber = (stepNumber: number) => {
     const target = EXPERT_ONBOARDING_STEPS[stepNumber - 1];
-    if (target) {
-      setStep(target);
-    }
+    const currentStepNumber = EXPERT_ONBOARDING_STEPS.indexOf(
+      step as (typeof EXPERT_ONBOARDING_STEPS)[number],
+    ) + 1;
+    if (!canNavigateToOnboardingStep(stepNumber, currentStepNumber, stepCompletion)) return;
+    if (!target) return;
+    setStep(target);
   };
 
   // Toggle skill selection
@@ -1179,13 +1332,9 @@ function ExpertOnboardingPageContent() {
           categories={allCategories}
           selectedCategory={selectedCategory}
           stepCompletion={stepCompletion}
-          onSelectCategory={(id) => {
-            setSelectedCategory(id);
-            setSelectedSkills([]);
-          }}
+          onSelectCategory={handleSelectCategory}
           onAddCustomCategory={handleAddCustomCategory}
           onRemoveCustomCategory={handleRemoveCustomCategory}
-          onBack={handleBackToRegister}
           onContinue={handleCategoryContinue}
           onJumpToStep={handleJumpToStepNumber}
         />
@@ -1261,6 +1410,15 @@ function ExpertOnboardingPageContent() {
           userName={registeredName}
           kycVideoSrc={kycVideoUrl}
           onKycVideoChange={setKycVideoUrl}
+          kycPhotos={kycPhotos}
+          onKycPhotosChange={(photos) => {
+            setKycPhotos(photos);
+            try {
+              saveExpertApplicationDraft({ kycPhotos: photos });
+            } catch {
+              setProfileError("Could not save the manual KYC photos locally. Continue to save them to your profile.");
+            }
+          }}
           governmentId={governmentId}
           onGovernmentIdChange={setGovernmentId}
           certificates={certificates}
