@@ -2,6 +2,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Admin } from '../models/index.js';
 import { requestAdminOtp, verifyAdminOtp } from '../utils/adminLoginOtp.js';
+import {
+  buildPasswordLoginLockedResponse,
+  clearPasswordLoginFailures,
+  getPasswordLoginLockout,
+  recordFailedPasswordLogin,
+} from '../utils/accountLoginLockout.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
 
@@ -24,9 +30,23 @@ export const adminLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
+    const activeLockout = await getPasswordLoginLockout('admin', admin.id);
+    if (activeLockout) {
+      return res.status(429).json(buildPasswordLoginLockedResponse(activeLockout.lockedUntil));
+    }
+
     const isPasswordValid = await bcrypt.compare(password, admin.password);
     if (!isPasswordValid) {
+      const lockout = await recordFailedPasswordLogin('admin', admin);
+      if (lockout.lockedUntil) {
+        return res.status(429).json(buildPasswordLoginLockedResponse(lockout.lockedUntil));
+      }
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const clearedLockout = await clearPasswordLoginFailures('admin', admin.id);
+    if (clearedLockout.lockedUntil) {
+      return res.status(429).json(buildPasswordLoginLockedResponse(clearedLockout.lockedUntil));
     }
 
     if (process.env.ADMIN_LOGIN_OTP_ENABLED !== 'false') {

@@ -5,6 +5,8 @@ import { Expert } from '../models/index.js';
 
 const deliveries = [];
 let deliveryFails = false;
+const failures = new Map();
+const lockKey = (type, id) => `${type}:${id}`;
 mock.module('../utils/otpDelivery.js', {
   namedExports: {
     deliverOtpChannels: async (payload) => {
@@ -13,6 +15,31 @@ mock.module('../utils/otpDelivery.js', {
     },
     handleOtpDeliveryError: (error, res) => error.name === 'OtpDeliveryError'
       ? res.status(503).json({ code: 'OTP_DELIVERY_FAILED' }) : null,
+  },
+});
+mock.module('../utils/accountLoginLockout.js', {
+  namedExports: {
+    buildPasswordLoginLockedResponse: (lockedUntil) => ({ code: 'ACCOUNT_LOCKED', lockedUntil }),
+    getPasswordLoginLockout: async (type, id) => {
+      const state = failures.get(lockKey(type, id));
+      return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
+    },
+    recordFailedPasswordLogin: async (type, account) => {
+      const key = lockKey(type, account.id);
+      const state = failures.get(key) || { attempts: 0 };
+      if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
+      state.attempts += 1;
+      state.lockedUntil = state.attempts >= 5 ? Date.now() + 10 * 60 * 1000 : null;
+      failures.set(key, state);
+      return { lockedUntil: state.lockedUntil };
+    },
+    clearPasswordLoginFailures: async (type, id) => {
+      const key = lockKey(type, id);
+      const state = failures.get(key);
+      if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
+      failures.delete(key);
+      return { lockedUntil: null };
+    },
   },
 });
 mock.module('../services/expertSessionService.js', { namedExports: { issueExpertToken: async () => 'test-expert-token' } });
@@ -92,6 +119,59 @@ test('delivery failure and incorrect passwords never issue a token', async (t) =
   await login({ body: { email: expert.email, password: 'TestPassword1!' } }, unavailable);
   assert.equal(unavailable.statusCode, 503);
   assert.equal(unavailable.body.token, undefined);
+});
+
+test('expert password login locks after five incorrect passwords', async (t) => {
+  const expert = {
+    id: 'lockout-expert', email: 'locked@example.com',
+    password: await bcrypt.hash('CorrectPassword1!', 4), save: async () => {},
+  };
+  t.mock.method(Expert, 'findOne', async () => expert);
+
+  for (let attempt = 1; attempt < 5; attempt++) {
+    const invalid = response();
+    await login({ body: { email: expert.email, password: 'wrong' } }, invalid);
+    assert.equal(invalid.statusCode, 401);
+  }
+  const locked = response();
+  await login({ body: { email: expert.email, password: 'wrong' } }, locked);
+  assert.equal(locked.statusCode, 429);
+  assert.equal(locked.body.code, 'ACCOUNT_LOCKED');
+
+  const correct = response();
+  await login({ body: { email: expert.email, password: 'CorrectPassword1!' } }, correct);
+  assert.equal(correct.statusCode, 429);
+  assert.equal(correct.body.code, 'ACCOUNT_LOCKED');
+});
+
+test('expert login keeps unknown, incorrect-password, and social-only responses generic', async (t) => {
+  const expert = {
+    id: 'generic-login-expert',
+    email: 'generic@example.com',
+    password: null,
+  };
+  t.mock.method(Expert, 'findOne', async ({ where }) =>
+    where.email === expert.email ? expert : null);
+
+  const unknown = response();
+  await login({ body: { email: 'unknown@example.com', password: 'wrong' } }, unknown);
+  expert.password = await bcrypt.hash('CorrectPassword1!', 4);
+  const wrongPassword = response();
+  await login({ body: { email: expert.email, password: 'wrong' } }, wrongPassword);
+  expert.password = null;
+  const socialOnly = response();
+  await login({ body: { email: expert.email, password: 'wrong' } }, socialOnly);
+
+  assert.deepEqual(
+    [unknown.statusCode, unknown.body],
+    [wrongPassword.statusCode, wrongPassword.body],
+  );
+  assert.deepEqual(
+    [unknown.statusCode, unknown.body],
+    [socialOnly.statusCode, socialOnly.body],
+  );
+  assert.equal(unknown.statusCode, 401);
+  assert.equal(unknown.body.message, 'Invalid email or password');
 });
 
 for (const onboardingStep of ['budget', 'completed']) {

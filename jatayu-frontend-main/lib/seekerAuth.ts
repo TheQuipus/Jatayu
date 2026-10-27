@@ -7,6 +7,7 @@ import {
   type AuthResponse,
   type AuthUser,
 } from "@/lib/api";
+import type { OtpFlow } from "@/lib/otpFlow";
 
 const PENDING_OTP_SESSION_KEY = "jatayu_pending_seeker_otp";
 
@@ -15,6 +16,7 @@ export type PendingSeekerOtpSession = {
   email: string;
   phone: string;
   fullName?: string;
+  flow?: OtpFlow;
 };
 
 const SEEKER_USER_KEY = "jatayu_seeker_user";
@@ -89,6 +91,7 @@ export function clearPendingSeekerOtpSession(): void {
 }
 
 export type SeekerOnboardingStep =
+  | "phone"
   | "category"
   | "needs"
   | "format"
@@ -114,6 +117,8 @@ export function resolveSeekerOnboardingStep(user: AuthUser): SeekerOnboardingSte
 }
 
 export function getSeekerPostAuthDestination(user: AuthUser): string | SeekerOnboardingStep {
+  if (!user.phone) return "phone";
+
   if (
     user.status === "active" ||
     user.onboardingComplete === true ||

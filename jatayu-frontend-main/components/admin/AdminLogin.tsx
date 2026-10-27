@@ -308,6 +308,7 @@ export default function AdminLogin() {
               type="submit"
               label={isSubmitting ? "Please wait..." : otpRequested ? "Verify and Login" : "Send verification code"}
               aria-disabled={!canSubmit || isSubmitting}
+              style={otpRequested ? { color: "#fff" } : undefined}
               className={`${formStyles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : formStyles.registerSubmitBtnInactive}`}
               arrowSize={16}
             />

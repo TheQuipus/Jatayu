@@ -7,6 +7,7 @@ import {
   type AuthResponse,
   type AuthUser,
 } from "@/lib/api";
+import type { OtpFlow } from "@/lib/otpFlow";
 import { EXPERT_DASHBOARD_HREF } from "@/lib/expertDashboard";
 import { generateUUID } from "@/lib/uuid";
 
@@ -92,6 +93,7 @@ export type PendingOtpSession = {
   email: string;
   phone: string;
   fullName?: string;
+  flow?: OtpFlow;
 };
 
 export function savePendingOtpSession(session: PendingOtpSession): void {

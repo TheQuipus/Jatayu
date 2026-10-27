@@ -64,6 +64,7 @@ import {
 } from "@/lib/expertAuth";
 import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expertOnboardingStatus";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
+import { getOtpBackStep } from "@/lib/otpFlow";
 import { generateUUID } from "@/lib/uuid";
 import { normalizeBackendProfile, type BackendExpertProfile } from "@/lib/expertProfileApi";
 import {
@@ -440,7 +441,7 @@ function ExpertOnboardingPageContent() {
       const pending = readPendingOtpSession();
       if (pending) {
         otpFlowLockRef.current = true;
-        signupFlowRef.current = true;
+        signupFlowRef.current = getOtpBackStep(pending.flow) === "register";
         setExpertId(pending.expertId);
         setRegisteredEmail(pending.email);
         setRegisteredPhone(pending.phone);
@@ -590,6 +591,7 @@ function ExpertOnboardingPageContent() {
       phone,
       email,
       fullName,
+      flow: "signup",
     });
     setExpertId(nextExpertId);
     setRegisteredPhone(phone);
@@ -611,11 +613,13 @@ function ExpertOnboardingPageContent() {
     fullName?: string;
   }) => {
     otpFlowLockRef.current = true;
+    signupFlowRef.current = false;
     savePendingOtpSession({
       expertId: nextExpertId,
       email,
       phone,
       fullName,
+      flow: "login",
     });
     setExpertId(nextExpertId);
     setRegisteredEmail(email);
@@ -673,8 +677,26 @@ function ExpertOnboardingPageContent() {
   };
 
   const handleBackToRegister = () => {
+    clearPendingOtpSession();
     signupFlowRef.current = true;
     setStep("register");
+  };
+
+  const handleOtpBack = () => {
+    const pending = readPendingOtpSession();
+    clearPendingOtpSession();
+
+    if (getOtpBackStep(pending?.flow) === "login") {
+      otpFlowLockRef.current = false;
+      signupFlowRef.current = false;
+      loginIntentRef.current = true;
+      setInitialLoginEmail(pending?.email || registeredEmail);
+      setStep("login");
+      router.replace("/expert/expert-onboarding/?auth=login");
+      return;
+    }
+
+    handleBackToRegister();
   };
 
   const handleSwitchToLogin = (emailPrefill?: string) => {
@@ -1093,7 +1115,7 @@ function ExpertOnboardingPageContent() {
           expertId={otpExpertId}
           phone={otpPhone}
           email={otpEmail}
-          onBack={handleBackToRegister}
+          onBack={handleOtpBack}
           onContinue={handleOtpComplete}
         />
       ) : null}
@@ -1101,7 +1123,7 @@ function ExpertOnboardingPageContent() {
       {step === "otp" && !otpExpertId ? (
         <section className={styles.otpFallback}>
           <p>Verification session expired. Please register again to receive a new code.</p>
-          <button type="button" onClick={handleBackToRegister}>
+          <button type="button" onClick={handleOtpBack}>
             Back to Register
           </button>
         </section>

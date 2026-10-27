@@ -12,12 +12,23 @@ import {
 } from '../../utils/googleAuth.js';
 import { getLinkedinAuthConfig, verifyLinkedinLogin } from '../../utils/linkedinAuth.js';
 import { getSeekerOnboardingProgress } from '../../utils/seekerOnboardingProgress.js';
+import { isValidSeekerFullName } from '../../utils/seekerNameValidation.js';
+import {
+  isValidSeekerRegistrationEmail,
+  isValidSeekerRegistrationPhone,
+} from '../../utils/seekerRegistrationValidation.js';
 import {
   storeOtpOnModel,
   readOtpFromModel,
   clearPendingOtpMetadata,
   isStoredOtpValid,
 } from '../../utils/otpPersistence.js';
+import {
+  buildPasswordLoginLockedResponse,
+  clearPasswordLoginFailures,
+  getPasswordLoginLockout,
+  recordFailedPasswordLogin,
+} from '../../utils/accountLoginLockout.js';
 
 dotenv.config();
 
@@ -94,32 +105,24 @@ export const register = async (req, res) => {
   if (!fullName || !email || !password || !phone) {
     return res.status(400).json({ message: 'All fields (fullName, email, password, phone) are required' });
   }
+  if (!isValidSeekerFullName(fullName)) {
+    return res.status(400).json({ message: 'Name must contain letters and may only include numbers, spaces, hyphens, commas, and apostrophes.' });
+  }
 
   try {
-    const existingEmail = await Seeker.findOne({ where: { email } });
+    if (!await isValidSeekerRegistrationEmail(email)) {
+      return res.status(400).json({ message: 'Enter a valid email address' });
+    }
+    if (!isValidSeekerRegistrationPhone(phone)) {
+      return res.status(400).json({ message: 'Phone number must contain exactly 10 digits' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingEmail = await Seeker.findOne({ where: { email: normalizedEmail } });
     if (existingEmail) {
-      const hasPassword = Boolean(existingEmail.password);
-      const passwordMatches = hasPassword && (await bcrypt.compare(password, existingEmail.password));
-
-      if (!passwordMatches) {
-        return res.status(409).json({
-          message: 'An account with this email already exists. Please log in to continue.',
-          code: 'EMAIL_EXISTS',
-        });
-      }
-
-      await issueOtp(existingEmail);
-
-      console.log(`\n======================================================`);
-      console.log(`[Seeker OTP Resent] Existing seeker re-submitted registration: ${existingEmail.fullName}`);
-      console.log(`Email: ${existingEmail.email}`);
-      console.log(`======================================================\n`);
-
-      return res.status(200).json({
-        message: 'Welcome back! Verification code sent to your email and phone.',
-        seekerId: existingEmail.id,
-        email: existingEmail.email,
-        phone: existingEmail.phone,
+      return res.status(409).json({
+        message: 'An account with this email already exists. Please log in to continue.',
+        code: 'EMAIL_EXISTS',
       });
     }
 
@@ -136,7 +139,7 @@ export const register = async (req, res) => {
 
     const seeker = await Seeker.create({
       fullName,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       phone,
       onboardingStep: 'otp',
@@ -248,20 +251,34 @@ export const login = async (req, res) => {
   }
 
   try {
-    const seeker = await Seeker.findOne({ where: { email } });
+    const seeker = await Seeker.findOne({
+      where: { email: String(email).trim().toLowerCase() },
+    });
     if (!seeker) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     if (!seeker.password) {
-      return res.status(400).json({
-        message: 'This account was created using social sign-in. Please log in with Google or LinkedIn.',
-      });
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const activeLockout = await getPasswordLoginLockout('seeker', seeker.id);
+    if (activeLockout) {
+      return res.status(429).json(buildPasswordLoginLockedResponse(activeLockout.lockedUntil));
     }
 
     const isMatch = await bcrypt.compare(password, seeker.password);
     if (!isMatch) {
+      const lockout = await recordFailedPasswordLogin('seeker', seeker);
+      if (lockout.lockedUntil) {
+        return res.status(429).json(buildPasswordLoginLockedResponse(lockout.lockedUntil));
+      }
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const clearedLockout = await clearPasswordLoginFailures('seeker', seeker.id);
+    if (clearedLockout.lockedUntil) {
+      return res.status(429).json(buildPasswordLoginLockedResponse(clearedLockout.lockedUntil));
     }
 
     // Password validation starts a fresh OTP challenge on every login.
