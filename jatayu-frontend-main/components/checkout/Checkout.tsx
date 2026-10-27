@@ -61,6 +61,7 @@ import {
   verifySeekerOtp,
   resendSeekerOtp,
   seekerLogin,
+  SeekerOtpRequiredError,
   setSeekerId,
   getSeekerId,
   removeSeekerId,
@@ -70,6 +71,7 @@ import {
   getPublicExpert,
   updateSeekerOnboarding,
 } from "@/lib/api";
+import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
 import {
   fetchSeekerProfileData,
   getStoredSeekerProfile,
@@ -101,6 +103,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
   const [bookingOptions, setBookingOptions] = useState<BookingOptions | null>(null);
   const [bookingError, setBookingError] = useState("");
   const [confirmedBookingId, setConfirmedBookingId] = useState("");
@@ -579,8 +582,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const handleLoginSubmit = async () => {
     setLoginSubmitAttempted(true);
-    if (!loginEmail.trim() || !loginPassword.trim()) return;
+    if (!loginEmail.trim() || !loginPassword.trim() || isSubmittingLogin) return;
 
+    setIsSubmittingLogin(true);
     try {
       const authRes = await seekerLogin({
         email: loginEmail.trim(),
@@ -598,9 +602,30 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       setShowAuthModal(false);
       setCurrentStep(4);
     } catch (err) {
+      if (err instanceof SeekerOtpRequiredError) {
+        savePendingSeekerOtpSession({
+          seekerId: err.seekerId,
+          email: err.email,
+          phone: err.phone,
+          flow: "login",
+        });
+        setCurrentSeekerId(err.seekerId);
+        setRegisterEmail(err.email);
+        setRegisterPhone(normalizeSeekerPhone(err.phone));
+        setLoginEmail(err.email);
+        setRegisterOtpSent(true);
+        setRegisterOtpVerified(false);
+        setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
+        setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
+        setBookingError("");
+        setShowAuthModal(true);
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Seeker login failed.";
       console.warn("Seeker login API notice:", err);
       setBookingError(msg);
+    } finally {
+      setIsSubmittingLogin(false);
     }
   };
 
@@ -918,6 +943,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   loginPassword={loginPassword}
                   onLoginPasswordChange={setLoginPassword}
                   loginSubmitAttempted={loginSubmitAttempted}
+                  isSubmittingLogin={isSubmittingLogin}
                   onLoginSubmit={handleLoginSubmit}
                   registerFirstName={registerFirstName}
                   onRegisterFirstNameChange={setRegisterFirstName}

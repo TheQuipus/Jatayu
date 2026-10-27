@@ -35,6 +35,21 @@ dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
 
 const seekerTempOtps = new Map();
+const seekerOtpRequestWindowMs = 30_000;
+const seekerOtpRequestTimes = new Map();
+
+function getRecentSeekerOtpIssuedAt(seekerId) {
+  return seekerOtpRequestTimes.get(seekerId) || 0;
+}
+
+function canIssueSeekerOtpNow(seekerId) {
+  const lastIssuedAt = getRecentSeekerOtpIssuedAt(seekerId);
+  return !lastIssuedAt || Date.now() - lastIssuedAt >= seekerOtpRequestWindowMs;
+}
+
+function markSeekerOtpIssued(seekerId) {
+  seekerOtpRequestTimes.set(seekerId, Date.now());
+}
 
 function generateOtpCode() {
   return String(randomInt(100000, 1000000));
@@ -201,6 +216,7 @@ export const verifyOtp = async (req, res) => {
     await seeker.save();
 
     seekerTempOtps.delete(seekerId);
+    seekerOtpRequestTimes.delete(seekerId);
 
     return res.status(200).json({
       message: 'Account verified successfully',
@@ -226,7 +242,12 @@ export const resendOtp = async (req, res) => {
       return res.status(404).json({ message: 'Seeker not found' });
     }
 
+    if (!canIssueSeekerOtpNow(seeker.id)) {
+      return res.status(429).json({ message: 'Please wait before requesting another OTP.' });
+    }
+
     await issueOtp(seeker);
+    markSeekerOtpIssued(seeker.id);
 
     console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: (sent via provider)`);
 
@@ -283,7 +304,18 @@ export const login = async (req, res) => {
 
     // Password validation starts a fresh OTP challenge on every login.
     // Only verifyOtp may issue the authenticated session for this flow.
+    if (!canIssueSeekerOtpNow(seeker.id)) {
+      return res.status(403).json({
+        message: 'Please verify your account with the OTP sent to your email and phone.',
+        requiresOtp: true,
+        seekerId: seeker.id,
+        email: seeker.email,
+        phone: seeker.phone,
+      });
+    }
+
     await issueOtp(seeker);
+    markSeekerOtpIssued(seeker.id);
 
     return res.status(403).json({
       message: 'Please verify your account with the OTP sent to your email and phone.',

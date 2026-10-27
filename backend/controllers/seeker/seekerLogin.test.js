@@ -42,7 +42,7 @@ mock.module('../../utils/accountLoginLockout.js', {
     },
   },
 });
-const { login, register, verifyOtp } = await import('./seekerAuthController.js');
+const { login, register, resendOtp, verifyOtp } = await import('./seekerAuthController.js');
 
 function response() {
   return {
@@ -93,6 +93,59 @@ for (const onboardingStep of ['otp', 'budget', 'completed']) {
     assert.equal(nextLogin.body.token, undefined);
   });
 }
+
+test('rapid repeated seeker logins reuse the existing OTP challenge within the cooldown window', async (t) => {
+  const seeker = {
+    id: 'cooldown-seeker',
+    email: 'cooldown@example.com',
+    phone: '+919999999999',
+    password: await bcrypt.hash('TestPassword1!', 4),
+    onboardingStep: 'completed',
+    save: async () => {},
+  };
+  t.mock.method(Seeker, 'findOne', async () => seeker);
+
+  const first = response();
+  await login({ body: { email: seeker.email, password: 'TestPassword1!' } }, first);
+  assert.equal(first.statusCode, 403);
+  const firstCode = seeker.onboardingMetadata.pendingOtp.code;
+  const deliveryCountAfterFirst = deliveries.length;
+
+  const second = response();
+  await login({ body: { email: seeker.email, password: 'TestPassword1!' } }, second);
+  assert.equal(second.statusCode, 403);
+  assert.equal(second.body.requiresOtp, true);
+  assert.equal(second.body.token, undefined);
+  assert.equal(deliveries.length, deliveryCountAfterFirst);
+  assert.equal(seeker.onboardingMetadata.pendingOtp.code, firstCode);
+});
+
+test('seeker resendOtp enforces the cooldown and stops duplicate OTP delivery', async (t) => {
+  const seeker = {
+    id: 'resend-cooldown-seeker',
+    email: 'resend-cooldown@example.com',
+    phone: '+919876543210',
+    onboardingStep: 'otp',
+    save: async () => {},
+  };
+  t.mock.method(Seeker, 'findByPk', async (id) => (id === seeker.id ? seeker : null));
+
+  const before = deliveries.length;
+
+  const firstResend = response();
+  await resendOtp({ body: { seekerId: seeker.id } }, firstResend);
+  assert.equal(firstResend.statusCode, 200);
+  assert.equal(firstResend.body.message, 'Verification code resent to your email and phone.');
+  assert.equal(deliveries.length, before + 1);
+  assert.equal(deliveries.at(-1).email, seeker.email);
+  assert.equal(deliveries.at(-1).phone, seeker.phone);
+
+  const secondResend = response();
+  await resendOtp({ body: { seekerId: seeker.id } }, secondResend);
+  assert.equal(secondResend.statusCode, 429);
+  assert.match(secondResend.body.message, /Please wait before requesting another OTP/i);
+  assert.equal(deliveries.length, before + 1);
+});
 
 test('delivery failure and incorrect passwords never issue a token', async (t) => {
   const seeker = {
