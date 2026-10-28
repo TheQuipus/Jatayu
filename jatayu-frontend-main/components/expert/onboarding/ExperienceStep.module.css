@@ -347,6 +347,10 @@
   border-color: rgba(255, 255, 255, 0.16);
 }
 
+.selectFieldError {
+  border-color: #ff3b30 !important;
+}
+
 .selectFieldOpen,
 .selectField:focus {
   border-color: rgba(255, 255, 255, 0.22);
@@ -356,8 +360,6 @@
 
 .selectMenu {
   position: fixed;
-  top: 0;
-  left: 0;
   z-index: 9999;
   margin: 0;
   padding: 6px;
@@ -648,6 +650,13 @@
   margin-top: 6px;
   pointer-events: none;
   z-index: 1;
+}
+
+.selectErrorText {
+  display: block;
+  position: static;
+  line-height: 1.3;
+  margin-top: 0;
 }
 
 .questionTitleHeaderRow {

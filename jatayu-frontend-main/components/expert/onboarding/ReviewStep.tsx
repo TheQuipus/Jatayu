@@ -2,24 +2,24 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { Star, Briefcase, Languages } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Clock3,
+  GraduationCap,
+  Link as LinkIcon,
+  MapPin,
+} from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./ReviewStep.module.css";
-import ExpertCard from "@/components/ui/ExpertCard";
-import { type Expert } from "@/lib/experts";
-import detailStyles from "../ExpertDetail.module.css";
 import {
   formatPreferencesPricingSummary,
-  getLowestFormatPrice,
   getSessionLengthLabel,
 } from "./preferencesData";
 import {
   deriveExperienceLevel,
-  getDegreeSummary,
-  getPositionSummary,
   isEducationDegreeStarted,
   MONTH_OPTIONS,
   type EducationDegree,
@@ -43,6 +43,7 @@ type ReviewStepProps = {
   tagLine: string;
   bio: string;
   onBioChange: (value: string) => void;
+  location?: string;
   categoryLabel: string;
   linkedin: string;
   portfolio: string;
@@ -149,20 +150,16 @@ function formatAvailabilitySummary(timezone: string, slots: TimeSlot[]): string 
   return parts.join(" | ");
 }
 
-function ReviewDetailList({ items }: { items: string[] }) {
-  if (items.length === 0) {
-    return <span className={styles.reviewDetailValue}>Not added</span>;
-  }
+function getProfileLink(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
 
-  return (
-    <ul className={styles.reviewDetailList}>
-      {items.map((item, index) => (
-        <li key={`${item}-${index}`} className={styles.reviewDetailListItem}>
-          {item}
-        </li>
-      ))}
-    </ul>
-  );
+  try {
+    const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 export default function ReviewStep({
@@ -174,6 +171,7 @@ export default function ReviewStep({
   tagLine,
   bio,
   onBioChange,
+  location = "",
   categoryLabel,
   linkedin,
   portfolio,
@@ -197,13 +195,17 @@ export default function ReviewStep({
   onProgressStepClick,
 }: ReviewStepProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const skillsSummary =
-    selectedSkills.length > 0 ? selectedSkills.join(", ") : "None selected";
-
-  const nameParts = userName.trim().split(/\s+/);
+  const profileName = userName.trim();
+  const nameParts = profileName.split(/\s+/).filter(Boolean);
   const firstName = nameParts[0] ?? "";
   const lastName = nameParts.slice(1).join(" ");
-  const role = professionalTitle ?? "";
+  const role = professionalTitle.trim();
+  const initials = nameParts.slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const hasProfilePhoto = Boolean(
+    profilePhotoSrc.trim() && profilePhotoSrc !== "/assets/img/manportrait.png",
+  );
+  const linkedinHref = getProfileLink(linkedin);
+  const hasCategory = Boolean(categoryLabel.trim() && categoryLabel !== "Not selected");
 
   const filledEmployment = useMemo(
     () => getFilledEmploymentPositions(employmentPositions),
@@ -218,21 +220,6 @@ export default function ReviewStep({
     [employmentPositions],
   );
 
-  const employmentSummaries = useMemo(
-    () =>
-      filledEmployment.map((position, index) => {
-        const summary = getPositionSummary(position, index);
-        const dates = formatPositionDates(position);
-        return [summary, dates].filter(Boolean).join(" · ");
-      }),
-    [filledEmployment],
-  );
-
-  const educationSummaries = useMemo(
-    () => filledEducation.map((degree, index) => getDegreeSummary(degree, index)),
-    [filledEducation],
-  );
-
   useEffect(() => {
     onStepCompleteChange?.(9, agreedToTerms);
   }, [agreedToTerms, onStepCompleteChange]);
@@ -244,34 +231,10 @@ export default function ReviewStep({
       : selectedFormats.length === 1 && selectedFormats[0] === "written"
         ? "Not required"
         : "Not selected";
-  const previewPrice = getLowestFormatPrice(formatPrices);
-
-  const languagesSummary =
-    languages.length > 0 ? languages.join(", ") : "Not selected";
-
-  const audiencesSummary =
-    selectedAudiences.length > 0
-      ? selectedAudiences.map((id) => AUDIENCE_LABELS[id] ?? id).join(", ")
-      : "Not selected";
-
   const portfolioSamplesSummary = formatPortfolioSamplesSummary(portfolioSamples);
   const certificatesSummary = formatCertificatesSummary(certificates);
   const governmentIdSummary = formatGovernmentIdSummary(governmentId);
   const availabilitySummary = formatAvailabilitySummary(timezone, availabilitySlots);
-
-  const mockExpert: Expert = {
-    name: `${firstName} ${lastName}`.trim() || userName.trim() || "Your Name",
-    role: role || professionalTitle || "Professional Title",
-    desc: tagLine.trim() || "Your tag line appears here.",
-    image: profilePhotoSrc,
-    category: categoryLabel || "Category",
-    topics: [],
-    languages,
-    price: previewPrice,
-    rating: 0,
-    replyTime: "0 min",
-    bio: bio,
-  };
 
   return (
     <section className={shared.card}>
@@ -296,205 +259,232 @@ export default function ReviewStep({
       </p>
 
 
-      {/* Identity Block */}
-      <div className={styles.reviewBlockCard} style={{ marginBottom: "20px" }}>
-        <div className={styles.reviewBlockHeader} style={{ marginBottom: "20px" }}>
-          <h4 className={styles.reviewBlockTitle}>Professional Identity</h4>
-        </div>
-
-        <div className={styles.reviewIdentityColumns}>
-          <div className={styles.reviewLeftCol}>
-            <div className={styles.expertCardWrapper}>
-              <ExpertCard
-                expert={mockExpert}
-                linkToDetail={false}
-                disableHover={true}
-                showLanguages={languages.length > 0}
-              />
-            </div>
-          </div>
-          <div className={`${detailStyles.centerCol} ${styles.reviewCenterCol}`}>
-            <h1 className={`display ${detailStyles.displayName}`} style={{ textAlign: "left" }}>
-              <span>{firstName}</span>
-              <span className="t-muted"> {lastName}</span>
-            </h1>
-
-            <p className={detailStyles.roleSub} style={{ textAlign: "left" }}>{role}</p>
-
-            {tagLine.trim() ? (
-              <p className={detailStyles.roleSub} style={{ textAlign: "left", opacity: 0.75 }}>
-                {tagLine}
-              </p>
-            ) : null}
-
-            <div className={detailStyles.starDivider}>
-              <span className={detailStyles.dividerStar}>✦</span>
-              <span className={detailStyles.dividerLine} />
+      <div className={styles.reviewCanvas}>
+        <section className={styles.profileHeader} aria-label="Profile preview">
+          <div className={styles.coverBanner} aria-hidden="true" />
+          <div className={styles.profileHeaderBody}>
+            <div className={styles.profileAvatar}>
+              {hasProfilePhoto ? (
+                <Image
+                  src={profilePhotoSrc}
+                  alt={profileName ? `${profileName} profile photo` : "Profile photo"}
+                  width={144}
+                  height={144}
+                  className={styles.profileAvatarImage}
+                  unoptimized={profilePhotoSrc.startsWith("blob:") || profilePhotoSrc.startsWith("data:")}
+                />
+              ) : (
+                <span aria-hidden="true">{initials || <BriefcaseBusiness size={38} />}</span>
+              )}
             </div>
 
-            <div className={detailStyles.ratingsRow}>
-              <div className={detailStyles.ratingItem}>
-                <Star size={16} fill="#EAB308" stroke="#EAB308" />
-                <span className={detailStyles.ratingText}>
-                  <strong>0.0</strong> (0 reviews)
-                </span>
-              </div>
-              <div className={detailStyles.ratingItem}>
-                <Briefcase size={16} className={detailStyles.statsIcon} />
-                <span className={detailStyles.ratingText}>
-                  <strong>0 Sessions Completed</strong>
-                </span>
-              </div>
-            </div>
-
-            <div className={detailStyles.metaRow}>
-              <div className={detailStyles.metaItem}>
-                <div className={detailStyles.metaIconBadge}>
-                  <Languages size={13} />
+            <div className={styles.profileIdentity}>
+              <h2 className={styles.profileName}>{profileName || "Name not provided"}</h2>
+              {role ? <p className={styles.profileHeadline}>{role}</p> : null}
+              {tagLine.trim() ? <p className={styles.profileTagline}>{tagLine.trim()}</p> : null}
+              {location.trim() || hasCategory || filledEmployment.length > 0 ? (
+                <div className={styles.profileMeta}>
+                  {location.trim() ? (
+                    <span className={styles.profileLocation}>
+                      <MapPin size={14} aria-hidden="true" />
+                      {location.trim()}
+                    </span>
+                  ) : null}
+                  {hasCategory ? <span>{categoryLabel}</span> : null}
+                  {hasCategory && filledEmployment.length > 0 ? <span aria-hidden="true">·</span> : null}
+                  {filledEmployment.length > 0 ? (
+                    <span>{EXPERIENCE_LABELS[derivedExperienceLevel]}</span>
+                  ) : null}
                 </div>
-                <span className={detailStyles.metaVal}>{languagesSummary}</span>
+              ) : null}
+              {linkedin.trim() ? (
+                linkedinHref ? (
+                  <a
+                    className={styles.profileLink}
+                    href={linkedinHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open LinkedIn profile in a new tab"
+                  >
+                    <LinkIcon size={16} aria-hidden="true" />
+                    <span>{linkedin.trim()}</span>
+                  </a>
+                ) : (
+                  <span className={styles.profileLink}>
+                    <LinkIcon size={16} aria-hidden="true" />
+                    <span>{linkedin.trim()}</span>
+                  </span>
+                )
+              ) : null}
+            </div>
+
+            {bio.trim() ? <p className={styles.profileBio}>{bio.trim()}</p> : null}
+          </div>
+        </section>
+
+        <div className={styles.profileSections}>
+          <section className={`${styles.reviewBlockCard} ${styles.wideCard}`}>
+            <div className={styles.reviewBlockHeader}>
+              <h3 className={styles.reviewBlockTitle}>Experience</h3>
+            </div>
+            {filledEmployment.length ? (
+              <div className={styles.entryList}>
+                {filledEmployment.map((position) => {
+                  const dates = formatPositionDates(position);
+                  return (
+                    <article className={styles.profileEntry} key={position.id}>
+                      <div className={styles.entryIcon}><BriefcaseBusiness size={20} aria-hidden="true" /></div>
+                      <div className={styles.entryContent}>
+                        {position.jobTitle.trim() ? (
+                          <h4 className={styles.entryTitle}>{position.jobTitle.trim()}</h4>
+                        ) : null}
+                        {position.company.trim() ? (
+                          <p className={styles.entrySubtitle}>{position.company.trim()}</p>
+                        ) : null}
+                        {dates ? <p className={styles.entryMeta}>{dates}</p> : null}
+                        {position.responsibilities.trim() ? (
+                          <p className={styles.entryDescription}>{position.responsibilities.trim()}</p>
+                        ) : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className={styles.emptyValue}>No employment history added</p>
+            )}
+          </section>
+
+          <section className={styles.reviewBlockCard}>
+            <div className={styles.reviewBlockHeader}>
+              <h3 className={styles.reviewBlockTitle}>Education</h3>
+            </div>
+            {filledEducation.length ? (
+              <div className={styles.entryList}>
+                {filledEducation.map((degree) => (
+                  <article className={styles.profileEntry} key={degree.id}>
+                    <div className={styles.entryIcon}><GraduationCap size={20} aria-hidden="true" /></div>
+                    <div className={styles.entryContent}>
+                      {degree.degree.trim() ? <h4 className={styles.entryTitle}>{degree.degree.trim()}</h4> : null}
+                      {degree.fieldOfStudy.trim() ? <p className={styles.entrySubtitle}>{degree.fieldOfStudy.trim()}</p> : null}
+                      {degree.institution.trim() ? <p className={styles.entryMeta}>{degree.institution.trim()}</p> : null}
+                      {degree.graduationYear.trim() ? <p className={styles.entryMeta}>{degree.graduationYear.trim()}</p> : null}
+                      {degree.honours.trim() ? <p className={styles.entryDescription}>{degree.honours.trim()}</p> : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.emptyValue}>No education added</p>
+            )}
+          </section>
+
+          <section className={styles.reviewBlockCard}>
+            <div className={styles.reviewBlockHeader}>
+              <h3 className={styles.reviewBlockTitle}>Consultation Details</h3>
+            </div>
+            <div className={styles.detailList}>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Formats & Pricing</span>
+                <span className={styles.reviewDetailValue}>{formatsSummary}</span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Session Length</span>
+                <span className={styles.reviewDetailValue}>{sessionLengthsSummary}</span>
               </div>
             </div>
+          </section>
 
-            <p className={detailStyles.bioText} style={{ textAlign: "left" }}>
-              {bio}
-            </p>
-          </div>
+          <section className={styles.reviewBlockCard}>
+            <div className={styles.reviewBlockHeader}>
+              <h3 className={styles.reviewBlockTitle}>Audience & Languages</h3>
+            </div>
+            <div className={styles.detailList}>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Languages</span>
+                <span className={styles.reviewDetailValue}>
+                  {languages.length ? languages.join(", ") : "Not selected"}
+                </span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Target Audiences</span>
+                <span className={styles.reviewDetailValue}>
+                  {selectedAudiences.length
+                    ? selectedAudiences.map((id) => AUDIENCE_LABELS[id] ?? id).join(", ")
+                    : "Not selected"}
+                </span>
+              </div>
+              {hasCategory ? (
+                <div className={styles.detailItem}>
+                  <span className={styles.reviewDetailLabel}>Category</span>
+                  <span className={styles.reviewDetailValue}>{categoryLabel}</span>
+                </div>
+              ) : null}
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Core Skills</span>
+                {selectedSkills.length ? (
+                  <ul className={styles.skillList}>
+                    {selectedSkills.map((skill) => <li key={skill}>{skill}</li>)}
+                  </ul>
+                ) : (
+                  <span className={styles.reviewDetailValue}>None selected</span>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.reviewBlockCard}>
+            <div className={styles.reviewBlockHeader}>
+              <h3 className={styles.reviewBlockTitle}>Portfolio</h3>
+            </div>
+            <div className={styles.detailList}>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Portfolio URL</span>
+                <span className={styles.reviewDetailValue}>
+                  {portfolio.trim() || "Not added"}
+                </span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Portfolio Samples</span>
+                <span className={styles.reviewDetailValue}>{portfolioSamplesSummary}</span>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.reviewBlockCard}>
+            <div className={styles.reviewBlockHeader}>
+              <h3 className={styles.reviewBlockTitle}>Credentials</h3>
+            </div>
+            <div className={styles.detailList}>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Government ID</span>
+                <span className={styles.reviewDetailValue}>{governmentIdSummary}</span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>KYC Video</span>
+                <span className={styles.reviewDetailValue}>
+                  {kycVideoUrl.trim() ? "Uploaded" : "Not uploaded"}
+                </span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}>Certificates</span>
+                <span className={styles.reviewDetailValue}>{certificatesSummary}</span>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.reviewBlockCard}>
+            <div className={styles.reviewBlockHeader}>
+              <h3 className={styles.reviewBlockTitle}>Availability</h3>
+            </div>
+            <div className={styles.detailList}>
+              <div className={styles.detailItem}>
+                <span className={styles.reviewDetailLabel}><Clock3 size={15} aria-hidden="true" /> Weekly Schedule</span>
+                <span className={styles.reviewDetailValue}>{availabilitySummary}</span>
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
-
-      {/* Bottom Compact Section Cards */}
-      <div className={styles.reviewSplitRow} style={{ marginBottom: "20px" }}>
-        <div className={styles.reviewBlockCard}>
-          <div className={styles.reviewBlockHeader}>
-            <h4 className={styles.reviewBlockTitle}>Expertise & Experience</h4>
-          </div>
-
-          <div className={styles.reviewBlockContent}>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Category</span>
-              <span className={styles.reviewDetailValue}>{categoryLabel}</span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Core Skills</span>
-              <span className={styles.reviewDetailValue}>{skillsSummary}</span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Experience Level</span>
-              <span className={styles.reviewDetailValue}>
-                {EXPERIENCE_LABELS[derivedExperienceLevel]}
-              </span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Employment</span>
-              <ReviewDetailList items={employmentSummaries} />
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Education</span>
-              <ReviewDetailList items={educationSummaries} />
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.reviewBlockCard}>
-          <div className={styles.reviewBlockHeader}>
-            <h4 className={styles.reviewBlockTitle}>Portfolio</h4>
-          </div>
-
-          <div className={styles.reviewBlockContent}>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Portfolio URL</span>
-              <span className={styles.reviewDetailValue}>
-                {portfolio.trim() || "Not added"}
-              </span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Portfolio Samples</span>
-              <span className={styles.reviewDetailValue}>{portfolioSamplesSummary}</span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>LinkedIn</span>
-              <span className={styles.reviewDetailValue}>
-                {linkedin.trim() || "Not added"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.reviewSplitRow} style={{ marginBottom: "20px" }}>
-        <div className={styles.reviewBlockCard}>
-          <div className={styles.reviewBlockHeader}>
-            <h4 className={styles.reviewBlockTitle}>Consultation Details</h4>
-          </div>
-
-          <div className={styles.reviewBlockContent}>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Formats & Pricing</span>
-              <span className={styles.reviewDetailValue}>{formatsSummary}</span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Session Length</span>
-              <span className={styles.reviewDetailValue}>{sessionLengthsSummary}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.reviewBlockCard}>
-          <div className={styles.reviewBlockHeader}>
-            <h4 className={styles.reviewBlockTitle}>Audience & Languages</h4>
-          </div>
-
-          <div className={styles.reviewBlockContent}>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Languages</span>
-              <span className={styles.reviewDetailValue}>{languagesSummary}</span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Target Audiences</span>
-              <span className={styles.reviewDetailValue}>{audiencesSummary}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.reviewSplitRow} style={{ marginBottom: "20px" }}>
-        <div className={styles.reviewBlockCard}>
-          <div className={styles.reviewBlockHeader}>
-            <h4 className={styles.reviewBlockTitle}>Credentials</h4>
-          </div>
-
-          <div className={styles.reviewBlockContent}>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Government ID</span>
-              <span className={styles.reviewDetailValue}>{governmentIdSummary}</span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>KYC Video</span>
-              <span className={styles.reviewDetailValue}>
-                {kycVideoUrl.trim() ? "Uploaded" : "Not uploaded"}
-              </span>
-            </div>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Certificates</span>
-              <span className={styles.reviewDetailValue}>{certificatesSummary}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.reviewBlockCard}>
-          <div className={styles.reviewBlockHeader}>
-            <h4 className={styles.reviewBlockTitle}>Availability</h4>
-          </div>
-
-          <div className={styles.reviewBlockContent}>
-            <div className={styles.reviewDetailRow}>
-              <span className={styles.reviewDetailLabel}>Weekly Schedule</span>
-              <span className={styles.reviewDetailValue}>{availabilitySummary}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div className={styles.termsBar}>
         <div className={styles.termsLabel}>
@@ -512,8 +502,9 @@ export default function ReviewStep({
           </span>
         </div>
       </div>
+      </div>
 
-      {/* Footer */}      </div>
+      </div>
 
       <div className={shared.onboardingFooter}>
         <div className={shared.footerLeft}>
@@ -528,7 +519,7 @@ export default function ReviewStep({
           </div>
           <div className={shared.footerTip}>
             <strong>Ready for Review</strong>
-            <small>You're all set to submit your application.</small>
+            <small>You&apos;re all set to submit your application.</small>
           </div>
         </div>
 
