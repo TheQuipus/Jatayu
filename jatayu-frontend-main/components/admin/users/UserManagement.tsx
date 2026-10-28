@@ -39,17 +39,17 @@ type UserManagementProps = {
 };
 
 export default function UserManagement({ subSection }: UserManagementProps) {
-  const { ready, experts, seekers, seekerCounts, error, updatingId, updateExpertStatus, updateSeekerStatus } = useUserManagement();
+  const { ready, experts, expertCounts, seekers, seekerCounts, error, updatingId, updateExpertStatus, updateSeekerStatus } = useUserManagement();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   // Expert statistics
-  const totalExperts = experts.length;
-  const activeExperts = experts.filter((e) => e.status === "active").length;
-  const onHoldExperts = experts.filter((e) => e.status === "on_hold").length;
-  const suspendedExperts = experts.filter((e) => e.status === "suspended").length;
+  const totalExperts = expertCounts.all ?? experts.length;
+  const activeExperts = expertCounts.active ?? experts.filter((e) => e.status === "active").length;
+  const onHoldExperts = expertCounts.on_hold ?? experts.filter((e) => e.status === "on_hold").length;
+  const suspendedExperts = expertCounts.suspended ?? experts.filter((e) => e.status === "suspended").length;
 
   // Seeker statistics
   const totalSeekers = seekerCounts.all ?? seekers.length;
@@ -73,6 +73,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
         exp.name.toLowerCase().includes(search.toLowerCase()) ||
         exp.email.toLowerCase().includes(search.toLowerCase()) ||
         exp.phone.includes(search) ||
+        (exp.applicationNumber && exp.applicationNumber.toLowerCase().includes(search.toLowerCase())) ||
         exp.category.toLowerCase().includes(search.toLowerCase());
 
       const matchStatus = statusFilter === "all" || exp.status === statusFilter;
@@ -126,52 +127,37 @@ export default function UserManagement({ subSection }: UserManagementProps) {
       {error && <p role="alert">{error}</p>}
       {/* KPI Metrics Bar */}
       {subSection === "experts" ? (
-        <div className={styles.metricsGrid}>
-          <div className={styles.metricCard}>
-            <div className={styles.metricMeta}>
-              <span className={styles.metricLabel}>Total Experts</span>
-              <span className={styles.metricValue}>{totalExperts}</span>
-            </div>
-            <div className={styles.metricIcon}>
-              <UserCheck size={20} />
-            </div>
-          </div>
+        <div className={styles.metricsGrid} role="group" aria-label="Filter by status">
+          {[
+            { id: "all", label: "Total", value: totalExperts, icon: Users },
+            { id: "active", label: "Active", value: activeExperts, icon: CheckCircle2 },
+            { id: "on_hold", label: "On Hold", value: onHoldExperts, icon: Clock },
+            { id: "suspended", label: "Suspended", value: suspendedExperts, icon: Ban },
+          ].map((kpi) => {
+            const Icon = kpi.icon;
+            const isActive =
+              statusFilter === kpi.id || (kpi.id === "all" && statusFilter === "all");
 
-          <div className={styles.metricCard}>
-            <div className={styles.metricMeta}>
-              <span className={styles.metricLabel}>Active</span>
-              <span className={`${styles.metricValue} ${styles.metricValueActive}`}>
-                {activeExperts}
-              </span>
-            </div>
-            <div className={`${styles.metricIcon} ${styles.metricIconActive}`}>
-              <CheckCircle2 size={20} />
-            </div>
-          </div>
-
-          <div className={styles.metricCard}>
-            <div className={styles.metricMeta}>
-              <span className={styles.metricLabel}>On Hold</span>
-              <span className={`${styles.metricValue} ${styles.metricValueHold}`}>
-                {onHoldExperts}
-              </span>
-            </div>
-            <div className={`${styles.metricIcon} ${styles.metricIconHold}`}>
-              <Clock size={20} />
-            </div>
-          </div>
-
-          <div className={styles.metricCard}>
-            <div className={styles.metricMeta}>
-              <span className={styles.metricLabel}>Suspended</span>
-              <span className={`${styles.metricValue} ${styles.metricValueSuspended}`}>
-                {suspendedExperts}
-              </span>
-            </div>
-            <div className={`${styles.metricIcon} ${styles.metricIconSuspended}`}>
-              <Ban size={20} />
-            </div>
-          </div>
+            return (
+              <button
+                key={kpi.id}
+                type="button"
+                className={`${problemStyles.scardMini} ${styles.kpiCard} ${isActive ? problemStyles.active : ""} ${isActive ? styles.kpiCardActive : ""}`}
+                onClick={() => setStatusFilter(isActive && kpi.id !== "all" ? "all" : kpi.id)}
+                aria-pressed={isActive}
+              >
+                <div className={styles.kpiHeader}>
+                  <span className={styles.kpiLabel}>{kpi.label}</span>
+                  <span className={styles.kpiIconBox}>
+                    <Icon size={24} aria-hidden="true" />
+                  </span>
+                </div>
+                <p className={styles.kpiValue}>
+                  {String(kpi.value).padStart(2, "0")}
+                </p>
+              </button>
+            );
+          })}
         </div>
       ) : (
         <div className={styles.metricsGrid} role="group" aria-label="Filter by status">
@@ -238,6 +224,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                   <th><span className={styles.thFilterSelect}>Expert Name & Contact</span></th>
                   <th><span className={styles.thFilterSelect}>Domain & Specialty</span></th>
                   <th><span className={styles.thFilterSelect}>Status</span></th>
+                  <th><span className={styles.thFilterSelect}>Closed SLA</span></th>
                   <th><span className={styles.thFilterSelect}>Last Updated</span></th>
                   <th><span className={styles.thFilterSelect}>Sessions</span></th>
                   <th><span className={styles.thFilterSelect}>Money</span></th>
@@ -247,7 +234,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
               <tbody>
                 {filteredExperts.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className={styles.emptyStateCell}>
+                    <td colSpan={9} className={styles.emptyStateCell}>
                       No expert records match the search filter.
                     </td>
                   </tr>
@@ -269,7 +256,10 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                               {exp.name}
                             </Link>
                             <span className={styles.userEmail}>{exp.email}</span>
-                            <span className={styles.userMeta}>{exp.phone} • {exp.city}</span>
+                            <span className={styles.userMeta}>
+                              {exp.phone ? `${exp.phone} • ` : ""}{exp.city}
+                              {exp.applicationNumber ? ` • ${exp.applicationNumber}` : ""}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -283,6 +273,9 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                         {exp.status === "active" && <span className={styles.badgeActive}>Active</span>}
                         {exp.status === "on_hold" && <span className={styles.badgeHold}>On Hold</span>}
                         {exp.status === "suspended" && <span className={styles.badgeSuspended}>Suspended</span>}
+                      </td>
+                      <td>
+                        <span className={styles.closedSlaText}>{exp.closedSla || "—"}</span>
                       </td>
                       <td>
                         <span className={styles.lastActiveText}>{exp.lastActive || exp.joinedDate}</span>
@@ -309,6 +302,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                               type="button"
                               className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                               onClick={() => updateExpertStatus(exp.id, "suspended")}
+                              disabled={updatingId === exp.id}
                               title="Suspend Account"
                             >
                               <Ban size={14} /> Suspend
@@ -318,6 +312,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                               type="button"
                               className={styles.actionBtn}
                               onClick={() => updateExpertStatus(exp.id, "active")}
+                              disabled={updatingId === exp.id}
                               title="Activate Account"
                             >
                               <CheckCircle2 size={14} className={styles.activateIcon} /> Activate

@@ -14,6 +14,7 @@ import {
 } from '../controllers/adminDigilockerDocumentController.js';
 import { getAdminTranscript } from '../controllers/agoraTranscriptionController.js';
 import { adminSeekerAction, getAdminSeeker, grantAdminSeekerCredits, listAdminSeekerNotifications, listAdminSeekers, markAdminSeekerNotificationRead, updateAdminSeekerStatus } from '../controllers/adminSeekerController.js';
+import { adminExpertAction, listAdminExperts, getAdminExpert, updateAdminExpertStatus } from '../controllers/adminExpertController.js';
 
 const router = express.Router();
 
@@ -23,6 +24,13 @@ router.get('/auth/me', protectAdmin, getAdminMe);
 router.get('/settings', protectAdmin, getSettings);
 router.put('/settings', protectAdmin, updateSettings);
 router.get('/bookings/:bookingId/transcript', protectAdmin, getAdminTranscript);
+
+// Managed Experts (User Management -> Expert)
+router.get('/experts', protectAdmin, adminExpertAction(listAdminExperts));
+router.get('/experts/:expertId', protectAdmin, adminExpertAction(getAdminExpert));
+router.patch('/experts/:expertId/status', protectAdmin, adminExpertAction(updateAdminExpertStatus));
+
+// Managed Seekers (User Management -> Seeker)
 router.get('/seekers', protectAdmin, adminSeekerAction(listAdminSeekers));
 router.get('/seekers/:seekerId', protectAdmin, adminSeekerAction(getAdminSeeker));
 router.patch('/seekers/:seekerId/status', protectAdmin, adminSeekerAction(updateAdminSeekerStatus));
