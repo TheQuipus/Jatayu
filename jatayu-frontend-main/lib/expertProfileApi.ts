@@ -143,13 +143,7 @@ export function mapBackendProfileToExpertData(
     asStringArray(metadata.languages).length > 0
       ? asStringArray(metadata.languages)
       : asStringArray(normalizedExpert.focusAreas);
-  const storedLocation = typeof metadata.location === "string"
-    ? metadata.location.trim()
-    : "";
-  // These exact values were previously inserted by frontend fallbacks. `Kolkata`
-  // was derived from the availability timezone `Asia/Kolkata`, not user input.
-  const legacyLocations = new Set(["Bengaluru, India", "Kolkata", "India"]);
-  const location = legacyLocations.has(storedLocation) ? "" : storedLocation;
+  const location = getExpertProfileLocation(metadata);
 
   return {
     name: normalizedExpert.fullName || "",
@@ -163,6 +157,15 @@ export function mapBackendProfileToExpertData(
     languages,
     location,
   };
+}
+
+export function getExpertProfileLocation(metadataValue: unknown): string {
+  const metadata = asRecord(metadataValue);
+  const storedLocation = typeof metadata.location === "string"
+    ? metadata.location.trim()
+    : "";
+  const legacyLocations = new Set(["Bengaluru, India", "Kolkata", "India"]);
+  return legacyLocations.has(storedLocation) ? "" : storedLocation;
 }
 
 export function mapBackendAvailability(expert: BackendExpertProfile): {

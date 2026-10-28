@@ -53,6 +53,30 @@ export function createEmptyEmploymentPosition(): EmploymentPosition {
   };
 }
 
+export function parseEmploymentPositions(value: unknown): EmploymentPosition[] | null {
+  if (!Array.isArray(value)) return null;
+
+  return value
+    .filter((position): position is Record<string, unknown> => (
+      Boolean(position) && typeof position === "object" && !Array.isArray(position)
+    ))
+    .map((position) => ({
+      id: typeof position.id === "string" && position.id
+        ? position.id
+        : createEmptyEmploymentPosition().id,
+      jobTitle: typeof position.jobTitle === "string" ? position.jobTitle : "",
+      company: typeof position.company === "string" ? position.company : "",
+      startMonth: typeof position.startMonth === "string" ? position.startMonth : "",
+      startYear: typeof position.startYear === "string" ? position.startYear : "",
+      endMonth: typeof position.endMonth === "string" ? position.endMonth : "",
+      endYear: typeof position.endYear === "string" ? position.endYear : "",
+      currentlyWorking: position.currentlyWorking === true,
+      responsibilities: typeof position.responsibilities === "string"
+        ? position.responsibilities
+        : "",
+    }));
+}
+
 export function getYearOptions(count = 50): string[] {
   const currentYear = new Date().getFullYear();
   return Array.from({ length: count }, (_, index) => String(currentYear - index));
@@ -103,9 +127,53 @@ export function isPositionDateNotInFuture(position: EmploymentPosition): boolean
   return true;
 }
 
+function isValidEmploymentMonth(value: string): boolean {
+  return MONTH_OPTIONS.some((month) => month.value === value);
+}
+
+function isValidEmploymentYear(value: string): boolean {
+  if (!/^\d{4}$/.test(value)) return false;
+  const year = Number.parseInt(value, 10);
+  return year >= 1900 && year <= new Date().getFullYear();
+}
+
+export function isEmploymentPositionStarted(position: EmploymentPosition): boolean {
+  return Boolean(
+    position.jobTitle.trim() ||
+      position.company.trim() ||
+      position.startMonth ||
+      position.startYear ||
+      position.endMonth ||
+      position.endYear ||
+      position.responsibilities.trim() ||
+      position.currentlyWorking,
+  );
+}
+
+export type EmploymentDateField = "startMonth" | "startYear" | "endMonth" | "endYear";
+
+export function getEmploymentDateFieldError(
+  position: EmploymentPosition,
+  field: EmploymentDateField,
+): string | undefined {
+  if (!isEmploymentPositionStarted(position)) return undefined;
+  if ((field === "endMonth" || field === "endYear") && position.currentlyWorking) {
+    return undefined;
+  }
+  if (field.endsWith("Month") && !isValidEmploymentMonth(position[field])) {
+    return `Select a valid ${field.startsWith("start") ? "start" : "end"} month.`;
+  }
+  if (field.endsWith("Year") && !isValidEmploymentYear(position[field])) {
+    return `Select a valid ${field.startsWith("start") ? "start" : "end"} year.`;
+  }
+  return undefined;
+}
+
 export function isEmploymentPositionValid(position: EmploymentPosition): boolean {
-  const hasStart = Boolean(position.startMonth && position.startYear);
-  const hasEnd = Boolean(position.endMonth && position.endYear);
+  const hasStart = isValidEmploymentMonth(position.startMonth) &&
+    isValidEmploymentYear(position.startYear);
+  const hasEnd = isValidEmploymentMonth(position.endMonth) &&
+    isValidEmploymentYear(position.endYear);
 
   return (
     Boolean(position.jobTitle.trim() && position.company.trim()) &&
