@@ -69,6 +69,18 @@
   box-shadow: 0 0 24px rgba(229, 59, 23, 0.15);
 }
 
+.formatCard:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.formatCardSelected:hover:not(:disabled) {
+  background-color: #080A10;
+}
+
+.formatCard:focus-visible {
+  filter: drop-shadow(0 0 3px var(--pomegranate));
+}
+
 .formatPriceRow {
   position: relative;
   z-index: 12;
@@ -257,6 +269,20 @@
   color: var(--white);
 }
 
+.lengthPill:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.lengthPillSelected:hover:not(:disabled) {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+}
+
+.lengthPill:active:not(:disabled) {
+  background: rgba(229, 59, 23, 0.12);
+}
+
 .lengthsSectionDisabled .lengthPill {
   opacity: 0.4;
   cursor: not-allowed;
@@ -327,6 +353,14 @@
 
 .switchTrackActive {
   background: #E53B17;
+}
+
+.switchTrack:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.switchTrackActive:hover:not(:disabled) {
+  background: #ff6848;
 }
 
 .switchThumb {

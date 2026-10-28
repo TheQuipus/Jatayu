@@ -137,6 +137,20 @@
   color: var(--white);
 }
 
+.skillPill:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.skillPillSelected:hover:not(:disabled) {
+  background-color: var(--bunker);
+  border-color: var(--pomegranate);
+}
+
+.skillPill:active:not(:disabled) {
+  background-color: rgba(229, 59, 23, 0.12);
+}
+
 .skillPillRemovable {
   padding-right: 6px;
   max-height: 36px;

@@ -118,7 +118,8 @@
 }
 
 .inputWithIconWrap:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--pomegranate);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pomegranate) 40%, transparent);
 }
 
 .inputWithIconWrapError {
@@ -127,6 +128,7 @@
 
 .inputWithIconWrapError:focus-within {
   border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .fieldErrorInline {
@@ -160,6 +162,10 @@
   outline: none;
 }
 
+.inputWithIconWrap:focus-within .textFieldWithIcon:focus-visible {
+  outline: none;
+}
+
 .textFieldWithIcon::placeholder {
   color: rgba(255, 255, 255, 0.3);
 }
@@ -190,7 +196,8 @@
 }
 
 .textareaWrap:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--pomegranate);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pomegranate) 40%, transparent);
 }
 
 .textareaWrapLarge {
@@ -251,7 +258,8 @@
 }
 
 .inputWithActionWrap:focus-within {
-  border-color: var(--border-chip);
+  border-color: var(--pomegranate);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pomegranate) 40%, transparent);
 }
 
 .inputActionBtn {
