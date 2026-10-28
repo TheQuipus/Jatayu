@@ -329,9 +329,13 @@
   line-height: 20px;
   color: #E53B17;
   text-transform: uppercase;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
   outline: none;
   padding: 6px;
+}
+
+.textBtn:hover:not(:disabled):not([aria-disabled="true"]) {
+  opacity: 0.8;
 }
 
 @media (max-width: 600px) {

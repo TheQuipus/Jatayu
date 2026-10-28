@@ -330,6 +330,11 @@
   cursor: not-allowed;
 }
 
+.selectField:hover:not(:disabled):not(.selectFieldError) {
+  border-color: rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
 .selectFieldValue {
   display: block;
   overflow: hidden;
@@ -429,11 +434,17 @@
 }
 
 .checkboxInput:hover,
-.checkboxInput:focus,
-.checkboxInput:focus-visible {
+.checkboxInput:focus {
   border-color: rgba(255, 255, 255, 0.35);
   background: transparent;
   outline: none;
+  box-shadow: none;
+}
+
+.checkboxInput:focus-visible {
+  border-color: var(--pomegranate);
+  outline: 2px solid var(--pomegranate);
+  outline-offset: 3px;
   box-shadow: none;
 }
 
