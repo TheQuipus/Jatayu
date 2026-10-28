@@ -294,12 +294,12 @@
   .previewWrap {
     display: block;
     position: absolute;
-    left: calc(50% - 150px);
+    left: 50%;
     width: 300px;
     max-width: 300px;
     aspect-ratio: 1 / 1;
     height: auto;
-    top: 90px;
+    top: 140px;
     transform: none;
     opacity: 0;
     perspective: 1200px;
