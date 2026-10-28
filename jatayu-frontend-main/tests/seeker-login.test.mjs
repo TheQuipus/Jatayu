@@ -24,11 +24,12 @@ function loadModule(file, mocks, globals = {}) {
 }
 
 for (const [user, expected] of [
-  [{ onboardingStep: 'category' }, '/seeker/seeker-onboarding/?step=category'],
-  [{ onboardingStep: 'budget' }, '/seeker/seeker-onboarding/?step=budget'],
-  [{}, '/seeker/seeker-onboarding/?step=category'],
-  [{ status: 'active' }, '/seeker/dashboard/'],
-  [{ onboardingComplete: true }, '/seeker/dashboard/'],
+  [{ phone: '9876543210', onboardingStep: 'category' }, '/seeker/seeker-onboarding/?step=category'],
+  [{ phone: '9876543210', onboardingStep: 'budget' }, '/seeker/seeker-onboarding/?step=budget'],
+  [{}, '/seeker/seeker-onboarding/?step=phone'],
+  [{ phone: '', status: 'active' }, '/seeker/seeker-onboarding/?step=phone'],
+  [{ phone: '9876543210', status: 'active' }, '/seeker/dashboard/'],
+  [{ phone: '9876543210', onboardingComplete: true }, '/seeker/dashboard/'],
 ]) {
   test(`seeker login resumes ${JSON.stringify(user)}`, () => {
     let assigned;

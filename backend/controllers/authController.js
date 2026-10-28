@@ -18,6 +18,12 @@ import {
   isStoredOtpValid,
 } from '../utils/otpPersistence.js';
 import { issueExpertToken } from '../services/expertSessionService.js';
+import {
+  buildPasswordLoginLockedResponse,
+  clearPasswordLoginFailures,
+  getPasswordLoginLockout,
+  recordFailedPasswordLogin,
+} from '../utils/accountLoginLockout.js';
 
 dotenv.config();
 
@@ -291,21 +297,33 @@ export const login = async (req, res) => {
     const expert = await Expert.findOne({
       where: { email: String(email).trim().toLowerCase() },
     });
-    // Same message for unknown email and wrong password — do not leak which failed.
+    // Keep unknown email, wrong password, and social-only accounts indistinguishable.
     if (!expert) {
-      return res.status(401).json({ message: 'incorrect credentials' });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     // Check password if it was registered with one (not a Google-only account)
     if (!expert.password) {
-      return res.status(400).json({ 
-        message: 'This account was created using Google Sign-In. Please log in with Google.' 
-      });
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const activeLockout = await getPasswordLoginLockout('expert', expert.id);
+    if (activeLockout) {
+      return res.status(429).json(buildPasswordLoginLockedResponse(activeLockout.lockedUntil));
     }
 
     const isMatch = await bcrypt.compare(password, expert.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'incorrect credentials' });
+      const lockout = await recordFailedPasswordLogin('expert', expert);
+      if (lockout.lockedUntil) {
+        return res.status(429).json(buildPasswordLoginLockedResponse(lockout.lockedUntil));
+      }
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const clearedLockout = await clearPasswordLoginFailures('expert', expert.id);
+    if (clearedLockout.lockedUntil) {
+      return res.status(429).json(buildPasswordLoginLockedResponse(clearedLockout.lockedUntil));
     }
 
     // Signup verification is mandatory; later logins respect the expert's 2FA setting.

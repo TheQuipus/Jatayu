@@ -1,4 +1,4 @@
-import { getSeekerProfile } from "@/lib/api";
+import { getSeekerProfile, getSeekerMe, getToken } from "@/lib/api";
 import { SEEKER_PROFILE } from "@/lib/seekerDashboard";
 
 export type SeekerProfileData = {
@@ -65,7 +65,7 @@ export function getStoredSeekerProfile(): SeekerProfileData {
       category: "",
       isPro: SEEKER_PROFILE.isPro,
       email: SEEKER_PROFILE.email,
-      phone: SEEKER_PROFILE.phone,
+      phone: "",
     };
   }
 
@@ -79,7 +79,7 @@ export function getStoredSeekerProfile(): SeekerProfileData {
         category: parsed.category || sessionStorage.getItem("jatayu_seeker_category") || "",
         isPro: parsed.isPro ?? SEEKER_PROFILE.isPro,
         email: parsed.email || SEEKER_PROFILE.email,
-        phone: parsed.phone || SEEKER_PROFILE.phone,
+        phone: parsed.phone || "",
       };
     }
   } catch {
@@ -92,7 +92,7 @@ export function getStoredSeekerProfile(): SeekerProfileData {
     category: sessionStorage.getItem("jatayu_seeker_category") || "",
     isPro: SEEKER_PROFILE.isPro,
     email: SEEKER_PROFILE.email,
-    phone: SEEKER_PROFILE.phone,
+    phone: "",
   };
 }
 
@@ -109,6 +109,21 @@ export function saveStoredSeekerProfile(data: Partial<SeekerProfileData>): void 
   if (data.category) {
     sessionStorage.setItem("jatayu_seeker_category", data.category);
   }
+  try {
+    const rawUser = localStorage.getItem("jatayu_seeker_user");
+    if (rawUser) {
+      const parsedUser = JSON.parse(rawUser) as Record<string, unknown>;
+      if (data.phone !== undefined) {
+        parsedUser.phone = data.phone;
+      }
+      if (data.name !== undefined) {
+        parsedUser.fullName = data.name;
+      }
+      localStorage.setItem("jatayu_seeker_user", JSON.stringify(parsedUser));
+    }
+  } catch {
+    // Ignore JSON errors
+  }
   window.dispatchEvent(new Event(SEEKER_PROFILE_UPDATED_EVENT));
 }
 
@@ -121,12 +136,21 @@ export function mapBackendSeekerToProfile(
     category: data.category || data.selectedCategory || data.categoryName || "",
     isPro: data.isPro ?? SEEKER_PROFILE.isPro,
     email: data.email || SEEKER_PROFILE.email,
-    phone: data.phone || SEEKER_PROFILE.phone,
+    phone: data.phone || "",
   };
 }
 
 export async function fetchSeekerProfileData(): Promise<SeekerProfileData> {
-  const backendData = (await getSeekerProfile()) as BackendSeekerProfile;
+  let backendData: BackendSeekerProfile = {};
+  if (getToken()) {
+    try {
+      backendData = (await getSeekerMe()) as BackendSeekerProfile;
+    } catch {
+      backendData = (await getSeekerProfile()) as BackendSeekerProfile;
+    }
+  } else {
+    backendData = (await getSeekerProfile()) as BackendSeekerProfile;
+  }
   const mapped = mapBackendSeekerToProfile(backendData);
   saveStoredSeekerProfile(mapped);
   return mapped;

@@ -61,6 +61,7 @@ import {
   verifySeekerOtp,
   resendSeekerOtp,
   seekerLogin,
+  SeekerOtpRequiredError,
   setSeekerId,
   getSeekerId,
   removeSeekerId,
@@ -68,12 +69,16 @@ import {
   getToken,
   removeToken,
   getPublicExpert,
+  updateSeekerOnboarding,
 } from "@/lib/api";
+import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
 import {
   fetchSeekerProfileData,
   getStoredSeekerProfile,
   SEEKER_PROFILE_UPDATED_EVENT,
+  saveStoredSeekerProfile,
 } from "@/lib/seekerProfileApi";
+import { isValidSeekerPhone, normalizeSeekerPhone } from "@/lib/seekerPhone";
 import { isDuplicateRegistrationMessage } from "@/lib/expertOnboardingStatus";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import {
@@ -98,6 +103,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
   const [bookingOptions, setBookingOptions] = useState<BookingOptions | null>(null);
   const [bookingError, setBookingError] = useState("");
   const [confirmedBookingId, setConfirmedBookingId] = useState("");
@@ -159,7 +165,8 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     }
     return 0;
   }, [expert.availabilities]);
-  const [selectedDate, setSelectedDate] = useState(`date-${initialAvailableDateOffset}`);
+
+  const [selectedDate, setSelectedDate] = useState(`date-${initialAvailableDateOffset}`);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [selectedSlotTime, setSelectedSlotTime] = useState("");
   const [subject, setSubject] = useState("");
@@ -183,8 +190,8 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       if (data.email) {
         setRegisterEmail((prev) => prev || data.email || MOCK_SEEKER_EMAIL);
       }
-      if (data.phone) {
-        setRegisterPhone((prev) => prev || data.phone || "9898675444");
+      if (data.phone !== undefined) {
+        setRegisterPhone(normalizeSeekerPhone(data.phone || ""));
       }
     };
 
@@ -575,8 +582,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const handleLoginSubmit = async () => {
     setLoginSubmitAttempted(true);
-    if (!loginEmail.trim() || !loginPassword.trim()) return;
+    if (!loginEmail.trim() || !loginPassword.trim() || isSubmittingLogin) return;
 
+    setIsSubmittingLogin(true);
     try {
       const authRes = await seekerLogin({
         email: loginEmail.trim(),
@@ -594,9 +602,30 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       setShowAuthModal(false);
       setCurrentStep(4);
     } catch (err) {
+      if (err instanceof SeekerOtpRequiredError) {
+        savePendingSeekerOtpSession({
+          seekerId: err.seekerId,
+          email: err.email,
+          phone: err.phone,
+          flow: "login",
+        });
+        setCurrentSeekerId(err.seekerId);
+        setRegisterEmail(err.email);
+        setRegisterPhone(normalizeSeekerPhone(err.phone));
+        setLoginEmail(err.email);
+        setRegisterOtpSent(true);
+        setRegisterOtpVerified(false);
+        setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
+        setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
+        setBookingError("");
+        setShowAuthModal(true);
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Seeker login failed.";
       console.warn("Seeker login API notice:", err);
       setBookingError(msg);
+    } finally {
+      setIsSubmittingLogin(false);
     }
   };
 
@@ -676,9 +705,10 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setIsProcessingPayment(true);
     setBookingError("");
 
-    const isSeeker = Boolean(getToken() && getSeekerId());
-    if (!isSeeker && !seeker && !registerOtpVerified) {
+    const hasSeekerSession = Boolean(getToken() && getSeekerId());
+    if (!hasSeekerSession) {
       setIsProcessingPayment(false);
+      setBookingError("Your seeker session expired or is invalid. Please log in or register to complete booking.");
       setShowAuthModal(true);
       return;
     }
@@ -705,12 +735,27 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         throw new Error("Select a valid session duration between 1 and 360 minutes");
       }
 
+      const phoneToSave = normalizeSeekerPhone(registerPhone);
+      if (!isValidSeekerPhone(phoneToSave)) {
+        throw new Error("Enter a valid 10-digit phone number before confirming your booking.");
+      }
+      const savedProfile = await updateSeekerOnboarding({ phone: phoneToSave });
+      const savedPhone = typeof savedProfile.seeker.phone === "string"
+        ? savedProfile.seeker.phone
+        : "";
+      const normalizedSavedPhone = normalizeSeekerPhone(savedPhone);
+      if (!isValidSeekerPhone(normalizedSavedPhone)) {
+        throw new Error("Your phone number could not be saved. Please try again.");
+      }
+      setRegisterPhone(normalizedSavedPhone);
+      saveStoredSeekerProfile({ phone: normalizedSavedPhone });
+
       const fingerprint = [expertIdentifier, consultationType, scheduledStartAt, durationMinutes].join(":");
       const idempotencyKey = getBookingIdempotencyKey(fingerprint);
       const userFullName =
         [registerFirstName, registerLastName].filter(Boolean).join(" ") || "Priya Sharma";
       const userEmailAddress = registerEmail || MOCK_SEEKER_EMAIL;
-      const userPhoneNumber = registerPhone || "9898675444";
+      const userPhoneNumber = normalizedSavedPhone;
 
       const created = await createBookingOrder({
         expertId: bookingOptions?.expertId || expertIdentifier,
@@ -881,6 +926,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   registerLastName={registerLastName}
                   registerEmail={registerEmail}
                   registerPhone={registerPhone}
+                  onRegisterPhoneChange={(value) => setRegisterPhone(normalizeSeekerPhone(value).slice(0, 10))}
                   invoiceId={invoiceId}
                   breakdown={breakdown}
                 />
@@ -897,6 +943,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   loginPassword={loginPassword}
                   onLoginPasswordChange={setLoginPassword}
                   loginSubmitAttempted={loginSubmitAttempted}
+                  isSubmittingLogin={isSubmittingLogin}
                   onLoginSubmit={handleLoginSubmit}
                   registerFirstName={registerFirstName}
                   onRegisterFirstNameChange={setRegisterFirstName}

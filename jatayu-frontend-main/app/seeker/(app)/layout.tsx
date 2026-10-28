@@ -1,9 +1,14 @@
 import SeekerShell from "@/components/seeker/SeekerShell";
+import SeekerAuthGuard from "@/components/seeker/SeekerAuthGuard";
 
 export default function SeekerAppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <SeekerShell>{children}</SeekerShell>;
+  return (
+    <SeekerAuthGuard>
+      <SeekerShell>{children}</SeekerShell>
+    </SeekerAuthGuard>
+  );
 }

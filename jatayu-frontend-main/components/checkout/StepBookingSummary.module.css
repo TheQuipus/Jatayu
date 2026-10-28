@@ -161,6 +161,16 @@
   color: var(--bunker);
 }
 
+.phoneField {
+  width: 100%;
+  max-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--mercury);
+  border-radius: 6px;
+  color: var(--bunker);
+  font: inherit;
+}
+
 .contextText {
   margin: 0;
   font-family: var(--font-body);
