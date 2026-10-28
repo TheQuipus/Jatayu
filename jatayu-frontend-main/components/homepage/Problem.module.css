@@ -278,41 +278,11 @@
   }
 
   .statCards {
-    grid-column: 1 / -1;
+    grid-column: 4 / 7;
     margin-left: 0;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: repeat(2, auto);
     z-index: 6;
-  }
-
-  .statCards> :nth-child(1) {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .statCards> :nth-child(2) {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .statCards> :nth-child(3) {
-    grid-column: 4;
-    grid-row: 1;
-  }
-
-  .statCards> :nth-child(4) {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .statCards> :nth-child(5) {
-    grid-column: 3;
-    grid-row: 2;
-  }
-
-  .statCards> :nth-child(6) {
-    grid-column: 4;
-    grid-row: 2;
   }
 
   .scardMini {
@@ -324,12 +294,13 @@
   .previewWrap {
     display: block;
     position: absolute;
-    grid-column: 3 / 5;
-    left: 0;
-    right: 35%;
-    height: 380px;
-    top: 48%;
-    transform: translateY(-65%);
+    left: calc(50% - 110px);
+    width: 220px;
+    max-width: 220px;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    top: 90px;
+    transform: none;
     opacity: 0;
     perspective: 1200px;
     transform-style: preserve-3d;
@@ -409,7 +380,7 @@
         10% 8.736%,
         10% 3.179%);
   }
-  
+
   .preview.active {
     opacity: 1;
   }

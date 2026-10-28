@@ -314,7 +314,7 @@ export default function Problem() {
               ? previousWrap.getBoundingClientRect().bottom + window.scrollY
               : foldTop;
             const start = Math.round(Math.max(foldTop, servicesClear));
-            if (Math.abs(self.start - start) > 1) self.setPositions(start, start + 5000, true);
+            if (Math.abs(self.start - start) > 1) (self as any).setPositions(start, start + 5000, true);
           },
           onToggle: (self) => {
             gsap.set(gridWrap ?? wrapper, { zIndex: self.isActive ? 20 : "" });
