@@ -294,9 +294,9 @@
   .previewWrap {
     display: block;
     position: absolute;
-    left: calc(50% - 110px);
-    width: 220px;
-    max-width: 220px;
+    left: calc(50% - 150px);
+    width: 300px;
+    max-width: 300px;
     aspect-ratio: 1 / 1;
     height: auto;
     top: 90px;
