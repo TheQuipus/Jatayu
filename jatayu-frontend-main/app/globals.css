@@ -115,9 +115,13 @@
   box-sizing: border-box;
 }
 
-:focus,
-:focus-visible {
+:focus:not(:focus-visible) {
   outline: none;
+}
+
+:focus-visible:not(:disabled):not([aria-disabled="true"]) {
+  outline: 2px solid var(--pomegranate);
+  outline-offset: 3px;
 }
 
 html {

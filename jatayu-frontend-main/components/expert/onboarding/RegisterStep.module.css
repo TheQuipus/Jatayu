@@ -45,6 +45,10 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+.passwordToggle:active {
+  transform: scale(0.94);
+}
+
 .forgotPasswordRow {
   display: flex;
   align-items: center;
@@ -78,8 +82,8 @@
 }
 
 .forgotPasswordLink:hover {
-  text-decoration: none;
-  color: var(--orange, #E53B17);
+  text-decoration: underline;
+  color: var(--pomegranate);
 }
 
 .passwordStrengthRow {

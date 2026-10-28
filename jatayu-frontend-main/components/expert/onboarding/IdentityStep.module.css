@@ -50,6 +50,11 @@
   overflow: visible;
 }
 
+.photoAvatarWrap:hover .photoAvatarInner {
+  border-color: var(--pomegranate);
+  background: rgba(229, 59, 23, 0.08);
+}
+
 .photoAvatarInner {
   display: block;
   width: 80px;
@@ -58,6 +63,7 @@
   border: 2px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.02);
   overflow: hidden;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .hiddenFileInput {
@@ -525,6 +531,16 @@
   background: var(--bunker);
   border-color: var(--pomegranate);
   color: var(--white);
+}
+
+.suggestedPill:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.suggestedPillSelected:hover:not(:disabled) {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
 }
 
 .taglineChipsRow {

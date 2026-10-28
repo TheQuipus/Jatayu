@@ -64,6 +64,13 @@
   border-radius: 50%;
   color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.modalCloseBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white);
 }
 
 .inlineActive {
@@ -123,12 +130,16 @@
   justify-content: center;
   margin-top: 6px;
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, filter 0.2s ease;
 }
 
 .beginBtn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.beginBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
 }
 
 .beginBtnShinyText {
@@ -155,11 +166,28 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: filter 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .manualModeBtn {
   background: transparent;
   color: #ff6848;
+}
+
+.manualModeBtn:hover:not(:disabled) {
+  background: rgba(229, 59, 23, 0.12);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.captureBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.secondaryCaptureBtn:hover:not(:disabled) {
+  background: rgba(229, 59, 23, 0.12);
+  border-color: var(--pomegranate);
+  color: var(--white);
 }
 
 .sessionModeActions,
@@ -486,6 +514,13 @@
   border-radius: 50%;
   color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--white);
 }
 
 .processing {
@@ -565,6 +600,12 @@
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.poseRetakeBtn:hover:not(:disabled) {
+  background: rgba(229, 59, 23, 0.24);
+  color: var(--white);
 }
 
 .poseImage {
@@ -641,6 +682,13 @@
   color: #e53b17;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.retakeBtn:hover:not(:disabled) {
+  background: rgba(229, 59, 23, 0.12);
+  border-color: var(--pomegranate);
+  color: #ff6848;
 }
 
 @media (max-width: 768px) {
