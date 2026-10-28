@@ -18,6 +18,7 @@ import { registerSeeker } from "@/lib/api";
 import type { AuthResponse } from "@/lib/api";
 import SeekerSocialAuth from "./SeekerSocialAuth";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
+import { getNameValidationError } from "@/lib/nameValidation";
 import { isDuplicateRegistrationMessage } from "@/lib/authUtils";
 import {
   buildPasswordContext,
@@ -60,17 +61,13 @@ function getFieldError(
 
   switch (field) {
     case "firstName":
-      if (!firstName.trim()) return "Required";
-      if (firstName.trim().length < 2) return "Too short";
-      return null;
+      return getNameValidationError(firstName);
     case "lastName":
-      if (!lastName.trim()) return "Required";
-      if (lastName.trim().length < 2) return "Too short";
-      return null;
+      return getNameValidationError(lastName);
     case "email":
       return getEmailValidationError(email);
     case "password":
-      return getPasswordValidationError(password, passwordContext);
+      return getPasswordValidationError(password, passwordContext, "instruction");
     case "phone":
       if (!phone) return "Required";
       if (phone.length !== 10) return "Enter 10-digit number";
@@ -124,7 +121,7 @@ export default function RegisterStep({
   const strength = getPasswordStrength(password, passwordContext);
   const strengthColor = getPasswordStrengthColor(password, passwordContext);
   const strengthLabel = getPasswordStrengthLabel(password, passwordContext);
-  const passwordHint = getPasswordHint(password, passwordContext);
+  const passwordHint = getPasswordHint(password, passwordContext, "instruction");
   const canSubmit = isFormComplete(firstName, lastName, email, password, phone);
   const fullName = buildFullName(firstName, lastName);
 

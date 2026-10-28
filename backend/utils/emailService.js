@@ -259,3 +259,15 @@ export async function sendOtpEmail({ recipientEmail, recipientName, otpCode }) {
     textContent: `Your Jatayu verification code is ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
   });
 }
+
+export async function sendAccountLockedEmail({ recipientEmail, lockoutMinutes }) {
+  const subject = 'Your Jatayu account has been temporarily locked';
+  const message = `Your Jatayu account has been locked for ${lockoutMinutes} minutes because of multiple unsuccessful password login attempts. If this was not you, please change your password immediately.`;
+
+  return sendGenericEmail({
+    recipientEmail,
+    subject,
+    htmlContent: `<p>${message}</p>`,
+    textContent: message,
+  });
+}

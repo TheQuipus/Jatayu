@@ -72,6 +72,7 @@ import {
 } from "@/lib/expertAuth";
 import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expertOnboardingStatus";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
+import { getOtpBackStep } from "@/lib/otpFlow";
 import { generateUUID } from "@/lib/uuid";
 import { normalizeBackendProfile, type BackendExpertProfile } from "@/lib/expertProfileApi";
 import {
@@ -755,6 +756,7 @@ function ExpertOnboardingPageContent() {
     fullName?: string;
   }) => {
     otpFlowLockRef.current = true;
+    signupFlowRef.current = false;
     savePendingOtpSession({
       expertId: nextExpertId,
       email,
@@ -832,24 +834,37 @@ function ExpertOnboardingPageContent() {
       });
   };
 
-  const handleBackToRegister = () => {
-    signupFlowRef.current = true;
-    setStep("register");
-  };
+const handleBackToRegister = () => {
+clearPendingOtpSession();
+signupFlowRef.current = true;
+setStep("register");
+};
 
-  const handleBackFromOtp = () => {
-    const pending = readPendingOtpSession();
-    clearPendingOtpSession();
-    otpFlowLockRef.current = false;
-    if (pending && !isSignupOtpSession(pending)) {
-      loginIntentRef.current = true;
-      signupFlowRef.current = false;
-      setStep("login");
-      router.replace(EXPERT_LOGIN_HREF);
-      return;
-    }
-    handleBackToRegister();
-  };
+const handleBackFromOtp = () => {
+const pending = readPendingOtpSession();
+clearPendingOtpSession();
+
+if (pending && getOtpBackStep(pending.flow) === "login") {
+  otpFlowLockRef.current = false;
+  signupFlowRef.current = false;
+  loginIntentRef.current = true;
+  setInitialLoginEmail(pending.email || registeredEmail);
+  setStep("login");
+  router.replace(EXPERT_LOGIN_HREF);
+  return;
+}
+
+handleBackToRegister();
+};
+
+const handleOtpBack = () => {
+const pending = readPendingOtpSession();
+if (!pending) {
+  handleBackToRegister();
+  return;
+}
+handleBackFromOtp();
+};
 
   const handleSwitchToLogin = (emailPrefill?: string) => {
     loginIntentRef.current = true;
@@ -1299,7 +1314,7 @@ function ExpertOnboardingPageContent() {
       {step === "otp" && !otpExpertId ? (
         <section className={styles.otpFallback}>
           <p>Verification session expired. Please register again to receive a new code.</p>
-          <button type="button" onClick={handleBackToRegister}>
+          <button type="button" onClick={handleOtpBack}>
             Back to Register
           </button>
         </section>

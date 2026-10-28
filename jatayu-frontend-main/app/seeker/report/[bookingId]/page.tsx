@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ReportForm from "./ReportForm";
 import BookingDetailView from "@/components/seeker/bookings/BookingDetail";
+import SeekerAuthGuard from "@/components/seeker/SeekerAuthGuard";
 import SeekerShell from "@/components/seeker/SeekerShell";
 import { getBookingById, BOOKING_DETAILS } from "@/lib/seekerDashboard";
 import styles from "./page.module.css";
@@ -40,15 +41,17 @@ export default async function SeekerReportPage({ params }: ReportPageProps) {
   }
 
   return (
-    <SeekerShell>
-      <div style={{ position: "relative" }}>
-        <Suspense fallback={null}>
-          <BookingDetailView booking={booking} />
-        </Suspense>
-        <div className={styles.page}>
-          <ReportForm booking={booking} />
+    <SeekerAuthGuard>
+      <SeekerShell>
+        <div style={{ position: "relative" }}>
+          <Suspense fallback={null}>
+            <BookingDetailView booking={booking} />
+          </Suspense>
+          <div className={styles.page}>
+            <ReportForm booking={booking} />
+          </div>
         </div>
-      </div>
-    </SeekerShell>
+      </SeekerShell>
+    </SeekerAuthGuard>
   );
 }

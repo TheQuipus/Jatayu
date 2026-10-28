@@ -105,6 +105,7 @@ export default function LoginStep({
           seekerId: error.seekerId,
           email: error.email,
           phone: error.phone,
+          flow: "login",
         });
         onRequiresOtp?.({
           seekerId: error.seekerId,

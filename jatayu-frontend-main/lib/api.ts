@@ -381,6 +381,7 @@ export interface UpdateProfilePayload {
   availabilitySlots?: Array<{ days: string[]; from: string; to: string }>;
   profilePhotoSrc?: string;
   onboardingMetadata?: Record<string, unknown>;
+  phone?: string;
 }
 
 export interface UpdateProfileResponse {
@@ -977,6 +978,7 @@ export interface SeekerOnboardingPayload {
   additionalContext: string;
   profilePhotoSrc?: string;
   onboardingMetadata?: Record<string, unknown>;
+  phone?: string;
 }
 
 export type SeekerOnboardingStep =
@@ -988,7 +990,9 @@ export type SeekerOnboardingStep =
   | "review";
 
 export type UpdateSeekerOnboardingPayload = Partial<SeekerOnboardingPayload> & {
-  step: SeekerOnboardingStep;
+  fullName?: string;
+  category?: string;
+  step?: SeekerOnboardingStep | string;
 };
 
 export interface UpdateSeekerOnboardingResponse {
@@ -998,10 +1002,27 @@ export interface UpdateSeekerOnboardingResponse {
 
 export async function updateSeekerOnboarding(
   payload: UpdateSeekerOnboardingPayload,
+  profilePhoto?: File,
 ): Promise<UpdateSeekerOnboardingResponse> {
+  let body: BodyInit;
+  if (profilePhoto) {
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(payload)) {
+      if (value === undefined) continue;
+      formData.append(
+        key,
+        typeof value === "string" ? value : JSON.stringify(value),
+      );
+    }
+    formData.append("profilePhoto", profilePhoto);
+    body = formData;
+  } else {
+    body = JSON.stringify(payload);
+  }
+
   return apiFetch<UpdateSeekerOnboardingResponse>("/api/seeker/profile", {
     method: "PUT",
-    body: JSON.stringify(payload),
+    body,
   });
 }
 
@@ -1029,6 +1050,10 @@ export async function getSeekerProfile(): Promise<Record<string, unknown>> {
     }
   }
   return {};
+}
+
+export function getSeekerMe(): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>("/api/seeker/me");
 }
 
 // ---------------------------------------------------------------------------
@@ -1203,6 +1228,7 @@ export interface PublicExpertsQueryParams {
 
 export interface PublicExpertsResponse {
   experts: Expert[];
+  suggestions?: Expert[];
   rawExperts?: PublicExpertApiItem[];
   pagination: PaginationInfo;
   filters: FilterOptions;
@@ -1258,6 +1284,10 @@ export async function getPublicExperts(
   ) as Record<string, unknown>[];
 
   const experts = rawExpertsList.map((item) => normalizeExpert(item));
+  const rawSuggestions = Array.isArray(res.suggestions)
+    ? res.suggestions as Record<string, unknown>[]
+    : [];
+  const suggestions = rawSuggestions.map((item) => normalizeExpert(item));
 
   const paginationRaw = (res.pagination || {}) as Record<string, unknown>;
   const pagination: PaginationInfo = {
@@ -1285,6 +1315,7 @@ export async function getPublicExperts(
 
   return {
     experts,
+    suggestions,
     rawExperts: rawExpertsList as unknown as PublicExpertApiItem[],
     pagination,
     filters,

@@ -23,6 +23,7 @@ import BudgetStep from "@/components/seeker/onboarding/BudgetStep";
 import PersonalisationStep from "@/components/seeker/onboarding/PersonalisationStep";
 import ReviewStep from "@/components/seeker/onboarding/ReviewStep";
 import SuccessStep from "@/components/seeker/onboarding/SuccessStep";
+import SeekerPhoneStep from "@/components/seeker/onboarding/SeekerPhoneStep";
 import type {
   ProgressCompletion,
   ProgressStepKey,
@@ -34,13 +35,16 @@ import {
   type SeekerOnboardingStepKey,
 } from "@/components/seeker/onboarding/seekerOnboardingSteps";
 import {
-  getSeekerProfile,
   submitSeekerOnboarding,
   updateSeekerOnboarding,
   type AuthResponse,
   type AuthUser,
   type UpdateSeekerOnboardingPayload,
 } from "@/lib/api";
+import {
+  mapBackendSeekerToProfile,
+  saveStoredSeekerProfile,
+} from "@/lib/seekerProfileApi";
 import {
   clearPendingSeekerOtpSession,
   clearSeekerAuthOnly,
@@ -52,6 +56,7 @@ import {
   readPendingSeekerOtpSession,
   savePendingSeekerOtpSession,
 } from "@/lib/seekerAuth";
+import { getOtpBackStep } from "@/lib/otpFlow";
 
 const categories = [
   { id: "career-work", label: "Career & Work", icon: Briefcase },
@@ -247,6 +252,7 @@ function getFeaturedTopics(categoryId: string, topics: string[]): string[] {
 }
 
 type OnboardingStep =
+  | "phone"
   | "welcome"
   | "category"
   | "topics"
@@ -619,6 +625,7 @@ function SeekerOnboardingPageContent() {
       phone,
       email,
       fullName,
+      flow: "signup",
     });
     setSeekerId(nextSeekerId);
     setRegisteredPhone(phone);
@@ -644,6 +651,7 @@ function SeekerOnboardingPageContent() {
       email,
       phone,
       fullName,
+      flow: "login",
     });
     setSeekerId(nextSeekerId);
     setRegisteredEmail(email);
@@ -669,6 +677,28 @@ function SeekerOnboardingPageContent() {
     setStep(destination as OnboardingStep);
   };
 
+  const handlePhoneContinue = async (phone: string) => {
+    const response = await updateSeekerOnboarding({ phone });
+    const savedSeeker = response.seeker;
+    const savedPhone = typeof savedSeeker.phone === "string" ? savedSeeker.phone : "";
+    saveStoredSeekerProfile(
+      mapBackendSeekerToProfile(savedSeeker as Parameters<typeof mapBackendSeekerToProfile>[0]),
+    );
+    setRegisteredPhone(savedPhone);
+
+    const storedUser = getStoredSeekerUser();
+    const destination = getSeekerPostAuthDestination({
+      ...(storedUser || {}),
+      ...savedSeeker,
+      phone: savedPhone,
+    } as AuthUser);
+    if (typeof destination === "string" && destination.startsWith("/")) {
+      router.replace(destination);
+      return;
+    }
+    setStep(destination as OnboardingStep);
+  };
+
   const handleLoginComplete = (response: AuthResponse) => {
     clearPendingSeekerOtpSession();
     handleAuthSuccess(response);
@@ -682,6 +712,20 @@ function SeekerOnboardingPageContent() {
   const handleBackToRegister = () => {
     setStep("register");
     router.replace("/seeker/seeker-onboarding/?flow=signup");
+  };
+
+  const handleOtpBack = () => {
+    const pendingOtp = readPendingSeekerOtpSession();
+    clearPendingSeekerOtpSession();
+
+    if (getOtpBackStep(pendingOtp?.flow) === "login") {
+      setPrefilledLoginEmail(pendingOtp?.email || registeredEmail);
+      setStep("login");
+      router.replace("/seeker/seeker-onboarding/?auth=login");
+      return;
+    }
+
+    handleBackToRegister();
   };
 
   const handleBackFromCategory = () => {
@@ -964,6 +1008,13 @@ function SeekerOnboardingPageContent() {
         />
       )}
 
+      {step === "phone" && (
+        <SeekerPhoneStep
+          userName={registeredName}
+          onContinue={handlePhoneContinue}
+        />
+      )}
+
       {step === "login" && (
         <LoginStep
           onContinue={handleLoginComplete}
@@ -978,7 +1029,7 @@ function SeekerOnboardingPageContent() {
           seekerId={seekerId}
           phone={registeredPhone}
           email={registeredEmail}
-          onBack={handleBackToRegister}
+          onBack={handleOtpBack}
           onContinue={handleOtpComplete}
         />
       ) : null}
@@ -986,7 +1037,7 @@ function SeekerOnboardingPageContent() {
       {step === "otp" && !seekerId ? (
         <section className={styles.pageContainer}>
           <p>Verification session expired. Please register again to receive a new code.</p>
-          <button type="button" onClick={handleBackToRegister}>
+          <button type="button" onClick={handleOtpBack}>
             Back to Register
           </button>
         </section>
