@@ -1,3 +1,4 @@
+
 import {
   findExpertsForAdmin,
   findExpertForAdmin,
@@ -58,12 +59,15 @@ const APPLICATION_LIST_ATTRIBUTES = [
   'onboardingStep',
   'status',
   'submittedAt',
+  'approvedAt',
   'reviewerNote',
   'isEmailVerified',
   'isPhoneVerified',
   'createdAt',
   'updatedAt',
 ];
+
+const QUEUE_STATUSES = ['pending_review', 'in_review', 'on_hold', 'rejected'];
 
 function isSignupComplete(expert) {
   return expert.status !== 'draft' || (expert.isEmailVerified && expert.isPhoneVerified);
@@ -72,7 +76,10 @@ function isSignupComplete(expert) {
 function buildListWhere(statusFilter) {
   if (!statusFilter || statusFilter === 'all') {
     return {
-      [Op.or]: [{ status: { [Op.ne]: 'draft' } }, SIGNUP_COMPLETE_DRAFT_WHERE],
+      [Op.or]: [
+        { status: { [Op.in]: QUEUE_STATUSES } },
+        SIGNUP_COMPLETE_DRAFT_WHERE,
+      ],
     };
   }
 
@@ -82,6 +89,10 @@ function buildListWhere(statusFilter) {
     return {
       [Op.or]: [{ status: 'pending_review' }, SIGNUP_COMPLETE_DRAFT_WHERE],
     };
+  }
+
+  if (backendStatus === 'approved') {
+    return { id: null };
   }
 
   return { status: backendStatus };
@@ -250,6 +261,9 @@ export const updateApplicationStatus = async (req, res) => {
 
     if (backendStatus === 'approved') {
       expert.onboardingStep = 'success';
+      if (!expert.approvedAt) {
+        expert.approvedAt = new Date();
+      }
     }
 
     await saveExpertForAdmin(expert);
@@ -296,7 +310,7 @@ export const updateApplicationStatus = async (req, res) => {
 export const getApplicationStats = async (req, res) => {
   try {
     const experts = await findExpertsForAdmin(
-      { [Op.or]: [{ status: { [Op.ne]: 'draft' } }, SIGNUP_COMPLETE_DRAFT_WHERE] },
+      { [Op.or]: [{ status: { [Op.in]: QUEUE_STATUSES } }, SIGNUP_COMPLETE_DRAFT_WHERE] },
       { attributes: ['status'] },
     );
 

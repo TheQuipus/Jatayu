@@ -333,6 +333,7 @@
 }
 
 .userCell {
+  min-width: 280px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -342,6 +343,7 @@
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--mercury);
+  flex-shrink: 0;
 }
 
 .userInfo {
@@ -349,6 +351,7 @@
   flex-direction: column;
   gap: 2px;
   font-size: 14px;
+  min-width: 0;
 }
 
 .userName {
@@ -360,6 +363,7 @@
 .userEmail {
   font-size: 14px;
   color: var(--dove-gray);
+  word-break: break-word;
 }
 
 .userMeta {
@@ -372,6 +376,14 @@
   font-weight: 500;
   line-height: 1.35;
   color: var(--ink);
+}
+
+.closedSlaText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 .badgeActive {

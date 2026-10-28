@@ -28,6 +28,7 @@ import AdminBookingCalendar from "./bookings/AdminBookingCalendar";
 import FinancialInsightsView from "./insights/FinancialInsightsView";
 import styles from "./UserProfileDetail.module.css";
 import { getAdminSeeker, updateAdminSeekerStatus, type AdminSeekerDetail } from "@/lib/adminSeekerApi";
+import { getAdminExpert, updateAdminExpertStatus, type AdminExpertDetail } from "@/lib/adminExpertApi";
 
 type UserProfileDetailProps = {
   userId: string;
@@ -40,21 +41,54 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   const searchParams = useSearchParams();
 
   const [detailState, setDetailState] = useState<{ id: string; detail: AdminSeekerDetail | null; error: string } | null>(null);
+  const [expertDetailState, setExpertDetailState] = useState<{ id: string; detail: AdminExpertDetail | null; error: string } | null>(null);
   const [actionError, setActionError] = useState("");
+
   const seekerDetail = detailState?.id === userId ? detailState.detail : null;
-  const detailLoading = userType === "seeker" && detailState?.id !== userId;
+  const expertDetail = expertDetailState?.id === userId ? expertDetailState.detail : null;
+
+  const detailLoading =
+    (userType === "seeker" && detailState?.id !== userId) ||
+    (userType === "expert" && expertDetailState?.id !== userId);
+
   const setSeekerDetail = (detail: AdminSeekerDetail) => setDetailState({ id: detail.seeker.id, detail, error: "" });
 
   useEffect(() => {
-    if (userType !== "seeker") return;
-    let active = true;
-    getAdminSeeker(userId)
-      .then((detail) => { if (active) setDetailState({ id: userId, detail, error: "" }); })
-      .catch((error) => { if (active) setDetailState({ id: userId, detail: null, error: error instanceof Error ? error.message : "Unable to load seeker record" }); });
-    return () => { active = false; };
+    if (userType === "seeker") {
+      let active = true;
+      getAdminSeeker(userId)
+        .then((detail) => { if (active) setDetailState({ id: userId, detail, error: "" }); })
+        .catch((error) => { if (active) setDetailState({ id: userId, detail: null, error: error instanceof Error ? error.message : "Unable to load seeker record" }); });
+      return () => { active = false; };
+    }
+
+    if (userType === "expert") {
+      let active = true;
+      getAdminExpert(userId)
+        .then((detail) => { if (active) setExpertDetailState({ id: userId, detail, error: "" }); })
+        .catch((error) => {
+          const mock = getExpertById(userId);
+          if (active) {
+            if (mock) {
+              setExpertDetailState({
+                id: userId,
+                detail: { expert: mock, bookings: [], credentials: [], availabilities: [] },
+                error: "",
+              });
+            } else {
+              setExpertDetailState({
+                id: userId,
+                detail: null,
+                error: error instanceof Error ? error.message : "Unable to load expert record",
+              });
+            }
+          }
+        });
+      return () => { active = false; };
+    }
   }, [userId, userType]);
 
-  const expert = userType === "expert" ? getExpertById(userId) : undefined;
+  const expert = userType === "expert" ? (expertDetail?.expert || getExpertById(userId)) : undefined;
   const seeker = userType === "seeker" ? seekerDetail?.seeker : undefined;
   const user = expert || seeker;
 
@@ -125,7 +159,20 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   const handleToggleStatus = async () => {
     const nextStatus = status === "active" ? "suspended" : "active";
     if (isExpert) {
-      setExpertStatus(nextStatus);
+      try {
+        const result = await updateAdminExpertStatus(userId, nextStatus as any);
+        setExpertStatus(result.expert.status);
+        if (expertDetailState) {
+          setExpertDetailState({
+            ...expertDetailState,
+            detail: expertDetailState.detail
+              ? { ...expertDetailState.detail, expert: result.expert }
+              : null,
+          });
+        }
+      } catch (error) {
+        setActionError(error instanceof Error ? error.message : "Unable to update expert status");
+      }
       return;
     }
     try {

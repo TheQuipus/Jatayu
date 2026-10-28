@@ -21,6 +21,10 @@ export type ExpertUser = {
   city: string;
   location: string;
   bio: string;
+  closedSla?: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  applicationNumber?: string;
 };
 
 export type SeekerUser = {

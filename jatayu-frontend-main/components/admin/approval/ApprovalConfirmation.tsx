@@ -294,7 +294,7 @@ export default function ApprovalConfirmation({ appId }: ApprovalConfirmationProp
                       "approved",
                       data.reviewerNote.text,
                     );
-                    router.push("/admin/applications");
+                    router.push("/admin/users/experts");
                   } catch (error) {
                     setActivateError(
                       error instanceof Error ? error.message : "Could not activate account.",
