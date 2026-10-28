@@ -37,6 +37,7 @@ import {
   isEducationDegreeStarted,
   isEducationDegreeValid,
   isEmploymentPositionValid,
+  parseEmploymentPositions,
   type EducationDegree,
   type EmploymentPosition,
 } from "@/lib/expertEmployment";
@@ -74,7 +75,11 @@ import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expert
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import { getOtpBackStep } from "@/lib/otpFlow";
 import { generateUUID } from "@/lib/uuid";
-import { normalizeBackendProfile, type BackendExpertProfile } from "@/lib/expertProfileApi";
+import {
+  getExpertProfileLocation,
+  normalizeBackendProfile,
+  type BackendExpertProfile,
+} from "@/lib/expertProfileApi";
 import {
   deriveLocationFromTimezone,
 } from "@/lib/expertApplicationMedia";
@@ -191,6 +196,7 @@ function ExpertOnboardingPageContent() {
   const [registeredPhone, setRegisteredPhone] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registeredName, setRegisteredName] = useState("");
+  const [profileLocation, setProfileLocation] = useState("");
   const [expertId, setExpertId] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [savedStepCompletion, setSavedStepCompletion] = useState<Record<number, boolean>>({});
@@ -232,6 +238,7 @@ function ExpertOnboardingPageContent() {
     setRegisteredPhone("");
     setRegisteredEmail("");
     setRegisteredName("");
+    setProfileLocation("");
     setExpertId("");
     setProfileError(null);
     setSavedStepCompletion({});
@@ -317,10 +324,17 @@ function ExpertOnboardingPageContent() {
     const audiences = asStringArray(user.targetAudience);
     if (audiences.length > 0) setSelectedAudiences(audiences);
 
+    const savedEmploymentPositions = parseEmploymentPositions(
+      user.onboardingMetadata?.employmentPositions,
+    );
     const { employmentPositions: jobs, educationDegrees: degrees } = parseCredentialsFromProfile(
       user.credentials,
     );
-    if (jobs.length > 0) setEmploymentPositions(jobs);
+    if (savedEmploymentPositions?.length) {
+      setEmploymentPositions(savedEmploymentPositions);
+    } else if (jobs.length > 0) {
+      setEmploymentPositions(jobs);
+    }
     if (degrees.length > 0) setEducationDegrees(degrees);
 
     if (user.availabilities?.length) {
@@ -335,6 +349,7 @@ function ExpertOnboardingPageContent() {
     }
 
     const metadata = user.onboardingMetadata ?? {};
+    setProfileLocation(getExpertProfileLocation(metadata));
     if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
     if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
     const languages = asStringArray(metadata.languages).length
@@ -1015,22 +1030,27 @@ handleBackFromOtp();
     }
   };
 
-  const handleBackToSkills = () => {
+  const buildExperiencePersistencePayload = () => ({
+    experienceLevel: deriveExperienceLevel(employmentPositions),
+    credentials: buildCredentialsPayload(employmentPositions, educationDegrees),
+    onboardingMetadata: {
+      linkedin,
+      portfolio,
+      portfolioSamples,
+      employmentPositions,
+    },
+  });
+
+  const handleBackToSkills = async () => {
+    await saveProfileStep(buildExperiencePersistencePayload());
     setStep("skills");
   };
 
   const handleExperienceContinue = async () => {
     try {
-      const resolvedExperienceLevel = deriveExperienceLevel(employmentPositions);
       await saveProfileStep({
         step: "identity",
-        experienceLevel: resolvedExperienceLevel,
-        credentials: buildCredentialsPayload(employmentPositions, educationDegrees),
-        onboardingMetadata: {
-          linkedin,
-          portfolio,
-          portfolioSamples,
-        },
+        ...buildExperiencePersistencePayload(),
       });
     } catch (error) {
       console.warn("Could not save experience", error);
@@ -1195,13 +1215,16 @@ handleBackFromOtp();
     }
   };
 
-  const handleJumpToStepNumber = (stepNumber: number) => {
+  const handleJumpToStepNumber = async (stepNumber: number) => {
     const target = EXPERT_ONBOARDING_STEPS[stepNumber - 1];
     const currentStepNumber = EXPERT_ONBOARDING_STEPS.indexOf(
       step as (typeof EXPERT_ONBOARDING_STEPS)[number],
     ) + 1;
     if (!canNavigateToOnboardingStep(stepNumber, currentStepNumber, stepCompletion)) return;
     if (!target) return;
+    if (step === "experience" && target !== "experience") {
+      await saveProfileStep(buildExperiencePersistencePayload());
+    }
     setStep(target);
   };
 
@@ -1506,6 +1529,7 @@ handleBackFromOtp();
           tagLine={tagLine}
           bio={bio}
           onBioChange={setBio}
+          location={profileLocation}
           categoryLabel={
             allCategories.find((c) => c.id === selectedCategory)?.label ?? "Not selected"
           }

@@ -21,7 +21,7 @@ function load(file) {
   return loaded.exports;
 }
 
-const { normalizeBackendProfile } = load('lib/expertProfileApi.ts');
+const { normalizeBackendProfile, getExpertProfileLocation } = load('lib/expertProfileApi.ts');
 const { formatPreferencesPricingSummary } = load('components/expert/onboarding/preferencesData.ts');
 const { isValidPortfolioUrl } = load('lib/portfolioUrl.ts');
 
@@ -62,4 +62,11 @@ test('missing or invalid saved preferences render without crashing', () => {
   assert.equal(formatPreferencesPricingSummary(profile.selectedFormats, profile.formatPrices), 'Not selected');
   assert.doesNotThrow(() => profile.selectedLengths.map(String));
   assert.equal(profile.skills.length, 0);
+});
+
+test('profile preview receives a saved location but omits values created by old location fallbacks', () => {
+  assert.equal(getExpertProfileLocation({ location: 'Pune, India' }), 'Pune, India');
+  assert.equal(getExpertProfileLocation({ location: 'Kolkata' }), '');
+  assert.equal(getExpertProfileLocation({ location: 'India' }), '');
+  assert.equal(getExpertProfileLocation(undefined), '');
 });

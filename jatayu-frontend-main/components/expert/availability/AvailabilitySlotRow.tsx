@@ -35,6 +35,7 @@ export default function AvailabilitySlotRow({
           ariaLabel="Start time"
           value={slot.from}
           theme={theme}
+          required
           onChange={(value) => onUpdate("from", value)}
           validateTime={(time) => !wouldConflict(time, slot.to, slot.days)}
         />
@@ -43,6 +44,7 @@ export default function AvailabilitySlotRow({
           ariaLabel="End time"
           value={slot.to}
           theme={theme}
+          required
           minTime={slot.from || undefined}
           onChange={(value) => onUpdate("to", value)}
           disabled={!slot.from}

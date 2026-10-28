@@ -4,6 +4,7 @@ import { useId, useMemo } from "react";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DesktopTimePicker } from "@mui/x-date-pickers/DesktopTimePicker";
+import type { PickerChangeHandlerContext } from "@mui/x-date-pickers/models";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -19,6 +20,7 @@ type TimePickerProps = {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  required?: boolean;
   minTime?: string;
   theme?: "dark" | "light";
   validateTime?: (value: string) => boolean;
@@ -30,6 +32,7 @@ export default function TimePicker({
   value,
   onChange,
   disabled = false,
+  required = false,
   minTime,
   theme = "dark",
   validateTime,
@@ -96,6 +99,7 @@ export default function TimePicker({
 
   // Perform validation matching existing criteria
   const hasError = useMemo(() => {
+    if (required && !disabled && !parsedValue) return true;
     if (!parsedValue) return false;
 
     // 1. Minimum time boundary check
@@ -112,9 +116,14 @@ export default function TimePicker({
     }
 
     return false;
-  }, [parsedValue, parsedMinTime, validateTime]);
+  }, [required, disabled, parsedValue, parsedMinTime, validateTime]);
 
-  const handleTimeChange = (newValue: dayjs.Dayjs | null, context?: any) => {
+  const missingRequiredValue = required && !disabled && !parsedValue;
+
+  const handleTimeChange = (
+    newValue: dayjs.Dayjs | null,
+    context?: PickerChangeHandlerContext<unknown>,
+  ) => {
     if (newValue === null) {
       onChange("");
     } else if (newValue.isValid()) {
@@ -166,13 +175,16 @@ export default function TimePicker({
                 size: "small",
                 error: hasError,
                 helperText: hasError
-                  ? parsedMinTime && parsedValue?.isBefore(parsedMinTime)
+                  ? missingRequiredValue
+                    ? `Select ${label?.toLowerCase() ?? "a time"}.`
+                    : parsedMinTime && parsedValue?.isBefore(parsedMinTime)
                     ? "Must be at least 30 mins after start"
                     : "Time conflict with another slot"
                   : undefined,
                 slotProps: {
                   htmlInput: {
                     "aria-label": ariaLabel,
+                    "aria-required": required || undefined,
                   },
                 },
                 sx: {

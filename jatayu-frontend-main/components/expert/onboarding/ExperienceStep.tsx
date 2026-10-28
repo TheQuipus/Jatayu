@@ -23,6 +23,8 @@ import {
   FIELD_OF_STUDY_OPTIONS,
   getCurrentMonthYear,
   getYearOptions,
+  getEmploymentDateFieldError,
+  isEmploymentPositionStarted,
   isEducationDegreeStarted,
   isEducationDegreeValid,
   isEmploymentPositionValid,
@@ -83,20 +85,8 @@ export default function ExperienceStep({
   onJumpToStep,
 }: ExperienceStepProps) {
   const isStepComplete = useMemo(() => {
-    const isPositionStarted = (pos: EmploymentPosition) =>
-      Boolean(
-        pos.jobTitle.trim() ||
-        pos.company.trim() ||
-        pos.startMonth ||
-        pos.startYear ||
-        pos.endMonth ||
-        pos.endYear ||
-        pos.responsibilities.trim() ||
-        pos.currentlyWorking
-      );
-
     const allPositionsValid = employmentPositions.every(
-      (pos) => !isPositionStarted(pos) || isEmploymentPositionValid(pos)
+      (pos) => !isEmploymentPositionStarted(pos) || isEmploymentPositionValid(pos)
     );
 
     const allDegreesValid = educationDegrees.every(
@@ -145,29 +135,13 @@ export default function ExperienceStep({
   });
   const yearOptions = useMemo(() => getYearOptions(), []);
 
-  const monthOptions = useMemo(
-    () => [{ value: "", label: "Month" }, ...MONTH_OPTIONS.map((month) => ({ value: month.value, label: month.label }))],
-    [],
-  );
-
-  const yearSelectOptions = useMemo(
-    () => [{ value: "", label: "Year" }, ...yearOptions.map((year) => ({ value: year, label: year }))],
-    [yearOptions],
-  );
-
   const degreeOptions = useMemo(
-    () => [
-      { value: "", label: "Select degree..." },
-      ...DEGREE_OPTIONS.map((option) => ({ value: option, label: option })),
-    ],
+    () => DEGREE_OPTIONS.map((option) => ({ value: option, label: option })),
     [],
   );
 
   const fieldOfStudyOptions = useMemo(
-    () => [
-      { value: "", label: "Select field of study..." },
-      ...FIELD_OF_STUDY_OPTIONS.map((option) => ({ value: option, label: option })),
-    ],
+    () => FIELD_OF_STUDY_OPTIONS.map((option) => ({ value: option, label: option })),
     [],
   );
 
@@ -322,6 +296,7 @@ export default function ExperienceStep({
               {employmentPositions.map((position, index) => {
                 const { month: curMonthStr, year: curYearStr } = getCurrentMonthYear();
                 const curMonthNum = Number.parseInt(curMonthStr, 10);
+                const positionStarted = isEmploymentPositionStarted(position);
 
                 const isSameYear = Boolean(
                   !position.currentlyWorking &&
@@ -337,10 +312,10 @@ export default function ExperienceStep({
                   ? yearOptions.filter((y) => Number.parseInt(y, 10) <= Number.parseInt(position.endYear, 10))
                   : yearOptions;
 
-                const posStartYearOptions = [
-                  { value: "", label: "Year" },
-                  ...filteredStartYears.map((year) => ({ value: year, label: year })),
-                ];
+                const posStartYearOptions = filteredStartYears.map((year) => ({
+                  value: year,
+                  label: year,
+                }));
 
                 const maxStartMonth = Math.min(
                   isStartCurrentYear ? curMonthNum : 12,
@@ -351,19 +326,19 @@ export default function ExperienceStep({
                   (m) => Number.parseInt(m.value, 10) <= maxStartMonth
                 );
 
-                const posStartMonthOptions = [
-                  { value: "", label: "Month" },
-                  ...filteredStartMonths.map((m) => ({ value: m.value, label: m.label })),
-                ];
+                const posStartMonthOptions = filteredStartMonths.map((m) => ({
+                  value: m.value,
+                  label: m.label,
+                }));
 
                 const filteredEndYears = position.startYear
                   ? yearOptions.filter((y) => Number.parseInt(y, 10) >= Number.parseInt(position.startYear, 10))
                   : yearOptions;
 
-                const posEndYearOptions = [
-                  { value: "", label: "Year" },
-                  ...filteredEndYears.map((year) => ({ value: year, label: year })),
-                ];
+                const posEndYearOptions = filteredEndYears.map((year) => ({
+                  value: year,
+                  label: year,
+                }));
 
                 const minEndMonth = isSameYear && position.startMonth ? Number.parseInt(position.startMonth, 10) : 1;
                 const maxEndMonth = isEndCurrentYear ? curMonthNum : 12;
@@ -373,10 +348,10 @@ export default function ExperienceStep({
                   return val >= minEndMonth && val <= maxEndMonth;
                 });
 
-                const posEndMonthOptions = [
-                  { value: "", label: "Month" },
-                  ...filteredEndMonths.map((m) => ({ value: m.value, label: m.label })),
-                ];
+                const posEndMonthOptions = filteredEndMonths.map((m) => ({
+                  value: m.value,
+                  label: m.label,
+                }));
 
                 return (
                   <div key={position.id} className={styles.entryBlock}>
@@ -434,15 +409,25 @@ export default function ExperienceStep({
                             <span className={styles.fieldLabel}>Start Date *</span>
                             <div className={styles.dateRow}>
                               <ExperienceSelect
+                                id={`start-month-${position.id}`}
                                 value={position.startMonth ?? ""}
                                 options={posStartMonthOptions}
+                                placeholder="Month"
+                                aria-label="Start Date Month"
+                                required={positionStarted}
+                                error={positionStarted ? getEmploymentDateFieldError(position, "startMonth") : undefined}
                                 onChange={(nextValue) =>
                                   updatePosition(index, { startMonth: nextValue })
                                 }
                               />
                               <ExperienceSelect
+                                id={`start-year-${position.id}`}
                                 value={position.startYear ?? ""}
                                 options={posStartYearOptions}
+                                placeholder="Year"
+                                aria-label="Start Date Year"
+                                required={positionStarted}
+                                error={positionStarted ? getEmploymentDateFieldError(position, "startYear") : undefined}
                                 onChange={(nextValue) =>
                                   updatePosition(index, { startYear: nextValue })
                                 }
@@ -454,17 +439,27 @@ export default function ExperienceStep({
                             <span className={styles.fieldLabel}>End Date *</span>
                             <div className={styles.dateRow}>
                               <ExperienceSelect
+                                id={`end-month-${position.id}`}
                                 value={position.endMonth ?? ""}
                                 options={posEndMonthOptions}
                                 disabled={Boolean(position.currentlyWorking)}
+                                placeholder="Month"
+                                aria-label="End Date Month"
+                                required={positionStarted && !position.currentlyWorking}
+                                error={positionStarted ? getEmploymentDateFieldError(position, "endMonth") : undefined}
                                 onChange={(nextValue) =>
                                   updatePosition(index, { endMonth: nextValue })
                                 }
                               />
                               <ExperienceSelect
+                                id={`end-year-${position.id}`}
                                 value={position.endYear ?? ""}
                                 options={posEndYearOptions}
                                 disabled={Boolean(position.currentlyWorking)}
+                                placeholder="Year"
+                                aria-label="End Date Year"
+                                required={positionStarted && !position.currentlyWorking}
+                                error={positionStarted ? getEmploymentDateFieldError(position, "endYear") : undefined}
                                 onChange={(nextValue) =>
                                   updatePosition(index, { endYear: nextValue })
                                 }
@@ -567,6 +562,7 @@ export default function ExperienceStep({
                             id={`degree-${degree.id}`}
                             value={degree.degree ?? ""}
                             options={degreeOptions}
+                            placeholder="Select degree..."
                             onChange={(nextValue) => updateDegree(index, { degree: nextValue })}
                           />
                         </div>
@@ -579,6 +575,7 @@ export default function ExperienceStep({
                             id={`field-${degree.id}`}
                             value={degree.fieldOfStudy ?? ""}
                             options={fieldOfStudyOptions}
+                            placeholder="Select field of study..."
                             onChange={(nextValue) => updateDegree(index, { fieldOfStudy: nextValue })}
                           />
                         </div>
