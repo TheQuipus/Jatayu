@@ -9,7 +9,6 @@ import {
   BookOpen,
   IdCard,
   Car,
-  FileText,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -20,6 +19,8 @@ import KycVerificationPanel from "./KycVerificationPanel";
 import shared from "./onboarding.shared.module.css";
 import styles from "./CredentialsStep.module.css";
 import CertificateDocxViewer from "./CertificateDocxViewer";
+import DocumentThumbnail from "@/components/ui/DocumentThumbnail";
+import DocumentFilePreview from "@/components/ui/DocumentFilePreview";
 import type {
   ExpertKycPhotos,
   ExpertCertificate,
@@ -96,16 +97,6 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-function isImageFileUrl(url: string, fileName?: string): boolean {
-  if (url.startsWith("data:image/")) return true;
-  return Boolean(fileName && /\.(jpe?g|png|webp|gif)$/i.test(fileName));
-}
-
-function isPdfFileUrl(url: string, fileName?: string): boolean {
-  if (url.startsWith("data:application/pdf")) return true;
-  return Boolean(fileName && /\.pdf$/i.test(fileName));
-}
-
 import { generateUUID } from "@/lib/uuid";
 
 function certificatesToEntries(certs: ExpertCertificate[]): CertificateEntry[] {
@@ -170,6 +161,10 @@ export default function CredentialsStep({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [certificateUploadError, setCertificateUploadError] = useState<string | null>(null);
   const [certificateToPreview, setCertificateToPreview] = useState<{
+    url: string;
+    fileName: string;
+  } | null>(null);
+  const [governmentIdToPreview, setGovernmentIdToPreview] = useState<{
     url: string;
     fileName: string;
   } | null>(null);
@@ -285,32 +280,24 @@ export default function CredentialsStep({
   const renderDocPreview = (
     url: string,
     fileName: string,
-    alt: string,
     onRemove: () => void,
+    onPreview: () => void,
   ) => (
     <div className={styles.docPreview}>
-      {isImageFileUrl(url, fileName) ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={alt} className={styles.docPreviewImage} />
-      ) : isPdfFileUrl(url, fileName) ? (
-        <div className={styles.docPreviewClip}>
-          <iframe
-            src={`${url}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=FitH`}
-            title={alt}
-            className={styles.docPreviewFrame}
-            scrolling="no"
-            tabIndex={-1}
-          />
-        </div>
+      {url ? (
+        <button
+          type="button"
+          className={styles.idDocumentPreviewButton}
+          onClick={onPreview}
+          aria-label={`Preview ${fileName}`}
+        >
+          <DocumentThumbnail fileName={fileName} url={url} size="id" />
+          <span className={styles.idDocumentFileName} title={fileName}>{fileName}</span>
+        </button>
       ) : (
-        <div className={styles.docPreviewClip}>
-          <iframe
-            src={url}
-            title={alt}
-            className={styles.docPreviewFrame}
-            scrolling="no"
-            tabIndex={-1}
-          />
+        <div className={styles.idDocumentUnavailable} aria-label={`${fileName} preview unavailable`}>
+          <DocumentThumbnail fileName={fileName} size="id" />
+          <span className={styles.idDocumentFileName} title={fileName}>{fileName}</span>
         </div>
       )}
       <button
@@ -327,6 +314,7 @@ export default function CredentialsStep({
   const renderCertificatePreview = (
     url: string,
     fileName: string,
+    fileSize: string | undefined,
     onPreview: () => void,
     onRemove: () => void,
   ) => (
@@ -337,10 +325,15 @@ export default function CredentialsStep({
         className={styles.certificatePreviewButton}
         aria-label={`Preview ${fileName || "certificate.docx"}`}
       >
-        <FileText size={30} aria-hidden="true" />
+        <DocumentThumbnail
+          fileName={fileName || "certificate.docx"}
+          url={url}
+          fileType="DOCX"
+        />
         <span className={styles.certificateFileName}>
           {fileName || "Certificate DOCX"}
         </span>
+        {fileSize ? <span className={styles.certificatePreviewLabel}>{fileSize}</span> : null}
         <span className={styles.certificatePreviewLabel}>Click to preview</span>
       </button>
       <button
@@ -508,8 +501,11 @@ export default function CredentialsStep({
                           renderDocPreview(
                             idFront.url || "",
                             idFront.name,
-                            "Front side preview",
                             () => handleRemoveIdSide("front"),
+                            () => setGovernmentIdToPreview({
+                              url: idFront.url || "",
+                              fileName: idFront.name,
+                            }),
                           )
                         ) : (
                           <button
@@ -535,8 +531,11 @@ export default function CredentialsStep({
                           renderDocPreview(
                             idBack.url || "",
                             idBack.name,
-                            "Back side preview",
                             () => handleRemoveIdSide("back"),
+                            () => setGovernmentIdToPreview({
+                              url: idBack.url || "",
+                              fileName: idBack.name,
+                            }),
                           )
                         ) : (
                           <button
@@ -647,6 +646,7 @@ export default function CredentialsStep({
                         renderCertificatePreview(
                           entry.fileUrl,
                           entry.fileName || "",
+                          entry.fileSize,
                           () => setCertificateToPreview({
                             url: entry.fileUrl ?? "",
                             fileName: entry.fileName || "certificate.docx",
@@ -710,6 +710,13 @@ export default function CredentialsStep({
           url={certificateToPreview.url}
           fileName={certificateToPreview.fileName}
           onClose={() => setCertificateToPreview(null)}
+        />
+      )}
+      {governmentIdToPreview && (
+        <DocumentFilePreview
+          fileName={governmentIdToPreview.fileName}
+          url={governmentIdToPreview.url}
+          onClose={() => setGovernmentIdToPreview(null)}
         />
       )}
 

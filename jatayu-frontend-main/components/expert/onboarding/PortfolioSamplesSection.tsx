@@ -1,25 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, FileText, Lightbulb, Upload, X } from "lucide-react";
+import { Check, Lightbulb, Upload, X } from "lucide-react";
 import type { PortfolioSampleFile } from "@/lib/expertApplicationSubmission";
 import { getPortfolioSampleFileError } from "@/lib/portfolioSampleValidation";
 import { generateUUID } from "@/lib/uuid";
+import DocumentThumbnail from "@/components/ui/DocumentThumbnail";
+import DocumentFilePreview from "@/components/ui/DocumentFilePreview";
 import styles from "./PortfolioSamplesSection.module.css";
 
 type PortfolioSamplesSectionProps = {
   samples: PortfolioSampleFile[];
   onSamplesChange: (samples: PortfolioSampleFile[]) => void;
 };
-
-const PORTFOLIO_TIPS = [
-  "Case study decks",
-  "Published articles",
-  "Financial models",
-  "Research papers",
-  "Design portfolios",
-  "Talk/Interview links",
-];
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
@@ -51,6 +44,7 @@ export default function PortfolioSamplesSection({
 }: PortfolioSamplesSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileError, setFileError] = useState("");
+  const [previewSample, setPreviewSample] = useState<PortfolioSampleFile | null>(null);
 
   useEffect(() => {
     const uploading = samples.find((sample) => sample.status === "uploading");
@@ -132,54 +126,58 @@ export default function PortfolioSamplesSection({
         </button>
       ) : (
         <>
-          <div className={styles.uploadList}>
+          <div className={styles.uploadGrid}>
             {samples.map((sample) => {
               const isUploading = sample.status === "uploading";
 
               return (
-                <div key={sample.id} className={styles.uploadItem}>
-                  <article
-                    className={`${styles.uploadBar} ${
-                      isUploading ? styles.uploadBarUploading : styles.uploadBarComplete
-                    }`}
-                  >
-                    <div className={styles.uploadBarBody}>
-                      <span className={styles.fileIconWrap} aria-hidden="true">
-                        <FileText size={16} />
+                <article
+                  key={sample.id}
+                  className={`${styles.uploadCard} ${
+                    isUploading ? "" : styles.uploadCardComplete
+                  }`}
+                >
+                  <div className={styles.thumbnailWrap}>
+                    <DocumentThumbnail
+                      fileName={sample.fileName}
+                      url={sample.url}
+                      fileType={sample.fileType}
+                      onPreview={() => setPreviewSample(sample)}
+                    />
+                    <button
+                      type="button"
+                      className={styles.cancelBtn}
+                      onClick={() => removeSample(sample.id)}
+                      aria-label={`Remove ${sample.fileName}`}
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className={styles.uploadMeta}>
+                    <span className={styles.fileName} title={sample.fileName}>
+                      {sample.fileName}
+                    </span>
+                    <span className={styles.fileDetails}>
+                      {sample.fileType} · {sample.fileSize}
+                    </span>
+                    {isUploading ? (
+                      <span className={styles.uploadStatus}>
+                        Uploading... {Math.round(sample.progress)}%
                       </span>
-
-                      <div className={styles.uploadMeta}>
-                        <span className={styles.fileName}>{sample.fileName}</span>
-                        {isUploading ? (
-                          <span className={styles.uploadStatus}>
-                            Uploading... {Math.round(sample.progress)}%
-                          </span>
-                        ) : (
-                          <span className={styles.uploadStatusDone}>
-                            <Check size={12} aria-hidden="true" />
-                            Uploaded
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        type="button"
-                        className={styles.cancelBtn}
-                        onClick={() => removeSample(sample.id)}
-                        aria-label={`Remove ${sample.fileName}`}
-                      >
-                        <X size={14} aria-hidden="true" />
-                      </button>
-                    </div>
-
-                    <div className={styles.progressTrack} aria-hidden="true">
-                      <div
-                        className={styles.progressFill}
-                        style={{ width: `${isUploading ? sample.progress : 100}%` }}
-                      />
-                    </div>
-                  </article>
-                </div>
+                    ) : (
+                      <span className={styles.uploadStatusDone}>
+                        <Check size={12} aria-hidden="true" />
+                        Uploaded
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.progressTrack} aria-hidden="true">
+                    <div
+                      className={styles.progressFill}
+                      style={{ width: `${isUploading ? sample.progress : 100}%` }}
+                    />
+                  </div>
+                </article>
               );
             })}
           </div>
@@ -203,14 +201,9 @@ export default function PortfolioSamplesSection({
           <Lightbulb size={14} aria-hidden="true" />
           What to upload as portfolio?
         </p>
-        <div className={styles.tipsGrid}>
-          {PORTFOLIO_TIPS.map((tip) => (
-            <span key={tip} className={styles.tipItem}>
-              <Check size={12} className={styles.tipCheck} aria-hidden="true" />
-              {tip}
-            </span>
-          ))}
-        </div>
+        <p className={styles.tipsDescription}>
+          Upload relevant work samples such as case studies, research papers, financial models, published articles, or design portfolios.
+        </p>
       </div>
 
       <input
@@ -224,6 +217,14 @@ export default function PortfolioSamplesSection({
           event.target.value = "";
         }}
       />
+      {previewSample?.url ? (
+        <DocumentFilePreview
+          fileName={previewSample.fileName}
+          url={previewSample.url}
+          fileType={previewSample.fileType}
+          onClose={() => setPreviewSample(null)}
+        />
+      ) : null}
     </section>
   );
 }
