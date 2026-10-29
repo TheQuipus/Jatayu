@@ -615,8 +615,8 @@
 }
 
 .statusInReview {
-  background: color-mix(in srgb, #3b82f6 12%, var(--white));
-  color: #2563eb;
+  background: color-mix(in srgb, #fb923c 18%, var(--white));
+  color: #ea580c;
 }
 
 .statusOnHold {

@@ -103,9 +103,9 @@
 }
 
 .statusInReview {
-  background: color-mix(in srgb, #3b82f6 12%, var(--white));
-  border: 1px solid #2563eb;
-  color: #2563eb;
+  background: color-mix(in srgb, #fb923c 16%, var(--white));
+  border: 1px solid #fdba74;
+  color: #ea580c;
 }
 
 .statusPending {
@@ -181,47 +181,79 @@
   flex-wrap: wrap;
 }
 
-.radioLabel {
+.radioOptionBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 4px;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
   color: var(--scorpion);
   cursor: pointer;
-  padding: 0;
-  border: none;
-  background: none;
   transition: color 0.15s ease;
   user-select: none;
 }
 
-.radioLabel:hover {
+.radioOptionBtn:hover {
   color: var(--ink);
+  background: transparent;
 }
 
-.radioLabel input[type="radio"] {
-  accent-color: var(--pomegranate);
-  cursor: pointer;
-  width: 15px;
-  height: 15px;
+.radioCircle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dove-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  transition: border-color 0.15s ease;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-.radioLabelActiveApprove {
-  color: var(--ink);
-  font-weight: 600;
+.radioOptionBtn:hover .radioCircle {
+  border-color: var(--ink);
 }
 
-.radioLabelActiveReject {
-  color: var(--ink);
-  font-weight: 600;
+.radioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: block;
+  background-color: var(--pomegranate, #E53B17);
+  transition: transform 0.15s ease;
 }
 
-.radioLabelActiveClarification {
-  color: var(--ink);
+/* Original unified radio style: red border and red dot for all selected options */
+.radioOptionActive,
+.radioOptionApprove,
+.radioOptionClarification,
+.radioOptionReject {
+  color: var(--ink) !important;
   font-weight: 600;
+  background: transparent !important;
+  border: none !important;
+}
+
+.radioCircleActive,
+.radioOptionActive .radioCircle,
+.radioOptionApprove .radioCircle,
+.radioOptionClarification .radioCircle,
+.radioOptionReject .radioCircle {
+  border-color: var(--pomegranate, #E53B17) !important;
+}
+
+.radioOptionActive .radioDot,
+.radioOptionApprove .radioDot,
+.radioOptionClarification .radioDot,
+.radioOptionReject .radioDot {
+  background-color: var(--pomegranate, #E53B17) !important;
 }
 
 .sectionNoteBoxContent {
@@ -354,6 +386,31 @@
   margin-top: 0 !important;
   margin-bottom: 16px !important;
   scroll-margin-top: calc(var(--admin-sticky-top, 56px) + 145px);
+}
+
+.unfilledSectionHighlight {
+  border-color: #dc2626 !important;
+  outline: 2px solid #dc2626 !important;
+  outline-offset: -1px;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.16), 0 8px 24px rgba(220, 38, 38, 0.12) !important;
+  transition: border-color 0.25s ease, outline-color 0.25s ease, box-shadow 0.25s ease;
+  animation: unfilledAttentionPulse 1.2s ease-in-out;
+}
+
+.unfilledSectionHighlight .cardHeader {
+  border-bottom-color: rgba(220, 38, 38, 0.25) !important;
+}
+
+@keyframes unfilledAttentionPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5), 0 8px 24px rgba(220, 38, 38, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.22), 0 8px 24px rgba(220, 38, 38, 0.16);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.16), 0 8px 24px rgba(220, 38, 38, 0.12);
+  }
 }
 
 .reviewSection .cardBody {
