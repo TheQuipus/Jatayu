@@ -155,13 +155,26 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     () => (application ? mapToApplicationReview(application) : null),
     [application],
   );
-  const [activeTab, setActiveTab] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>(REVIEW_SECTIONS[0].id);
   const [previewDoc, setPreviewDoc] = useState<PreviewDocument | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [showHoldConfirm, setShowHoldConfirm] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [isTabsStuck, setIsTabsStuck] = useState(false);
   const tabsStickyRef = useRef<HTMLDivElement>(null);
+  const isClickScrollingRef = useRef(false);
+  const scrollEndTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const activeTabRef = useRef<string>(REVIEW_SECTIONS[0].id);
+  const scrollDirectionRef = useRef<"up" | "down">("down");
+  const lastScrollYRef = useRef<number>(0);
+
+  const updateActiveTab = (id: string) => {
+    if (activeTabRef.current !== id) {
+      activeTabRef.current = id;
+      setActiveTab(id);
+    }
+  };
   const [pendingApproveSection, setPendingApproveSection] = useState<{
     id: string;
     state: SectionReviewState;
@@ -460,8 +473,174 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     };
   }, [review]);
 
+  useEffect(() => {
+    if (!review) return;
+
+    const computeActiveSection = () => {
+      // Don't override activeTab while smooth scrolling from a user click
+      if (isClickScrollingRef.current) return;
+
+      // 1. If at the very top of the page, first section is active
+      if (window.scrollY < 60) {
+        updateActiveTab(REVIEW_SECTIONS[0].id);
+        return;
+      }
+
+      // 2. If at or near the very bottom of the page, last section is active
+      const isAtBottom =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 60;
+      if (isAtBottom) {
+        updateActiveTab(REVIEW_SECTIONS[REVIEW_SECTIONS.length - 1].id);
+        return;
+      }
+
+      // Collect all valid section elements and their bounding rects
+      type SectionWithRect = {
+        id: (typeof REVIEW_SECTIONS)[number]["id"];
+        rect: DOMRect;
+      };
+
+      const sections: SectionWithRect[] = [];
+      for (const sec of REVIEW_SECTIONS) {
+        const el = document.getElementById(`review-section-${sec.id}`);
+        if (el) {
+          sections.push({
+            id: sec.id,
+            rect: el.getBoundingClientRect(),
+          });
+        }
+      }
+
+      if (sections.length === 0) return;
+
+      const direction = scrollDirectionRef.current;
+      const focalOffset = 150; // standard reading offset below sticky header (56px)
+
+      // When scrolling from bottom to top:
+      // The section above should ONLY be highlighted when we get to the top of that section
+      // (its top header reaches >= 70px, emerging from beneath the sticky header),
+      // and NOT when we just enter that section from the bottom.
+      if (direction === "up") {
+        const currentIdx = sections.findIndex((s) => s.id === activeTabRef.current);
+
+        if (currentIdx > 0) {
+          let newActiveId: string | null = null;
+
+          // Check sections above from top down: the first section whose top has reached the reading area
+          for (let i = 0; i < currentIdx; i++) {
+            const sec = sections[i];
+            if (sec.rect.top >= 70 && sec.rect.top <= window.innerHeight * 0.75) {
+              newActiveId = sec.id;
+              break;
+            }
+          }
+
+          // If the current section has scrolled completely out of view at the bottom,
+          // find the section currently visible at the reading line
+          if (!newActiveId && sections[currentIdx].rect.top > window.innerHeight) {
+            for (const sec of sections) {
+              if (sec.rect.top <= focalOffset) {
+                newActiveId = sec.id;
+              }
+            }
+          }
+
+          if (newActiveId) {
+            updateActiveTab(newActiveId);
+            return;
+          }
+
+          // Otherwise keep the current section active until the user reaches the top of the section above
+          return;
+        }
+      }
+
+      // Scrolling DOWN (default):
+      // The active section is the last section whose top has reached or passed above the focal line
+      let currentSecId: string = sections[0].id;
+      for (const sec of sections) {
+        if (sec.rect.top <= focalOffset) {
+          currentSecId = sec.id;
+        }
+      }
+
+      updateActiveTab(currentSecId);
+    };
+
+    const onScroll = () => {
+      const currentScrollY = window.scrollY;
+      const diff = currentScrollY - lastScrollYRef.current;
+      if (Math.abs(diff) >= 2) {
+        scrollDirectionRef.current = diff > 0 ? "down" : "up";
+        lastScrollYRef.current = currentScrollY;
+      }
+
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      rafIdRef.current = requestAnimationFrame(computeActiveSection);
+    };
+
+    const handleManualScroll = () => {
+      if (isClickScrollingRef.current) {
+        isClickScrollingRef.current = false;
+        if (scrollEndTimerRef.current) {
+          clearTimeout(scrollEndTimerRef.current);
+          scrollEndTimerRef.current = null;
+        }
+      }
+    };
+
+    lastScrollYRef.current = window.scrollY;
+    computeActiveSection();
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    window.addEventListener("wheel", handleManualScroll, { passive: true });
+    window.addEventListener("touchmove", handleManualScroll, { passive: true });
+
+    return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+      if (scrollEndTimerRef.current) {
+        clearTimeout(scrollEndTimerRef.current);
+      }
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("wheel", handleManualScroll);
+      window.removeEventListener("touchmove", handleManualScroll);
+    };
+  }, [review]);
+
   const scrollToSection = (sectionId: string) => {
-    setActiveTab(sectionId);
+    // Immediately set activeTab so clicked chip turns black without intermediate glitching
+    updateActiveTab(sectionId);
+
+    // Lock scroll spy updates during programmatic smooth scroll
+    isClickScrollingRef.current = true;
+    if (scrollEndTimerRef.current) {
+      clearTimeout(scrollEndTimerRef.current);
+    }
+
+    const unlockScroll = () => {
+      isClickScrollingRef.current = false;
+      if (scrollEndTimerRef.current) {
+        clearTimeout(scrollEndTimerRef.current);
+        scrollEndTimerRef.current = null;
+      }
+      window.removeEventListener("scrollend", handleScrollEnd);
+    };
+
+    const handleScrollEnd = () => {
+      unlockScroll();
+    };
+
+    window.addEventListener("scrollend", handleScrollEnd, { once: true });
+    // Safety fallback timer if 'scrollend' is not fired or element is already in place
+    scrollEndTimerRef.current = setTimeout(unlockScroll, 800);
+
     const el = document.getElementById(`review-section-${sectionId}`);
     if (el) {
       const stickyOffset = 130; // height of admin sticky header + chips navigation bar
