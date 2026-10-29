@@ -454,6 +454,10 @@ export default function CredentialsStep({
               onVideoChange={onKycVideoChange}
               manualPhotos={kycPhotos}
               onManualPhotosChange={onKycPhotosChange}
+              digilockerLoading={digilockerLoading}
+              digilockerVerified={digilockerVerified}
+              digilockerError={digilockerError}
+              onDigilockerVerification={() => void handleDigilockerVerification()}
             />
           </article>
 
@@ -480,18 +484,7 @@ export default function CredentialsStep({
                   {label}
                 </button>
               ))}
-
-              <button
-                type="button"
-                className={`${styles.idTypeBtn} ${digilockerVerified ? styles.digilockerVerified : ""}`}
-                disabled={digilockerLoading}
-                onClick={() => void handleDigilockerVerification()}
-              >
-                <IdCard size={14} aria-hidden="true" />
-                {digilockerVerified ? "DigiLocker verified" : digilockerLoading ? "Opening DigiLocker…" : "Verify with DigiLocker"}
-              </button>
             </div>
-            {digilockerError ? <p className={styles.idPrivacyNote} style={{ marginTop: "8px" }}>{digilockerError}</p> : null}
 
             <AnimatePresence initial={false}>
               {selectedIdType && (

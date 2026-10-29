@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Check, RotateCcw, ShieldCheck, X } from "lucide-react";
-import ShinyText from "@/components/ui/ShinyText";
+import { Camera, Check, ChevronRight, IdCard, RotateCcw, ShieldCheck, X } from "lucide-react";
 import styles from "./KycVerificationPanel.module.css";
 import {
   areKycPhotosComplete,
@@ -25,6 +24,10 @@ type KycVerificationPanelProps = {
   onVideoChange: (src: string) => void;
   manualPhotos: ExpertKycPhotos;
   onManualPhotosChange: (photos: ExpertKycPhotos) => void;
+  digilockerLoading: boolean;
+  digilockerVerified: boolean;
+  digilockerError: string | null;
+  onDigilockerVerification: () => void;
 };
 
 type PanelPhase = "intro" | "requesting" | "denied" | "guided" | "manualReview" | "processing" | "complete";
@@ -273,6 +276,10 @@ export default function KycVerificationPanel({
   onVideoChange,
   manualPhotos,
   onManualPhotosChange,
+  digilockerLoading,
+  digilockerVerified,
+  digilockerError,
+  onDigilockerVerification,
 }: KycVerificationPanelProps) {
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -800,7 +807,7 @@ export default function KycVerificationPanel({
                     <button type="button" className={styles.secondaryCaptureBtn} onClick={() => switchVerificationMode(verificationMode === "manual" ? "automatic" : "manual")}>
                       Switch to {verificationMode === "manual" ? "automatic verification" : "manual capture"}
                     </button>
-                    <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>Cancel</button>
+                    <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>Choose another method</button>
                   </div>
                 </div>
               ) : null}
@@ -830,7 +837,7 @@ export default function KycVerificationPanel({
                 <button type="button" className={styles.secondaryCaptureBtn} onClick={() => switchVerificationMode(verificationMode === "manual" ? "automatic" : "manual")}>
                   Switch to {verificationMode === "manual" ? "automatic verification" : "manual capture"}
                 </button>
-                <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>Cancel</button>
+                <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>Choose another method</button>
               </div>
             </div>
           ) : null}
@@ -884,7 +891,7 @@ export default function KycVerificationPanel({
                       Switch to {verificationMode === "manual" ? "automatic verification" : "manual capture"}
                     </button>
                     <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>
-                      Cancel
+                      Choose another method
                     </button>
                   </div>
                 </div>
@@ -1005,9 +1012,9 @@ export default function KycVerificationPanel({
                 <button
                   type="button"
                   className={styles.secondaryCaptureBtn}
-                  onClick={cancelManualCapture}
+                  onClick={closeCameraFlow}
                 >
-                  Cancel manual capture
+                  Choose another method
                 </button>
               </div>
             </div>
@@ -1024,8 +1031,8 @@ export default function KycVerificationPanel({
                 <button type="button" className={styles.secondaryCaptureBtn} onClick={() => switchVerificationMode("manual")}>
                   Switch to manual capture
                 </button>
-                <button type="button" className={styles.secondaryCaptureBtn} onClick={cancelAutomaticVerification}>
-                  Cancel automatic verification
+                <button type="button" className={styles.secondaryCaptureBtn} onClick={closeCameraFlow}>
+                  Choose another method
                 </button>
               </div>
             </div>
@@ -1049,35 +1056,62 @@ export default function KycVerificationPanel({
             <p className={styles.introPrivacy}>
               Automatic verification checks head poses. Manual capture submits photos for review only.
             </p>
-            <button
-              type="button"
-              className={styles.beginBtn}
-              disabled={typeof MediaRecorder === "undefined"}
-              onClick={() => void beginVerification("automatic")}
-            >
-              <ShinyText
-                text="AUTOMATIC POSE VERIFICATION"
-                iconSize={14}
-                speed={2.5}
-                color="#E53B17"
-                shineColor="#ffffff"
-                direction="right"
-                className={styles.beginBtnShinyText}
-              />
-            </button>
-            <button
-              type="button"
-              className={styles.manualModeBtn}
-              onClick={() => void beginVerification("manual")}
-            >
-              <Camera size={16} />
-              Manual photo capture
-            </button>
-            <p className={styles.manualModeNote}>
-              {typeof MediaRecorder === "undefined"
-                ? "Automatic verification is unavailable in this browser. Manual photos are submitted for review and do not verify identity or pose."
-                : "Manual photos are submitted for review and do not verify identity or pose."}
-            </p>
+            <div className={styles.methodCards}>
+              <button
+                type="button"
+                className={styles.methodCard}
+                disabled={typeof MediaRecorder === "undefined"}
+                onClick={() => void beginVerification("automatic")}
+              >
+                <span className={styles.methodIcon}><Camera size={22} aria-hidden="true" /></span>
+                <span className={styles.methodCopy}>
+                  <span className={styles.methodTitle}>Automatic pose verification</span>
+                  <span className={styles.methodDescription}>Checks head poses automatically.</span>
+                </span>
+                <ChevronRight className={styles.methodChevron} size={20} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className={styles.methodCard}
+                onClick={() => void beginVerification("manual")}
+              >
+                <span className={styles.methodIcon}><Camera size={22} aria-hidden="true" /></span>
+                <span className={styles.methodCopy}>
+                  <span className={styles.methodTitle}>Manual photo capture</span>
+                  <span className={styles.methodDescription}>
+                    Manual photos are submitted for review and do not verify identity or pose.
+                  </span>
+                </span>
+                <ChevronRight className={styles.methodChevron} size={20} aria-hidden="true" />
+              </button>
+              <div className={styles.recommendedMethod}>
+                <button
+                  type="button"
+                  className={`${styles.methodCard} ${styles.digilockerMethodCard}`}
+                  disabled={digilockerLoading}
+                  onClick={onDigilockerVerification}
+                >
+                  <span className={`${styles.methodIcon} ${styles.methodIconMuted}`}><IdCard size={22} aria-hidden="true" /></span>
+                  <span className={styles.methodCopy}>
+                    <span className={styles.methodTitleRow}>
+                      <span className={styles.methodTitle}>
+                        {digilockerVerified
+                          ? "DigiLocker verified"
+                          : digilockerLoading
+                            ? "Opening DigiLocker…"
+                            : "Verify with DigiLocker"}
+                      </span>
+                      <span className={styles.recommendedLabel}>(RECOMMENDED)</span>
+                    </span>
+                    <span className={styles.methodDescription}>
+                      Securely verify your identity using your government documents.
+                    </span>
+                  </span>
+                  <ChevronRight className={styles.methodChevron} size={20} aria-hidden="true" />
+                </button>
+                {digilockerError ? <p className={styles.digilockerError} role="alert">{digilockerError}</p> : null}
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -1153,6 +1187,9 @@ export default function KycVerificationPanel({
                   Switch to manual capture
                 </button>
               )}
+              <button type="button" className={styles.manualModeBtn} onClick={closeCameraFlow}>
+                Choose another method
+              </button>
             </div>
           </div>
         ) : null}

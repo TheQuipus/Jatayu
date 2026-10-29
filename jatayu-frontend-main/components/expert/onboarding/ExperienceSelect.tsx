@@ -43,8 +43,13 @@ export default function ExperienceSelect({
   const programmaticScrollAnchorRef = useRef<{ top: number; bottom: number } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
+  const [activeOptionIndex, setActiveOptionIndex] = useState(0);
 
   const selectedOption = options.find((option) => option.value === value);
+  const selectedOptionIndex = options.findIndex((option) => option.value === value);
+  const activeIndex = options.length > 0
+    ? Math.min(activeOptionIndex, options.length - 1)
+    : -1;
   const displayLabel = selectedOption?.label ?? placeholder;
 
   const updatePosition = () => {
@@ -142,7 +147,50 @@ export default function ExperienceSelect({
     if (disabled) return;
     setMenuStyle(null);
     programmaticScrollAnchorRef.current = null;
-    setIsOpen((open) => !open);
+    if (!isOpen) {
+      setActiveOptionIndex(selectedOptionIndex >= 0 ? selectedOptionIndex : 0);
+    }
+    setIsOpen(!isOpen);
+  };
+
+  const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "Escape" && isOpen) {
+      event.preventDefault();
+      setIsOpen(false);
+      setMenuStyle(null);
+      return;
+    }
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!options.length) return;
+      if (!isOpen) {
+        setMenuStyle(null);
+        setIsOpen(true);
+        setActiveOptionIndex(selectedOptionIndex >= 0 ? selectedOptionIndex : 0);
+        return;
+      }
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      const startingIndex = activeIndex < 0 ? 0 : activeIndex;
+      setActiveOptionIndex(Math.max(0, Math.min(options.length - 1, startingIndex + step)));
+      return;
+    }
+
+    if (event.key === "Home" || event.key === "End") {
+      if (!isOpen || !options.length) return;
+      event.preventDefault();
+      setActiveOptionIndex(event.key === "Home" ? 0 : options.length - 1);
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (isOpen && activeIndex >= 0) {
+        handleSelect(options[activeIndex].value);
+      } else {
+        handleToggle();
+      }
+    }
   };
 
   return (
@@ -163,7 +211,9 @@ export default function ExperienceSelect({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? listboxId : undefined}
+        aria-activedescendant={isOpen && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
         onClick={handleToggle}
+        onKeyDown={handleTriggerKeyDown}
       >
         <span className={styles.selectFieldValue}>{displayLabel}</span>
       </button>
@@ -186,19 +236,27 @@ export default function ExperienceSelect({
             style={menuStyle ?? { visibility: "hidden" }}
             role="listbox"
             aria-labelledby={id}
+            aria-label={id ? undefined : ariaLabel || placeholder}
           >
-            {options.map((option) => {
+            {options.map((option, index) => {
               const isSelected = option.value === value;
               return (
-                <li key={option.value || "__placeholder"} role="presentation">
+                <li
+                  key={option.value || "__placeholder"}
+                  role="presentation"
+                >
                   <button
                     type="button"
+                    id={`${listboxId}-option-${index}`}
                     role="option"
                     aria-selected={isSelected}
+                    tabIndex={-1}
+                    onMouseDown={(event) => event.preventDefault()}
                     className={`${styles.selectMenuItem} ${
                       isSelected ? styles.selectMenuItemSelected : ""
-                    }`}
+                    } ${index === activeIndex ? styles.selectMenuItemActive : ""}`}
                     onClick={() => handleSelect(option.value)}
+                    onMouseEnter={() => setActiveOptionIndex(index)}
                   >
                     {option.label}
                   </button>

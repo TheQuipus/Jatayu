@@ -16,6 +16,14 @@ const experienceStyles = fs.readFileSync(
   new URL("../components/expert/onboarding/ExperienceStep.module.css", import.meta.url),
   "utf8",
 );
+const smartSearchSelect = fs.readFileSync(
+  new URL("../components/admin/settings/SmartSearchSelect.tsx", import.meta.url),
+  "utf8",
+);
+const expertFilterSection = fs.readFileSync(
+  new URL("../components/expert/ExpertFilterSection.tsx", import.meta.url),
+  "utf8",
+);
 const positionSource = fs.readFileSync(
   new URL("../components/expert/onboarding/experienceSelectPosition.ts", import.meta.url),
   "utf8",
@@ -53,6 +61,8 @@ const {
   isEmploymentPositionStarted,
   isEmploymentPositionValid,
   isEducationDegreeValid,
+  createEmptyEmploymentPosition,
+  createEmptyEducationDegree,
   MONTH_OPTIONS,
 } = employmentModule.exports;
 
@@ -197,6 +207,44 @@ test("Month, Year, and education prompts remain placeholders rather than selecta
   assert.match(experienceStep, /placeholder="Select degree\.\.\."/);
   assert.match(experienceStep, /placeholder="Select field of study\.\.\."/);
   assert.ok(MONTH_OPTIONS.every((option) => option.value !== ""));
+});
+
+test("new Step 3 employment and education entries start with no dropdown selections", () => {
+  const position = createEmptyEmploymentPosition();
+  assert.deepEqual(
+    [position.startMonth, position.startYear, position.endMonth, position.endYear],
+    ["", "", "", ""],
+  );
+  const degree = createEmptyEducationDegree();
+  assert.deepEqual([degree.degree, degree.fieldOfStudy], ["", ""]);
+});
+
+test("the Step 3 dropdown supports arrow, Home/End, Enter, and Escape navigation", () => {
+  assert.match(experienceSelect, /event\.key === "ArrowDown" \|\| event\.key === "ArrowUp"/);
+  assert.match(experienceSelect, /event\.key === "Home" \|\| event\.key === "End"/);
+  assert.match(experienceSelect, /event\.key === "Enter" \|\| event\.key === " "/);
+  assert.match(experienceSelect, /event\.key === "Escape" && isOpen/);
+  assert.match(experienceSelect, /aria-activedescendant=/);
+});
+
+test("searchable dropdown supports keyboard navigation, listbox semantics, and Escape", () => {
+  assert.match(smartSearchSelect, /event\.key === "ArrowDown" \|\| event\.key === "ArrowUp"/);
+  assert.match(smartSearchSelect, /event\.key === "Home" \|\| event\.key === "End"/);
+  assert.match(smartSearchSelect, /event\.key === "Enter"/);
+  assert.match(smartSearchSelect, /filteredOptions\[0\]\.value/);
+  assert.match(smartSearchSelect, /event\.key === "Escape" && isOpen/);
+  assert.match(smartSearchSelect, /role="combobox"/);
+  assert.match(smartSearchSelect, /role="listbox"/);
+  assert.match(smartSearchSelect, /role="option"/);
+  assert.match(smartSearchSelect, /aria-activedescendant=/);
+  assert.match(smartSearchSelect, /handleClickOutside/);
+});
+
+test("expert multi-select filter panels expose expanded state and close with Escape", () => {
+  assert.match(expertFilterSection, /aria-expanded={isOpen}/);
+  assert.match(expertFilterSection, /aria-controls={contentId}/);
+  assert.match(expertFilterSection, /event\.key !== "Escape"/);
+  assert.match(expertFilterSection, /type="checkbox"/);
 });
 
 test("employment date fields reject empty and placeholder values, then clear errors for valid choices", () => {

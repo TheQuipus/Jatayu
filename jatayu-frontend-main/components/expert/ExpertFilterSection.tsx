@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import styles from "./Expert.module.css";
 
 type FilterOption = {
@@ -31,14 +31,29 @@ export default function ExpertFilterSection({
 }: ExpertFilterSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const selectionCount = selectedValues.length;
+  const contentId = useId();
+  const headerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setIsOpen(false);
+      headerRef.current?.focus();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen]);
 
   return (
     <div className={styles.filterSection}>
       <button
+        ref={headerRef}
         type="button"
         className={styles.filterSectionHeader}
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
+        aria-controls={contentId}
       >
         <span className={styles.filterSectionTitle}>
           {placeholder}
@@ -59,6 +74,7 @@ export default function ExpertFilterSection({
       </button>
 
       <div
+        id={contentId}
         className={`${styles.filterSectionContent} ${
           isOpen ? styles.filterSectionContentOpen : ""
         }`}
