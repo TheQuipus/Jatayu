@@ -147,10 +147,19 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   const expertUser = user as ExpertUser;
   const seekerUser = user as SeekerUser;
 
-  const formatDate = (value?: string) => value && !Number.isNaN(new Date(value).getTime()) ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)) : "Not available";
+  const formatDate = (value?: string) => {
+    if (!value) return "Not available";
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(date);
+    }
+    return value;
+  };
+
   const userLocation = isExpert ? (expertUser.location || "Location not provided") : (seekerUser.location || seekerUser.city || "Location not provided");
-  const joinedDate = formatDate(user.joinedDate);
-  const lastActive = formatDate(user.lastActive);
+  // For experts, Member since must be the day of approval (approvedAt), not the day of submission (submittedAt)
+  const joinedDate = formatDate(isExpert ? (expertUser.approvedAt || expertUser.joinedDate) : seekerUser.joinedDate);
+  const lastActive = isExpert ? (expertUser.lastActive || "Recently") : formatDate(seekerUser.lastActive);
 
   const totalSessionsCount = isExpert ? expertUser.totalSessions : seekerUser.totalBookings;
   const moneyValue = isExpert ? expertUser.totalEarnings : seekerUser.totalSpent;
