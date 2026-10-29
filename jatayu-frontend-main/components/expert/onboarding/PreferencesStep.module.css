@@ -69,6 +69,11 @@
   box-shadow: 0 0 24px rgba(229, 59, 23, 0.15);
 }
 
+.formatCardInvalid .cardBorderSvg path {
+  stroke: var(--pomegranate);
+  stroke-opacity: 1;
+}
+
 .formatCard:hover:not(:disabled) {
   background-color: rgba(255, 255, 255, 0.07);
 }
@@ -129,6 +134,14 @@
   border-bottom: 1.5px solid var(--pomegranate, #E53B17);
 }
 
+.formatPriceInput:focus-visible:not(:disabled):not([aria-disabled="true"]) {
+  outline: none;
+}
+
+.formatPriceInput[aria-invalid="true"] {
+  border-bottom-color: var(--pomegranate);
+}
+
 .formatPriceInputPlaceholder {
   visibility: hidden;
   cursor: default;
@@ -141,15 +154,55 @@
 
 .formatPriceUnit {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.35);
   flex-shrink: 0;
   transition: color 0.2s ease;
 }
 
+.formatPriceAttention {
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateY(-50%);
+  animation: formatPriceAttentionPulse 1.8s ease-in-out infinite;
+}
+
 .formatPriceActive {
   color: rgba(255, 255, 255, 0.75);
+}
+
+.preferencesValidationError {
+  margin: -12px 0 24px;
+  color: var(--pomegranate);
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-align: left;
+}
+
+@keyframes formatPriceAttentionPulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: translateY(-50%) scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .formatPriceAttention {
+    animation: none;
+  }
 }
 
 .cardBorderSvg {

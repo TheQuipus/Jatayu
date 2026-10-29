@@ -5,6 +5,7 @@ import { saveExpertProfile } from "@/lib/expertStore";
 
 export type BackendExpertProfile = {
   applicationNumber?: string | null;
+  email?: string | null;
   fullName?: string;
   professionalTitle?: string;
   profilePhotoSrc?: string;
@@ -157,6 +158,10 @@ export function mapBackendProfileToExpertData(
     languages,
     location,
   };
+}
+
+export function getBackendExpertEmail(expert: BackendExpertProfile): string {
+  return typeof expert.email === "string" ? expert.email.trim() : "";
 }
 
 export function getExpertProfileLocation(metadataValue: unknown): string {

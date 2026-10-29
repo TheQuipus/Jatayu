@@ -21,7 +21,11 @@ function load(file) {
   return loaded.exports;
 }
 
-const { normalizeBackendProfile, getExpertProfileLocation } = load('lib/expertProfileApi.ts');
+const {
+  normalizeBackendProfile,
+  getBackendExpertEmail,
+  getExpertProfileLocation,
+} = load('lib/expertProfileApi.ts');
 const { formatPreferencesPricingSummary } = load('components/expert/onboarding/preferencesData.ts');
 const { isValidPortfolioUrl } = load('lib/portfolioUrl.ts');
 
@@ -69,4 +73,10 @@ test('profile preview receives a saved location but omits values created by old 
   assert.equal(getExpertProfileLocation({ location: 'Kolkata' }), '');
   assert.equal(getExpertProfileLocation({ location: 'India' }), '');
   assert.equal(getExpertProfileLocation(undefined), '');
+});
+
+test('profile email is mapped safely from the authenticated backend profile', () => {
+  assert.equal(getBackendExpertEmail({ email: ' expert@example.com ' }), 'expert@example.com');
+  assert.equal(getBackendExpertEmail({}), '');
+  assert.equal(getBackendExpertEmail({ email: null }), '');
 });

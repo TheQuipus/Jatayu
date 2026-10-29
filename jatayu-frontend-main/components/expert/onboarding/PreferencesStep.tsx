@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -62,8 +62,10 @@ export default function PreferencesStep({
   onJumpToStep,
 }: PreferencesStepProps) {
   const formatPriceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
 
   const canContinue = areRequiredSessionPreferencesValid(selectedFormats, formatPrices);
+  const showValidationError = hasAttemptedContinue && !canContinue;
 
   useEffect(() => {
     onStepCompleteChange?.(6, canContinue);
@@ -103,6 +105,15 @@ export default function PreferencesStep({
       ...formatPrices,
       [id]: raw.replace(/\D/g, ""),
     });
+  };
+
+  const handleContinue = () => {
+    if (!canContinue) {
+      setHasAttemptedContinue(true);
+      return;
+    }
+
+    onContinue();
   };
 
   const handleToggleLength = (id: string) => {
@@ -149,16 +160,20 @@ export default function PreferencesStep({
           {formats.map((fmt) => {
             const IconComponent = fmt.icon;
             const isSelected = selectedFormats.includes(fmt.id);
+            const price = Number.parseInt(formatPrices[fmt.id] ?? "", 10);
+            const hasValidPrice = Number.isFinite(price) && price > 0;
 
             return (
               <div
                 key={fmt.id}
                 onClick={() => handleToggleFormat(fmt.id)}
-                className={`${styles.formatCard} ${isSelected ? styles.formatCardSelected : ""}`}
+                className={`${styles.formatCard} ${isSelected ? styles.formatCardSelected : ""} ${showValidationError ? styles.formatCardInvalid : ""}`}
                 role="button"
                 tabIndex={0}
                 aria-pressed={isSelected}
+                aria-describedby={showValidationError ? "preferences-validation-error" : undefined}
                 onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     handleToggleFormat(fmt.id);
@@ -223,6 +238,8 @@ export default function PreferencesStep({
                         spellCheck={false}
                         autoComplete="off"
                         aria-label={`${fmt.title} rate in rupees per minute`}
+                        aria-invalid={showValidationError && !(Number.parseInt(formatPrices[fmt.id] ?? "", 10) > 0)}
+                        aria-describedby={showValidationError ? "preferences-validation-error" : undefined}
                       />
                     ) : (
                       <span className={styles.formatPriceInputPlaceholder}>0</span>
@@ -234,12 +251,24 @@ export default function PreferencesStep({
                     >
                       /min
                     </span>
+                    {!hasValidPrice && (
+                      <span className={styles.formatPriceAttention} aria-hidden="true">
+                        !
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
+        {showValidationError && (
+          <p id="preferences-validation-error" className={styles.preferencesValidationError} role="alert">
+            {selectedFormats.length === 0
+              ? "Select at least one consultation type."
+              : "Enter a rate greater than ₹0 per minute for each selected consultation type."}
+          </p>
+        )}
       </div>
 
       {/* Session Lengths Section */}
@@ -309,7 +338,7 @@ export default function PreferencesStep({
           <button type="button" className={shared.textBtn} onClick={onBack}>
             Back
           </button>
-          <ContinueButton onClick={onContinue} disabled={!canContinue} />
+          <ContinueButton onClick={handleContinue} disabled={selectedFormats.length === 0} />
         </div>
       </div>
     </section>

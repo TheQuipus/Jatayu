@@ -39,6 +39,7 @@ import {
 import { saveExpertProfile } from "@/lib/expertStore";
 import {
   fetchExpertProfileRecord,
+  getBackendExpertEmail,
   mapBackendAvailability,
   mapBackendProfileToExpertData,
   saveExpertProfileData,
@@ -106,6 +107,7 @@ export default function ExpertProfileEditor() {
 
   // Profile Identity & Basic state
   const [profile, setProfile] = useState<ExpertProfileData>(() => mapBackendProfileToExpertData({}));
+  const [registeredEmail, setRegisteredEmail] = useState("");
   const [reviewStatus, setReviewStatus] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [skillInput, setSkillInput] = useState("");
@@ -186,6 +188,7 @@ export default function ExpertProfileEditor() {
     void fetchExpertProfileRecord()
       .then((record) => {
         setProfile(mapBackendProfileToExpertData(record));
+        setRegisteredEmail(getBackendExpertEmail(record));
         setAppId(record.applicationNumber || "");
         setReviewStatus(record.status || "draft");
         setSelectedFormats(record.selectedFormats || []);
@@ -628,6 +631,22 @@ export default function ExpertProfileEditor() {
               onChange={(e) => updateProfile("role", e.target.value)}
               className={styles.textField}
               placeholder="e.g. Principal UX Strategy Lead"
+            />
+          </div>
+        </div>
+
+        <div className={styles.fieldRow}>
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-email" className={styles.fieldLabel}>
+              Email Address
+            </label>
+            <input
+              id="profile-email"
+              type="email"
+              value={registeredEmail}
+              className={styles.textField}
+              autoComplete="email"
+              readOnly
             />
           </div>
         </div>

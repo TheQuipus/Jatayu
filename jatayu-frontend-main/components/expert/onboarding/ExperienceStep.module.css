@@ -402,6 +402,11 @@
   color: var(--white);
 }
 
+.selectMenuItemActive {
+  outline: 1px solid rgba(255, 255, 255, 0.24);
+  outline-offset: -1px;
+}
+
 .selectMenuItemSelected {
   background: rgba(255, 255, 255, 0.1);
   color: var(--white);
