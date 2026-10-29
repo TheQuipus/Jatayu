@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom"; 
 import { AnimatePresence, motion } from "motion/react";
 import {
   AlertCircle,
@@ -150,6 +151,7 @@ const REVIEW_SECTIONS = [
 ] as const;
 
 export default function ApplicationReview({ appId }: ApplicationReviewProps) {
+  const router = useRouter();
   const { ready, application, refresh } = useExpertApplication(appId);
   const review = useMemo(
     () => (application ? mapToApplicationReview(application) : null),
@@ -173,6 +175,13 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     if (activeTabRef.current !== id) {
       activeTabRef.current = id;
       setActiveTab(id);
+      if (typeof window !== "undefined" && appId) {
+        try {
+          localStorage.setItem(`jatayu_review_active_tab_${appId}`, id);
+        } catch {
+          // ignore
+        }
+      }
     }
   };
   const [pendingApproveSection, setPendingApproveSection] = useState<{
@@ -181,6 +190,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [unfilledSectionIds, setUnfilledSectionIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "warning" | "error" | "info";
@@ -251,8 +261,29 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
 
     try {
       await updateExpertApplicationStatus(review.appId, "approved", notes.trim() || undefined);
+      
+      const allApproved: Record<string, SectionReviewState> = {};
+      for (const sec of REVIEW_SECTIONS) {
+        allApproved[sec.id] = {
+          decision: "approve",
+          note: submittedDecisions[sec.id]?.note || "",
+          notes: submittedDecisions[sec.id]?.notes || [],
+        };
+      }
+      setSubmittedDecisions((prev) => ({ ...prev, ...allApproved }));
+      setSectionDecisions((prev) => ({ ...prev, ...allApproved }));
+      if (typeof window !== "undefined" && appId) {
+        try {
+          localStorage.setItem(`jatayu_review_submitted_${appId}`, JSON.stringify(allApproved));
+          localStorage.setItem(`jatayu_review_decisions_${appId}`, JSON.stringify(allApproved));
+        } catch {
+          // ignore
+        }
+      }
+
       refresh();
       setShowApproveConfirm(false);
+      router.push("/admin/users/experts");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Could not approve application.");
     } finally {
@@ -305,35 +336,87 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     return titles[id] ?? id;
   };
 
-  const [sectionDecisions, setSectionDecisions] = useState<
-    Record<string, SectionReviewState>
-  >({
+  const INITIAL_SECTION_DECISIONS: Record<string, SectionReviewState> = {
     category: { decision: null, note: "" },
+    experience: { decision: null, note: "" },
+    profile: { decision: null, note: "" },
+    credentials: { decision: null, note: "" },
+    preferences: { decision: null, note: "" },
+    audience: { decision: null, note: "" },
+    availability: { decision: null, note: "" },
     kyc: { decision: null, note: "" },
     certifications: { decision: null, note: "" },
-    experience: { decision: null, note: "" },
     portfolio: { decision: null, note: "" },
-    availability: { decision: null, note: "" },
-    audience: { decision: null, note: "" },
-    preferences: { decision: null, note: "" },
-    credentials: { decision: null, note: "" },
-    profile: { decision: null, note: "" },
-  });
+  };
+
+  const [sectionDecisions, setSectionDecisions] = useState<
+    Record<string, SectionReviewState>
+  >(INITIAL_SECTION_DECISIONS);
 
   const [submittedDecisions, setSubmittedDecisions] = useState<
     Record<string, SectionReviewState>
-  >({
-    category: { decision: null, note: "" },
-    kyc: { decision: null, note: "" },
-    certifications: { decision: null, note: "" },
-    experience: { decision: null, note: "" },
-    portfolio: { decision: null, note: "" },
-    availability: { decision: null, note: "" },
-    audience: { decision: null, note: "" },
-    preferences: { decision: null, note: "" },
-    credentials: { decision: null, note: "" },
-    profile: { decision: null, note: "" },
-  });
+  >(INITIAL_SECTION_DECISIONS);
+
+  // Restore persisted review progress from localStorage on mount or when appId changes
+  useEffect(() => {
+    if (typeof window === "undefined" || !appId) return;
+
+    try {
+      // 1. Restore submitted decisions (badges, notes history, decision status)
+      const savedSubmitted = localStorage.getItem(`jatayu_review_submitted_${appId}`);
+      let parsedSubmitted: Record<string, SectionReviewState> | null = null;
+      if (savedSubmitted) {
+        parsedSubmitted = JSON.parse(savedSubmitted);
+        if (parsedSubmitted && typeof parsedSubmitted === "object") {
+          setSubmittedDecisions((prev) => ({ ...prev, ...parsedSubmitted }));
+        }
+      }
+
+      // 2. Restore draft decisions (unsubmitted radio choices and typed notes)
+      const savedDrafts = localStorage.getItem(`jatayu_review_decisions_${appId}`);
+      if (savedDrafts) {
+        const parsedDrafts = JSON.parse(savedDrafts);
+        if (parsedDrafts && typeof parsedDrafts === "object") {
+          setSectionDecisions((prev) => ({ ...prev, ...parsedDrafts }));
+        }
+      } else if (parsedSubmitted) {
+        // Fallback: sync drafts from submitted decisions if drafts weren't saved separately
+        setSectionDecisions((prev) => ({ ...prev, ...parsedSubmitted }));
+      }
+
+      // 3. Restore last active navigation tab
+      const savedTab = localStorage.getItem(`jatayu_review_active_tab_${appId}`);
+      if (savedTab && REVIEW_SECTIONS.some((sec) => sec.id === savedTab)) {
+        updateActiveTab(savedTab);
+      }
+    } catch (e) {
+      console.warn("Could not load review progress from localStorage:", e);
+    }
+  }, [appId]);
+
+  // Sync approval state if application is approved in backend
+  useEffect(() => {
+    if (review?.status === "approved") {
+      setSubmittedDecisions((prev) => {
+        const updated = { ...prev };
+        for (const sec of REVIEW_SECTIONS) {
+          if (!updated[sec.id]?.decision) {
+            updated[sec.id] = { decision: "approve", note: "" };
+          }
+        }
+        return updated;
+      });
+      setSectionDecisions((prev) => {
+        const updated = { ...prev };
+        for (const sec of REVIEW_SECTIONS) {
+          if (!updated[sec.id]?.decision) {
+            updated[sec.id] = { decision: "approve", note: "" };
+          }
+        }
+        return updated;
+      });
+    }
+  }, [review?.status]);
 
   const getSectionDecision = (id: string): SectionDecision => {
     return submittedDecisions[id]?.decision ?? null;
@@ -398,20 +481,132 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       }));
   }, [submittedDecisions]);
 
+  const isSectionFilled = (sectionId: string): boolean => {
+    // 1. Check if decision is already submitted
+    const submitted = submittedDecisions[sectionId];
+    if (submitted?.decision) return true;
+
+    // 2. Check draft decisions
+    const draft = sectionDecisions[sectionId];
+    if (!draft || !draft.decision) return false;
+
+    if (draft.decision === "approve") return true;
+
+    // For clarification or reject, reason/note is required
+    if (draft.decision === "clarification" || draft.decision === "reject") {
+      const hasNote = Boolean(draft.note && draft.note.trim().length > 0);
+      const hasSavedNotes = Boolean(draft.notes && draft.notes.length > 0);
+      return hasNote || hasSavedNotes;
+    }
+
+    return false;
+  };
+
+  const isSectionUnfilledHighlighted = (secId: string): boolean => {
+    return unfilledSectionIds.has(secId) && !isSectionFilled(secId);
+  };
+
+  const isUpdatingReviewStatusRef = useRef(false);
+
+  const markInReviewIfNeeded = useCallback(
+    async (
+      customDrafts?: Record<string, SectionReviewState>,
+      customSubmitted?: Record<string, SectionReviewState>,
+    ) => {
+      if (isUpdatingReviewStatusRef.current || !review?.appId) return;
+
+      // Only transition between pending and in_review
+      if (review.status !== "pending" && review.status !== "in_review") return;
+
+      const draftsToCheck = customDrafts || sectionDecisions;
+      const submittedToCheck = customSubmitted || submittedDecisions;
+
+      const hasProgress = REVIEW_SECTIONS.some((sec) => {
+        const draft = draftsToCheck[sec.id];
+        const sub = submittedToCheck[sec.id];
+        const hasDraftDecision = Boolean(draft?.decision);
+        const hasDraftNote = Boolean(draft?.note && draft.note.trim().length > 0);
+        const hasDraftNotes = Boolean(draft?.notes && draft.notes.length > 0);
+        const hasSubDecision = Boolean(sub?.decision);
+        const hasSubNote = Boolean(sub?.note && sub.note.trim().length > 0);
+        const hasSubNotes = Boolean(sub?.notes && sub.notes.length > 0);
+        return (
+          hasDraftDecision ||
+          hasDraftNote ||
+          hasDraftNotes ||
+          hasSubDecision ||
+          hasSubNote ||
+          hasSubNotes
+        );
+      });
+
+      if (hasProgress && review.status === "pending") {
+        isUpdatingReviewStatusRef.current = true;
+        try {
+          await updateExpertApplicationStatus(review.appId, "in_review");
+          refresh();
+        } catch (err) {
+          console.warn("Could not transition application to in_review:", err);
+        } finally {
+          isUpdatingReviewStatusRef.current = false;
+        }
+      } else if (!hasProgress && review.status === "in_review") {
+        isUpdatingReviewStatusRef.current = true;
+        try {
+          await updateExpertApplicationStatus(review.appId, "pending");
+          refresh();
+        } catch (err) {
+          console.warn("Could not revert application to pending:", err);
+        } finally {
+          isUpdatingReviewStatusRef.current = false;
+        }
+      }
+    },
+    [review, sectionDecisions, submittedDecisions, refresh],
+  );
+
+  // Sync application status if partially filled on load
+  useEffect(() => {
+    if (!review || (review.status !== "pending" && review.status !== "in_review")) return;
+    void markInReviewIfNeeded();
+  }, [review?.status, markInReviewIfNeeded]);
+
   const updateSectionDecision = (
     sectionId: string,
     nextState: SectionReviewState,
   ) => {
-    setSectionDecisions((prev) => {
-      const updated = {
-        ...prev,
-        [sectionId]: nextState,
-      };
-      if (typeof window !== "undefined") {
+    const updated = {
+      ...sectionDecisions,
+      [sectionId]: nextState,
+    };
+    setSectionDecisions(updated);
+    if (typeof window !== "undefined" && appId) {
+      try {
         localStorage.setItem(`jatayu_review_decisions_${appId}`, JSON.stringify(updated));
+      } catch {
+        // ignore storage error
       }
-      return updated;
-    });
+    }
+
+    void markInReviewIfNeeded(updated);
+
+    // If this section is now filled, clear it from unfilledSectionIds
+    const isNowFilled =
+      nextState.decision === "approve" ||
+      ((nextState.decision === "clarification" || nextState.decision === "reject") &&
+        Boolean(
+          (nextState.note && nextState.note.trim().length > 0) ||
+          (nextState.notes && nextState.notes.length > 0)
+        ));
+
+    if (isNowFilled) {
+      setUnfilledSectionIds((prev) => {
+        if (!prev.has(sectionId)) return prev;
+        const next = new Set(prev);
+        next.delete(sectionId);
+        return next;
+      });
+    }
   };
 
   const submitSectionDecision = (
@@ -419,13 +614,44 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     decision: SectionDecision,
     updatedState?: SectionReviewState,
   ) => {
-    setSubmittedDecisions((prev) => {
-      const nextState = updatedState || sectionDecisions[sectionId];
-      const updated = {
-        ...prev,
-        [sectionId]: nextState,
-      };
-      return updated;
+    const nextState = updatedState || sectionDecisions[sectionId];
+    const updatedSubmitted = {
+      ...submittedDecisions,
+      [sectionId]: nextState,
+    };
+    const updatedDrafts = {
+      ...sectionDecisions,
+      [sectionId]: nextState,
+    };
+
+    // Persist to submittedDecisions
+    setSubmittedDecisions(updatedSubmitted);
+    if (typeof window !== "undefined" && appId) {
+      try {
+        localStorage.setItem(`jatayu_review_submitted_${appId}`, JSON.stringify(updatedSubmitted));
+      } catch {
+        // ignore storage error
+      }
+    }
+
+    // Also update sectionDecisions so draft state matches submitted decision
+    setSectionDecisions(updatedDrafts);
+    if (typeof window !== "undefined" && appId) {
+      try {
+        localStorage.setItem(`jatayu_review_decisions_${appId}`, JSON.stringify(updatedDrafts));
+      } catch {
+        // ignore storage error
+      }
+    }
+
+    void markInReviewIfNeeded(updatedDrafts, updatedSubmitted);
+
+    // Clear from unfilledSectionIds
+    setUnfilledSectionIds((prev) => {
+      if (!prev.has(sectionId)) return prev;
+      const next = new Set(prev);
+      next.delete(sectionId);
+      return next;
     });
 
     const title = getSectionTitle(sectionId);
@@ -667,6 +893,55 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     }
   };
 
+  const handleApproveButtonClick = () => {
+    if (isApproved || isUpdatingStatus) return;
+
+    // Find all unfilled sections in order from top to bottom
+    const unfilled = REVIEW_SECTIONS.filter((sec) => !isSectionFilled(sec.id));
+
+    if (unfilled.length > 0) {
+      // Highlight unfilled sections with red margin
+      const unfilledIds = new Set(unfilled.map((s) => s.id));
+      setUnfilledSectionIds(unfilledIds);
+
+      // Scroll smoothly to the first unfilled section from top
+      const firstUnfilled = unfilled[0];
+      scrollToSection(firstUnfilled.id);
+
+      showToast(
+        `Please complete the "${firstUnfilled.label}" section before approving.`,
+        "warning"
+      );
+      return;
+    }
+
+    // All sections are filled: clear any highlights
+    setUnfilledSectionIds(new Set());
+
+    // Auto-commit any drafted decisions to submittedDecisions
+    setSubmittedDecisions((prev) => {
+      const updated = { ...prev };
+      let changed = false;
+      for (const sec of REVIEW_SECTIONS) {
+        const draft = sectionDecisions[sec.id];
+        if (draft?.decision && !updated[sec.id]?.decision) {
+          updated[sec.id] = { ...draft };
+          changed = true;
+        }
+      }
+      if (changed && typeof window !== "undefined" && appId) {
+        try {
+          localStorage.setItem(`jatayu_review_submitted_${appId}`, JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+      }
+      return updated;
+    });
+
+    setShowApproveConfirm(true);
+  };
+
 
 
   const openDocumentPreview = (doc: { name: string; url: string | null; size?: string }) => {
@@ -844,7 +1119,12 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
 
         <div className={styles.reviewSections}>
           {/* Category & Skills */}
-          <article id="review-section-category" className={`${styles.card} ${styles.reviewSection}`}>
+          <article
+            id="review-section-category"
+            className={`${styles.card} ${styles.reviewSection} ${
+              isSectionUnfilledHighlighted("category") ? styles.unfilledSectionHighlight : ""
+            }`}
+          >
             <div className={styles.cardHeader}>
               <span className={styles.cardHeaderTitle}>
                 Category & Skills
@@ -894,7 +1174,13 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           </article>
 
           {/* Work Experience & Portfolio */}
-          <article id="review-section-experience" className={`${styles.card} ${styles.reviewSection}`} style={{ marginTop: "24px" }}>
+          <article
+            id="review-section-experience"
+            className={`${styles.card} ${styles.reviewSection} ${
+              isSectionUnfilledHighlighted("experience") ? styles.unfilledSectionHighlight : ""
+            }`}
+            style={{ marginTop: "24px" }}
+          >
             <div className={styles.cardHeader}>
               <span className={styles.cardHeaderTitle}>
                 Work Experience & Portfolio
@@ -1064,7 +1350,13 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           </article>
 
           {/* Profile Details */}
-          <article id="review-section-profile" className={`${styles.card} ${styles.reviewSection}`} style={{ marginTop: "24px" }}>
+          <article
+            id="review-section-profile"
+            className={`${styles.card} ${styles.reviewSection} ${
+              isSectionUnfilledHighlighted("profile") ? styles.unfilledSectionHighlight : ""
+            }`}
+            style={{ marginTop: "24px" }}
+          >
             <div className={styles.cardHeader}>
               <span className={styles.cardHeaderTitle}>
                 Profile Details
@@ -1122,7 +1414,13 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           </article>
 
           {/* Credentials & KYC */}
-          <article id="review-section-credentials" className={`${styles.card} ${styles.reviewSection}`} style={{ marginTop: "24px" }}>
+          <article
+            id="review-section-credentials"
+            className={`${styles.card} ${styles.reviewSection} ${
+              isSectionUnfilledHighlighted("credentials") ? styles.unfilledSectionHighlight : ""
+            }`}
+            style={{ marginTop: "24px" }}
+          >
             <div className={styles.cardHeader}>
               <span className={styles.cardHeaderTitle}>
                 Credentials & KYC
@@ -1396,7 +1694,13 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           </article>
 
           {/* Consultation Preferences */}
-          <article id="review-section-preferences" className={`${styles.card} ${styles.reviewSection}`} style={{ marginTop: "24px" }}>
+          <article
+            id="review-section-preferences"
+            className={`${styles.card} ${styles.reviewSection} ${
+              isSectionUnfilledHighlighted("preferences") ? styles.unfilledSectionHighlight : ""
+            }`}
+            style={{ marginTop: "24px" }}
+          >
             <div className={styles.cardHeader}>
               <span className={styles.cardHeaderTitle}>
                 Consultation Preferences
@@ -1460,7 +1764,13 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           </article>
 
           {/* Target Audience & Languages */}
-          <article id="review-section-audience" className={`${styles.card} ${styles.reviewSection}`} style={{ marginTop: "24px" }}>
+          <article
+            id="review-section-audience"
+            className={`${styles.card} ${styles.reviewSection} ${
+              isSectionUnfilledHighlighted("audience") ? styles.unfilledSectionHighlight : ""
+            }`}
+            style={{ marginTop: "24px" }}
+          >
             <div className={styles.cardHeader}>
               <span className={styles.cardHeaderTitle}>
                 Target Audience & Languages
@@ -1514,7 +1824,13 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           </article>
 
           {/* Availability & Schedule */}
-          <article id="review-section-availability" className={`${styles.card} ${styles.reviewSection}`} style={{ marginTop: "24px" }}>
+          <article
+            id="review-section-availability"
+            className={`${styles.card} ${styles.reviewSection} ${
+              isSectionUnfilledHighlighted("availability") ? styles.unfilledSectionHighlight : ""
+            }`}
+            style={{ marginTop: "24px" }}
+          >
             <div className={styles.cardHeader}>
               <span className={styles.cardHeaderTitle}>
                 Availability & Schedule{" "}
@@ -1593,8 +1909,8 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             type="button"
             label="Approve"
             variant="orange"
-            disabled={unapprovedSectionsList.length > 0}
-            onClick={() => setShowApproveConfirm(true)}
+            disabled={isApproved || isUpdatingStatus}
+            onClick={handleApproveButtonClick}
           />
           <button
             type="button"

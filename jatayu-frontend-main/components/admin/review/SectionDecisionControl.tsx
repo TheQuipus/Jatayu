@@ -125,70 +125,67 @@ export default function SectionDecisionControl({
         aria-label={`${sectionTitle} decision`}
         style={disabled ? { pointerEvents: "none", opacity: 0.65 } : undefined}
       >
-        <label
-          className={`${styles.radioLabel} ${
-            currentDecision === "approve" ? styles.radioLabelActiveApprove : ""
+        <button
+          type="button"
+          role="radio"
+          aria-checked={currentDecision === "approve"}
+          className={`${styles.radioOptionBtn} ${
+            currentDecision === "approve" ? styles.radioOptionActive : ""
           }`}
-          onClick={(e) => {
-            e.preventDefault();
-            handleSelectClick("approve");
-          }}
+          onClick={() => handleSelectClick("approve")}
+          disabled={disabled}
         >
-          <input
-            type="radio"
-            name={`decision-${sectionId}`}
-            value="approve"
-            checked={currentDecision === "approve"}
-            readOnly
-            tabIndex={-1}
-            disabled={disabled}
-          />
+          <span
+            className={`${styles.radioCircle} ${
+              currentDecision === "approve" ? styles.radioCircleActive : ""
+            }`}
+          >
+            {currentDecision === "approve" && <span className={styles.radioDot} />}
+          </span>
           <span>Approve</span>
-        </label>
+        </button>
 
-        <label
-          className={`${styles.radioLabel} ${
-            currentDecision === "clarification"
-              ? styles.radioLabelActiveClarification
-              : ""
+        <button
+          type="button"
+          role="radio"
+          aria-checked={currentDecision === "clarification"}
+          className={`${styles.radioOptionBtn} ${
+            currentDecision === "clarification" ? styles.radioOptionActive : ""
           }`}
-          onClick={(e) => {
-            e.preventDefault();
-            handleSelectClick("clarification");
-          }}
+          onClick={() => handleSelectClick("clarification")}
+          disabled={disabled}
         >
-          <input
-            type="radio"
-            name={`decision-${sectionId}`}
-            value="clarification"
-            checked={currentDecision === "clarification"}
-            readOnly
-            tabIndex={-1}
-            disabled={disabled}
-          />
+          <span
+            className={`${styles.radioCircle} ${
+              currentDecision === "clarification" ? styles.radioCircleActive : ""
+            }`}
+          >
+            {currentDecision === "clarification" && (
+              <span className={styles.radioDot} />
+            )}
+          </span>
           <span>Need Clarification</span>
-        </label>
+        </button>
 
-        <label
-          className={`${styles.radioLabel} ${
-            currentDecision === "reject" ? styles.radioLabelActiveReject : ""
+        <button
+          type="button"
+          role="radio"
+          aria-checked={currentDecision === "reject"}
+          className={`${styles.radioOptionBtn} ${
+            currentDecision === "reject" ? styles.radioOptionActive : ""
           }`}
-          onClick={(e) => {
-            e.preventDefault();
-            handleSelectClick("reject");
-          }}
+          onClick={() => handleSelectClick("reject")}
+          disabled={disabled}
         >
-          <input
-            type="radio"
-            name={`decision-${sectionId}`}
-            value="reject"
-            checked={currentDecision === "reject"}
-            readOnly
-            tabIndex={-1}
-            disabled={disabled}
-          />
+          <span
+            className={`${styles.radioCircle} ${
+              currentDecision === "reject" ? styles.radioCircleActive : ""
+            }`}
+          >
+            {currentDecision === "reject" && <span className={styles.radioDot} />}
+          </span>
           <span>Reject</span>
-        </label>
+        </button>
       </div>
 
       <div className={`${styles.inlineReasonContainer} ${
