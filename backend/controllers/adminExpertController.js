@@ -100,7 +100,8 @@ function serializeExpertUser(expert, stats = {}) {
     (data.formatPrices && typeof data.formatPrices === 'object' && (data.formatPrices['60'] || (data.formatPrices['30'] ? data.formatPrices['30'] * 2 : 0))) ||
     1500;
 
-  const closedSla = formatClosedSla(data.submittedAt, data.approvedAt || data.updatedAt);
+  const approvalDate = data.approvedAt || (['approved', 'active', 'on_hold', 'suspended'].includes(data.status) ? data.updatedAt : null);
+  const closedSla = formatClosedSla(data.submittedAt, approvalDate);
 
   return {
     id: data.id,
@@ -120,14 +121,14 @@ function serializeExpertUser(expert, stats = {}) {
     hourlyRate: Number(hourlyRate),
     status: normalizedStatus,
     rawStatus: data.status,
-    joinedDate: formatDate(data.approvedAt || data.createdAt),
+    joinedDate: formatDate(approvalDate || data.createdAt),
     lastActive: formatRelativeTime(data.updatedAt),
     city,
     location: `${city}, India`,
     bio: data.bio || data.tagLine || '',
     closedSla,
     submittedAt: data.submittedAt,
-    approvedAt: data.approvedAt,
+    approvedAt: data.approvedAt || approvalDate,
     onboardingStep: data.onboardingStep,
   };
 }
