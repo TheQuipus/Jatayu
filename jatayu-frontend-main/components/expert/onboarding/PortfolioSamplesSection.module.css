@@ -25,61 +25,35 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
-.uploadList {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.uploadGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
   margin-bottom: 12px;
 }
 
-.uploadItem {
+.uploadCard {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
-}
-
-.uploadBar {
-  position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  clip-path: polygon(0% 0%,
-      94.5% 0%,
-      100% 18%,
-      100% 82%,
-      94.5% 100%,
-      0% 100%);
-  -webkit-clip-path: polygon(0% 0%,
-      94.5% 0%,
-      100% 18%,
-      100% 82%,
-      94.5% 100%,
-      0% 100%);
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
 }
 
-.uploadBarBody {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: 14px 40px 16px 14px;
+.uploadCardComplete {
+  border-color: rgba(52, 199, 89, 0.24);
 }
 
-.fileIconWrap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--pomegranate) 18%, transparent);
-  color: var(--pomegranate);
+.thumbnailWrap {
+  position: relative;
 }
 
 .uploadMeta {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -95,6 +69,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.fileDetails {
+  overflow: hidden;
+  color: var(--silver-chalice);
+  font-family: var(--font-body);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .uploadStatus {
@@ -118,28 +101,32 @@
 
 .cancelBtn {
   position: absolute;
-  top: 14px;
-  right: 18px;
+  top: 8px;
+  right: 8px;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--white);
   cursor: pointer;
   transition: color 0.2s ease;
 }
 
-.cancelBtn:hover {
-  color: var(--white);
+.cancelBtn:hover,
+.cancelBtn:focus-visible {
+  border-color: var(--pomegranate);
+  outline: 2px solid color-mix(in srgb, var(--pomegranate) 55%, transparent);
+  outline-offset: 2px;
 }
 
 .progressTrack {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 10px;
+  right: 10px;
   bottom: 0;
   height: 3px;
   background: rgba(255, 255, 255, 0.08);
@@ -151,7 +138,7 @@
   transition: width 0.15s ease;
 }
 
-.uploadBarComplete .progressFill {
+.uploadCardComplete .progressFill {
   background: var(--green);
 }
 
@@ -197,7 +184,7 @@
 
 .fileError {
   margin: 0 0 12px;
-  color: #ff6b6b;
+  color: var(--pomegranate);
   font-family: var(--font-body);
   font-size: 12px;
 }
@@ -238,24 +225,17 @@
   color: var(--silver-chalice);
 }
 
-.tipsGrid {
-  display: grid;
-  grid-template-columns: max-content max-content;
-  gap: 6px 32px;
-}
-
-.tipItem {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.tipsDescription {
+  margin: 0;
   font-family: var(--font-body);
   font-size: 13px;
   color: var(--silver-chalice);
 }
 
-.tipCheck {
-  color: var(--silver-chalice);
-  flex-shrink: 0;
+@media (min-width: 901px) {
+  .tipsDescription {
+    white-space: nowrap;
+  }
 }
 
 .hiddenFileInput {
@@ -263,11 +243,7 @@
 }
 
 @media (max-width: 600px) {
-  .tipsGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .uploadBarBody {
-    padding-right: 36px;
+  .uploadGrid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
