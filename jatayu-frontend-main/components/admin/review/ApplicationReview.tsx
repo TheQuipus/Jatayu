@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  GraduationCap,
   AlertCircle,
   Briefcase,
   CheckCircle2,
@@ -43,6 +42,7 @@ import {
   type ReviewTabId,
 } from "@/lib/adminApplicationReview";
 import PrimaryButton from "@/components/ui/PrimaryButton";
+import DocumentThumbnail from "@/components/ui/DocumentThumbnail";
 import { useExpertApplication } from "@/hooks/useExpertApplications";
 import { WEEK_DAYS } from "@/lib/expertAvailability";
 import {
@@ -1010,7 +1010,12 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                         {(Array.isArray(application.portfolioSamples) ? application.portfolioSamples : []).map((sample) => (
                           <div key={sample.id} className={styles.credentialsItem}>
                             <div className={styles.credentialsItemLeft}>
-                              <FileText size={16} className={styles.credentialsIcon} />
+                              <DocumentThumbnail
+                                fileName={sample.fileName}
+                                url={sample.url}
+                                fileType={sample.fileType}
+                                size="compact"
+                              />
                               <div className={styles.credentialsDetails}>
                                 <span className={styles.credentialsName}>{sample.fileName}</span>
                                 <span className={styles.credentialsMeta}>
@@ -1028,6 +1033,9 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                                     name: sample.fileName,
                                     url: sample.url || "",
                                     size: sample.fileSize,
+                                    mimeType: sample.fileType.includes("/")
+                                      ? sample.fileType
+                                      : undefined,
                                   })
                                 }
                               >
@@ -1210,7 +1218,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                             {/* Front Side */}
                             <div className={styles.credentialsItem}>
                               <div className={styles.credentialsItemLeft}>
-                                <FileText size={16} className={styles.credentialsIcon} />
+                                <DocumentThumbnail
+                                  fileName={govId.front.name}
+                                  url={govId.front.url}
+                                  size="compact"
+                                />
                                 <div className={styles.credentialsDetails}>
                                   <span className={styles.credentialsName}>Front: {govId.front.name}</span>
                                   <span className={styles.credentialsMeta}>Size: {govId.front.size}</span>
@@ -1237,7 +1249,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                             {govId.back && (
                               <div className={styles.credentialsItem}>
                                 <div className={styles.credentialsItemLeft}>
-                                  <FileText size={16} className={styles.credentialsIcon} />
+                                  <DocumentThumbnail
+                                    fileName={govId.back.name}
+                                    url={govId.back.url}
+                                    size="compact"
+                                  />
                                   <div className={styles.credentialsDetails}>
                                     <span className={styles.credentialsName}>Back: {govId.back.name}</span>
                                     <span className={styles.credentialsMeta}>Size: {govId.back.size}</span>
@@ -1285,7 +1301,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                         {digilockerDocuments.map((document) => (
                           <div key={document.id} className={styles.credentialsItem}>
                             <div className={styles.credentialsItemLeft}>
-                              <FileText size={16} className={styles.credentialsIcon} />
+                              <DocumentThumbnail
+                                fileName={document.documentName || document.documentType || "DigiLocker document"}
+                                fileType={document.documentType || undefined}
+                                size="compact"
+                              />
                               <div className={styles.credentialsDetails}>
                                 <span className={styles.credentialsName}>
                                   {document.documentName || document.documentType || "DigiLocker document"}
@@ -1323,7 +1343,12 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                         {(Array.isArray(application.certificates) ? application.certificates : []).map((cert) => (
                           <div key={cert.id} className={styles.credentialsItem}>
                             <div className={styles.credentialsItemLeft}>
-                              <GraduationCap size={16} className={styles.credentialsIcon} />
+                              <DocumentThumbnail
+                                fileName={cert.fileName || `${cert.name}.docx`}
+                                url={cert.url}
+                                fileType="DOCX"
+                                size="compact"
+                              />
                               <div className={styles.credentialsDetails}>
                                 <span className={styles.credentialsName}>{cert.name}</span>
                                 <span className={styles.credentialsMeta}>
@@ -1342,6 +1367,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                                     name: cert.name,
                                     url: cert.url || "",
                                     size: cert.size,
+                                    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                                   })
                                 }
                               >
