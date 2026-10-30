@@ -311,7 +311,7 @@ export const getApplicationStats = async (req, res) => {
   try {
     const experts = await findExpertsForAdmin(
       { [Op.or]: [{ status: { [Op.in]: QUEUE_STATUSES } }, SIGNUP_COMPLETE_DRAFT_WHERE] },
-      { attributes: ['status'] },
+      { attributes: ['status', 'submittedAt', 'createdAt'] },
     );
 
     const counts = {
@@ -321,12 +321,20 @@ export const getApplicationStats = async (req, res) => {
       on_hold: 0,
       approved: 0,
       rejected: 0,
+      overdue: 0,
     };
+
+    const now = Date.now();
+    const SLA_MS = 48 * 60 * 60 * 1000;
 
     for (const expert of experts) {
       const frontendStatus = BACKEND_TO_FRONTEND_STATUS[expert.status] || 'pending';
       if (frontendStatus in counts) {
         counts[frontendStatus] += 1;
+      }
+      const submitted = expert.submittedAt || expert.createdAt;
+      if (submitted && now - new Date(submitted).getTime() >= SLA_MS) {
+        counts.overdue += 1;
       }
     }
 

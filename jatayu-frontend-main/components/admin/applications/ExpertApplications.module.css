@@ -103,6 +103,7 @@
   cursor: pointer;
   font: inherit;
   color: inherit;
+  border: 1px solid var(--mercury);
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -142,8 +143,7 @@
 }
 
 .kpiCard:hover:not(.kpiCardActive) {
-  background: var(--seashell);
-  border-color: color-mix(in srgb, var(--ink) 12%, var(--mercury));
+  border-color: color-mix(in srgb, var(--ink) 25%, var(--mercury));
 }
 
 .kpiCardActive {
@@ -347,6 +347,14 @@
 
 .colApplicant {
   min-width: 200px;
+}
+
+.colStatus {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--scorpion);
 }
 
 .colActions {
