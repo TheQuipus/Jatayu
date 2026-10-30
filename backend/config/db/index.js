@@ -1,10 +1,11 @@
 import expertDb from './expert.js';
 import seekerDb from './seeker.js';
 import adminDb from './admin.js';
+import { ensureExpertColumns } from '../../scripts/migrateExpertColumns.js';
 
 export { expertDb, seekerDb, adminDb };
 
-/** @deprecated Use expertDb — kept for backward compatibility with existing imports. */
+/** @deprecated Use expertDb — kept for backward compatibility with existing importq. */
 export const sequelize = expertDb;
 
 const databases = [
@@ -23,6 +24,7 @@ export async function connectAllDatabases() {
 
 export async function syncAllDatabases(syncOptions = {}) {
   await expertDb.sync(syncOptions);
+  await ensureExpertColumns(expertDb);
   console.log('Expert database tables synchronized.');
 
   await seekerDb.sync(syncOptions);
