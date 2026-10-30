@@ -5,7 +5,7 @@ import { ensureExpertColumns } from '../../scripts/migrateExpertColumns.js';
 
 export { expertDb, seekerDb, adminDb };
 
-/** @deprecated Use expertDb — kept for backward compatibility with existing imports. */
+/** @deprecated Use expertDb — kept for backward compatibility with existing importq. */
 export const sequelize = expertDb;
 
 const databases = [
