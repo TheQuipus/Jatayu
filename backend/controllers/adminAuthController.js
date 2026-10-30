@@ -4,7 +4,11 @@ import { Admin } from '../models/index.js';
 import { requestAdminOtp, verifyAdminOtp } from '../utils/adminLoginOtp.js';
 import {
   buildPasswordLoginLockedResponse,
+  buildPasswordLoginRateLimitResponse,
   clearPasswordLoginFailures,
+  clearPasswordLoginIpFailures,
+  getClientIpAddress,
+  getPasswordLoginIpLockout,
   getPasswordLoginLockout,
   recordFailedPasswordLogin,
 } from '../utils/accountLoginLockout.js';
@@ -16,17 +20,27 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_
  */
 export const adminLogin = async (req, res) => {
   const { email, password, otp } = req.body;
+  const sourceIp = getClientIpAddress(req);
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
 
   try {
+    const activeIpLockout = await getPasswordLoginIpLockout(sourceIp);
+    if (activeIpLockout) {
+      return res.status(429).json(buildPasswordLoginRateLimitResponse(activeIpLockout.lockedUntil));
+    }
+
     const admin = await Admin.findOne({
       where: { email: email.trim().toLowerCase() },
     });
 
     if (!admin) {
+      const lockout = await recordFailedPasswordLogin('admin', null, sourceIp);
+      if (lockout.ipLockedUntil) {
+        return res.status(429).json(buildPasswordLoginRateLimitResponse(lockout.ipLockedUntil));
+      }
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
@@ -37,7 +51,10 @@ export const adminLogin = async (req, res) => {
 
     const isPasswordValid = await bcrypt.compare(password, admin.password);
     if (!isPasswordValid) {
-      const lockout = await recordFailedPasswordLogin('admin', admin);
+      const lockout = await recordFailedPasswordLogin('admin', admin, sourceIp);
+      if (lockout.ipLockedUntil) {
+        return res.status(429).json(buildPasswordLoginRateLimitResponse(lockout.ipLockedUntil));
+      }
       if (lockout.lockedUntil) {
         return res.status(429).json(buildPasswordLoginLockedResponse(lockout.lockedUntil));
       }
@@ -45,6 +62,7 @@ export const adminLogin = async (req, res) => {
     }
 
     const clearedLockout = await clearPasswordLoginFailures('admin', admin.id);
+    await clearPasswordLoginIpFailures(sourceIp);
     if (clearedLockout.lockedUntil) {
       return res.status(429).json(buildPasswordLoginLockedResponse(clearedLockout.lockedUntil));
     }

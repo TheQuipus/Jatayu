@@ -7,6 +7,34 @@ const deliveries = [];
 let deliveryFails = false;
 const failures = new Map();
 const lockKey = (type, id) => `${type}:${id}`;
+const seekerLoginLockoutState = {
+  getPasswordLoginIpLockout: async () => null,
+  getPasswordLoginLockout: async (type, id) => {
+    const state = failures.get(lockKey(type, id));
+    return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
+  },
+  recordFailedPasswordLogin: async (type, account, sourceIp = '127.0.0.1') => {
+    if (!account) {
+      return { lockedUntil: null, ipLockedUntil: null };
+    }
+    const key = lockKey(type, account.id);
+    const state = failures.get(key) || { attempts: 0 };
+    if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
+    state.attempts += 1;
+    state.lockedUntil = state.attempts >= 5 ? Date.now() + 10 * 60 * 1000 : null;
+    failures.set(key, state);
+    return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
+  },
+  clearPasswordLoginFailures: async (type, id) => {
+    const key = lockKey(type, id);
+    const state = failures.get(key);
+    if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
+    failures.delete(key);
+    return { lockedUntil: null };
+  },
+  clearPasswordLoginIpFailures: async () => ({ lockedUntil: null }),
+};
+const originalSeekerLoginLockoutState = { ...seekerLoginLockoutState };
 mock.module('../../utils/otpDelivery.js', {
   namedExports: {
     deliverOtpChannels: async (payload) => {
@@ -20,26 +48,13 @@ mock.module('../../utils/otpDelivery.js', {
 mock.module('../../utils/accountLoginLockout.js', {
   namedExports: {
     buildPasswordLoginLockedResponse: (lockedUntil) => ({ code: 'ACCOUNT_LOCKED', lockedUntil }),
-    getPasswordLoginLockout: async (type, id) => {
-      const state = failures.get(lockKey(type, id));
-      return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
-    },
-    recordFailedPasswordLogin: async (type, account) => {
-      const key = lockKey(type, account.id);
-      const state = failures.get(key) || { attempts: 0 };
-      if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
-      state.attempts += 1;
-      state.lockedUntil = state.attempts >= 5 ? Date.now() + 10 * 60 * 1000 : null;
-      failures.set(key, state);
-      return { lockedUntil: state.lockedUntil };
-    },
-    clearPasswordLoginFailures: async (type, id) => {
-      const key = lockKey(type, id);
-      const state = failures.get(key);
-      if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
-      failures.delete(key);
-      return { lockedUntil: null };
-    },
+    buildPasswordLoginRateLimitResponse: (lockedUntil) => ({ code: 'IP_RATE_LIMITED', lockedUntil }),
+    getClientIpAddress: () => '127.0.0.1',
+    getPasswordLoginIpLockout: async (...args) => seekerLoginLockoutState.getPasswordLoginIpLockout(...args),
+    getPasswordLoginLockout: async (...args) => seekerLoginLockoutState.getPasswordLoginLockout(...args),
+    recordFailedPasswordLogin: async (...args) => seekerLoginLockoutState.recordFailedPasswordLogin(...args),
+    clearPasswordLoginFailures: async (...args) => seekerLoginLockoutState.clearPasswordLoginFailures(...args),
+    clearPasswordLoginIpFailures: async (...args) => seekerLoginLockoutState.clearPasswordLoginIpFailures(...args),
   },
 });
 const { login, register, resendOtp, verifyOtp } = await import('./seekerAuthController.js');
@@ -228,6 +243,69 @@ test('seeker login normalizes email and keeps invalid-account responses generic'
   );
   assert.equal(unknown.statusCode, 401);
   assert.equal(unknown.body.message, 'Invalid email or password');
+});
+
+test('seeker login blocks active IP lockouts and clears IP state on success', async (t) => {
+  t.after(() => {
+    Object.assign(seekerLoginLockoutState, originalSeekerLoginLockoutState);
+  });
+
+  const seeker = {
+    id: 'ip-lockout-seeker',
+    email: 'ip-lockout@example.com',
+    phone: '+919876543210',
+    password: await bcrypt.hash('CorrectPassword1!', 4),
+    onboardingStep: 'completed',
+    save: async () => {},
+  };
+  const lookupCalls = { count: 0 };
+  const clearCalls = [];
+
+  seekerLoginLockoutState.getPasswordLoginIpLockout = async () => ({ lockedUntil: Date.now() + 60_000 });
+  t.mock.method(Seeker, 'findOne', async ({ where }) => {
+    lookupCalls.count += 1;
+    return where.email === seeker.email ? seeker : null;
+  });
+
+  const lockedIp = response();
+  await login({ body: { email: seeker.email, password: 'CorrectPassword1!' } }, lockedIp);
+  assert.equal(lockedIp.statusCode, 429);
+  assert.equal(lockedIp.body.code, 'IP_RATE_LIMITED');
+  assert.equal(lookupCalls.count, 0);
+
+  seekerLoginLockoutState.getPasswordLoginIpLockout = async () => null;
+  const unknownAccountCalls = [];
+  seekerLoginLockoutState.recordFailedPasswordLogin = async (type, account, sourceIp) => {
+    unknownAccountCalls.push({ type, account, sourceIp });
+    return { lockedUntil: null, ipLockedUntil: null };
+  };
+  const unknown = response();
+  await login({ body: { email: 'missing-seeker@example.com', password: 'wrong' } }, unknown);
+  assert.equal(unknown.statusCode, 401);
+  assert.equal(unknown.body.message, 'Invalid email or password');
+  assert.equal(unknownAccountCalls.at(-1).account, null);
+  assert.equal(unknownAccountCalls.at(-1).sourceIp, '127.0.0.1');
+
+  seekerLoginLockoutState.recordFailedPasswordLogin = async (type, account, sourceIp) => ({
+    lockedUntil: null,
+    ipLockedUntil: Date.now() + 60_000,
+  });
+  const rateLimited = response();
+  await login({ body: { email: 'missing-seeker@example.com', password: 'wrong' } }, rateLimited);
+  assert.equal(rateLimited.statusCode, 429);
+  assert.equal(rateLimited.body.code, 'IP_RATE_LIMITED');
+
+  seekerLoginLockoutState.getPasswordLoginIpLockout = async () => null;
+  seekerLoginLockoutState.recordFailedPasswordLogin = async () => ({ lockedUntil: null, ipLockedUntil: null });
+  seekerLoginLockoutState.clearPasswordLoginIpFailures = async (ip) => {
+    clearCalls.push(ip);
+    return { lockedUntil: null };
+  };
+  const success = response();
+  await login({ body: { email: seeker.email, password: 'CorrectPassword1!' } }, success);
+  assert.equal(success.statusCode, 403);
+  assert.equal(success.body.requiresOtp, true);
+  assert.deepEqual(clearCalls, ['127.0.0.1']);
 });
 
 test('registration rejects numeric-only names before account lookup or OTP delivery', async (t) => {

@@ -25,7 +25,11 @@ import {
 } from '../../utils/otpPersistence.js';
 import {
   buildPasswordLoginLockedResponse,
+  buildPasswordLoginRateLimitResponse,
   clearPasswordLoginFailures,
+  clearPasswordLoginIpFailures,
+  getClientIpAddress,
+  getPasswordLoginIpLockout,
   getPasswordLoginLockout,
   recordFailedPasswordLogin,
 } from '../../utils/accountLoginLockout.js';
@@ -266,16 +270,26 @@ export const resendOtp = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  const sourceIp = getClientIpAddress(req);
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
 
   try {
+    const activeIpLockout = await getPasswordLoginIpLockout(sourceIp);
+    if (activeIpLockout) {
+      return res.status(429).json(buildPasswordLoginRateLimitResponse(activeIpLockout.lockedUntil));
+    }
+
     const seeker = await Seeker.findOne({
       where: { email: String(email).trim().toLowerCase() },
     });
     if (!seeker) {
+      const lockout = await recordFailedPasswordLogin('seeker', null, sourceIp);
+      if (lockout.ipLockedUntil) {
+        return res.status(429).json(buildPasswordLoginRateLimitResponse(lockout.ipLockedUntil));
+      }
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
@@ -290,7 +304,10 @@ export const login = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, seeker.password);
     if (!isMatch) {
-      const lockout = await recordFailedPasswordLogin('seeker', seeker);
+      const lockout = await recordFailedPasswordLogin('seeker', seeker, sourceIp);
+      if (lockout.ipLockedUntil) {
+        return res.status(429).json(buildPasswordLoginRateLimitResponse(lockout.ipLockedUntil));
+      }
       if (lockout.lockedUntil) {
         return res.status(429).json(buildPasswordLoginLockedResponse(lockout.lockedUntil));
       }
@@ -298,6 +315,7 @@ export const login = async (req, res) => {
     }
 
     const clearedLockout = await clearPasswordLoginFailures('seeker', seeker.id);
+    await clearPasswordLoginIpFailures(sourceIp);
     if (clearedLockout.lockedUntil) {
       return res.status(429).json(buildPasswordLoginLockedResponse(clearedLockout.lockedUntil));
     }

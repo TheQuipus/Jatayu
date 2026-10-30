@@ -7,6 +7,34 @@ const deliveries = [];
 let deliveryFails = false;
 const failures = new Map();
 const lockKey = (type, id) => `${type}:${id}`;
+const expertLoginLockoutState = {
+  getPasswordLoginIpLockout: async () => null,
+  getPasswordLoginLockout: async (type, id) => {
+    const state = failures.get(lockKey(type, id));
+    return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
+  },
+  recordFailedPasswordLogin: async (type, account, sourceIp = '127.0.0.1') => {
+    if (!account) {
+      return { lockedUntil: null, ipLockedUntil: null };
+    }
+    const key = lockKey(type, account.id);
+    const state = failures.get(key) || { attempts: 0 };
+    if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
+    state.attempts += 1;
+    state.lockedUntil = state.attempts >= 5 ? Date.now() + 10 * 60 * 1000 : null;
+    failures.set(key, state);
+    return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
+  },
+  clearPasswordLoginFailures: async (type, id) => {
+    const key = lockKey(type, id);
+    const state = failures.get(key);
+    if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
+    failures.delete(key);
+    return { lockedUntil: null };
+  },
+  clearPasswordLoginIpFailures: async () => ({ lockedUntil: null }),
+};
+const originalExpertLoginLockoutState = { ...expertLoginLockoutState };
 mock.module('../utils/otpDelivery.js', {
   namedExports: {
     deliverOtpChannels: async (payload) => {
@@ -20,26 +48,13 @@ mock.module('../utils/otpDelivery.js', {
 mock.module('../utils/accountLoginLockout.js', {
   namedExports: {
     buildPasswordLoginLockedResponse: (lockedUntil) => ({ code: 'ACCOUNT_LOCKED', lockedUntil }),
-    getPasswordLoginLockout: async (type, id) => {
-      const state = failures.get(lockKey(type, id));
-      return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
-    },
-    recordFailedPasswordLogin: async (type, account) => {
-      const key = lockKey(type, account.id);
-      const state = failures.get(key) || { attempts: 0 };
-      if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
-      state.attempts += 1;
-      state.lockedUntil = state.attempts >= 5 ? Date.now() + 10 * 60 * 1000 : null;
-      failures.set(key, state);
-      return { lockedUntil: state.lockedUntil };
-    },
-    clearPasswordLoginFailures: async (type, id) => {
-      const key = lockKey(type, id);
-      const state = failures.get(key);
-      if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
-      failures.delete(key);
-      return { lockedUntil: null };
-    },
+    buildPasswordLoginRateLimitResponse: (lockedUntil) => ({ code: 'IP_RATE_LIMITED', lockedUntil }),
+    getClientIpAddress: () => '127.0.0.1',
+    getPasswordLoginIpLockout: async (...args) => expertLoginLockoutState.getPasswordLoginIpLockout(...args),
+    getPasswordLoginLockout: async (...args) => expertLoginLockoutState.getPasswordLoginLockout(...args),
+    recordFailedPasswordLogin: async (...args) => expertLoginLockoutState.recordFailedPasswordLogin(...args),
+    clearPasswordLoginFailures: async (...args) => expertLoginLockoutState.clearPasswordLoginFailures(...args),
+    clearPasswordLoginIpFailures: async (...args) => expertLoginLockoutState.clearPasswordLoginIpFailures(...args),
   },
 });
 mock.module('../services/expertSessionService.js', { namedExports: { issueExpertToken: async () => 'test-expert-token' } });
@@ -172,6 +187,70 @@ test('expert login keeps unknown, incorrect-password, and social-only responses 
   );
   assert.equal(unknown.statusCode, 401);
   assert.equal(unknown.body.message, 'Invalid email or password');
+});
+
+test('expert login blocks active IP lockouts and clears IP state on success', async (t) => {
+  t.after(() => {
+    Object.assign(expertLoginLockoutState, originalExpertLoginLockoutState);
+  });
+
+  const expert = {
+    id: 'ip-lockout-expert',
+    email: 'ip-lockout@example.com',
+    password: await bcrypt.hash('CorrectPassword1!', 4),
+    onboardingStep: 'completed',
+    twoFactorEnabled: false,
+    role: 'expert',
+    status: 'draft',
+  };
+  const lookupCalls = { count: 0 };
+  const clearCalls = [];
+
+  expertLoginLockoutState.getPasswordLoginIpLockout = async () => ({ lockedUntil: Date.now() + 60_000 });
+  t.mock.method(Expert, 'findOne', async ({ where }) => {
+    lookupCalls.count += 1;
+    return where.email === expert.email ? expert : null;
+  });
+
+  const lockedIp = response();
+  await login({ body: { email: expert.email, password: 'CorrectPassword1!' } }, lockedIp);
+  assert.equal(lockedIp.statusCode, 429);
+  assert.equal(lockedIp.body.code, 'IP_RATE_LIMITED');
+  assert.equal(lookupCalls.count, 0);
+
+  expertLoginLockoutState.getPasswordLoginIpLockout = async () => null;
+  const unknownAccountCalls = [];
+  expertLoginLockoutState.recordFailedPasswordLogin = async (type, account, sourceIp) => {
+    unknownAccountCalls.push({ type, account, sourceIp });
+    return { lockedUntil: null, ipLockedUntil: null };
+  };
+  const unknown = response();
+  await login({ body: { email: 'missing-expert@example.com', password: 'wrong' } }, unknown);
+  assert.equal(unknown.statusCode, 401);
+  assert.equal(unknown.body.message, 'Invalid email or password');
+  assert.equal(unknownAccountCalls.at(-1).account, null);
+  assert.equal(unknownAccountCalls.at(-1).sourceIp, '127.0.0.1');
+
+  expertLoginLockoutState.recordFailedPasswordLogin = async (type, account, sourceIp) => ({
+    lockedUntil: null,
+    ipLockedUntil: Date.now() + 60_000,
+  });
+  const rateLimited = response();
+  await login({ body: { email: 'missing-expert@example.com', password: 'wrong' } }, rateLimited);
+  assert.equal(rateLimited.statusCode, 429);
+  assert.equal(rateLimited.body.code, 'IP_RATE_LIMITED');
+
+  expertLoginLockoutState.getPasswordLoginIpLockout = async () => null;
+  expertLoginLockoutState.recordFailedPasswordLogin = async () => ({ lockedUntil: null, ipLockedUntil: null });
+  expertLoginLockoutState.clearPasswordLoginIpFailures = async (ip) => {
+    clearCalls.push(ip);
+    return { lockedUntil: null };
+  };
+  const success = response();
+  await login({ body: { email: expert.email, password: 'CorrectPassword1!' } }, success);
+  assert.equal(success.statusCode, 200);
+  assert.ok(success.body.token);
+  assert.deepEqual(clearCalls, ['127.0.0.1']);
 });
 
 test('password login returns the persisted onboarding step for resume routing', async (t) => {
