@@ -43,8 +43,10 @@ export function getClientIpAddress(req) {
   return normalizeClientIpAddress(req?.ip || req?.socket?.remoteAddress || 'unknown');
 }
 
-function settingKey(accountType, accountId) {
-  return `${LOGIN_LOCKOUT_PREFIX}${accountType}:${accountId}`;
+function settingKey(accountType, accountId, sourceIp) {
+  const normalized = normalizeClientIpAddress(sourceIp);
+  if (!accountType || !accountId || !normalized || normalized === 'unknown') return null;
+  return `${LOGIN_LOCKOUT_PREFIX}${accountType}:${accountId}:${normalized}`;
 }
 
 function ipSettingKey(ipAddress) {
@@ -70,8 +72,9 @@ async function lockSettingRow(key, transaction) {
   return Setting.findByPk(key, { transaction, lock: transaction.LOCK.UPDATE });
 }
 
-export async function getPasswordLoginLockout(accountType, accountId) {
-  const key = settingKey(accountType, accountId);
+export async function getPasswordLoginLockout(accountType, accountId, sourceIp) {
+  const key = settingKey(accountType, accountId, sourceIp);
+  if (!key) return null;
   return Setting.sequelize.transaction(async (transaction) => {
     const row = await Setting.findByPk(key, { transaction, lock: transaction.LOCK.UPDATE });
     if (!row) return null;
@@ -107,8 +110,9 @@ export async function recordFailedPasswordLogin(accountType, account, sourceIp) 
   let lockedUntil = null;
   let shouldNotify = false;
 
-  if (account) {
-    const key = settingKey(accountType, account.id);
+  const clientIp = normalizeClientIpAddress(sourceIp);
+  if (account && clientIp && clientIp !== 'unknown') {
+    const key = settingKey(accountType, account.id, clientIp);
     const result = await Setting.sequelize.transaction(async (transaction) => {
       const row = await lockSettingRow(key, transaction);
       const state = parseState(row.value);
@@ -134,7 +138,6 @@ export async function recordFailedPasswordLogin(accountType, account, sourceIp) 
   }
 
   let ipLockedUntil = null;
-  const clientIp = normalizeClientIpAddress(sourceIp);
   if (clientIp && clientIp !== 'unknown') {
     const ipKey = ipSettingKey(clientIp);
     if (ipKey) {
@@ -170,8 +173,9 @@ export async function recordFailedPasswordLogin(accountType, account, sourceIp) 
   return { lockedUntil, ipLockedUntil };
 }
 
-export async function clearPasswordLoginFailures(accountType, accountId) {
-  const key = settingKey(accountType, accountId);
+export async function clearPasswordLoginFailures(accountType, accountId, sourceIp) {
+  const key = settingKey(accountType, accountId, sourceIp);
+  if (!key) return { lockedUntil: null };
   return Setting.sequelize.transaction(async (transaction) => {
     const row = await Setting.findByPk(key, { transaction, lock: transaction.LOCK.UPDATE });
     if (!row) return { lockedUntil: null };

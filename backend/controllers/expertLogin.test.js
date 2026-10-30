@@ -5,19 +5,20 @@ import { Expert } from '../models/index.js';
 
 const deliveries = [];
 let deliveryFails = false;
+let currentClientIp = '127.0.0.1';
 const failures = new Map();
-const lockKey = (type, id) => `${type}:${id}`;
+const lockKey = (type, id, sourceIp = '127.0.0.1') => `${type}:${id}:${sourceIp}`;
 const expertLoginLockoutState = {
   getPasswordLoginIpLockout: async () => null,
-  getPasswordLoginLockout: async (type, id) => {
-    const state = failures.get(lockKey(type, id));
+  getPasswordLoginLockout: async (type, id, sourceIp = '127.0.0.1') => {
+    const state = failures.get(lockKey(type, id, sourceIp));
     return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
   },
   recordFailedPasswordLogin: async (type, account, sourceIp = '127.0.0.1') => {
     if (!account) {
       return { lockedUntil: null, ipLockedUntil: null };
     }
-    const key = lockKey(type, account.id);
+    const key = lockKey(type, account.id, sourceIp);
     const state = failures.get(key) || { attempts: 0 };
     if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
     state.attempts += 1;
@@ -25,8 +26,8 @@ const expertLoginLockoutState = {
     failures.set(key, state);
     return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
   },
-  clearPasswordLoginFailures: async (type, id) => {
-    const key = lockKey(type, id);
+  clearPasswordLoginFailures: async (type, id, sourceIp = '127.0.0.1') => {
+    const key = lockKey(type, id, sourceIp);
     const state = failures.get(key);
     if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
     failures.delete(key);
@@ -49,7 +50,7 @@ mock.module('../utils/accountLoginLockout.js', {
   namedExports: {
     buildPasswordLoginLockedResponse: (lockedUntil) => ({ code: 'ACCOUNT_LOCKED', lockedUntil }),
     buildPasswordLoginRateLimitResponse: (lockedUntil) => ({ code: 'IP_RATE_LIMITED', lockedUntil }),
-    getClientIpAddress: () => '127.0.0.1',
+    getClientIpAddress: () => currentClientIp,
     getPasswordLoginIpLockout: async (...args) => expertLoginLockoutState.getPasswordLoginIpLockout(...args),
     getPasswordLoginLockout: async (...args) => expertLoginLockoutState.getPasswordLoginLockout(...args),
     recordFailedPasswordLogin: async (...args) => expertLoginLockoutState.recordFailedPasswordLogin(...args),
@@ -251,6 +252,62 @@ test('expert login blocks active IP lockouts and clears IP state on success', as
   assert.equal(success.statusCode, 200);
   assert.ok(success.body.token);
   assert.deepEqual(clearCalls, ['127.0.0.1']);
+});
+
+test('expert login uses the requesting IP when checking account lockout state across IPs', async (t) => {
+  const expert = {
+    id: 'cross-ip-expert',
+    email: 'cross-ip-expert@example.com',
+    password: await bcrypt.hash('CorrectPassword1!', 4),
+    onboardingStep: 'completed',
+    twoFactorEnabled: false,
+    role: 'expert',
+    status: 'draft',
+  };
+  const attackerIp = '203.0.113.10';
+  const legitimateIp = '198.51.100.20';
+  const attackerLockUntil = Date.now() + 60_000;
+  const lookupCalls = [];
+  const originalLookup = expertLoginLockoutState.getPasswordLoginLockout.bind(expertLoginLockoutState);
+  const originalClear = expertLoginLockoutState.clearPasswordLoginFailures.bind(expertLoginLockoutState);
+  const originalClearIp = expertLoginLockoutState.clearPasswordLoginIpFailures.bind(expertLoginLockoutState);
+
+  failures.set(lockKey('expert', expert.id, attackerIp), { attempts: 5, lockedUntil: attackerLockUntil });
+  currentClientIp = legitimateIp;
+
+  expertLoginLockoutState.getPasswordLoginLockout = async (...args) => {
+    lookupCalls.push(args);
+    return originalLookup(...args);
+  };
+  expertLoginLockoutState.clearPasswordLoginFailures = async (...args) => {
+    lookupCalls.push(['clear', ...args]);
+    return originalClear(...args);
+  };
+  expertLoginLockoutState.clearPasswordLoginIpFailures = async (...args) => {
+    lookupCalls.push(['clear-ip', ...args]);
+    return originalClearIp(...args);
+  };
+
+  t.after(() => {
+    currentClientIp = '127.0.0.1';
+    failures.clear();
+    expertLoginLockoutState.getPasswordLoginLockout = originalLookup;
+    expertLoginLockoutState.clearPasswordLoginFailures = originalClear;
+    expertLoginLockoutState.clearPasswordLoginIpFailures = originalClearIp;
+    Object.assign(expertLoginLockoutState, originalExpertLoginLockoutState);
+  });
+
+  t.mock.method(Expert, 'findOne', async ({ where }) => where.email === expert.email ? expert : null);
+
+  const res = response();
+  await login({ body: { email: expert.email, password: 'CorrectPassword1!' } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.ok(res.body.token);
+  assert.equal(lookupCalls.some(([type, id, sourceIp]) => type === 'expert' && id === expert.id && sourceIp === legitimateIp), true);
+  assert.equal(lookupCalls.some(([type, id, sourceIp]) => type === 'expert' && id === expert.id && sourceIp === attackerIp), false);
+  assert.equal(failures.get(lockKey('expert', expert.id, attackerIp))?.lockedUntil, attackerLockUntil);
+  assert.equal(failures.has(lockKey('expert', expert.id, legitimateIp)), false);
 });
 
 test('password login returns the persisted onboarding step for resume routing', async (t) => {
