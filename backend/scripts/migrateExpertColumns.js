@@ -39,6 +39,21 @@ async function migrate() {
     console.log(`Added column Experts.${columnName}.`);
   }
 
+  // Ensure index on (approvedAt, updatedAt) so sorting wide rows does not exceed MySQL's sort_buffer_size
+  const [indexRows] = await expertDb.query(
+    `SELECT COUNT(*) AS count
+     FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'Experts'
+       AND INDEX_NAME = 'idx_experts_approved_updated'`,
+  );
+  if (Number(indexRows[0]?.count ?? 0) === 0) {
+    await expertDb.query('CREATE INDEX `idx_experts_approved_updated` ON `Experts` (`approvedAt`, `updatedAt`)');
+    console.log('Created index idx_experts_approved_updated on Experts (approvedAt, updatedAt).');
+  } else {
+    console.log('Index idx_experts_approved_updated already exists — skipping.');
+  }
+
   console.log('Migration complete.');
   await expertDb.close();
 }

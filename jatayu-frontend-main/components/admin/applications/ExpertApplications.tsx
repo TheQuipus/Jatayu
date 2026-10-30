@@ -59,10 +59,14 @@ const SLA_FILTER_OPTIONS = [
 ] as const;
 
 const KPI_ICONS = {
+  total: Layers,
   all: Layers,
   pending: Clock,
   review: Search,
+  in_review: Search,
   hold: Hand,
+  on_hold: Hand,
+  overdue: AlertTriangle,
   approved: CheckCircle2,
   rejected: Ban,
 } as const;
@@ -93,9 +97,14 @@ const ONBOARDING_STEP_LABEL: Record<string, string> = {
   success: "Submitted",
 };
 
-const STATUS_FILTER_OPTIONS = (
-  Object.entries(STATUS_LABEL) as [ApplicationStatus, string][]
-).map(([value, label]) => ({ value, label }));
+const ORDERED_CARD_IDS = [
+  "total",
+  "pending",
+  "in_review",
+  "on_hold",
+  "overdue",
+  "rejected",
+] as const;
 
 function completenessColor(pct: number): string {
   if (pct >= 90) return "var(--green)";
@@ -201,20 +210,62 @@ export default function ExpertApplications() {
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>(DEFAULT_COLUMN_FILTERS);
+  const [activeCard, setActiveCard] = useState<string>("total");
   const [showAlert, setShowAlert] = useState(true);
   const { ready, applications, listItems, kpis, pagination } =
     useExpertApplications({ page, limit: 20, status: columnFilters.status });
   const slaAlert = useMemo(() => getSlaAlert(applications), [applications]);
-  const slaReviewHref = useMemo(() => {
-    if (slaAlert.oldestAppId) {
-      return getAdminReviewHref(slaAlert.oldestAppId);
+
+  const handleCardClick = (cardId: string) => {
+    setPage(1);
+
+    if (activeCard === cardId) {
+      if (cardId !== "total") {
+        setActiveCard("total");
+        setColumnFilters((prev) => ({ ...prev, status: "all", sla: "all" }));
+      }
+      return;
     }
-    const appId = getFirstReviewAppId(applications);
-    return appId ? getAdminReviewHref(appId) : "/admin/applications";
-  }, [slaAlert.oldestAppId, applications]);
+
+    setActiveCard(cardId);
+
+    if (cardId === "total") {
+      setColumnFilters((prev) => ({ ...prev, status: "all", sla: "all" }));
+    } else if (cardId === "pending") {
+      setColumnFilters((prev) => ({ ...prev, status: "pending", sla: "all" }));
+    } else if (cardId === "in_review") {
+      setColumnFilters((prev) => ({ ...prev, status: "in_review", sla: "all" }));
+    } else if (cardId === "on_hold") {
+      setColumnFilters((prev) => ({ ...prev, status: "on_hold", sla: "all" }));
+    } else if (cardId === "overdue") {
+      setColumnFilters((prev) => ({ ...prev, status: "all", sla: "breached" }));
+    } else if (cardId === "rejected") {
+      setColumnFilters((prev) => ({ ...prev, status: "rejected", sla: "all" }));
+    }
+  };
+
+  const handleReviewOverdue = () => {
+    handleCardClick("overdue");
+    const overdueCard = document.getElementById("kpi-card-overdue");
+    if (overdueCard) {
+      overdueCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      overdueCard.focus();
+    }
+  };
+
   const setColumnFilter = (key: keyof ColumnFilters, value: string) => {
     setPage(1);
-    setColumnFilters((prev) => ({ ...prev, [key]: value }));
+    setColumnFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "sla") {
+        if (value === "breached") {
+          setActiveCard("overdue");
+        } else if (activeCard === "overdue") {
+          setActiveCard("total");
+        }
+      }
+      return next;
+    });
   };
 
   const filterOptions = useMemo(() => {
@@ -266,17 +317,19 @@ export default function ExpertApplications() {
 
         <div className={styles.kpiRow} role="group" aria-label="Filter by status">
           {kpis
-            .filter((kpi) => ["pending", "in_review", "on_hold"].includes(kpi.id))
+            .filter((kpi) => ORDERED_CARD_IDS.includes(kpi.id as any))
+            .sort((a, b) => ORDERED_CARD_IDS.indexOf(a.id as any) - ORDERED_CARD_IDS.indexOf(b.id as any))
             .map((kpi) => {
-              const Icon = KPI_ICONS[kpi.variant];
-              const isActive = columnFilters.status === kpi.id;
+              const Icon = KPI_ICONS[kpi.variant as keyof typeof KPI_ICONS] || Layers;
+              const isActive = activeCard === kpi.id;
 
               return (
                 <button
                   key={kpi.id}
+                  id={`kpi-card-${kpi.id}`}
                   type="button"
                   className={`${problemStyles.scardMini} ${styles.kpiCard} ${isActive ? problemStyles.active : ""} ${isActive ? styles.kpiCardActive : ""}`}
-                  onClick={() => setColumnFilter("status", isActive ? "all" : kpi.id)}
+                  onClick={() => handleCardClick(kpi.id)}
                   aria-pressed={isActive}
                 >
                   <div className={styles.kpiHeader}>
@@ -318,9 +371,13 @@ export default function ExpertApplications() {
               </p>
             </div>
             <div className={styles.slaAlertActions}>
-              <Link href={slaReviewHref} className={styles.slaAlertBtn}>
+              <button
+                type="button"
+                className={styles.slaAlertBtn}
+                onClick={handleReviewOverdue}
+              >
                 Review Overdue
-              </Link>
+              </button>
               <button
                 type="button"
                 className={styles.dismissBtn}
@@ -396,15 +453,7 @@ export default function ExpertApplications() {
                       ariaLabel="Filter by SLA"
                     />
                   </th>
-                  <th>
-                    <TableHeaderFilter
-                      label="Status"
-                      value={columnFilters.status}
-                      onChange={(value) => setColumnFilter("status", value)}
-                      options={STATUS_FILTER_OPTIONS}
-                      ariaLabel="Filter by status"
-                    />
-                  </th>
+                  <th className={styles.colStatus}>Status</th>
                   <th>
                     <TableHeaderFilter
                       label="Reviewer"
