@@ -44,7 +44,7 @@ export const adminLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const activeLockout = await getPasswordLoginLockout('admin', admin.id);
+    const activeLockout = await getPasswordLoginLockout('admin', admin.id, sourceIp);
     if (activeLockout) {
       return res.status(429).json(buildPasswordLoginLockedResponse(activeLockout.lockedUntil));
     }
@@ -61,7 +61,7 @@ export const adminLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const clearedLockout = await clearPasswordLoginFailures('admin', admin.id);
+    const clearedLockout = await clearPasswordLoginFailures('admin', admin.id, sourceIp);
     await clearPasswordLoginIpFailures(sourceIp);
     if (clearedLockout.lockedUntil) {
       return res.status(429).json(buildPasswordLoginLockedResponse(clearedLockout.lockedUntil));

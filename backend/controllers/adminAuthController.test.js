@@ -6,18 +6,19 @@ import nodemailer from 'nodemailer';
 import { Admin, Setting } from '../models/index.js';
 
 const lockouts = new Map();
-const lockoutKey = (type, id) => `${type}:${id}`;
+const lockoutKey = (type, id, sourceIp = '127.0.0.1') => `${type}:${id}:${sourceIp}`;
+let currentClientIp = '127.0.0.1';
 const adminLoginLockoutState = {
   getPasswordLoginIpLockout: async () => null,
-  getPasswordLoginLockout: async (type, id) => {
-    const state = lockouts.get(lockoutKey(type, id));
+  getPasswordLoginLockout: async (type, id, sourceIp = '127.0.0.1') => {
+    const state = lockouts.get(lockoutKey(type, id, sourceIp));
     return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
   },
   recordFailedPasswordLogin: async (type, account, sourceIp = '127.0.0.1') => {
     if (!account) {
       return { lockedUntil: null, ipLockedUntil: null };
     }
-    const key = lockoutKey(type, account.id);
+    const key = lockoutKey(type, account.id, sourceIp);
     const state = lockouts.get(key) || { attempts: 0 };
     if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
     state.attempts += 1;
@@ -25,8 +26,8 @@ const adminLoginLockoutState = {
     lockouts.set(key, state);
     return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
   },
-  clearPasswordLoginFailures: async (type, id) => {
-    const key = lockoutKey(type, id);
+  clearPasswordLoginFailures: async (type, id, sourceIp = '127.0.0.1') => {
+    const key = lockoutKey(type, id, sourceIp);
     const state = lockouts.get(key);
     if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
     lockouts.delete(key);
@@ -39,7 +40,7 @@ mock.module('../utils/accountLoginLockout.js', {
   namedExports: {
     buildPasswordLoginLockedResponse: (lockedUntil) => ({ code: 'ACCOUNT_LOCKED', lockedUntil }),
     buildPasswordLoginRateLimitResponse: (lockedUntil) => ({ code: 'IP_RATE_LIMITED', lockedUntil }),
-    getClientIpAddress: () => '127.0.0.1',
+    getClientIpAddress: () => currentClientIp,
     getPasswordLoginIpLockout: async (...args) => adminLoginLockoutState.getPasswordLoginIpLockout(...args),
     getPasswordLoginLockout: async (...args) => adminLoginLockoutState.getPasswordLoginLockout(...args),
     recordFailedPasswordLogin: async (...args) => adminLoginLockoutState.recordFailedPasswordLogin(...args),
@@ -247,4 +248,61 @@ test('admin login blocks active IP lockouts and tracks unknown-account IP failur
   assert.ok(successRes.body.token);
   assert.equal(successRes.body.user.id, admin.id);
   assert.equal(recordCalls.some((entry) => entry.clearIp === '127.0.0.1'), true);
+});
+
+test('admin login uses the requesting IP when checking account lockout state across IPs', async (t) => {
+  const previous = process.env.ADMIN_LOGIN_OTP_ENABLED;
+  process.env.ADMIN_LOGIN_OTP_ENABLED = 'false';
+  const admin = {
+    id: 'cross-ip-admin',
+    email: 'cross-ip-admin@example.com',
+    password: await bcrypt.hash('CorrectPassword1!', 4),
+    role: 'admin',
+  };
+  const attackerIp = '203.0.113.10';
+  const legitimateIp = '198.51.100.20';
+  const attackerLockUntil = Date.now() + 60_000;
+  const lookupCalls = [];
+  const originalLookup = adminLoginLockoutState.getPasswordLoginLockout.bind(adminLoginLockoutState);
+  const originalClear = adminLoginLockoutState.clearPasswordLoginFailures.bind(adminLoginLockoutState);
+  const originalClearIp = adminLoginLockoutState.clearPasswordLoginIpFailures.bind(adminLoginLockoutState);
+
+  lockouts.set(lockoutKey('admin', admin.id, attackerIp), { attempts: 5, lockedUntil: attackerLockUntil });
+  currentClientIp = legitimateIp;
+
+  adminLoginLockoutState.getPasswordLoginLockout = async (...args) => {
+    lookupCalls.push(args);
+    return originalLookup(...args);
+  };
+  adminLoginLockoutState.clearPasswordLoginFailures = async (...args) => {
+    lookupCalls.push(['clear', ...args]);
+    return originalClear(...args);
+  };
+  adminLoginLockoutState.clearPasswordLoginIpFailures = async (...args) => {
+    lookupCalls.push(['clear-ip', ...args]);
+    return originalClearIp(...args);
+  };
+
+  t.after(() => {
+    if (previous === undefined) delete process.env.ADMIN_LOGIN_OTP_ENABLED;
+    else process.env.ADMIN_LOGIN_OTP_ENABLED = previous;
+    currentClientIp = '127.0.0.1';
+    lockouts.clear();
+    adminLoginLockoutState.getPasswordLoginLockout = originalLookup;
+    adminLoginLockoutState.clearPasswordLoginFailures = originalClear;
+    adminLoginLockoutState.clearPasswordLoginIpFailures = originalClearIp;
+    Object.assign(adminLoginLockoutState, originalAdminLoginLockoutState);
+  });
+
+  t.mock.method(Admin, 'findOne', async ({ where }) => where.email === admin.email ? admin : null);
+
+  const res = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  await adminLogin({ body: { email: admin.email, password: 'CorrectPassword1!' } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.user.id, admin.id);
+  assert.equal(lookupCalls.some(([type, id, sourceIp]) => type === 'admin' && id === admin.id && sourceIp === legitimateIp), true);
+  assert.equal(lookupCalls.some(([type, id, sourceIp]) => type === 'admin' && id === admin.id && sourceIp === attackerIp), false);
+  assert.equal(lockouts.get(lockoutKey('admin', admin.id, attackerIp))?.lockedUntil, attackerLockUntil);
+  assert.equal(lockouts.has(lockoutKey('admin', admin.id, legitimateIp)), false);
 });

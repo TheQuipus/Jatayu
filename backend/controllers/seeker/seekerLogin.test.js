@@ -5,19 +5,20 @@ import { Seeker } from '../../models/index.js';
 
 const deliveries = [];
 let deliveryFails = false;
+let currentClientIp = '127.0.0.1';
 const failures = new Map();
-const lockKey = (type, id) => `${type}:${id}`;
+const lockKey = (type, id, sourceIp = '127.0.0.1') => `${type}:${id}:${sourceIp}`;
 const seekerLoginLockoutState = {
   getPasswordLoginIpLockout: async () => null,
-  getPasswordLoginLockout: async (type, id) => {
-    const state = failures.get(lockKey(type, id));
+  getPasswordLoginLockout: async (type, id, sourceIp = '127.0.0.1') => {
+    const state = failures.get(lockKey(type, id, sourceIp));
     return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
   },
   recordFailedPasswordLogin: async (type, account, sourceIp = '127.0.0.1') => {
     if (!account) {
       return { lockedUntil: null, ipLockedUntil: null };
     }
-    const key = lockKey(type, account.id);
+    const key = lockKey(type, account.id, sourceIp);
     const state = failures.get(key) || { attempts: 0 };
     if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
     state.attempts += 1;
@@ -25,8 +26,8 @@ const seekerLoginLockoutState = {
     failures.set(key, state);
     return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
   },
-  clearPasswordLoginFailures: async (type, id) => {
-    const key = lockKey(type, id);
+  clearPasswordLoginFailures: async (type, id, sourceIp = '127.0.0.1') => {
+    const key = lockKey(type, id, sourceIp);
     const state = failures.get(key);
     if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
     failures.delete(key);
@@ -49,7 +50,7 @@ mock.module('../../utils/accountLoginLockout.js', {
   namedExports: {
     buildPasswordLoginLockedResponse: (lockedUntil) => ({ code: 'ACCOUNT_LOCKED', lockedUntil }),
     buildPasswordLoginRateLimitResponse: (lockedUntil) => ({ code: 'IP_RATE_LIMITED', lockedUntil }),
-    getClientIpAddress: () => '127.0.0.1',
+    getClientIpAddress: () => currentClientIp,
     getPasswordLoginIpLockout: async (...args) => seekerLoginLockoutState.getPasswordLoginIpLockout(...args),
     getPasswordLoginLockout: async (...args) => seekerLoginLockoutState.getPasswordLoginLockout(...args),
     recordFailedPasswordLogin: async (...args) => seekerLoginLockoutState.recordFailedPasswordLogin(...args),
@@ -306,6 +307,61 @@ test('seeker login blocks active IP lockouts and clears IP state on success', as
   assert.equal(success.statusCode, 403);
   assert.equal(success.body.requiresOtp, true);
   assert.deepEqual(clearCalls, ['127.0.0.1']);
+});
+
+test('seeker login uses the requesting IP when checking account lockout state across IPs', async (t) => {
+  const seeker = {
+    id: 'cross-ip-seeker',
+    email: 'cross-ip-seeker@example.com',
+    phone: '+919876543210',
+    password: await bcrypt.hash('CorrectPassword1!', 4),
+    onboardingStep: 'completed',
+    save: async () => {},
+  };
+  const attackerIp = '203.0.113.10';
+  const legitimateIp = '198.51.100.20';
+  const attackerLockUntil = Date.now() + 60_000;
+  const lookupCalls = [];
+  const originalLookup = seekerLoginLockoutState.getPasswordLoginLockout.bind(seekerLoginLockoutState);
+  const originalClear = seekerLoginLockoutState.clearPasswordLoginFailures.bind(seekerLoginLockoutState);
+  const originalClearIp = seekerLoginLockoutState.clearPasswordLoginIpFailures.bind(seekerLoginLockoutState);
+
+  failures.set(lockKey('seeker', seeker.id, attackerIp), { attempts: 5, lockedUntil: attackerLockUntil });
+  currentClientIp = legitimateIp;
+
+  seekerLoginLockoutState.getPasswordLoginLockout = async (...args) => {
+    lookupCalls.push(args);
+    return originalLookup(...args);
+  };
+  seekerLoginLockoutState.clearPasswordLoginFailures = async (...args) => {
+    lookupCalls.push(['clear', ...args]);
+    return originalClear(...args);
+  };
+  seekerLoginLockoutState.clearPasswordLoginIpFailures = async (...args) => {
+    lookupCalls.push(['clear-ip', ...args]);
+    return originalClearIp(...args);
+  };
+
+  t.after(() => {
+    currentClientIp = '127.0.0.1';
+    failures.clear();
+    seekerLoginLockoutState.getPasswordLoginLockout = originalLookup;
+    seekerLoginLockoutState.clearPasswordLoginFailures = originalClear;
+    seekerLoginLockoutState.clearPasswordLoginIpFailures = originalClearIp;
+    Object.assign(seekerLoginLockoutState, originalSeekerLoginLockoutState);
+  });
+
+  t.mock.method(Seeker, 'findOne', async ({ where }) => where.email === seeker.email ? seeker : null);
+
+  const res = response();
+  await login({ body: { email: seeker.email, password: 'CorrectPassword1!' } }, res);
+
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.requiresOtp, true);
+  assert.equal(lookupCalls.some(([type, id, sourceIp]) => type === 'seeker' && id === seeker.id && sourceIp === legitimateIp), true);
+  assert.equal(lookupCalls.some(([type, id, sourceIp]) => type === 'seeker' && id === seeker.id && sourceIp === attackerIp), false);
+  assert.equal(failures.get(lockKey('seeker', seeker.id, attackerIp))?.lockedUntil, attackerLockUntil);
+  assert.equal(failures.has(lockKey('seeker', seeker.id, legitimateIp)), false);
 });
 
 test('registration rejects numeric-only names before account lookup or OTP delivery', async (t) => {

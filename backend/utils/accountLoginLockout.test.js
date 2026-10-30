@@ -45,30 +45,31 @@ const {
   recordFailedPasswordLogin,
 } = await import('./accountLoginLockout.js');
 
-test('locks after five failures, emails once, and expires after ten minutes', async (t) => {
+test('locks after five failures from the same account+IP, emails once, and expires after ten minutes', async (t) => {
   rows.clear();
   deliveries.length = 0;
   deliveryAttempts = 0;
   let now = 1_000_000;
   t.mock.method(Date, 'now', () => now);
   const account = { id: 'expert-1', email: 'expert@example.com' };
+  const sourceIp = '203.0.113.10';
 
   for (let attempt = 1; attempt < LOGIN_LOCKOUT_THRESHOLD; attempt++) {
-    assert.equal((await recordFailedPasswordLogin('expert', account)).lockedUntil, null);
+    assert.equal((await recordFailedPasswordLogin('expert', account, sourceIp)).lockedUntil, null);
   }
-  const locked = await recordFailedPasswordLogin('expert', account);
+  const locked = await recordFailedPasswordLogin('expert', account, sourceIp);
   assert.equal(locked.lockedUntil, now + LOGIN_LOCKOUT_MINUTES * 60 * 1000);
   assert.equal(deliveries.length, 1);
   assert.equal(deliveries[0].recipientEmail, account.email);
-  assert.equal((await getPasswordLoginLockout('expert', account.id)).lockedUntil, locked.lockedUntil);
+  assert.equal((await getPasswordLoginLockout('expert', account.id, sourceIp)).lockedUntil, locked.lockedUntil);
 
-  await recordFailedPasswordLogin('expert', account);
+  await recordFailedPasswordLogin('expert', account, sourceIp);
   assert.equal(deliveries.length, 1);
 
   now = locked.lockedUntil;
-  assert.equal(await getPasswordLoginLockout('expert', account.id), null);
-  assert.equal(rows.has(`${LOGIN_LOCKOUT_PREFIX}expert:${account.id}`), false);
-  assert.equal((await recordFailedPasswordLogin('expert', account)).lockedUntil, null);
+  assert.equal(await getPasswordLoginLockout('expert', account.id, sourceIp), null);
+  assert.equal(rows.has(`${LOGIN_LOCKOUT_PREFIX}expert:${account.id}:${sourceIp}`), false);
+  assert.equal((await recordFailedPasswordLogin('expert', account, sourceIp)).lockedUntil, null);
 });
 
 test('prefers Express req.ip and ignores spoofed x-forwarded-for values', () => {
@@ -104,6 +105,36 @@ test('rates down repeated failures per IP address', async (t) => {
   assert.equal(locked.ipLockedUntil, now + LOGIN_IP_LOCKOUT_MINUTES * 60 * 1000);
   assert.equal((await getPasswordLoginIpLockout(ipAddress)).lockedUntil, locked.ipLockedUntil);
   assert.equal(rows.has(`_PASSWORD_LOGIN_IP_LOCKOUT:203.0.113.45`), true);
+});
+
+test('account lockout is scoped to account + IP and does not create a global account lock', async (t) => {
+  rows.clear();
+  deliveries.length = 0;
+  deliveryAttempts = 0;
+  let now = 6_000_000;
+  t.mock.method(Date, 'now', () => now);
+  const account = { id: 'per-ip-account', email: 'per-ip@example.com' };
+  const otherAccount = { id: 'other-account', email: 'other@example.com' };
+  const ipA = '203.0.113.111';
+  const ipB = '198.51.100.111';
+
+  for (let attempt = 1; attempt < LOGIN_LOCKOUT_THRESHOLD; attempt++) {
+    const result = await recordFailedPasswordLogin('expert', account, ipA);
+    assert.equal(result.lockedUntil, null);
+  }
+
+  const lock = await recordFailedPasswordLogin('expert', account, ipA);
+  assert.ok(lock.lockedUntil);
+  assert.equal((await getPasswordLoginLockout('expert', account.id, ipB)), null);
+  assert.equal((await getPasswordLoginLockout('expert', otherAccount.id, ipA)), null);
+  assert.equal((await getPasswordLoginLockout('expert', account.id, ipA)).lockedUntil, lock.lockedUntil);
+  assert.equal(rows.has(`${LOGIN_LOCKOUT_PREFIX}expert:${account.id}:${ipA}`), true);
+  assert.equal(rows.has(`${LOGIN_LOCKOUT_PREFIX}expert:${account.id}`), false);
+  assert.equal(deliveries.length, 1);
+
+  await recordFailedPasswordLogin('expert', account, ipB);
+  assert.equal(deliveries.length, 1);
+  assert.equal(await getPasswordLoginLockout('expert', account.id, ipB), null);
 });
 
 test('recordFailedPasswordLogin still rates down unknown accounts by IP without creating an account lock', async (t) => {
@@ -145,14 +176,15 @@ test('unknown IPs do not share a single global IP lockout bucket', async (t) => 
   assert.equal(rows.has('_PASSWORD_LOGIN_IP_LOCKOUT:unknown'), false);
 });
 
-test('clears consecutive failures after a successful password', async () => {
+test('clears consecutive failures after a successful password for the matching account+IP', async () => {
   rows.clear();
   deliveries.length = 0;
   deliveryAttempts = 0;
   const account = { id: 'seeker-1', email: 'seeker@example.com' };
-  await recordFailedPasswordLogin('seeker', account);
-  assert.deepEqual(await clearPasswordLoginFailures('seeker', account.id), { lockedUntil: null });
-  assert.equal(rows.has(`${LOGIN_LOCKOUT_PREFIX}seeker:${account.id}`), false);
+  const sourceIp = '203.0.113.12';
+  await recordFailedPasswordLogin('seeker', account, sourceIp);
+  assert.deepEqual(await clearPasswordLoginFailures('seeker', account.id, sourceIp), { lockedUntil: null });
+  assert.equal(rows.has(`${LOGIN_LOCKOUT_PREFIX}seeker:${account.id}:${sourceIp}`), false);
 });
 
 test('does not clear an active lock or fail open when email delivery fails', async (t) => {
@@ -164,20 +196,21 @@ test('does not clear an active lock or fail open when email delivery fails', asy
   let now = 2_000_000;
   t.mock.method(Date, 'now', () => now);
   const account = { id: 'admin-1', email: 'admin@example.com' };
+  const sourceIp = '203.0.113.13';
 
   for (let attempt = 0; attempt < LOGIN_LOCKOUT_THRESHOLD; attempt++) {
-    await recordFailedPasswordLogin('admin', account);
+    await recordFailedPasswordLogin('admin', account, sourceIp);
   }
-  const lock = await getPasswordLoginLockout('admin', account.id);
+  const lock = await getPasswordLoginLockout('admin', account.id, sourceIp);
   assert.ok(lock);
   assert.equal(deliveryAttempts, 1);
   for (let attempt = 0; attempt < 3; attempt++) {
-    assert.equal((await recordFailedPasswordLogin('admin', account)).lockedUntil, lock.lockedUntil);
+    assert.equal((await recordFailedPasswordLogin('admin', account, sourceIp)).lockedUntil, lock.lockedUntil);
   }
   assert.equal(deliveryAttempts, 1, 'blocked attempts must not retry lockout email delivery');
-  assert.deepEqual(await clearPasswordLoginFailures('admin', account.id), lock);
-  assert.deepEqual(await getPasswordLoginLockout('admin', account.id), lock);
+  assert.deepEqual(await clearPasswordLoginFailures('admin', account.id, sourceIp), lock);
+  assert.deepEqual(await getPasswordLoginLockout('admin', account.id, sourceIp), lock);
 
   now = lock.lockedUntil;
-  assert.equal(await getPasswordLoginLockout('admin', account.id), null);
+  assert.equal(await getPasswordLoginLockout('admin', account.id, sourceIp), null);
 });
