@@ -7,29 +7,44 @@ import { Admin, Setting } from '../models/index.js';
 
 const lockouts = new Map();
 const lockoutKey = (type, id) => `${type}:${id}`;
+const adminLoginLockoutState = {
+  getPasswordLoginIpLockout: async () => null,
+  getPasswordLoginLockout: async (type, id) => {
+    const state = lockouts.get(lockoutKey(type, id));
+    return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
+  },
+  recordFailedPasswordLogin: async (type, account, sourceIp = '127.0.0.1') => {
+    if (!account) {
+      return { lockedUntil: null, ipLockedUntil: null };
+    }
+    const key = lockoutKey(type, account.id);
+    const state = lockouts.get(key) || { attempts: 0 };
+    if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
+    state.attempts += 1;
+    state.lockedUntil = state.attempts >= 5 ? Date.now() + 10 * 60 * 1000 : null;
+    lockouts.set(key, state);
+    return { lockedUntil: state.lockedUntil, ipLockedUntil: null };
+  },
+  clearPasswordLoginFailures: async (type, id) => {
+    const key = lockoutKey(type, id);
+    const state = lockouts.get(key);
+    if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
+    lockouts.delete(key);
+    return { lockedUntil: null };
+  },
+  clearPasswordLoginIpFailures: async () => ({ lockedUntil: null }),
+};
+const originalAdminLoginLockoutState = { ...adminLoginLockoutState };
 mock.module('../utils/accountLoginLockout.js', {
   namedExports: {
     buildPasswordLoginLockedResponse: (lockedUntil) => ({ code: 'ACCOUNT_LOCKED', lockedUntil }),
-    getPasswordLoginLockout: async (type, id) => {
-      const state = lockouts.get(lockoutKey(type, id));
-      return state?.lockedUntil > Date.now() ? { lockedUntil: state.lockedUntil } : null;
-    },
-    recordFailedPasswordLogin: async (type, account) => {
-      const key = lockoutKey(type, account.id);
-      const state = lockouts.get(key) || { attempts: 0 };
-      if (state.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
-      state.attempts += 1;
-      state.lockedUntil = state.attempts >= 5 ? Date.now() + 10 * 60 * 1000 : null;
-      lockouts.set(key, state);
-      return { lockedUntil: state.lockedUntil };
-    },
-    clearPasswordLoginFailures: async (type, id) => {
-      const key = lockoutKey(type, id);
-      const state = lockouts.get(key);
-      if (state?.lockedUntil > Date.now()) return { lockedUntil: state.lockedUntil };
-      lockouts.delete(key);
-      return { lockedUntil: null };
-    },
+    buildPasswordLoginRateLimitResponse: (lockedUntil) => ({ code: 'IP_RATE_LIMITED', lockedUntil }),
+    getClientIpAddress: () => '127.0.0.1',
+    getPasswordLoginIpLockout: async (...args) => adminLoginLockoutState.getPasswordLoginIpLockout(...args),
+    getPasswordLoginLockout: async (...args) => adminLoginLockoutState.getPasswordLoginLockout(...args),
+    recordFailedPasswordLogin: async (...args) => adminLoginLockoutState.recordFailedPasswordLogin(...args),
+    clearPasswordLoginFailures: async (...args) => adminLoginLockoutState.clearPasswordLoginFailures(...args),
+    clearPasswordLoginIpFailures: async (...args) => adminLoginLockoutState.clearPasswordLoginIpFailures(...args),
   },
 });
 
@@ -167,4 +182,69 @@ test('admin login keeps unknown-account and incorrect-password responses generic
   );
   assert.equal(unknown.statusCode, 401);
   assert.equal(unknown.body.message, 'Invalid email or password');
+});
+
+test('admin login blocks active IP lockouts and tracks unknown-account IP failures', async (t) => {
+  const previous = process.env.ADMIN_LOGIN_OTP_ENABLED;
+  process.env.ADMIN_LOGIN_OTP_ENABLED = 'false';
+  t.after(() => {
+    if (previous === undefined) delete process.env.ADMIN_LOGIN_OTP_ENABLED;
+    else process.env.ADMIN_LOGIN_OTP_ENABLED = previous;
+    Object.assign(adminLoginLockoutState, originalAdminLoginLockoutState);
+  });
+
+  const admin = {
+    id: 'ip-admin',
+    email: 'ip-admin@example.com',
+    password: await bcrypt.hash('CorrectPassword1!', 4),
+    role: 'admin',
+  };
+  const lookupCalls = { count: 0 };
+  const recordCalls = [];
+
+  adminLoginLockoutState.getPasswordLoginIpLockout = async () => ({ lockedUntil: Date.now() + 60_000 });
+  t.mock.method(Admin, 'findOne', async ({ where }) => {
+    lookupCalls.count += 1;
+    return where.email === admin.email ? admin : null;
+  });
+
+  const lockedIpRes = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  await adminLogin({ body: { email: admin.email, password: 'CorrectPassword1!' } }, lockedIpRes);
+  assert.equal(lockedIpRes.statusCode, 429);
+  assert.equal(lockedIpRes.body.code, 'IP_RATE_LIMITED');
+  assert.equal(lookupCalls.count, 0);
+
+  adminLoginLockoutState.getPasswordLoginIpLockout = async () => null;
+  adminLoginLockoutState.recordFailedPasswordLogin = async (type, account, sourceIp) => {
+    recordCalls.push({ type, account, sourceIp });
+    return { lockedUntil: null, ipLockedUntil: null };
+  };
+  const unknownRes = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  await adminLogin({ body: { email: 'missing-admin@example.com', password: 'wrong' } }, unknownRes);
+  assert.equal(unknownRes.statusCode, 401);
+  assert.equal(unknownRes.body.message, 'Invalid email or password');
+  assert.equal(recordCalls.at(-1).account, null);
+  assert.equal(recordCalls.at(-1).sourceIp, '127.0.0.1');
+
+  adminLoginLockoutState.recordFailedPasswordLogin = async (type, account, sourceIp) => {
+    recordCalls.push({ type, account, sourceIp, ipLockedUntil: Date.now() + 60_000 });
+    return { lockedUntil: null, ipLockedUntil: Date.now() + 60_000 };
+  };
+  const rateLimitedRes = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  await adminLogin({ body: { email: 'missing-admin@example.com', password: 'wrong' } }, rateLimitedRes);
+  assert.equal(rateLimitedRes.statusCode, 429);
+  assert.equal(rateLimitedRes.body.code, 'IP_RATE_LIMITED');
+
+  adminLoginLockoutState.getPasswordLoginIpLockout = async () => null;
+  adminLoginLockoutState.recordFailedPasswordLogin = async (type, account, sourceIp) => ({ lockedUntil: null, ipLockedUntil: null });
+  adminLoginLockoutState.clearPasswordLoginIpFailures = async (ip) => {
+    recordCalls.push({ clearIp: ip });
+    return { lockedUntil: null };
+  };
+  const successRes = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  await adminLogin({ body: { email: admin.email, password: 'CorrectPassword1!' } }, successRes);
+  assert.equal(successRes.statusCode, 200);
+  assert.ok(successRes.body.token);
+  assert.equal(successRes.body.user.id, admin.id);
+  assert.equal(recordCalls.some((entry) => entry.clearIp === '127.0.0.1'), true);
 });
