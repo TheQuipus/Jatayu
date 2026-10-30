@@ -278,16 +278,19 @@
   }
 
   .statCards {
-    grid-column: 4 / 7;
+    grid-column: 2 / 5;
     margin-left: 0;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: repeat(2, auto);
+    gap: 24px;
     z-index: 6;
   }
 
   .scardMini {
     width: 100%;
     max-width: none;
+    aspect-ratio: 1 / 1;
+    min-height: auto;
     z-index: 10;
   }
 
