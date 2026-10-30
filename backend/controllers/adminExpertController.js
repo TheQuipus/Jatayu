@@ -214,24 +214,35 @@ export async function listAdminExperts(req, res) {
 
   const statsByExpert = new Map(aggregates.map((item) => [item.expertId, item]));
 
-  // Global counts for all managed experts
-  const allManagedExperts = await Expert.findAll({
+  // Grouped database count for all managed experts
+  const statusGroupCounts = await Expert.findAll({
+    attributes: [
+      'status',
+      [fn('COUNT', col('id')), 'count'],
+    ],
     where: { status: { [Op.in]: MANAGED_EXPERT_STATUSES } },
-    attributes: ['status'],
+    group: ['status'],
     raw: true,
   });
 
   const counts = {
-    all: allManagedExperts.length,
+    all: 0,
     active: 0,
     on_hold: 0,
     suspended: 0,
   };
 
-  allManagedExperts.forEach((item) => {
-    if (item.status === 'on_hold') counts.on_hold += 1;
-    else if (item.status === 'suspended') counts.suspended += 1;
-    else counts.active += 1;
+  statusGroupCounts.forEach((item) => {
+    const total = Number(item.count || 0);
+    counts.all += total;
+    if (item.status === 'on_hold') {
+      counts.on_hold += total;
+    } else if (item.status === 'suspended') {
+      counts.suspended += total;
+    } else {
+      // 'approved' and 'active' map to active managed experts
+      counts.active += total;
+    }
   });
 
   return res.json({

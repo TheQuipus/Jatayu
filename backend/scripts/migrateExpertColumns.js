@@ -7,6 +7,7 @@ const COLUMN_DEFINITIONS = [
   ['onboardingMetadata', 'JSON NULL'],
   ['applicationNumber', 'VARCHAR(255) NULL'],
   ['submittedAt', 'DATETIME NULL'],
+  ['approvedAt', 'DATETIME NULL'],
   ['reviewerNote', 'TEXT NULL'],
 ];
 
