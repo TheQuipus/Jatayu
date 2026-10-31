@@ -19,6 +19,7 @@ export default function CertificateDocxViewer({
   const contentRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const isLegacyDoc = /\.doc$/i.test(fileName);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -36,6 +37,7 @@ export default function CertificateDocxViewer({
   useEffect(() => {
     const container = contentRef.current;
     if (!container) return;
+    if (isLegacyDoc) return;
 
     let active = true;
     container.replaceChildren();
@@ -67,7 +69,7 @@ export default function CertificateDocxViewer({
       active = false;
       container.replaceChildren();
     };
-  }, [url]);
+  }, [fileName, isLegacyDoc, url]);
 
   return createPortal(
     <div
@@ -92,10 +94,18 @@ export default function CertificateDocxViewer({
           </button>
         </header>
         <div className={styles.certificateViewerContent}>
-          {loading && !error && (
+          {loading && !error && !isLegacyDoc && (
             <p className={styles.certificateViewerLoading}>Loading certificate preview…</p>
           )}
           {error && <p role="alert" className={styles.certificateViewerError}>{error}</p>}
+          {isLegacyDoc && (
+            <div>
+              <p className={styles.certificateViewerLoading}>
+                Preview is not available for legacy DOC files.
+              </p>
+              <a href={url} download={fileName}>Download certificate</a>
+            </div>
+          )}
           {!error && <div ref={contentRef} className={styles.certificateDocxContent} />}
         </div>
       </section>
