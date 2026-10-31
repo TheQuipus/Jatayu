@@ -24,6 +24,7 @@ import {
   EARNINGS_TOTAL,
   EXPERT_PROFILE,
   EXPERT_PROFILE_HREF,
+  EXPERT_PROFILE_EDIT_HREF,
   EXPERT_STATS,
   RECENT_SESSIONS,
   TOP_REVIEWS,
@@ -351,7 +352,7 @@ export default function ExpertDashboard() {
                 : <>Complete pending onboarding steps to reach <strong>Verification Ready</strong></>}
             </p>
             <PrimaryButton
-              href={EXPERT_PROFILE_HREF}
+              href={completion.percentage === 100 ? EXPERT_PROFILE_HREF : EXPERT_PROFILE_EDIT_HREF}
               label={completion.percentage === 100 ? "View Profile" : "Complete Profile"}
               variant="orange"
               fullWidth

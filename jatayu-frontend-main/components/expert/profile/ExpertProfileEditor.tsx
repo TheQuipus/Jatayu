@@ -78,8 +78,10 @@ import type {
   GovernmentIdData,
   PortfolioSampleFile,
 } from "@/lib/expertApplicationSubmission";
+import { normalizeKycPhotos, type ExpertKycPhotos } from "@/lib/expertKycPhotos";
 import type { TimeSlot } from "@/lib/expertAvailability";
 import { buildCredentialsPayload, parseCredentialsFromProfile } from "@/lib/expertAuth";
+import { EXPERT_PROFILE_EDIT_HREF } from "@/lib/expertDashboard";
 import { useLinkedinProfileSync } from "@/hooks/useLinkedinProfileSync";
 import styles from "./ExpertProfileEditor.module.css";
 import {
@@ -154,6 +156,7 @@ export default function ExpertProfileEditor() {
   const [acceptCustomRequests, setAcceptCustomRequests] = useState(false);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
   const [governmentId, setGovernmentId] = useState<GovernmentIdData | undefined>(undefined);
+  const [kycPhotos, setKycPhotos] = useState<ExpertKycPhotos>({});
   const [kycVideoUrl, setKycVideoUrl] = useState("");
   const [certificates, setCertificates] = useState<ExpertCertificate[]>([]);
   const [portfolioSamples, setPortfolioSamples] = useState<PortfolioSampleFile[]>([]);
@@ -211,7 +214,7 @@ export default function ExpertProfileEditor() {
   const { start: handleLinkedinSync, isLoading: isLinkedinSyncing } = useLinkedinProfileSync({
     onSuccess: handleLinkedinProfileFetched,
     onError: handleLinkedinError,
-    returnPath: "/expert/profile/",
+    returnPath: EXPERT_PROFILE_EDIT_HREF,
   });
 
   useEffect(() => {
@@ -277,6 +280,7 @@ export default function ExpertProfileEditor() {
         setGovernmentId(metadata.governmentId && typeof metadata.governmentId === "object"
           ? metadata.governmentId as GovernmentIdData
           : undefined);
+        setKycPhotos(normalizeKycPhotos(metadata.kycPhotos));
         setKycVideoUrl(typeof metadata.kycVideoUrl === "string" ? metadata.kycVideoUrl : "");
         setCertificates(Array.isArray(metadata.certificates)
           ? metadata.certificates as ExpertCertificate[]
@@ -640,6 +644,7 @@ export default function ExpertProfileEditor() {
           acceptCustomRequests,
           audiences: selectedAudiences,
           governmentId,
+          kycPhotos,
           kycVideoUrl,
           certificates,
           portfolioSamples,
@@ -1632,9 +1637,20 @@ export default function ExpertProfileEditor() {
             <p className={styles.kycDetailText}>
               <strong>Document:</strong> {String(kycStatus?.governmentId?.name || kycStatus?.governmentId?.type || governmentId?.type?.toUpperCase() || "No identity document available")}
             </p>
+            {typeof kycStatus?.governmentId?.uri === "string" && (
+              <p className={styles.kycDetailText}>
+                <a href={kycStatus.governmentId.uri} target="_blank" rel="noreferrer">Open DigiLocker identity document</a>
+              </p>
+            )}
             <p className={styles.kycDetailText}>
               <strong>Files:</strong> {[governmentId?.front?.name, governmentId?.back?.name].filter(Boolean).join(" & ") || "No manually uploaded files"}
             </p>
+            {[governmentId?.front, governmentId?.back].flatMap((document) => document ? [document] : []).map((document) => (
+              <p key={document.name} className={styles.kycDetailText}>
+                {document.name}{document.size ? ` (${document.size})` : ""}
+                {document.url && <> · <a href={document.url} target="_blank" rel="noreferrer">Open document</a></>}
+              </p>
+            ))}
             {!kycLoading && !kycError && <p className={styles.kycDetailText}>
               <strong>DigiLocker status:</strong> {String(kycStatus?.kyc?.status || "Not started").replaceAll("_", " ")}
               {kycStatus?.sandbox ? " (Sandbox)" : ""}
@@ -1642,8 +1658,32 @@ export default function ExpertProfileEditor() {
             {Array.isArray(kycStatus?.kyc?.issuedDocuments) && kycStatus.kyc.issuedDocuments.map((document, index) => (
               <p key={index} className={styles.kycDetailText}>
                 {String(document?.name || document?.description || document?.doctype || "Issued document")}
+                {typeof document?.uri === "string" && <> · <a href={document.uri} target="_blank" rel="noreferrer">Open document</a></>}
               </p>
             ))}
+            <div className={styles.kycPhotoList}>
+              {([
+                { pose: "left", photo: kycPhotos.left },
+                { pose: "centre", photo: kycPhotos.centre },
+                { pose: "right", photo: kycPhotos.right },
+              ] as const).flatMap((entry) => typeof entry.photo === "string"
+                ? [{ pose: entry.pose, photo: entry.photo }]
+                : [])
+                .map(({ pose, photo }) => (
+                  <figure className={styles.kycPhotoItem} key={pose}>
+                    <Image src={photo} alt={`KYC ${pose} photo`} width={160} height={120} unoptimized />
+                    <figcaption>{pose === "centre" ? "Center" : pose}</figcaption>
+                  </figure>
+                ))}
+            </div>
+            {!kycPhotos.left && !kycPhotos.centre && !kycPhotos.right && (
+              <p className={styles.kycDetailText}>No manual KYC photos saved.</p>
+            )}
+            {kycVideoUrl && (
+              <p className={styles.kycDetailText}>
+                <a href={kycVideoUrl} target="_blank" rel="noreferrer">Open KYC verification video</a>
+              </p>
+            )}
           </div>
 
           {/* Certificates */}
@@ -1657,6 +1697,7 @@ export default function ExpertProfileEditor() {
             {certificates.map((cert) => (
               <p key={cert.id} className={styles.kycDetailText}>
                 • <strong>{cert.name || cert.fileName}</strong> {cert.issuer ? `(${cert.issuer})` : ""}
+                {cert.url && <> · <a href={cert.url} download={cert.fileName} target="_blank" rel="noreferrer">View file</a></>}
               </p>
             ))}
             {certificates.length === 0 && <p className={styles.kycDetailText}>No certifications added.</p>}
@@ -1673,6 +1714,7 @@ export default function ExpertProfileEditor() {
             {portfolioSamples.map((ps) => (
               <p key={ps.id} className={styles.kycDetailText}>
                 • {ps.fileName} ({ps.fileSize})
+                {ps.url && <> · <a href={ps.url} download={ps.fileName} target="_blank" rel="noreferrer">View file</a></>}
               </p>
             ))}
             {portfolioSamples.length === 0 && <p className={styles.kycDetailText}>No work samples uploaded.</p>}

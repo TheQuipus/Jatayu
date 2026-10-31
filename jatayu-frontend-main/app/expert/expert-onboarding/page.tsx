@@ -926,10 +926,16 @@ handleBackFromOtp();
     photoFile?: File | null,
   ) => {
     setProfileError(null);
+    let profileSaved = true;
     try {
       await updateProfile(payload, photoFile);
     } catch (err) {
-      console.warn("Backend updateProfile unavailable or failed, continuing locally:", err);
+      profileSaved = false;
+      const message = err instanceof Error
+        ? err.message
+        : "Unable to save this onboarding step to your profile.";
+      setProfileError(message);
+      console.warn("Backend updateProfile failed:", err);
     }
     try {
       saveExpertApplicationDraft({
@@ -946,6 +952,7 @@ handleBackFromOtp();
     } catch {
       // Ignore local storage error
     }
+    return profileSaved;
   };
 
   const handleCategoryContinue = async () => {
@@ -1094,21 +1101,16 @@ handleBackFromOtp();
   };
 
   const handleCredentialsContinue = async () => {
-    try {
-      await saveProfileStep({
-        step: "preferences",
-        onboardingMetadata: {
-          governmentId,
-          kycVideoUrl,
-          kycPhotos,
-          certificates,
-        },
-      });
-    } catch (error) {
-      console.warn("Could not save credentials", error);
-    } finally {
-      setStep("preferences");
-    }
+    const profileSaved = await saveProfileStep({
+      step: "preferences",
+      onboardingMetadata: {
+        governmentId,
+        kycVideoUrl,
+        kycPhotos,
+        certificates,
+      },
+    });
+    if (profileSaved) setStep("preferences");
   };
 
   const handleBackToCredentials = () => {

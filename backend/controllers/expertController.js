@@ -68,7 +68,7 @@ function parseJsonField(value) {
   return value;
 }
 
-const MAX_ONBOARDING_METADATA_BYTES = 7 * 1024 * 1024;
+const MAX_ONBOARDING_METADATA_BYTES = 30 * 1024 * 1024;
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -100,7 +100,7 @@ function normalizeOnboardingMetadata(value) {
     throw new TypeError('onboardingMetadata must be a JSON object');
   }
   if (Buffer.byteLength(JSON.stringify(normalized), 'utf8') > MAX_ONBOARDING_METADATA_BYTES) {
-    throw new RangeError('onboardingMetadata must not exceed 7 MB');
+    throw new RangeError('onboardingMetadata must not exceed 30 MB');
   }
   return normalized;
 }

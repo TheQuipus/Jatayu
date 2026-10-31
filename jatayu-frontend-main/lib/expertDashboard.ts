@@ -78,6 +78,7 @@ export type QuickAction = {
 export const EXPERT_DASHBOARD_HREF = "/expert/dashboard/";
 export const EXPERT_ONBOARDING_HREF = "/expert/expert-onboarding/";
 export const EXPERT_PROFILE_HREF = "/expert/profile/";
+export const EXPERT_PROFILE_EDIT_HREF = `${EXPERT_PROFILE_HREF}?mode=edit`;
 
 import { DEFAULT_EXPERT_PROFILE } from "@/lib/expertProfile";
 
@@ -357,7 +358,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "profile",
     label: "Edit Profile",
-    href: EXPERT_PROFILE_HREF,
+    href: EXPERT_PROFILE_EDIT_HREF,
     icon: "pencil",
   },
   {
