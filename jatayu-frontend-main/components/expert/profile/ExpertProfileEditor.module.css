@@ -346,6 +346,27 @@
   color: var(--scorpion);
 }
 
+.removeCustomPrimarySkillBtn {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 5px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--pomegranate);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.skillSelectionError {
+  margin: 0;
+  color: #b42318;
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
 .fieldOptional {
   font-family: var(--font-body);
   font-size: 12px;

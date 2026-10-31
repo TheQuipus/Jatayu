@@ -11,6 +11,7 @@ export type SmartOption = {
 };
 
 type SmartSearchSelectProps = {
+  id?: string;
   value: string;
   options: SmartOption[];
   onChange: (newValue: string) => void;
@@ -18,9 +19,11 @@ type SmartSearchSelectProps = {
   "aria-label"?: string;
   disabled?: boolean;
   error?: string;
+  customValueTransform?: (label: string) => string;
 };
 
 export default function SmartSearchSelect({
+  id,
   value,
   options,
   onChange,
@@ -28,6 +31,7 @@ export default function SmartSearchSelect({
   "aria-label": ariaLabel,
   disabled = false,
   error,
+  customValueTransform,
 }: SmartSearchSelectProps) {
   const listboxId = useId();
   const [isOpen, setIsOpen] = useState(false);
@@ -103,7 +107,9 @@ export default function SmartSearchSelect({
   const handleAddCustom = (inputVal: string) => {
     const trimmed = inputVal.trim();
     if (!trimmed) return;
-    const newVal = trimmed.toLowerCase().replace(/\s+/g, "_");
+    const newVal = customValueTransform
+      ? customValueTransform(trimmed)
+      : trimmed.toLowerCase().replace(/\s+/g, "_");
     const newOpt = { value: newVal, label: trimmed };
 
     setCustomOptions((prev) => [...prev, newOpt]);
@@ -171,6 +177,7 @@ export default function SmartSearchSelect({
         <Search size={16} className={styles.smartSearchIconLeft} />
         <input
           ref={inputRef}
+          id={id}
           type="text"
           className={styles.smartInput}
           placeholder={placeholder}

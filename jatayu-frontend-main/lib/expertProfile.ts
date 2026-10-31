@@ -32,6 +32,23 @@ export const DEFAULT_EXPERT_PROFILE: ExpertProfileData = {
   location: "",
 };
 
+export function getSecondarySkills(primarySkill: string, skills: string[]): string[] {
+  const normalizedPrimarySkill = primarySkill.trim().toLowerCase();
+  const seen = new Set<string>();
+  return skills.filter((skill) => {
+    const normalizedSkill = skill.trim().toLowerCase();
+    if (
+      !normalizedSkill ||
+      normalizedSkill === normalizedPrimarySkill ||
+      seen.has(normalizedSkill)
+    ) {
+      return false;
+    }
+    seen.add(normalizedSkill);
+    return true;
+  });
+}
+
 export function isExpertProfileValid(profile: ExpertProfileData): boolean {
   return (
     profile.name.trim().length > 0 &&

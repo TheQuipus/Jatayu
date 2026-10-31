@@ -30,12 +30,24 @@ import {
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ShinyText from "@/components/ui/ShinyText";
+import SmartSearchSelect, { type SmartOption } from "@/components/admin/settings/SmartSearchSelect";
 import {
   EXPERIENCE_LABELS,
+  getSecondarySkills,
   isExpertProfileValid,
   type ExpertProfileData,
   type ExperienceLevel,
 } from "@/lib/expertProfile";
+import {
+  addExpertSecondarySkill,
+  cleanExpertCategorySkills,
+  EXPERT_SKILL_CATEGORIES,
+  MAX_EXPERT_SECONDARY_SKILLS,
+  removeExpertSecondarySkill,
+  selectExpertPrimarySkill,
+  skillsForExpertCategory,
+  toggleExpertSecondarySkill,
+} from "@/lib/expertSkillCatalog";
 import { saveExpertProfile } from "@/lib/expertStore";
 import {
   fetchExpertProfileRecord,
@@ -68,11 +80,11 @@ import type {
 } from "@/lib/expertApplicationSubmission";
 import type { TimeSlot } from "@/lib/expertAvailability";
 import { buildCredentialsPayload, parseCredentialsFromProfile } from "@/lib/expertAuth";
-import { skillsForExpertCategory } from "@/lib/expertSkillCatalog";
 import { useLinkedinProfileSync } from "@/hooks/useLinkedinProfileSync";
 import styles from "./ExpertProfileEditor.module.css";
 import {
   getDigilockerKycStatus,
+  recommendSkillsForCategory,
   suggestOnboardingIdentityCopy,
   updateProfile as updateExpertProfile,
   type DigilockerKycStatusResponse,
@@ -80,20 +92,7 @@ import {
 } from "@/lib/api";
 
 const MAX_CHARS = 160;
-const MAX_SKILLS = 8;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
-
-const CATEGORIES_LIST = [
-  "Software Engineering",
-  "Product Design",
-  "Business Strategy",
-  "Marketing & Growth",
-  "Finance & VC",
-  "Health & Wellness",
-  "Legal & Compliance",
-  "Product Management",
-  "Data Science",
-];
 
 const AUDIENCE_OPTIONS = [
   { id: "startup", label: "Startup Founders", desc: "Early-stage & venture-backed leaders" },
@@ -101,6 +100,26 @@ const AUDIENCE_OPTIONS = [
   { id: "career", label: "Career Transitioners", desc: "Professionals seeking pivots or growth" },
   { id: "smb", label: "Small Business Owners", desc: "Operators, founders & SME managers" },
 ];
+
+const SPOKEN_LANGUAGE_OPTIONS: SmartOption[] = [
+  "English",
+  "Hindi",
+  "Bengali",
+  "Marathi",
+  "Telugu",
+  "Tamil",
+  "Gujarati",
+  "Kannada",
+  "Malayalam",
+  "Odia",
+  "Punjabi",
+  "Arabic",
+  "French",
+  "German",
+  "Mandarin",
+  "Portuguese",
+  "Spanish",
+].map((language) => ({ value: language, label: language }));
 
 export default function ExpertProfileEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,6 +130,13 @@ export default function ExpertProfileEditor() {
   const [reviewStatus, setReviewStatus] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [skillInput, setSkillInput] = useState("");
+  const [primarySkillInput, setPrimarySkillInput] = useState("");
+  const [customPrimarySkill, setCustomPrimarySkill] = useState("");
+  const [customSkillRecommendations, setCustomSkillRecommendations] = useState<Record<string, string[]>>({});
+  const [isAddingCustomPrimarySkill, setIsAddingCustomPrimarySkill] = useState(false);
+  const [loadingSkillCategory, setLoadingSkillCategory] = useState("");
+  const [skillRecommendationError, setSkillRecommendationError] = useState("");
+  const [skillSelectionNotice, setSkillSelectionNotice] = useState("");
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -144,6 +170,19 @@ export default function ExpertProfileEditor() {
   const [linkedinError, setLinkedinError] = useState("");
   const [positionToDelete, setPositionToDelete] = useState<EmploymentPosition | null>(null);
   const [degreeToDelete, setDegreeToDelete] = useState<EducationDegree | null>(null);
+  const categoryRecommendationRequests = useRef(new Set<string>());
+  const spokenLanguageOptions = useMemo(() => {
+    const options = new Map(SPOKEN_LANGUAGE_OPTIONS.map((option) => [option.value.toLowerCase(), option]));
+    const selectedLanguages = new Set(profile.languages.map((language) => language.toLowerCase()));
+    profile.languages.forEach((language) => {
+      if (!options.has(language.toLowerCase())) {
+        options.set(language.toLowerCase(), { value: language, label: language });
+      }
+    });
+    return Array.from(options.values()).filter(
+      (option) => !selectedLanguages.has(option.value.toLowerCase()),
+    );
+  }, [profile.languages]);
 
   const handleLinkedinProfileFetched = useCallback((response: LinkedinConnectResponse) => {
     const record = response.expert;
@@ -187,7 +226,20 @@ export default function ExpertProfileEditor() {
   useEffect(() => {
     void fetchExpertProfileRecord()
       .then((record) => {
-        setProfile(mapBackendProfileToExpertData(record));
+        const mappedProfile = mapBackendProfileToExpertData(record);
+        setProfile({
+          ...mappedProfile,
+          skills: getSecondarySkills(mappedProfile.category, mappedProfile.skills),
+        });
+        if (
+          mappedProfile.category &&
+          !EXPERT_SKILL_CATEGORIES.some((category) =>
+            category.id === mappedProfile.category.trim().toLowerCase()
+            || category.label.toLowerCase() === mappedProfile.category.trim().toLowerCase(),
+          )
+        ) {
+          setCustomPrimarySkill(mappedProfile.category);
+        }
         setRegisteredEmail(getBackendExpertEmail(record));
         setAppId(record.applicationNumber || "");
         setReviewStatus(record.status || "draft");
@@ -240,10 +292,66 @@ export default function ExpertProfileEditor() {
 
   const isUploadedPhoto =
     profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:");
-  const suggestedSkills = useMemo(
-    () => skillsForExpertCategory(profile.category),
-    [profile.category],
+  const secondarySkills = getSecondarySkills(profile.category, profile.skills);
+  const matchedPrimaryCategory = EXPERT_SKILL_CATEGORIES.find((category) =>
+    category.id === profile.category.trim().toLowerCase()
+    || category.label.toLowerCase() === profile.category.trim().toLowerCase(),
   );
+  const primarySkill = matchedPrimaryCategory?.label || profile.category.trim();
+  const primaryCategoryIsCustom = Boolean(primarySkill)
+    && !matchedPrimaryCategory;
+  const categoryRecommendations = customSkillRecommendations[primarySkill.toLowerCase()] || [];
+  const isRecommendingPrimarySkill = isAddingCustomPrimarySkill
+    || loadingSkillCategory === primarySkill.toLowerCase();
+  const suggestedSkills = matchedPrimaryCategory
+    ? skillsForExpertCategory(matchedPrimaryCategory.id)
+    : categoryRecommendations;
+  const suggestedSecondarySkills = suggestedSkills.filter(
+    (skill) => skill.trim().toLowerCase() !== primarySkill.toLowerCase(),
+  );
+
+  useEffect(() => {
+    if (!primaryCategoryIsCustom) return;
+    const categoryKey = primarySkill.toLowerCase();
+    if (
+      Object.hasOwn(customSkillRecommendations, categoryKey)
+      || categoryRecommendationRequests.current.has(categoryKey)
+    ) return;
+
+    let active = true;
+    categoryRecommendationRequests.current.add(categoryKey);
+    setLoadingSkillCategory(categoryKey);
+    setSkillRecommendationError("");
+    void recommendSkillsForCategory(primarySkill)
+      .then((result) => {
+        const isValid = result.valid !== false
+          && (result.skills.length > 0 || result.valid === true);
+        if (!isValid) {
+          throw new Error(result.message || "No suggested skills were returned for this category.");
+        }
+        if (active) {
+          setCustomSkillRecommendations((current) => ({
+            ...current,
+            [categoryKey]: cleanExpertCategorySkills(primarySkill, result.skills),
+          }));
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setSkillRecommendationError(
+            error instanceof Error ? error.message : "Unable to load skills for this category.",
+          );
+        }
+      })
+      .finally(() => {
+        categoryRecommendationRequests.current.delete(categoryKey);
+        setLoadingSkillCategory((current) => current === categoryKey ? "" : current);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [customSkillRecommendations, primaryCategoryIsCustom, primarySkill]);
 
   useEffect(() => {
     return () => {
@@ -302,32 +410,112 @@ export default function ExpertProfileEditor() {
 
   const handleAddSkill = () => {
     const trimmed = skillInput.trim();
-    if (!trimmed || profile.skills.length >= MAX_SKILLS) return;
-    if (profile.skills.some((skill) => skill.toLowerCase() === trimmed.toLowerCase())) {
-      setSkillInput("");
-      return;
-    }
-    updateProfile("skills", [...profile.skills, trimmed]);
+    if (!trimmed || !primarySkill || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS) return;
+    const matchingSuggestion = suggestedSecondarySkills.find(
+      (skill) => skill.toLowerCase() === trimmed.toLowerCase(),
+    );
+    setProfile((current) => ({
+      ...current,
+      skills: addExpertSecondarySkill(
+        getSecondarySkills(current.category, current.skills),
+        matchingSuggestion || trimmed,
+      ),
+    }));
+    setSaved(false);
     setSkillInput("");
   };
 
   const handleRemoveSkill = (skill: string) => {
-    updateProfile(
-      "skills",
-      profile.skills.filter((item) => item !== skill),
-    );
+    setProfile((current) => ({
+      ...current,
+      skills: removeExpertSecondarySkill(
+        getSecondarySkills(current.category, current.skills),
+        skill,
+      ),
+    }));
+    setSaved(false);
   };
 
   const handleToggleSkill = (skill: string) => {
-    const selectedSkill = profile.skills.find(
-      (item) => item.toLowerCase() === skill.toLowerCase(),
+    setProfile((current) => ({
+      ...current,
+      skills: toggleExpertSecondarySkill(
+        getSecondarySkills(current.category, current.skills),
+        skill,
+      ),
+    }));
+    setSaved(false);
+  };
+
+  const handleSelectPrimarySkill = (category: string) => {
+    const selection = selectExpertPrimarySkill(profile.category, category, profile.skills);
+    if (profile.category !== selection.category) {
+      setSaved(false);
+      setSkillSelectionNotice(
+        profile.skills.length > 0
+          ? "Changing the Primary Skill cleared the selected Core Skills, following onboarding."
+          : "",
+      );
+      setProfile((current) => ({
+        ...current,
+        category: selection.category,
+        skills: selection.skills,
+      }));
+    }
+    setSkillRecommendationError("");
+  };
+
+  const handleAddCustomPrimarySkill = async () => {
+    const trimmed = primarySkillInput.trim();
+    if (!trimmed || isRecommendingPrimarySkill) return;
+
+    const matchingCategory = EXPERT_SKILL_CATEGORIES.find(
+      (category) => category.label.toLowerCase() === trimmed.toLowerCase(),
     );
-    if (selectedSkill) {
-      handleRemoveSkill(selectedSkill);
+    if (matchingCategory) {
+      handleSelectPrimarySkill(matchingCategory.label);
+      setPrimarySkillInput("");
       return;
     }
-    if (profile.skills.length < MAX_SKILLS) {
-      updateProfile("skills", [...profile.skills, skill]);
+
+    if (customPrimarySkill && customPrimarySkill.toLowerCase() !== trimmed.toLowerCase()) {
+      setSkillRecommendationError("Onboarding allows one custom Primary Skill. Select the saved custom skill or a listed category.");
+      return;
+    }
+
+    setIsAddingCustomPrimarySkill(true);
+    setSkillRecommendationError("");
+    const categoryKey = trimmed.toLowerCase();
+    try {
+      const result = await recommendSkillsForCategory(trimmed);
+      const isValid = result.valid !== false
+        && (result.skills.length > 0 || result.valid === true);
+      if (!isValid) {
+        setSkillRecommendationError(result.message || "Please enter a valid professional category name.");
+        return;
+      }
+      setCustomSkillRecommendations((current) => ({
+        ...current,
+        [categoryKey]: cleanExpertCategorySkills(trimmed, result.skills),
+      }));
+      setCustomPrimarySkill(trimmed);
+      handleSelectPrimarySkill(trimmed);
+      setPrimarySkillInput("");
+    } catch (error) {
+      setCustomSkillRecommendations((current) => ({
+        ...current,
+        [categoryKey]: [],
+      }));
+      setCustomPrimarySkill(trimmed);
+      handleSelectPrimarySkill(trimmed);
+      setPrimarySkillInput("");
+      setSkillRecommendationError(
+        error instanceof Error
+          ? `Category selected, but skill suggestions could not be loaded: ${error.message}`
+          : "Category selected, but skill suggestions could not be loaded.",
+      );
+    } finally {
+      setIsAddingCustomPrimarySkill(false);
     }
   };
 
@@ -651,28 +839,8 @@ export default function ExpertProfileEditor() {
           </div>
         </div>
 
-        {/* Category & Experience Level */}
+        {/* Experience Level */}
         <div className={styles.fieldRow}>
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-category" className={styles.fieldLabel}>
-              Primary Domain / Category
-            </label>
-            <select
-              id="profile-category"
-              value={profile.category}
-              onChange={(e) => updateProfile("category", e.target.value)}
-              className={styles.selectField}
-            >
-              <option value="">Select category</option>
-              {profile.category && !CATEGORIES_LIST.includes(profile.category) && <option value={profile.category}>{profile.category}</option>}
-              {CATEGORIES_LIST.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className={styles.fieldGroup}>
             <label htmlFor="profile-experience" className={styles.fieldLabel}>
               Experience Level
@@ -783,22 +951,40 @@ export default function ExpertProfileEditor() {
             <label htmlFor="profile-languages" className={styles.fieldLabel}>
               Languages Spoken
             </label>
-            <input
+            <SmartSearchSelect
               id="profile-languages"
-              type="text"
-              value={profile.languages.join(", ")}
-              onChange={(e) =>
-                updateProfile(
-                  "languages",
-                  e.target.value
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean),
-                )
-              }
-              className={styles.textField}
-              placeholder="English, Hindi, Marathi"
+              value=""
+              options={spokenLanguageOptions}
+              onChange={(language) => {
+                if (!profile.languages.some((item) => item.toLowerCase() === language.toLowerCase())) {
+                  updateProfile("languages", [...profile.languages, language]);
+                }
+              }}
+              customValueTransform={(language) => language}
+              placeholder="Select or search spoken languages..."
+              aria-label="Languages Spoken"
             />
+            {profile.languages.length > 0 ? (
+              <div className={styles.chipsGrid} aria-label="Selected spoken languages">
+                {profile.languages.map((language) => (
+                  <button
+                    key={language}
+                    type="button"
+                    className={styles.selectableChip}
+                    aria-label={`Remove ${language}`}
+                    onClick={() =>
+                      updateProfile(
+                        "languages",
+                        profile.languages.filter((item) => item !== language),
+                      )
+                    }
+                  >
+                    <span>{language}</span>
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -859,14 +1045,93 @@ export default function ExpertProfileEditor() {
         </div>
 
         <div className={styles.fieldGroup}>
+          <div className={styles.fieldLabel}>Primary Skill</div>
+          <p className={styles.skillsHint}>
+            Choose one primary area, as in onboarding. Changing it clears selected Core Skills.
+          </p>
+          <div className={styles.chipsGrid} aria-label="Primary skill categories">
+            {EXPERT_SKILL_CATEGORIES.map((category) => {
+              const isSelected = matchedPrimaryCategory?.id === category.id;
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
+                  onClick={() => handleSelectPrimarySkill(isSelected ? "" : category.label)}
+                  aria-pressed={isSelected}
+                >
+                  {isSelected && <Check size={13} />}
+                  {category.label}
+                </button>
+              );
+            })}
+            {customPrimarySkill && (
+              <button
+                type="button"
+                className={`${styles.selectableChip} ${primaryCategoryIsCustom ? styles.selectableChipActive : ""}`}
+                onClick={() => handleSelectPrimarySkill(primaryCategoryIsCustom ? "" : customPrimarySkill)}
+                aria-pressed={primaryCategoryIsCustom}
+              >
+                {primaryCategoryIsCustom && <Check size={13} />}
+                {customPrimarySkill}
+              </button>
+            )}
+          </div>
+          <div className={styles.skillInputRow}>
+            <input
+              type="text"
+              value={primarySkillInput}
+              onChange={(event) => {
+                setPrimarySkillInput(event.target.value);
+                setSkillRecommendationError("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleAddCustomPrimarySkill();
+                }
+              }}
+              className={styles.textField}
+              placeholder="Add custom Primary Skill"
+              aria-label="Add custom Primary Skill"
+              disabled={isRecommendingPrimarySkill || Boolean(customPrimarySkill)}
+            />
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={() => void handleAddCustomPrimarySkill()}
+              disabled={!primarySkillInput.trim() || isRecommendingPrimarySkill || Boolean(customPrimarySkill)}
+            >
+              {isRecommendingPrimarySkill ? "Checking..." : <><Plus size={14} /> Add</>}
+            </button>
+          </div>
+          {customPrimarySkill && (
+            <button
+              type="button"
+              className={styles.removeCustomPrimarySkillBtn}
+              onClick={() => {
+                if (primaryCategoryIsCustom) handleSelectPrimarySkill("");
+                setCustomPrimarySkill("");
+              }}
+            >
+              <X size={13} /> Remove custom Primary Skill
+            </button>
+          )}
+          {skillRecommendationError && (
+            <p className={styles.skillSelectionError} role="alert">{skillRecommendationError}</p>
+          )}
+          {skillSelectionNotice && (
+            <p className={styles.skillsHint} role="status">{skillSelectionNotice}</p>
+          )}
+
           <div className={styles.fieldLabel}>
-            Core Skills ({profile.skills.length}/{MAX_SKILLS})
+            Core Skills ({secondarySkills.length}/{MAX_EXPERT_SECONDARY_SKILLS})
           </div>
 
-          {suggestedSkills.length > 0 ? (
+          {suggestedSecondarySkills.length > 0 ? (
             <div className={styles.chipsGrid} aria-label="Available skills">
-              {suggestedSkills.map((skill) => {
-                const isSelected = profile.skills.some(
+              {suggestedSecondarySkills.map((skill) => {
+                const isSelected = secondarySkills.some(
                   (item) => item.toLowerCase() === skill.toLowerCase(),
                 );
                 return (
@@ -875,7 +1140,7 @@ export default function ExpertProfileEditor() {
                     type="button"
                     className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
                     onClick={() => handleToggleSkill(skill)}
-                    disabled={!isSelected && profile.skills.length >= MAX_SKILLS}
+                    disabled={!isSelected && secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS}
                     aria-pressed={isSelected}
                   >
                     {isSelected && <Check size={13} />}
@@ -886,9 +1151,11 @@ export default function ExpertProfileEditor() {
             </div>
           ) : (
             <p className={styles.skillsHint}>
-              {profile.category
-                ? "No predefined skills are available for this category. Add your own below."
-                : "Choose a category above to see relevant skills."}
+              {isRecommendingPrimarySkill
+                ? "Loading suggested skills for this Primary Skill..."
+                : primarySkill
+                  ? "No predefined skills are available for this category. Add your own below."
+                  : "Choose a Primary Skill above to see relevant skills."}
             </p>
           )}
           <label htmlFor="profile-skills" className={styles.fieldLabel}>
@@ -906,22 +1173,29 @@ export default function ExpertProfileEditor() {
                   handleAddSkill();
                 }
               }}
+              onBlur={() => {
+                if (skillInput.trim()) handleAddSkill();
+              }}
               className={styles.textField}
               placeholder="Type a skill and press Enter"
-              disabled={profile.skills.length >= MAX_SKILLS}
+              disabled={!primarySkill || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS}
             />
             <button
               type="button"
               className={styles.addBtn}
               onClick={handleAddSkill}
-              disabled={!skillInput.trim() || profile.skills.length >= MAX_SKILLS}
+              disabled={
+                !skillInput.trim()
+                || !primarySkill
+                || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS
+              }
             >
               <Plus size={14} /> Add
             </button>
           </div>
 
           <ul className={styles.skillList}>
-            {profile.skills.map((skill) => (
+            {secondarySkills.map((skill) => (
               <li key={skill} className={styles.skillPill}>
                 <span>{skill}</span>
                 <button
