@@ -531,7 +531,7 @@ export default function CategoryStep({
           </h1>
 
           <p className={shared.questionSubtitle}>
-            Select the area where you&apos;re looking for expert guidance.
+            Select 1 primary domain to continue.
           </p>
 
           <CategoryFields
@@ -580,7 +580,7 @@ export default function CategoryStep({
         </h1>
 
         <p className={shared.questionSubtitle}>
-          Select the area where you&apos;re looking for expert guidance.
+          Select 1 primary domain to continue.
         </p>
 
         <CategoryFields
@@ -616,8 +616,8 @@ export default function CategoryStep({
               </>
             ) : (
               <>
-                <strong>Select a domain</strong>
-                <small>This narrows down the ideal pool of matches.</small>
+                <strong>Choose one domain</strong>
+                <small>Choose one domain to narrow your expert matches.</small>
               </>
             )}
           </div>

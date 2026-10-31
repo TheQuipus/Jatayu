@@ -124,6 +124,7 @@ export default function NeedsStep({
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiOptionsMap, setAiOptionsMap] = useState<Record<string, string> | null>(null);
   const [sourceTextForImprovement, setSourceTextForImprovement] = useState<string>("");
+  const aiRequestIdRef = useRef(0);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const textareaMirrorRef = useRef<HTMLDivElement | null>(null);
@@ -152,6 +153,7 @@ export default function NeedsStep({
   const canUseAiAssist = userTypedSuffix.trim().length > 0;
 
   const handleAiAssist = async () => {
+    const requestId = ++aiRequestIdRef.current;
     setShowImprovementPanel(true);
     setSelectedImproveStyle("professional");
     setIsImprovementApplied(false);
@@ -174,6 +176,10 @@ export default function NeedsStep({
         true
       );
 
+      if (requestId !== aiRequestIdRef.current) {
+        return;
+      }
+
       const opts = data.options || data.suggestions;
       if (opts) {
         setAiOptionsMap(opts);
@@ -182,13 +188,22 @@ export default function NeedsStep({
         onChangeSubject(data.subject);
       }
     } catch (err) {
+      if (requestId !== aiRequestIdRef.current) {
+        return;
+      }
       console.error("AI improvement request failed, using local fallback:", err);
     } finally {
-      setIsAiLoading(false);
+      if (requestId === aiRequestIdRef.current) {
+        setIsAiLoading(false);
+      }
     }
   };
 
   const handleNeedChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
+    aiRequestIdRef.current += 1;
+    setIsAiLoading(false);
+    setAiOptionsMap(null);
+    setSourceTextForImprovement("");
     setIsImprovementApplied(false);
 
     const isSelected = selectedNeedChips.includes(chip.id);
@@ -227,7 +242,13 @@ export default function NeedsStep({
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    aiRequestIdRef.current += 1;
+    setIsAiLoading(false);
     setIsImprovementApplied(false);
+    setSelectedImproveStyle(null);
+    setShowImprovementPanel(false);
+    setAiOptionsMap(null);
+    setSourceTextForImprovement("");
 
     const val = e.target.value;
     const lockedPrefix = getLockedPrefix();

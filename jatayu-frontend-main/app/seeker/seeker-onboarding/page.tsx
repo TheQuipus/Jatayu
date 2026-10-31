@@ -436,6 +436,9 @@ function SeekerOnboardingPageContent() {
     setStepSaveError(null);
     try {
       await updateSeekerOnboarding(payload);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
       setStep(nextStep);
     } catch (error) {
       setStepSaveError(

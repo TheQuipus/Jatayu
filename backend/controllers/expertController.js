@@ -257,7 +257,7 @@ export const updateProfile = async (req, res) => {
           title: cred.title,
           institution: cred.institution,
           startYear: cred.startYear,
-          endYear: cred.endYear || null,
+          endYear: cred.endYear ?? null,
           description: cred.description || null
         }));
         if (credentialsToCreate.length > 0) {

@@ -368,8 +368,8 @@ export interface UpdateProfilePayload {
     type: string;
     title: string;
     institution: string;
-    startYear: number;
-    endYear?: number | null;
+    startYear: number | string;
+    endYear?: number | string | null;
     description?: string | null;
   }>;
   selectedFormats?: string[];

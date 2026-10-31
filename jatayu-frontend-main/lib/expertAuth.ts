@@ -220,12 +220,12 @@ export function buildCredentialsPayload(
     .filter((position) => position.jobTitle.trim() || position.company.trim())
     .map((position) => ({
       type: "employment",
-      title: position.jobTitle.trim() || "Role",
-      institution: position.company.trim() || "Company",
-      startYear: Number.parseInt(position.startYear, 10) || new Date().getFullYear(),
+      title: position.jobTitle.trim(),
+      institution: position.company.trim(),
+      startYear: position.startYear.trim(),
       endYear: position.currentlyWorking
         ? null
-        : Number.parseInt(position.endYear, 10) || null,
+        : position.endYear.trim(),
       description: position.responsibilities.trim() || null,
     }));
 
@@ -282,7 +282,7 @@ export function parseCredentialsFromProfile(credentials?: unknown): {
         startYear: item.startYear ? String(item.startYear) : "",
         endMonth: "",
         endYear: item.endYear ? String(item.endYear) : "",
-        currentlyWorking: !item.endYear,
+        currentlyWorking: item.endYear === null || item.endYear === undefined,
         responsibilities: item.description || "",
       });
     } else if (type === "education" || type === "degree" || type === "academic") {
