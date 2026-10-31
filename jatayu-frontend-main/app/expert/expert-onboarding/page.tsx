@@ -12,6 +12,7 @@ import {
   Scale,
   Briefcase,
   Database,
+  type LucideIcon,
 } from "lucide-react";
 import styles from "./page.module.css";
 import RegisterStep from "@/components/expert/onboarding/RegisterStep";
@@ -101,19 +102,38 @@ import {
   getExpertOnboardingStepCompletion,
 } from "@/lib/expertOnboardingNavigation";
 import type { TimeSlot } from "@/lib/expertAvailability";
-import { EXPERT_SKILLS_BY_CATEGORY as skillsByCategory } from "@/lib/expertSkillCatalog";
+import {
+  addExpertSecondarySkill,
+  cleanExpertCategorySkills,
+  EXPERT_SKILL_CATEGORIES,
+  EXPERT_SKILLS_BY_CATEGORY as skillsByCategory,
+  removeExpertSecondarySkill,
+  selectExpertPrimarySkill,
+  toggleExpertSecondarySkill,
+} from "@/lib/expertSkillCatalog";
 
-const categories = [
-  { id: "software", label: "Software Engineering", icon: Code },
-  { id: "design", label: "Product Design", icon: Palette },
-  { id: "business", label: "Business Strategy", icon: LineChart },
-  { id: "marketing", label: "Marketing & Growth", icon: Megaphone },
-  { id: "finance", label: "Finance & VC", icon: Coins },
-  { id: "health", label: "Health & Wellness", icon: Heart },
-  { id: "legal", label: "Legal & Compliance", icon: Scale },
-  { id: "product", label: "Product Management", icon: Briefcase },
-  { id: "data", label: "Data Science", icon: Database },
-];
+const categoryIcons = {
+  software: Code,
+  design: Palette,
+  business: LineChart,
+  marketing: Megaphone,
+  finance: Coins,
+  health: Heart,
+  legal: Scale,
+  product: Briefcase,
+  data: Database,
+};
+
+type CategoryOption = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+const categories: CategoryOption[] = EXPERT_SKILL_CATEGORIES.map((category) => ({
+  ...category,
+  icon: categoryIcons[category.id],
+}));
 
 type OnboardingStep = ExpertOnboardingStep;
 
@@ -952,17 +972,6 @@ handleBackFromOtp();
       (cat) => cat.id === id || cat.label.toLowerCase() === trimmed.toLowerCase(),
     );
 
-    const cleanSkillsList = (skills?: string[]) => {
-      if (!skills || !Array.isArray(skills)) return [];
-      const catLower = trimmed.toLowerCase();
-      const prefixPattern = new RegExp(`^${catLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s:\\-_]+`, "i");
-      return skills.map((s) => {
-        let cleaned = s.replace(prefixPattern, "").trim();
-        if (cleaned) cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-        return cleaned || s;
-      });
-    };
-
     if (exists) {
       const existing = [...categories, ...customCategories].find(
         (cat) => cat.id === id || cat.label.toLowerCase() === trimmed.toLowerCase(),
@@ -970,7 +979,7 @@ handleBackFromOtp();
       if (existing) {
         setSelectedCategory(existing.id);
         if (aiSkills && aiSkills.length > 0) {
-          skillsByCategory[existing.id] = cleanSkillsList(aiSkills);
+          skillsByCategory[existing.id] = cleanExpertCategorySkills(trimmed, aiSkills);
         }
         setSelectedSkills([]);
         clearStepPassed(2);
@@ -979,7 +988,7 @@ handleBackFromOtp();
     }
 
     if (aiSkills && aiSkills.length > 0) {
-      skillsByCategory[id] = cleanSkillsList(aiSkills);
+      skillsByCategory[id] = cleanExpertCategorySkills(trimmed, aiSkills);
     }
 
     setCustomCategories((prev) => [...prev, { id, label: trimmed, icon: Briefcase }]);
@@ -989,9 +998,10 @@ handleBackFromOtp();
   };
 
   const handleSelectCategory = (id: string) => {
-    if (selectedCategory !== id) {
-      setSelectedCategory(id);
-      setSelectedSkills([]);
+    const selection = selectExpertPrimarySkill(selectedCategory, id, selectedSkills);
+    if (selectedCategory !== selection.category) {
+      setSelectedCategory(selection.category);
+      setSelectedSkills(selection.skills);
       clearStepPassed(2);
     }
   };
@@ -1230,13 +1240,7 @@ handleBackFromOtp();
 
   // Toggle skill selection
   const handleToggleSkill = (skill: string) => {
-    if (selectedSkills.includes(skill)) {
-      setSelectedSkills(selectedSkills.filter((s) => s !== skill));
-    } else {
-      if (selectedSkills.length < 5) {
-        setSelectedSkills([...selectedSkills, skill]);
-      }
-    }
+    setSelectedSkills((current) => toggleExpertSecondarySkill(current, skill));
   };
 
   // Add custom skill
@@ -1251,12 +1255,7 @@ handleBackFromOtp();
     );
 
     if (existingSkill) {
-      if (
-        !selectedSkills.some((s) => s.toLowerCase() === existingSkill.toLowerCase()) &&
-        selectedSkills.length < 5
-      ) {
-        setSelectedSkills([...selectedSkills, existingSkill]);
-      }
+      setSelectedSkills((current) => addExpertSecondarySkill(current, existingSkill));
       return;
     }
 
@@ -1265,9 +1264,7 @@ handleBackFromOtp();
       [selectedCategory]: [...categoryCustomList, trimmed],
     });
 
-    if (!selectedSkills.includes(trimmed) && selectedSkills.length < 5) {
-      setSelectedSkills([...selectedSkills, trimmed]);
-    }
+    setSelectedSkills((current) => addExpertSecondarySkill(current, trimmed));
   };
 
   const handleRemoveCustomSkill = (skill: string) => {
@@ -1278,9 +1275,7 @@ handleBackFromOtp();
         (s) => s.toLowerCase() !== skill.toLowerCase(),
       ),
     });
-    setSelectedSkills(
-      selectedSkills.filter((s) => s.toLowerCase() !== skill.toLowerCase()),
-    );
+    setSelectedSkills((current) => removeExpertSecondarySkill(current, skill));
   };
 
   // Retrieve current category options

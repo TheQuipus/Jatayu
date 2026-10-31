@@ -184,6 +184,42 @@ export function isEmploymentPositionValid(position: EmploymentPosition): boolean
   );
 }
 
+export function hasValidSavedEmploymentPosition(credentials: unknown[]): boolean {
+  const currentYear = new Date().getFullYear();
+  const isValidYear = (value: unknown) => {
+    if (typeof value !== "string" && typeof value !== "number") return false;
+    const raw = String(value).trim();
+    if (!/^\d{4}$/.test(raw)) return false;
+    const year = Number(raw);
+    return year >= 1900 && year <= currentYear;
+  };
+
+  return credentials.some((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const credential = item as Record<string, unknown>;
+    const type = typeof credential.type === "string" ? credential.type.toLowerCase() : "";
+    if (!["employment", "experience", "work", "job"].includes(type)) return false;
+
+    const title = typeof credential.title === "string" ? credential.title.trim() : "";
+    const institution = typeof credential.institution === "string"
+      ? credential.institution.trim()
+      : "";
+    if (
+      !title ||
+      !institution ||
+      title.toLowerCase() === "role" ||
+      institution.toLowerCase() === "company" ||
+      !isValidYear(credential.startYear)
+    ) {
+      return false;
+    }
+
+    const endYear = credential.endYear;
+    if (endYear === null || endYear === undefined) return true;
+    return isValidYear(endYear) && Number(endYear) >= Number(credential.startYear);
+  });
+}
+
 export function deriveExperienceLevel(positions: EmploymentPosition[]): ExperienceLevel {
   const now = new Date();
   let totalMonths = 0;
