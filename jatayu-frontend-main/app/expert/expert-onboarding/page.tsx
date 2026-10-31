@@ -14,6 +14,10 @@ import {
   Database,
   type LucideIcon,
 } from "lucide-react";
+import {
+  buildAudiencePersistencePayload,
+  getPreferredExpertSelectionValues,
+} from "@/lib/expertAudience";
 import styles from "./page.module.css";
 import RegisterStep from "@/components/expert/onboarding/RegisterStep";
 import LoginStep from "@/components/expert/onboarding/LoginStep";
@@ -160,23 +164,6 @@ type ExpertOnboardingProfile = AuthUser & {
     toTime?: string;
   }>;
 };
-
-function asStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string");
-  }
-  if (typeof value === "string" && value.trim()) {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      if (Array.isArray(parsed)) {
-        return parsed.filter((item): item is string => typeof item === "string");
-      }
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
 
 function asOnboardingProfile(profile: Record<string, unknown>): ExpertOnboardingProfile {
   return profile as unknown as ExpertOnboardingProfile;
@@ -341,8 +328,11 @@ function ExpertOnboardingPageContent() {
     if (user.formatPrices) setFormatPrices(user.formatPrices);
     if (user.timezone) setTimezone(user.timezone);
 
-    const audiences = asStringArray(user.targetAudience);
-    if (audiences.length > 0) setSelectedAudiences(audiences);
+    const audiences = getPreferredExpertSelectionValues(
+      user.targetAudience,
+      user.onboardingMetadata?.audiences,
+    );
+    setSelectedAudiences(audiences);
 
     const savedEmploymentPositions = parseEmploymentPositions(
       user.onboardingMetadata?.employmentPositions,
@@ -372,14 +362,8 @@ function ExpertOnboardingPageContent() {
     setProfileLocation(getExpertProfileLocation(metadata));
     if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
     if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
-    const languages = asStringArray(metadata.languages).length
-      ? asStringArray(metadata.languages)
-      : asStringArray(user.focusAreas);
-    if (languages.length > 0) setLanguages(languages);
-    if (Array.isArray(metadata.audiences)) {
-      const fromMeta = asStringArray(metadata.audiences);
-      if (fromMeta.length > 0) setSelectedAudiences(fromMeta);
-    }
+    const languages = getPreferredExpertSelectionValues(metadata.languages, user.focusAreas);
+    setLanguages(languages);
     if (typeof metadata.acceptCustomRequests === "boolean") {
       setAcceptCustomRequests(metadata.acceptCustomRequests);
     }
@@ -1139,22 +1123,19 @@ handleBackFromOtp();
     setStep("preferences");
   };
 
-  const handleAudienceContinue = async () => {
-    try {
-      await saveProfileStep({
-        step: "availability",
-        targetAudience: selectedAudiences,
-        focusAreas: languages,
-        onboardingMetadata: {
-          languages,
-          audiences: selectedAudiences,
-        },
-      });
-    } catch (error) {
-      console.warn("Could not save audience", error);
-    } finally {
-      setStep("availability");
-    }
+  const handleAudienceContinue = async ({
+    languages: nextLanguages,
+    audiences,
+  }: {
+    languages: string[];
+    audiences: string[];
+  }) => {
+    setLanguages(nextLanguages);
+    setSelectedAudiences(audiences);
+    const profileSaved = await saveProfileStep(
+      buildAudiencePersistencePayload(nextLanguages, audiences),
+    );
+    if (profileSaved) setStep("availability");
   };
 
   const handleBackToAudience = () => {
@@ -1494,10 +1475,6 @@ handleBackFromOtp();
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToPreferences}
           onContinue={handleAudienceContinue}
-          onContinueWithAudience={({ languages: nextLanguages, audiences }) => {
-            setLanguages(nextLanguages);
-            setSelectedAudiences(audiences);
-          }}
           onJumpToStep={handleJumpToStepNumber}
         />
       )}

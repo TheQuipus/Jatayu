@@ -30,6 +30,8 @@ import type {
 import { areKycPhotosComplete } from "@/lib/expertKycPhotos";
 import {
   EXPERT_CERTIFICATE_MIME_TYPE,
+  EXPERT_LEGACY_CERTIFICATE_MIME_TYPE,
+  getExpertCertificateContentError,
   getExpertCertificateFileError,
 } from "@/lib/expertCertificateValidation";
 import { getDigilockerKycStatus, startDigilockerKyc } from "@/lib/api";
@@ -160,6 +162,7 @@ export default function CredentialsStep({
   );
   const [validationError, setValidationError] = useState<string | null>(null);
   const [certificateUploadError, setCertificateUploadError] = useState<string | null>(null);
+  const [pendingCertificateUploads, setPendingCertificateUploads] = useState(0);
   const [certificateToPreview, setCertificateToPreview] = useState<{
     url: string;
     fileName: string;
@@ -354,13 +357,20 @@ export default function CredentialsStep({
   };
 
   const handleCertificateFile = async (entryId: string, file: File) => {
+    setCertificateUploadError(null);
     const fileError = getExpertCertificateFileError(file);
     if (fileError) {
       setCertificateUploadError(fileError);
       return;
     }
 
+    setPendingCertificateUploads((pending) => pending + 1);
     try {
+      const contentError = await getExpertCertificateContentError(file);
+      if (contentError) {
+        setCertificateUploadError(contentError);
+        return;
+      }
       const url = await readFileAsDataUrl(file);
       updateCertificateEntry(entryId, {
         fileName: file.name,
@@ -368,8 +378,14 @@ export default function CredentialsStep({
         fileUrl: url,
       });
       setCertificateUploadError(null);
-    } catch {
-      setCertificateUploadError("Could not read the certificate file. Please try again.");
+    } catch (error) {
+      setCertificateUploadError(
+        error instanceof Error
+          ? `Could not validate or read the certificate file: ${error.message}`
+          : "Could not validate or read the certificate file. Please try again.",
+      );
+    } finally {
+      setPendingCertificateUploads((pending) => Math.max(0, pending - 1));
     }
   };
 
@@ -397,6 +413,10 @@ export default function CredentialsStep({
   };
 
   const handleContinue = () => {
+    if (pendingCertificateUploads > 0) {
+      setCertificateUploadError("Please wait for certificate uploads to finish before continuing.");
+      return;
+    }
     if (!canContinue) {
       if (!selectedIdType) {
         setValidationError("Please select a Government ID type (Aadhaar, PAN, Passport, etc.).");
@@ -412,8 +432,7 @@ export default function CredentialsStep({
   };
 
   const handleSkip = () => {
-    setValidationError(null);
-    onContinue();
+    handleContinue();
   };
 
   return (
@@ -660,7 +679,7 @@ export default function CredentialsStep({
                           onClick={() => certFileInputRefs.current[entry.id]?.click()}
                         >
                           <span className={styles.certUploadTitle}>Upload</span>
-                          <span className={styles.certUploadHint}>DOCX only, max 2 MB</span>
+                          <span className={styles.certUploadHint}>DOC or DOCX, max 2 MB</span>
                         </button>
                       )}
                     </div>
@@ -670,7 +689,7 @@ export default function CredentialsStep({
                         certFileInputRefs.current[entry.id] = el;
                       }}
                       type="file"
-                      accept={`.docx,${EXPERT_CERTIFICATE_MIME_TYPE}`}
+                      accept={`.doc,.docx,${EXPERT_LEGACY_CERTIFICATE_MIME_TYPE},${EXPERT_CERTIFICATE_MIME_TYPE}`}
                       className={styles.hiddenFileInput}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -744,7 +763,10 @@ export default function CredentialsStep({
           <button type="button" className={shared.textBtn} onClick={handleSkip}>
             Skip
           </button>
-          <ContinueButton onClick={handleContinue} disabled={!canContinue} />
+          <ContinueButton
+            onClick={handleContinue}
+            disabled={!canContinue || pendingCertificateUploads > 0}
+          />
         </div>
       </div>
     </section>

@@ -26,6 +26,7 @@ import {
 import { getSecondarySkills } from "@/lib/expertProfile";
 import { parseCredentialsFromProfile } from "@/lib/expertAuth";
 import { normalizeKycPhotos } from "@/lib/expertKycPhotos";
+import { getExpertProfileAudienceValues } from "@/lib/expertAudience";
 import type { GovernmentIdData } from "@/lib/expertApplicationSubmission";
 import styles from "./ExpertProfileView.module.css";
 
@@ -241,10 +242,13 @@ export default function ExpertProfileView() {
   const employmentPositions = getFilledEmploymentPositions(data.employmentPositions);
   const educationDegrees = getFilledEducationDegrees(data.educationDegrees);
   const skills = getSecondarySkills(profile.category, profile.skills);
+  const metadata = record.onboardingMetadata ?? {};
   const selectedFormats = record.selectedFormats ?? [];
   const formatPrices = record.formatPrices ?? {};
-  const targetAudience = Array.isArray(record.targetAudience) ? record.targetAudience : [];
-  const metadata = record.onboardingMetadata ?? {};
+  const targetAudience = getExpertProfileAudienceValues(
+    record.targetAudience,
+    metadata.audiences,
+  );
   const certificates = getMetadataItems(metadata.certificates, ["name", "fileName"], "issuer");
   const portfolioSamples = getMetadataItems(metadata.portfolioSamples, ["fileName", "name"], "description");
   const governmentId = getGovernmentId(metadata.governmentId);

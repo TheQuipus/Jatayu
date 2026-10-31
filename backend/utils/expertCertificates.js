@@ -2,6 +2,7 @@ import { inflateRawSync } from 'node:zlib';
 
 export const DOCX_MIME_TYPE =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+export const DOC_MIME_TYPE = 'application/msword';
 export const MAX_CERTIFICATE_BYTES = 2 * 1024 * 1024;
 const MAX_DOCX_XML_BYTES = 10 * 1024 * 1024;
 const CRC_TABLE = Array.from({ length: 256 }, (_, value) => {
@@ -18,10 +19,10 @@ function crc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function decodeDataUrl(dataUrl) {
+function decodeDataUrl(dataUrl, expectedMimeType, extension) {
   const match = /^data:([^;,]+);base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
-  if (!match || match[1].toLowerCase() !== DOCX_MIME_TYPE) {
-    throw new TypeError('Certificate must be a valid DOCX data URL with a matching MIME type');
+  if (!match || match[1].toLowerCase() !== expectedMimeType) {
+    throw new TypeError(`Certificate must be a valid ${extension.toUpperCase()} data URL with a matching MIME type`);
   }
 
   const encoded = match[2];
@@ -30,7 +31,7 @@ function decodeDataUrl(dataUrl) {
     throw new TypeError('Certificate contains malformed base64 data');
   }
   if (bytes.length > MAX_CERTIFICATE_BYTES) {
-    throw new RangeError('DOCX certificate files must not exceed 2 MB');
+    throw new RangeError('Certificate files must not exceed 2 MB');
   }
   return bytes;
 }
@@ -159,6 +160,11 @@ function hasValidDocxContent(bytes) {
   );
 }
 
+function hasValidLegacyWordContent(bytes) {
+  return bytes.length >= 8
+    && bytes.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
+}
+
 export function validateExpertCertificates(certificates) {
   if (!Array.isArray(certificates)) {
     throw new TypeError('Certificates must be an array');
@@ -172,16 +178,21 @@ export function validateExpertCertificates(certificates) {
       || typeof certificate.fileName !== 'string'
       || typeof certificate.url !== 'string'
     ) {
-      throw new TypeError('Each certificate must include a file name and DOCX data URL');
+      throw new TypeError('Each certificate must include a file name and Word document data URL');
     }
 
-    if (!/\.docx$/i.test(certificate.fileName)) {
-      throw new TypeError('Only DOCX certificate files are allowed');
+    const extension = certificate.fileName.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
+    if (extension !== 'doc' && extension !== 'docx') {
+      throw new TypeError('Only DOC and DOCX certificate files are allowed');
     }
 
-    const bytes = decodeDataUrl(certificate.url);
-    if (!hasValidDocxContent(bytes)) {
-      throw new TypeError('Certificate content is not a valid DOCX file');
+    const expectedMimeType = extension === 'doc' ? DOC_MIME_TYPE : DOCX_MIME_TYPE;
+    const bytes = decodeDataUrl(certificate.url, expectedMimeType, extension);
+    const hasValidContent = extension === 'doc'
+      ? hasValidLegacyWordContent(bytes)
+      : hasValidDocxContent(bytes);
+    if (!hasValidContent) {
+      throw new TypeError(`Certificate content is not a valid ${extension.toUpperCase()} file`);
     }
   }
 
