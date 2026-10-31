@@ -296,13 +296,13 @@
 
 .manualModeBtn {
   background: transparent;
-  color: #ff6848;
+  color: var(--pomegranate);
 }
 
 .manualModeBtn:hover:not(:disabled) {
   background: rgba(229, 59, 23, 0.12);
   border-color: var(--pomegranate);
-  color: var(--white);
+  color: var(--pomegranate);
 }
 
 .captureBtn:hover:not(:disabled) {
@@ -312,7 +312,7 @@
 .secondaryCaptureBtn:hover:not(:disabled) {
   background: rgba(229, 59, 23, 0.12);
   border-color: var(--pomegranate);
-  color: var(--white);
+  color: var(--pomegranate);
 }
 
 .sessionModeActions,
@@ -600,7 +600,7 @@
   padding: 8px 14px;
   background: transparent;
   border-color: rgba(255, 255, 255, 0.24);
-  color: var(--white);
+  color: var(--pomegranate);
   font-size: 12px;
 }
 
@@ -720,7 +720,7 @@
   border: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(229, 59, 23, 0.12);
-  color: #ff6848;
+  color: var(--pomegranate);
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 600;
@@ -730,7 +730,7 @@
 
 .poseRetakeBtn:hover:not(:disabled) {
   background: rgba(229, 59, 23, 0.24);
-  color: var(--white);
+  color: var(--pomegranate);
 }
 
 .poseImage {
@@ -804,7 +804,7 @@
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
-  color: #e53b17;
+  color: var(--pomegranate);
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
@@ -813,7 +813,7 @@
 .retakeBtn:hover:not(:disabled) {
   background: rgba(229, 59, 23, 0.12);
   border-color: var(--pomegranate);
-  color: #ff6848;
+  color: var(--pomegranate);
 }
 
 @media (max-width: 768px) {
