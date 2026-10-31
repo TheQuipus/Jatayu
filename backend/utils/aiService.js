@@ -426,11 +426,31 @@ function buildPrompt(context) {
   const languages = asStringList(context.languages);
   const employment = formatEmployment(context.employment);
   const education = formatEducation(context.education);
-  const tone = clip(context.tone, 40);
+  const tone = ['professional', 'casual', 'concise'].includes(String(context.tone || '').toLowerCase())
+    ? String(context.tone).toLowerCase()
+    : '';
   const field = context.field === 'bio' ? 'bio' : context.field === 'tagLine' ? 'tagLine' : '';
   const intent = context.intent === 'improve' || context.intent === 'regenerate'
     ? context.intent
     : 'suggest';
+  const toneInstructions = {
+    professional: 'Use polished, confident language appropriate for an expert profile. Avoid unnecessary jargon.',
+    casual: 'Use natural, friendly, conversational language. Be approachable without sounding robotic or overly informal.',
+    concise: 'Use short, direct, impactful language. Keep only the most useful detail.',
+  };
+  const variationDirections = [
+    'Emphasize a practical client outcome.',
+    'Lead with the expert’s strongest relevant specialty.',
+    'Focus on the kind of challenge the expert can help solve.',
+    'Highlight a clear, useful next step for a client.',
+    'Describe the expert’s approach without adding unsupported claims.',
+    'Choose a distinct angle from the current wording.',
+    'Focus on the value of the expert’s relevant experience.',
+    'Use a fresh sentence structure and emphasize a specific skill.',
+  ];
+  const variantIndex = Number.isFinite(context.variantIndex)
+    ? Math.abs(Math.trunc(context.variantIndex))
+    : 0;
 
   const fieldLabel = field === 'bio' ? 'brief introduction' : field === 'tagLine' ? 'tag line' : 'tag line and brief introduction';
   const intentInstructions = {
@@ -455,6 +475,8 @@ function buildPrompt(context) {
     'Do not invent employers, degrees, or skills that are not in the context.',
     'Do not include internal experience level labels like "emerging" or "established" in the text.',
     field ? `Only generate the ${fieldLabel}. Do not change the other field.` : '',
+    tone ? `Tone: ${tone}. ${toneInstructions[tone]}` : '',
+    tone ? `Variation direction: ${variationDirections[variantIndex % variationDirections.length]}` : '',
     intentInstructions[intent],
     '',
     'Context:',
@@ -679,6 +701,12 @@ function buildMultiTonePrompt(context) {
 }
 
 export async function suggestExpertIdentityCopy(context = {}) {
+  const requestedField = context.field === 'bio' || context.field === 'tagLine'
+    ? context.field
+    : '';
+  const requestedTone = ['professional', 'casual', 'concise'].includes(String(context.tone || '').toLowerCase())
+    ? String(context.tone).toLowerCase()
+    : 'professional';
   const localProf = buildLocalIdentityCopy({ ...context, variantIndex: 0 });
   const localCasual = buildLocalIdentityCopy({ ...context, variantIndex: 2 });
   const localConcise = buildLocalIdentityCopy({ ...context, variantIndex: 4 });
@@ -689,13 +717,23 @@ export async function suggestExpertIdentityCopy(context = {}) {
     concise: { tagLine: localConcise.tagLine, bio: localConcise.bio },
   };
 
-  const requestedTone = String(context.tone || '').toLowerCase();
+  const localRequested = requestedField
+    ? buildLocalIdentityCopy({
+      ...context,
+      field: requestedField,
+      tone: requestedTone,
+      variantIndex: Number.isFinite(context.variantIndex)
+        ? Number(context.variantIndex) + { professional: 0, casual: 2, concise: 4 }[requestedTone]
+        : { professional: 0, casual: 2, concise: 4 }[requestedTone],
+    })
+    : null;
   const selectedFallback = fallbackAll[requestedTone] || fallbackAll.professional;
-
-  const settings = await readAiSettings();
-
-  if (!settings.configured) {
-    return {
+  const fallbackText = requestedField
+    ? localRequested[requestedField]
+    : undefined;
+  const fallbackResult = requestedField
+    ? { [requestedField]: fallbackText, source: 'fallback', notice: AI_FALLBACK_NOTICE }
+    : {
       tagLine: selectedFallback.tagLine,
       bio: selectedFallback.bio,
       options: fallbackAll,
@@ -703,14 +741,42 @@ export async function suggestExpertIdentityCopy(context = {}) {
       source: 'fallback',
       notice: AI_FALLBACK_NOTICE,
     };
+
+  const settings = await readAiSettings();
+
+  if (!settings.configured) {
+    return fallbackResult;
   }
 
   try {
     const raw = await completeChat({
       settings,
-      prompt: buildMultiTonePrompt(context),
+      prompt: requestedField
+        ? buildPrompt({ ...context, field: requestedField, tone: requestedTone })
+        : buildMultiTonePrompt(context),
     });
     const parsed = parseJsonObject(raw);
+
+    if (requestedField) {
+      const currentCopy = requestedField === 'tagLine'
+        ? context.currentTagLine
+        : context.currentBio;
+      const generated = clip(
+        parsed[requestedField] ||
+          (requestedField === 'bio' ? parsed.briefIntroduction : parsed.tagline),
+        requestedField === 'tagLine' ? TAGLINE_MAX : BIO_MAX,
+      );
+      if (!generated) {
+        throw new AiProviderError(`AI returned no ${requestedField} suggestion.`);
+      }
+      if (currentCopy && normalizeCopy(generated) === normalizeCopy(currentCopy)) {
+        return {
+          ...fallbackResult,
+          notice: 'The AI repeated your current text; showing an alternative profile-based suggestion.',
+        };
+      }
+      return { [requestedField]: generated, source: 'ai' };
+    }
 
     const profTag = clip(parsed.professional?.tagLine || parsed.professional?.tagline || localProf.tagLine, TAGLINE_MAX);
     const profBio = clip(parsed.professional?.bio || parsed.professional?.briefIntroduction || localProf.bio, BIO_MAX);
@@ -736,15 +802,8 @@ export async function suggestExpertIdentityCopy(context = {}) {
       suggestions: options,
       source: 'ai',
     };
-  } catch (error) {
-    return {
-      tagLine: selectedFallback.tagLine,
-      bio: selectedFallback.bio,
-      options: fallbackAll,
-      suggestions: fallbackAll,
-      source: 'fallback',
-      notice: AI_FALLBACK_NOTICE,
-    };
+  } catch {
+    return fallbackResult;
   }
 }
 
@@ -996,5 +1055,3 @@ export async function improveSeekerNeedsCopy(context = {}) {
     };
   }
 }
-
-
