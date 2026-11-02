@@ -1254,6 +1254,84 @@ export interface PublicExpertsResponse {
   filters: FilterOptions;
 }
 
+export async function getSeekerDiscoverExperts(
+  params: PublicExpertsQueryParams = {}
+): Promise<PublicExpertsResponse> {
+  const urlParams = new URLSearchParams();
+  urlParams.set("page", String(params.page || 1));
+  urlParams.set("limit", String(params.limit || 12));
+
+  if (params.category) urlParams.set("category", params.category);
+  if (params.search) urlParams.set("search", params.search);
+  if (params.topic) urlParams.set("topic", params.topic);
+  if (params.topics && params.topics.length > 0) urlParams.set("topics", params.topics.join(","));
+  if (params.language) urlParams.set("language", params.language);
+  if (params.languages && params.languages.length > 0) urlParams.set("languages", params.languages.join(","));
+  if (params.rating) urlParams.set("rating", params.rating);
+  if (params.ratings && params.ratings.length > 0) urlParams.set("ratings", params.ratings.join(","));
+  if (params.minPrice !== undefined) urlParams.set("minPrice", String(params.minPrice));
+  if (params.maxPrice !== undefined) urlParams.set("maxPrice", String(params.maxPrice));
+  if (params.availability) urlParams.set("availability", String(params.availability));
+  const sortVal = params.sort || params.sortBy;
+  if (sortVal) {
+    urlParams.set("sort", sortVal);
+    urlParams.set("sortBy", sortVal);
+  }
+
+  const queryString = urlParams.toString();
+  const res = await apiFetch<Record<string, unknown>>(`/api/seeker/discover?${queryString}`, {
+    method: "GET",
+  });
+
+  const rawExpertsList = (
+    Array.isArray(res.experts)
+      ? res.experts
+      : Array.isArray(res.matches)
+        ? res.matches
+        : Array.isArray(res.data)
+          ? res.data
+          : []
+  ) as Record<string, unknown>[];
+
+  const experts = rawExpertsList.map((item) => normalizeExpert(item));
+  const rawSuggestions = Array.isArray(res.suggestions)
+    ? res.suggestions as Record<string, unknown>[]
+    : [];
+  const suggestions = rawSuggestions.map((item) => normalizeExpert(item));
+
+  const paginationRaw = (res.pagination || {}) as Record<string, unknown>;
+  const pagination: PaginationInfo = {
+    page: Number(paginationRaw.page) || params.page || 1,
+    limit: Number(paginationRaw.limit) || params.limit || 12,
+    total: typeof paginationRaw.total === "number" ? paginationRaw.total : experts.length,
+    totalPages: typeof paginationRaw.totalPages === "number" ? paginationRaw.totalPages : Math.ceil(experts.length / (params.limit || 12)) || 1,
+    hasNextPage: typeof paginationRaw.hasNextPage === "boolean" ? paginationRaw.hasNextPage : (params.page || 1) < (Math.ceil(experts.length / (params.limit || 12)) || 1),
+    hasPreviousPage: typeof paginationRaw.hasPreviousPage === "boolean" ? paginationRaw.hasPreviousPage : (params.page || 1) > 1,
+  };
+
+  const filtersRaw = (res.filters || {}) as Record<string, unknown>;
+  const priceRaw = (filtersRaw.price || {}) as Record<string, unknown>;
+  const filters: FilterOptions = {
+    categories: Array.isArray(filtersRaw.categories) ? filtersRaw.categories.map(String) : [],
+    languages: Array.isArray(filtersRaw.languages) ? filtersRaw.languages.map(String) : [],
+    price: {
+      min: typeof priceRaw.min === "number" ? priceRaw.min : 0,
+      max: typeof priceRaw.max === "number" ? priceRaw.max : 300000,
+    },
+    availability: Array.isArray(filtersRaw.availability)
+      ? (filtersRaw.availability as Array<{ value: number; label: string }>)
+      : [],
+  };
+
+  return {
+    experts,
+    suggestions,
+    rawExperts: rawExpertsList as unknown as PublicExpertApiItem[],
+    pagination,
+    filters,
+  };
+}
+
 export async function getPublicExperts(
   params: PublicExpertsQueryParams = {}
 ): Promise<PublicExpertsResponse> {

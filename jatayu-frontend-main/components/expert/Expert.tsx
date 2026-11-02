@@ -14,7 +14,7 @@ export type ExpertFilterKey =
   | "price"
   | "availability";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import { getPublicExperts, type PublicExpertsQueryParams } from "@/lib/api";
+import { getPublicExperts, getSeekerDiscoverExperts, type PublicExpertsQueryParams } from "@/lib/api";
 import {
   availabilityFilters,
   expertiseTags,
@@ -428,7 +428,9 @@ export default function Expert({
           sortBy,
         };
 
-        const res = await getPublicExperts(queryParams);
+        const res = seeker
+          ? await getSeekerDiscoverExperts(queryParams)
+          : await getPublicExperts(queryParams);
         if (isCancelled) return;
 
         setUsingApi(true);
