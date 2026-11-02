@@ -50,9 +50,9 @@ test("can deselect a previously selected audience", () => {
 test("Step 7 selection, validation, and save/restore support multiple audiences", () => {
   assert.match(audienceStep, /setSelectedAudiences\(\(current\) => toggleAudienceSelection\(current, id\)\)/);
   assert.match(audienceStep, /languages\.length > 0 && selectedAudiences\.length > 0/);
-  assert.match(audienceStep, /onContinueWithAudience\?\.\(\{ languages, audiences: selectedAudiences \}\)/);
-  assert.match(page, /const audiences = asStringArray\(user\.targetAudience\)/);
-  assert.match(page, /if \(audiences\.length > 0\) setSelectedAudiences\(audiences\)/);
-  assert.match(page, /targetAudience: selectedAudiences/);
+  assert.match(audienceStep, /onContinue\(\{ languages, audiences: selectedAudiences \}\)/);
+  assert.match(page, /const audiences = getPreferredExpertSelectionValues\(/);
+  assert.match(page, /setSelectedAudiences\(audiences\)/);
+  assert.match(page, /buildAudiencePersistencePayload\(nextLanguages, audiences\)/);
   assert.match(audienceStep, /customLanguages/);
 });

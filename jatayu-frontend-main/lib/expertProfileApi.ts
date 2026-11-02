@@ -4,6 +4,7 @@ import type { TimeSlot } from "@/lib/expertAvailability";
 import { saveExpertProfile } from "@/lib/expertStore";
 import { areRequiredSessionPreferencesValid } from "@/components/expert/onboarding/preferencesData";
 import { hasValidSavedEmploymentPosition } from "@/lib/expertEmployment";
+import { getPreferredExpertSelectionValues } from "@/lib/expertAudience";
 
 export type BackendExpertProfile = {
   applicationNumber?: string | null;
@@ -179,10 +180,10 @@ export function mapBackendProfileToExpertData(
 ): ExpertProfileData {
   const normalizedExpert = normalizeBackendProfile(expert);
   const metadata = normalizedExpert.onboardingMetadata ?? {};
-  const languages =
-    asStringArray(metadata.languages).length > 0
-      ? asStringArray(metadata.languages)
-      : asStringArray(normalizedExpert.focusAreas);
+  const languages = getPreferredExpertSelectionValues(
+    metadata.languages,
+    normalizedExpert.focusAreas,
+  );
   const location = getExpertProfileLocation(metadata);
 
   return {

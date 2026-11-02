@@ -62,6 +62,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // Razorpay signs the exact request bytes, so this route must run before express.json().
 app.use('/api/payments/webhooks', razorpayWebhookRoutes);
+app.use('/api/expert/profile', express.json({ limit: '32mb' }));
 app.use(express.json({ limit: '7mb' }));
 app.use(express.urlencoded({ extended: true }));
 

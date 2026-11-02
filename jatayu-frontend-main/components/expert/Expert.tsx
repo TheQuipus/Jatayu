@@ -572,6 +572,11 @@ export default function Expert({
                 </span>
               </h2>
               <div className={styles.filterBookmarkRow}>
+                {seeker ? (
+                  <Link href="/seeker/dashboard/" className={styles.dashboardLink}>
+                    Go to Dashboard
+                  </Link>
+                ) : null}
                 <Link
                   href={seeker ? "/seeker/bookmark" : "/bookmark"}
                   className={styles.bookmarkBadge}

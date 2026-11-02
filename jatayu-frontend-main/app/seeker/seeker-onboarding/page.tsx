@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Briefcase,
@@ -35,6 +35,7 @@ import {
   type SeekerOnboardingStepKey,
 } from "@/components/seeker/onboarding/seekerOnboardingSteps";
 import {
+  getSeekerMe,
   submitSeekerOnboarding,
   updateSeekerOnboarding,
   type AuthResponse,
@@ -293,6 +294,38 @@ function SeekerOnboardingPageContent() {
   const [stepSaveError, setStepSaveError] = useState<string | null>(null);
 
   const [prefilledLoginEmail, setPrefilledLoginEmail] = useState("");
+  const profileHydrationRequestIdRef = useRef(0);
+
+  async function hydrateSeekerProfileFromServer(
+    fallbackUser?: AuthUser | null,
+  ): Promise<Record<string, unknown>> {
+    const requestId = ++profileHydrationRequestIdRef.current;
+    const storedUser = fallbackUser ?? getStoredSeekerUser();
+
+    let profileFromServer: Record<string, unknown> | null = null;
+    try {
+      if (isSeekerAuthenticated()) {
+        profileFromServer = await getSeekerMe();
+      }
+    } catch {
+      profileFromServer = null;
+    }
+
+    if (requestId !== profileHydrationRequestIdRef.current) {
+      return (storedUser ?? {}) as Record<string, unknown>;
+    }
+
+    const hydratedData = (profileFromServer ?? (storedUser ?? {})) as Record<string, unknown>;
+    hydrateSeekerFromProfile(hydratedData);
+
+    if (profileFromServer) {
+      saveStoredSeekerProfile(
+        mapBackendSeekerToProfile(profileFromServer as Parameters<typeof mapBackendSeekerToProfile>[0]),
+      );
+    }
+
+    return hydratedData;
+  }
 
   function hydrateSeekerFromProfile(data: Record<string, unknown>) {
     if (data.id && typeof data.id === "string") setSeekerId(data.id);
@@ -300,25 +333,30 @@ function SeekerOnboardingPageContent() {
     if (data.email && typeof data.email === "string") setRegisteredEmail(data.email);
     if (data.phone && typeof data.phone === "string") setRegisteredPhone(data.phone);
 
-    if (data.selectedCategory && typeof data.selectedCategory === "string") {
-      const savedCat = data.selectedCategory;
+    const savedCategory = data.selectedCategory ?? data.category;
+    if (typeof savedCategory === "string" && savedCategory) {
       const knownCat = categories.find(
-        (c) => c.id === savedCat || c.label.toLowerCase() === savedCat.toLowerCase(),
+        (c) => c.id === savedCategory || c.label.toLowerCase() === savedCategory.toLowerCase(),
       );
       if (knownCat) {
         setSelectedCategory(knownCat.id);
       } else {
-        const customId = `custom-${savedCat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "category"}`;
+        const customId = `custom-${savedCategory.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "category"}`;
         setCustomCategories((prev) => {
-          if (prev.some((c) => c.id === customId || c.label === savedCat)) return prev;
-          return [...prev, { id: customId, label: savedCat, icon: Briefcase }];
+          if (prev.some((c) => c.id === customId || c.label === savedCategory)) return prev;
+          return [...prev, { id: customId, label: savedCategory, icon: Briefcase }];
         });
         setSelectedCategory(customId);
       }
     }
 
-    if (Array.isArray(data.selectedTopics)) {
-      setSelectedTopics(data.selectedTopics.map(String));
+    const savedTopics = Array.isArray(data.selectedTopics)
+      ? data.selectedTopics
+      : Array.isArray(data.topics)
+        ? data.topics
+        : null;
+    if (savedTopics) {
+      setSelectedTopics(savedTopics.map(String));
     }
     if (typeof data.needsText === "string") setNeedsText(data.needsText);
     if (Array.isArray(data.selectedNeedChips)) {
@@ -375,15 +413,18 @@ function SeekerOnboardingPageContent() {
     if (isSeekerAuthenticated() && !params.get("step")) {
       clearPendingSeekerOtpSession();
       const storedUser = getStoredSeekerUser();
-      if (storedUser) {
-        hydrateSeekerFromProfile(storedUser as unknown as Record<string, unknown>);
-        const dest = getSeekerPostAuthDestination(storedUser);
+      void (async () => {
+        const hydratedData = await hydrateSeekerProfileFromServer(storedUser);
+        const dest = getSeekerPostAuthDestination({
+          ...(storedUser || {}),
+          ...(hydratedData || {}),
+        } as AuthUser);
         if (typeof dest === "string" && dest.startsWith("/")) {
           window.location.assign(dest);
           return;
         }
         setStep(dest as OnboardingStep);
-      }
+      })();
       return;
     }
 
@@ -391,10 +432,10 @@ function SeekerOnboardingPageContent() {
     if (stepParam && isSeekerAuthenticated()) {
       clearPendingSeekerOtpSession();
       const storedUser = getStoredSeekerUser();
-      if (storedUser) {
-        hydrateSeekerFromProfile(storedUser as unknown as Record<string, unknown>);
-      }
-      setStep(stepParam as OnboardingStep);
+      void (async () => {
+        await hydrateSeekerProfileFromServer(storedUser);
+        setStep(stepParam as OnboardingStep);
+      })();
       return;
     }
 
@@ -664,14 +705,32 @@ function SeekerOnboardingPageContent() {
     clearSeekerAuthOnly();
   };
 
-  const handleAuthSuccess = (response: AuthResponse) => {
+  const handleAuthSuccess = async (response: AuthResponse) => {
     persistSeekerAuthSession(response);
+
+    const storedUser = getStoredSeekerUser();
+    const hydratedData = await hydrateSeekerProfileFromServer(storedUser).catch(() => {
+      return (storedUser ?? response.user) as unknown as Record<string, unknown>;
+    });
+    const normalizedPhone = typeof hydratedData.phone === "string"
+      ? hydratedData.phone
+      : typeof response.user.phone === "string"
+        ? response.user.phone
+        : "";
+
     if (response.user.fullName) setRegisteredName(response.user.fullName);
     if (response.user.email) setRegisteredEmail(response.user.email);
-    if (response.user.phone) setRegisteredPhone(response.user.phone);
-    hydrateSeekerFromProfile(response.user as unknown as Record<string, unknown>);
+    if (normalizedPhone) setRegisteredPhone(normalizedPhone);
+    if (hydratedData && typeof hydratedData === "object") {
+      hydrateSeekerFromProfile(hydratedData);
+    }
 
-    const destination = getSeekerPostAuthDestination(response.user);
+    const destination = getSeekerPostAuthDestination({
+      ...(storedUser || {}),
+      ...(hydratedData || {}),
+      ...(response.user || {}),
+      phone: normalizedPhone,
+    } as AuthUser);
     if (typeof destination === "string" && destination.startsWith("/")) {
       window.location.assign(destination);
       return;
@@ -704,12 +763,12 @@ function SeekerOnboardingPageContent() {
 
   const handleLoginComplete = (response: AuthResponse) => {
     clearPendingSeekerOtpSession();
-    handleAuthSuccess(response);
+    void handleAuthSuccess(response);
   };
 
   const handleOtpComplete = (response: AuthResponse) => {
     clearPendingSeekerOtpSession();
-    handleAuthSuccess(response);
+    void handleAuthSuccess(response);
   };
 
   const handleBackToRegister = () => {

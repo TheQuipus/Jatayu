@@ -1,0 +1,248 @@
+.profileView {
+  display: grid;
+  gap: 18px;
+}
+
+.identityCard,
+.section {
+  border: 1px solid var(--mercury);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: 0 8px 24px rgba(23, 25, 30, 0.04);
+}
+
+.identityCard {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+}
+
+.avatar {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bunker);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.identityText h2,
+.section h2 {
+  margin: 0;
+  color: var(--scorpion);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.identityText h2 {
+  font-size: 25px;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: var(--pomegranate);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.role,
+.location {
+  margin: 5px 0 0;
+  color: var(--dove-gray);
+}
+
+.section {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+}
+
+.section h2 {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--mercury);
+  font-size: 20px;
+}
+
+.twoColumn {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.field h3,
+.detailCard h3 {
+  margin: 0 0 7px;
+  color: var(--scorpion);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.field p,
+.detailCard p {
+  margin: 0;
+  color: var(--dove-gray);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.valueList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.valueList li {
+  padding: 7px 12px;
+  border: 1px solid var(--mercury);
+  border-radius: 999px;
+  background: var(--gallery);
+  color: var(--scorpion);
+  font-size: 14px;
+}
+
+.cardList {
+  display: grid;
+  gap: 10px;
+}
+
+.detailCard {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  border: 1px solid var(--mercury);
+  border-radius: 12px;
+  background: var(--gallery);
+}
+
+.emptyValue,
+.status {
+  margin: 0;
+  color: var(--dove-gray);
+  font-size: 14px;
+}
+
+.status {
+  padding: 24px 0;
+}
+
+.timezone {
+  margin: -5px 0 0;
+  color: var(--dove-gray);
+}
+
+.statusDetail {
+  margin: 0;
+  color: var(--dove-gray);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.statusError {
+  margin: 0;
+  color: #8e2f1a;
+  font-size: 13px;
+}
+
+.kycPhotoGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.kycPhoto {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: var(--dove-gray);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.kycPhoto img {
+  width: 140px;
+  height: 105px;
+  border: 1px solid var(--mercury);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid #f1b6a8;
+  border-radius: 12px;
+  background: #fff4f1;
+  color: #8e2f1a;
+}
+
+.error button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 8px 12px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+@media (max-width: 700px) {
+  .identityCard {
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .avatar {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+    font-size: 24px;
+  }
+
+  .section {
+    padding: 18px;
+  }
+
+  .twoColumn {
+    grid-template-columns: 1fr;
+  }
+
+  .error {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .error button {
+    margin-left: 28px;
+  }
+}

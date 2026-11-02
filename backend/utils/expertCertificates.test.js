@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { deflateRawSync } from 'node:zlib';
 import {
+  DOC_MIME_TYPE,
   DOCX_MIME_TYPE,
   MAX_CERTIFICATE_BYTES,
   validateExpertCertificates,
@@ -85,6 +86,16 @@ test('accepts DOCX files with matching extension, MIME type, and valid archive c
   assert.equal(validateExpertCertificates([validDocx()]).length, 1);
 });
 
+test('accepts legacy DOC files with matching extension, MIME type, and OLE signature', () => {
+  const signature = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+  assert.equal(
+    validateExpertCertificates([
+      certificate('certificate.doc', DOC_MIME_TYPE, signature),
+    ]).length,
+    1,
+  );
+});
+
 test('rejects PDF, PNG, and unsupported certificate extensions', () => {
   for (const [fileName, mimeType] of [
     ['certificate.pdf', 'application/pdf'],
@@ -93,9 +104,28 @@ test('rejects PDF, PNG, and unsupported certificate extensions', () => {
   ]) {
     assert.throws(
       () => validateExpertCertificates([certificate(fileName, mimeType, 'not a DOCX')]),
-      /Only DOCX certificate files are allowed/,
+      /Only DOC and DOCX certificate files are allowed/,
     );
   }
+});
+
+test('rejects DOC files with incorrect MIME types or invalid OLE content', () => {
+  assert.throws(
+    () => validateExpertCertificates([
+      certificate(
+        'certificate.doc',
+        DOCX_MIME_TYPE,
+        Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
+      ),
+    ]),
+    /matching MIME type/,
+  );
+  assert.throws(
+    () => validateExpertCertificates([
+      certificate('certificate.doc', DOC_MIME_TYPE, 'not a Word document'),
+    ]),
+    /not a valid DOC file/,
+  );
 });
 
 test('rejects filename and data URL MIME mismatches', () => {

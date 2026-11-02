@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Check, Rocket, Building, Briefcase, Store, X, Plus } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./AudienceStep.module.css";
-import { toggleAudienceSelection } from "@/lib/expertAudience";
+import {
+  normalizeExpertSelectionValues,
+  reconcileHydratedSelections,
+  toggleAudienceSelection,
+} from "@/lib/expertAudience";
 
 type AudienceStepProps = {
   userName: string;
@@ -17,8 +22,7 @@ type AudienceStepProps = {
   stepCompletion: boolean[];
   onStepCompleteChange?: (step: number, complete: boolean) => void;
   onBack: () => void;
-  onContinue: () => void;
-  onContinueWithAudience?: (data: { languages: string[]; audiences: string[] }) => void;
+  onContinue: (data: { languages: string[]; audiences: string[] }) => void;
   onJumpToStep?: (step: number) => void;
 };
 
@@ -26,7 +30,7 @@ type AudienceType = {
   id: string;
   title: string;
   desc: string;
-  icon: any;
+  icon: LucideIcon;
 };
 
 const PRESET_LANGUAGES = [
@@ -78,7 +82,6 @@ export default function AudienceStep({
   onStepCompleteChange,
   onBack,
   onContinue,
-  onContinueWithAudience,
   onJumpToStep,
 }: AudienceStepProps) {
   const [languages, setLanguages] = useState<string[]>(() => initialLanguages);
@@ -88,21 +91,40 @@ export default function AudienceStep({
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>(() => initialAudiences);
   const [newLanguage, setNewLanguage] = useState("");
   const [showInput, setShowInput] = useState(false);
+  const hasUserEditedSelections = useRef(false);
 
   const canContinue = languages.length > 0 && selectedAudiences.length > 0;
+
+  useEffect(() => {
+    setLanguages((current) =>
+      reconcileHydratedSelections(current, initialLanguages, hasUserEditedSelections.current),
+    );
+    setCustomLanguages((current) => {
+      if (hasUserEditedSelections.current) return current;
+      return normalizeExpertSelectionValues(initialLanguages).filter(
+        (language) => !PRESET_LANGUAGES.includes(language),
+      );
+    });
+  }, [initialLanguages]);
+
+  useEffect(() => {
+    setSelectedAudiences((current) =>
+      reconcileHydratedSelections(current, initialAudiences, hasUserEditedSelections.current),
+    );
+  }, [initialAudiences]);
 
   useEffect(() => {
     onStepCompleteChange?.(7, canContinue);
   }, [canContinue, onStepCompleteChange]);
 
   const handleContinue = () => {
-    onContinueWithAudience?.({ languages, audiences: selectedAudiences });
-    onContinue();
+    onContinue({ languages, audiences: selectedAudiences });
   };
 
   const presetLanguages = PRESET_LANGUAGES;
 
   const handleToggleLanguage = (lang: string) => {
+    hasUserEditedSelections.current = true;
     if (languages.includes(lang)) {
       if (languages.length > 1) {
         setLanguages(languages.filter((l) => l !== lang));
@@ -116,6 +138,7 @@ export default function AudienceStep({
     if (e) e.preventDefault();
     const trimmed = newLanguage.trim();
     if (!trimmed) return;
+    hasUserEditedSelections.current = true;
 
     const exists =
       presetLanguages.some((lang) => lang.toLowerCase() === trimmed.toLowerCase()) ||
@@ -147,6 +170,7 @@ export default function AudienceStep({
   };
 
   const handleRemoveCustomLanguage = (lang: string) => {
+    hasUserEditedSelections.current = true;
     setCustomLanguages(
       customLanguages.filter((item) => item.toLowerCase() !== lang.toLowerCase()),
     );
@@ -156,6 +180,7 @@ export default function AudienceStep({
   const audienceInstructionText = "Select any number of primary audience types";
 
   const handleToggleAudience = (id: string) => {
+    hasUserEditedSelections.current = true;
     setSelectedAudiences((current) => toggleAudienceSelection(current, id));
   };
 
