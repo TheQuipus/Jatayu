@@ -283,7 +283,7 @@ export const updateProfile = async (req, res) => {
 
       for (const [secKey, clar] of Object.entries(clarifications)) {
         if (clar && clar.status === 'waiting') {
-          if (updatedSections.has(secKey) || updatedSections.size === 0) {
+          if (updatedSections.has(secKey)) {
             clar.status = 'received';
             clar.receivedAt = new Date().toISOString();
             clarificationsUpdated = true;
@@ -299,6 +299,10 @@ export const updateProfile = async (req, res) => {
         currentMetadata.sectionClarifications = clarifications;
         currentMetadata.sectionDecisions = sectionDecisions;
         expert.onboardingMetadata = currentMetadata;
+      }
+
+      if (clarificationsUpdated || onboardingMetadata !== undefined) {
+        expert.changed('onboardingMetadata', true);
       }
 
       if (step) expert.onboardingStep = step;

@@ -266,6 +266,47 @@ export const updateApplicationStatus = async (req, res) => {
       }
     }
 
+    if (req.body.sectionDecisions && typeof req.body.sectionDecisions === 'object') {
+      let metadata = {};
+      try {
+        metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+      } catch {
+        metadata = {};
+      }
+      const currentSectionDecisions = metadata.sectionDecisions || {};
+      const currentClarifications = metadata.sectionClarifications || {};
+
+      Object.entries(req.body.sectionDecisions).forEach(([secKey, secVal]) => {
+        if (!secVal) return;
+        currentSectionDecisions[secKey] = {
+          decision: secVal.decision || null,
+          note: secVal.note || '',
+          notes: secVal.notes || [],
+          clarificationStatus: secVal.clarificationStatus || (secVal.decision === 'clarification' ? 'waiting' : undefined),
+          clarificationRequestedAt: secVal.decision === 'clarification' ? (secVal.clarificationRequestedAt || new Date().toISOString()) : undefined,
+          updatedAt: new Date().toISOString(),
+        };
+
+        if (secVal.decision === 'clarification') {
+          currentClarifications[secKey] = {
+            sectionId: secKey,
+            status: secVal.clarificationStatus || 'waiting',
+            requestedAt: secVal.clarificationRequestedAt || new Date().toISOString(),
+            note: secVal.note || (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '',
+            notes: secVal.notes || [],
+            receivedAt: secVal.clarificationStatus === 'received' ? (secVal.clarificationReceivedAt || new Date().toISOString()) : null,
+          };
+        } else if (secVal.decision === 'approve' || secVal.decision === 'reject') {
+          delete currentClarifications[secKey];
+        }
+      });
+
+      metadata.sectionDecisions = currentSectionDecisions;
+      metadata.sectionClarifications = currentClarifications;
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+    }
+
     await saveExpertForAdmin(expert);
 
     const updated = await findExpertByIdForAdmin(expert.id);
@@ -422,7 +463,8 @@ export const updateApplicationSectionDecision = async (req, res) => {
     metadata.sectionDecisions = currentSectionDecisions;
     metadata.sectionClarifications = currentClarifications;
 
-    expert.onboardingMetadata = metadata;
+    expert.onboardingMetadata = { ...metadata };
+    expert.changed('onboardingMetadata', true);
     await saveExpertForAdmin(expert);
 
     const updated = await findExpertByIdForAdmin(expert.id);

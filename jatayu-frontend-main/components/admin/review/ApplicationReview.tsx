@@ -330,6 +330,48 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     setActionError(null);
 
     try {
+      // Auto-commit any drafted section decisions to submittedDecisions and database
+      const mergedDecisions: Record<string, SectionReviewState> = { ...submittedDecisions };
+      let hasSectionDecisions = false;
+
+      for (const sec of REVIEW_SECTIONS) {
+        const draft = sectionDecisions[sec.id];
+        const existing = mergedDecisions[sec.id];
+        if (draft?.decision) {
+          mergedDecisions[sec.id] = {
+            ...existing,
+            ...draft,
+            clarificationStatus:
+              draft.decision === "clarification"
+                ? draft.clarificationStatus || existing?.clarificationStatus || "waiting"
+                : undefined,
+            clarificationRequestedAt:
+              draft.decision === "clarification"
+                ? draft.clarificationRequestedAt || existing?.clarificationRequestedAt || new Date().toISOString()
+                : undefined,
+          };
+          hasSectionDecisions = true;
+        } else if (existing?.decision) {
+          hasSectionDecisions = true;
+        }
+      }
+
+      if (hasSectionDecisions && appId) {
+        setSubmittedDecisions(mergedDecisions);
+        setSectionDecisions(mergedDecisions);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(`jatayu_review_submitted_${appId}`, JSON.stringify(mergedDecisions));
+            localStorage.setItem(`jatayu_review_decisions_${appId}`, JSON.stringify(mergedDecisions));
+          } catch {
+            // ignore
+          }
+        }
+        await updateAdminApplicationSectionDecision(review.appId, {
+          sectionDecisions: mergedDecisions,
+        });
+      }
+
       await updateExpertApplicationStatus(review.appId, "on_hold", notes);
       refresh();
       setShowHoldConfirm(false);
@@ -346,6 +388,47 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     setActionError(null);
 
     try {
+      const mergedDecisions: Record<string, SectionReviewState> = { ...submittedDecisions };
+      let hasSectionDecisions = false;
+
+      for (const sec of REVIEW_SECTIONS) {
+        const draft = sectionDecisions[sec.id];
+        const existing = mergedDecisions[sec.id];
+        if (draft?.decision) {
+          mergedDecisions[sec.id] = {
+            ...existing,
+            ...draft,
+            clarificationStatus:
+              draft.decision === "clarification"
+                ? draft.clarificationStatus || existing?.clarificationStatus || "waiting"
+                : undefined,
+            clarificationRequestedAt:
+              draft.decision === "clarification"
+                ? draft.clarificationRequestedAt || existing?.clarificationRequestedAt || new Date().toISOString()
+                : undefined,
+          };
+          hasSectionDecisions = true;
+        } else if (existing?.decision) {
+          hasSectionDecisions = true;
+        }
+      }
+
+      if (hasSectionDecisions && appId) {
+        setSubmittedDecisions(mergedDecisions);
+        setSectionDecisions(mergedDecisions);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(`jatayu_review_submitted_${appId}`, JSON.stringify(mergedDecisions));
+            localStorage.setItem(`jatayu_review_decisions_${appId}`, JSON.stringify(mergedDecisions));
+          } catch {
+            // ignore
+          }
+        }
+        await updateAdminApplicationSectionDecision(review.appId, {
+          sectionDecisions: mergedDecisions,
+        });
+      }
+
       await updateExpertApplicationStatus(review.appId, "rejected", notes);
       refresh();
       setShowRejectConfirm(false);

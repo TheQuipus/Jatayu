@@ -628,6 +628,10 @@ export default function ExpertProfileEditor() {
   // Save full profile + onboarding data
   const handleSaveAll = async () => {
     if (credentialsLoading || credentialsError) return;
+    if (!profile.name.trim()) {
+      setSaveError("Please provide your Full Name before saving profile updates.");
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
     try {

@@ -50,12 +50,5 @@ export function getSecondarySkills(primarySkill: string, skills: string[]): stri
 }
 
 export function isExpertProfileValid(profile: ExpertProfileData): boolean {
-  return (
-    profile.name.trim().length > 0 &&
-    profile.role.trim().length > 0 &&
-    profile.tagLine.trim().length > 0 &&
-    profile.bio.trim().length > 0 &&
-    profile.category.trim().length > 0 &&
-    profile.skills.length > 0
-  );
+  return profile.name.trim().length > 0;
 }
