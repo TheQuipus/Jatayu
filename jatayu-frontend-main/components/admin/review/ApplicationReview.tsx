@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom"; 
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -57,6 +57,7 @@ import {
 import {
   getAdminDigilockerDocumentBlobUrl,
   getAdminDigilockerDocuments,
+  updateAdminApplicationSectionDecision,
   type AdminDigilockerDocument,
 } from "@/lib/api";
 import styles from "./ApplicationReview.module.css";
@@ -150,6 +151,19 @@ const REVIEW_SECTIONS = [
   { id: "availability", label: "Availability" },
 ] as const;
 
+const createInitialSectionDecisions = (): Record<string, SectionReviewState> => ({
+  category: { decision: null, note: "" },
+  experience: { decision: null, note: "" },
+  profile: { decision: null, note: "" },
+  credentials: { decision: null, note: "" },
+  preferences: { decision: null, note: "" },
+  audience: { decision: null, note: "" },
+  availability: { decision: null, note: "" },
+  kyc: { decision: null, note: "" },
+  certifications: { decision: null, note: "" },
+  portfolio: { decision: null, note: "" },
+});
+
 export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   const router = useRouter();
   const { ready, application, refresh } = useExpertApplication(appId);
@@ -157,6 +171,25 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     () => (application ? mapToApplicationReview(application) : null),
     [application],
   );
+  const [sectionDecisions, setSectionDecisions] = useState<
+    Record<string, SectionReviewState>
+  >(createInitialSectionDecisions);
+
+  const [submittedDecisions, setSubmittedDecisions] = useState<
+    Record<string, SectionReviewState>
+  >(createInitialSectionDecisions);
+
+  const sectionDecisionsRef = useRef(sectionDecisions);
+  const submittedDecisionsRef = useRef(submittedDecisions);
+
+  useEffect(() => {
+    sectionDecisionsRef.current = sectionDecisions;
+  }, [sectionDecisions]);
+
+  useEffect(() => {
+    submittedDecisionsRef.current = submittedDecisions;
+  }, [submittedDecisions]);
+
   const [activeTab, setActiveTab] = useState<string>(REVIEW_SECTIONS[0].id);
   const [previewDoc, setPreviewDoc] = useState<PreviewDocument | null>(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
@@ -197,11 +230,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   } | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const showToast = (message: string, type: "success" | "warning" | "error" | "info" = "info") => {
     if (toastTimeoutRef.current) {
@@ -336,85 +369,151 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     return titles[id] ?? id;
   };
 
-  const INITIAL_SECTION_DECISIONS: Record<string, SectionReviewState> = {
-    category: { decision: null, note: "" },
-    experience: { decision: null, note: "" },
-    profile: { decision: null, note: "" },
-    credentials: { decision: null, note: "" },
-    preferences: { decision: null, note: "" },
-    audience: { decision: null, note: "" },
-    availability: { decision: null, note: "" },
-    kyc: { decision: null, note: "" },
-    certifications: { decision: null, note: "" },
-    portfolio: { decision: null, note: "" },
-  };
-
-  const [sectionDecisions, setSectionDecisions] = useState<
-    Record<string, SectionReviewState>
-  >(INITIAL_SECTION_DECISIONS);
-
-  const [submittedDecisions, setSubmittedDecisions] = useState<
-    Record<string, SectionReviewState>
-  >(INITIAL_SECTION_DECISIONS);
-
   // Restore persisted review progress from localStorage on mount or when appId changes
   useEffect(() => {
     if (typeof window === "undefined" || !appId) return;
 
-    try {
-      // 1. Restore submitted decisions (badges, notes history, decision status)
-      const savedSubmitted = localStorage.getItem(`jatayu_review_submitted_${appId}`);
-      let parsedSubmitted: Record<string, SectionReviewState> | null = null;
-      if (savedSubmitted) {
-        parsedSubmitted = JSON.parse(savedSubmitted);
-        if (parsedSubmitted && typeof parsedSubmitted === "object") {
-          setSubmittedDecisions((prev) => ({ ...prev, ...parsedSubmitted }));
+    const timer = setTimeout(() => {
+      try {
+        // 1. Restore submitted decisions (badges, notes history, decision status)
+        const savedSubmitted = localStorage.getItem(`jatayu_review_submitted_${appId}`);
+        let parsedSubmitted: Record<string, SectionReviewState> | null = null;
+        if (savedSubmitted) {
+          parsedSubmitted = JSON.parse(savedSubmitted);
+          if (parsedSubmitted && typeof parsedSubmitted === "object") {
+            setSubmittedDecisions((prev) => ({ ...prev, ...parsedSubmitted }));
+          }
         }
-      }
 
-      // 2. Restore draft decisions (unsubmitted radio choices and typed notes)
-      const savedDrafts = localStorage.getItem(`jatayu_review_decisions_${appId}`);
-      if (savedDrafts) {
-        const parsedDrafts = JSON.parse(savedDrafts);
-        if (parsedDrafts && typeof parsedDrafts === "object") {
-          setSectionDecisions((prev) => ({ ...prev, ...parsedDrafts }));
+        // 2. Restore draft decisions (unsubmitted radio choices and typed notes)
+        const savedDrafts = localStorage.getItem(`jatayu_review_decisions_${appId}`);
+        if (savedDrafts) {
+          const parsedDrafts = JSON.parse(savedDrafts);
+          if (parsedDrafts && typeof parsedDrafts === "object") {
+            setSectionDecisions((prev) => ({ ...prev, ...parsedDrafts }));
+          }
+        } else if (parsedSubmitted) {
+          // Fallback: sync drafts from submitted decisions if drafts weren't saved separately
+          setSectionDecisions((prev) => ({ ...prev, ...parsedSubmitted }));
         }
-      } else if (parsedSubmitted) {
-        // Fallback: sync drafts from submitted decisions if drafts weren't saved separately
-        setSectionDecisions((prev) => ({ ...prev, ...parsedSubmitted }));
-      }
 
-      // 3. Restore last active navigation tab
-      const savedTab = localStorage.getItem(`jatayu_review_active_tab_${appId}`);
-      if (savedTab && REVIEW_SECTIONS.some((sec) => sec.id === savedTab)) {
-        updateActiveTab(savedTab);
+        // 3. Restore last active navigation tab
+        const savedTab = localStorage.getItem(`jatayu_review_active_tab_${appId}`);
+        if (savedTab && REVIEW_SECTIONS.some((sec) => sec.id === savedTab)) {
+          updateActiveTab(savedTab);
+        }
+      } catch (e) {
+        console.warn("Could not load review progress from localStorage:", e);
       }
-    } catch (e) {
-      console.warn("Could not load review progress from localStorage:", e);
-    }
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [appId]);
+
+  // Sync section decisions and clarifications from backend application on load
+  useEffect(() => {
+    if (!application) return;
+
+    const metadata = application.onboardingMetadata as Record<string, unknown> | undefined;
+    const backendDecisions = metadata?.sectionDecisions as Record<string, SectionReviewState> | undefined;
+    const backendClarifications = metadata?.sectionClarifications as Record<
+      string,
+      { status?: "waiting" | "received"; note?: string; notes?: SectionNote[]; requestedAt?: string }
+    > | undefined;
+
+    if (backendDecisions || backendClarifications) {
+      const timer = setTimeout(() => {
+        setSubmittedDecisions((prev) => {
+          const merged = { ...prev };
+          REVIEW_SECTIONS.forEach((sec) => {
+            const dec = backendDecisions?.[sec.id];
+            const clar = backendClarifications?.[sec.id];
+
+            if (dec) {
+              merged[sec.id] = {
+                decision: dec.decision || null,
+                note: dec.note || "",
+                notes: dec.notes || [],
+                clarificationStatus: clar?.status || dec.clarificationStatus,
+                clarificationRequestedAt: dec.clarificationRequestedAt || clar?.requestedAt,
+              };
+            } else if (clar) {
+              merged[sec.id] = {
+                ...(merged[sec.id] || { decision: "clarification", note: "" }),
+                decision: "clarification",
+                clarificationStatus: clar.status,
+                clarificationRequestedAt: clar.requestedAt,
+                note: clar.note || merged[sec.id]?.note || "",
+                notes: clar.notes || merged[sec.id]?.notes || [],
+              };
+            }
+          });
+
+          if (typeof window !== "undefined" && appId) {
+            try {
+              localStorage.setItem(`jatayu_review_submitted_${appId}`, JSON.stringify(merged));
+            } catch {
+              // ignore
+            }
+          }
+          return merged;
+        });
+
+        setSectionDecisions((prev) => {
+          const merged = { ...prev };
+          REVIEW_SECTIONS.forEach((sec) => {
+            const dec = backendDecisions?.[sec.id];
+            const clar = backendClarifications?.[sec.id];
+            if (dec) {
+              merged[sec.id] = {
+                decision: dec.decision || null,
+                note: dec.note || "",
+                notes: dec.notes || [],
+                clarificationStatus: clar?.status || dec.clarificationStatus,
+                clarificationRequestedAt: dec.clarificationRequestedAt || clar?.requestedAt,
+              };
+            } else if (clar) {
+              merged[sec.id] = {
+                ...(merged[sec.id] || { decision: "clarification", note: "" }),
+                decision: "clarification",
+                clarificationStatus: clar.status,
+                clarificationRequestedAt: clar.requestedAt,
+              };
+            }
+          });
+          return merged;
+        });
+      }, 0);
+
+      return () => clearTimeout(timer);
+    }
+  }, [application, appId]);
 
   // Sync approval state if application is approved in backend
   useEffect(() => {
     if (review?.status === "approved") {
-      setSubmittedDecisions((prev) => {
-        const updated = { ...prev };
-        for (const sec of REVIEW_SECTIONS) {
-          if (!updated[sec.id]?.decision) {
-            updated[sec.id] = { decision: "approve", note: "" };
+      const timer = setTimeout(() => {
+        setSubmittedDecisions((prev) => {
+          const updated = { ...prev };
+          for (const sec of REVIEW_SECTIONS) {
+            if (!updated[sec.id]?.decision) {
+              updated[sec.id] = { decision: "approve", note: "" };
+            }
           }
-        }
-        return updated;
-      });
-      setSectionDecisions((prev) => {
-        const updated = { ...prev };
-        for (const sec of REVIEW_SECTIONS) {
-          if (!updated[sec.id]?.decision) {
-            updated[sec.id] = { decision: "approve", note: "" };
+          return updated;
+        });
+        setSectionDecisions((prev) => {
+          const updated = { ...prev };
+          for (const sec of REVIEW_SECTIONS) {
+            if (!updated[sec.id]?.decision) {
+              updated[sec.id] = { decision: "approve", note: "" };
+            }
           }
-        }
-        return updated;
-      });
+          return updated;
+        });
+      }, 0);
+
+      return () => clearTimeout(timer);
     }
   }, [review?.status]);
 
@@ -518,8 +617,8 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       // Only transition between pending and in_review
       if (review.status !== "pending" && review.status !== "in_review") return;
 
-      const draftsToCheck = customDrafts || sectionDecisions;
-      const submittedToCheck = customSubmitted || submittedDecisions;
+      const draftsToCheck = customDrafts || sectionDecisionsRef.current;
+      const submittedToCheck = customSubmitted || submittedDecisionsRef.current;
 
       const hasProgress = REVIEW_SECTIONS.some((sec) => {
         const draft = draftsToCheck[sec.id];
@@ -562,7 +661,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         }
       }
     },
-    [review, sectionDecisions, submittedDecisions, refresh],
+    [review, refresh],
   );
 
   // Sync application status if partially filled on load
@@ -614,7 +713,19 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     decision: SectionDecision,
     updatedState?: SectionReviewState,
   ) => {
-    const nextState = updatedState || sectionDecisions[sectionId];
+    const rawState = updatedState || sectionDecisions[sectionId] || { decision: null, note: "" };
+    const nextState: SectionReviewState = {
+      ...rawState,
+      decision,
+      clarificationStatus:
+        decision === "clarification"
+          ? rawState.clarificationStatus || "waiting"
+          : undefined,
+      clarificationRequestedAt:
+        decision === "clarification"
+          ? rawState.clarificationRequestedAt || new Date().toISOString()
+          : undefined,
+    };
     const updatedSubmitted = {
       ...submittedDecisions,
       [sectionId]: nextState,
@@ -646,6 +757,19 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
 
     void markInReviewIfNeeded(updatedDrafts, updatedSubmitted);
 
+    // Save to backend database
+    if (appId) {
+      updateAdminApplicationSectionDecision(appId, {
+        sectionId,
+        decision,
+        note: nextState.note,
+        notes: nextState.notes,
+        clarificationStatus: nextState.clarificationStatus,
+      }).catch((err) => {
+        console.warn("Could not sync section decision to backend:", err);
+      });
+    }
+
     // Clear from unfilledSectionIds
     setUnfilledSectionIds((prev) => {
       if (!prev.has(sectionId)) return prev;
@@ -661,7 +785,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       msg = `"${title}" approved successfully.`;
       type = "success";
     } else if (decision === "clarification") {
-      msg = `"${title}" marked as Needs Clarification.`;
+      msg = `"${title}" submitted for clarification. Waiting for expert response.`;
       type = "warning";
     } else if (decision === "reject") {
       msg = `"${title}" section rejected.`;
@@ -671,6 +795,34 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       type = "info";
     }
     showToast(msg, type);
+  };
+
+  const getSectionClarificationStatus = (
+    sectionId: string,
+  ): "waiting" | "received" | null => {
+    const sub = submittedDecisions[sectionId];
+    if (sub?.decision !== "clarification") {
+      return null;
+    }
+
+    // Check backend application metadata first
+    const appMeta = application?.onboardingMetadata as Record<string, unknown> | undefined;
+    const backendClarifications = appMeta?.sectionClarifications as Record<
+      string,
+      { status?: "waiting" | "received" }
+    > | undefined;
+
+    if (backendClarifications?.[sectionId]?.status === "received") {
+      return "received";
+    }
+    if (backendClarifications?.[sectionId]?.status === "waiting") {
+      return "waiting";
+    }
+
+    if (sub.clarificationStatus === "received") {
+      return "received";
+    }
+    return "waiting";
   };
 
 
@@ -1092,7 +1244,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
               <div className={styles.chipsNavList}>
                 {REVIEW_SECTIONS.map((sec, idx) => {
                   const isActive = activeTab === sec.id;
-                  const decision = getSectionDecision(sec.id);
+                  const clarificationStatus = getSectionClarificationStatus(sec.id);
                   return (
                     <button
                       key={sec.id}
@@ -1102,6 +1254,23 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                     >
                       <span className={styles.chipNum}>{idx + 1}</span>
                       <span className={styles.chipText}>{sec.label}</span>
+                      {clarificationStatus && (
+                        <span
+                          className={styles.navExclamationBadge}
+                          aria-label={
+                            clarificationStatus === "received"
+                              ? "Clarification Received"
+                              : "Waiting for Clarification"
+                          }
+                        >
+                          <span className={styles.navExclamationIcon}>!</span>
+                          <span className={styles.navClarificationTooltip} role="tooltip">
+                            {clarificationStatus === "received"
+                              ? "Clarification Received"
+                              : "Waiting for Clarification"}
+                          </span>
+                        </span>
+                      )}
                     </button>
                   );
                 })}

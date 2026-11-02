@@ -170,6 +170,9 @@ export default function ExpertProfileEditor() {
   const [linkedinError, setLinkedinError] = useState("");
   const [positionToDelete, setPositionToDelete] = useState<EmploymentPosition | null>(null);
   const [degreeToDelete, setDegreeToDelete] = useState<EducationDegree | null>(null);
+  const [pendingClarifications, setPendingClarifications] = useState<
+    Record<string, { status: string; note?: string }>
+  >({});
   const categoryRecommendationRequests = useRef(new Set<string>());
   const spokenLanguageOptions = useMemo(() => {
     const options = new Map(SPOKEN_LANGUAGE_OPTIONS.map((option) => [option.value.toLowerCase(), option]));
@@ -284,6 +287,9 @@ export default function ExpertProfileEditor() {
         setPortfolioSamples(Array.isArray(metadata.portfolioSamples)
           ? metadata.portfolioSamples as PortfolioSampleFile[]
           : []);
+        if (metadata.sectionClarifications && typeof metadata.sectionClarifications === "object") {
+          setPendingClarifications(metadata.sectionClarifications as Record<string, { status: string; note?: string }>);
+        }
       })
       .catch(() => {
         setCredentialsError("Unable to load saved credentials. Please reload to retry.");
@@ -676,6 +682,44 @@ export default function ExpertProfileEditor() {
       });
 
       setSaved(true);
+
+      setPendingClarifications((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((key) => {
+          if (next[key]?.status === "waiting") {
+            next[key] = { ...next[key], status: "received" };
+          }
+        });
+        return next;
+      });
+
+      // Sync local storage review records if this appId has pending clarifications
+      if (typeof window !== "undefined" && appId) {
+        try {
+          const submittedKey = `jatayu_review_submitted_${appId}`;
+          const savedData = localStorage.getItem(submittedKey);
+          if (savedData) {
+            const parsed = JSON.parse(savedData);
+            let updated = false;
+            Object.keys(parsed).forEach((secKey) => {
+              if (
+                parsed[secKey]?.decision === "clarification" &&
+                parsed[secKey]?.clarificationStatus === "waiting"
+              ) {
+                parsed[secKey].clarificationStatus = "received";
+                parsed[secKey].clarificationReceivedAt = new Date().toISOString();
+                updated = true;
+              }
+            });
+            if (updated) {
+              localStorage.setItem(submittedKey, JSON.stringify(parsed));
+              window.dispatchEvent(new Event("expert-applications-updated"));
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Could not save profile.");
     } finally {
@@ -731,6 +775,61 @@ export default function ExpertProfileEditor() {
       {saveError && (
         <div className={styles.errorNote}>
           <AlertCircle size={15} /> {saveError}
+        </div>
+      )}
+
+      {Object.entries(pendingClarifications).some(([, v]) => v?.status === "waiting") && (
+        <div
+          style={{
+            margin: "0 0 20px 0",
+            padding: "16px 20px",
+            borderRadius: "10px",
+            background: "#fff7ed",
+            border: "1.5px solid #fdba74",
+            color: "#9a3412",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "12px",
+          }}
+        >
+          <AlertCircle size={20} style={{ color: "#ea580c", flexShrink: 0, marginTop: "2px" }} />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px" }}>
+              Action Required: Review Team Requested Clarification
+            </div>
+            <p style={{ margin: "0 0 8px 0", fontSize: "13px", lineHeight: "1.4" }}>
+              Please review and update the information for the sections below. Once you click &quot;Save Changes&quot;, the review team will be notified with your updates.
+            </p>
+            {Object.entries(pendingClarifications)
+              .filter(([, v]) => v?.status === "waiting")
+              .map(([secKey, v]) => {
+                const titles: Record<string, string> = {
+                  category: "Category & Skills",
+                  experience: "Work Experience & Portfolio",
+                  profile: "Profile Details",
+                  credentials: "Credentials & KYC",
+                  preferences: "Consultation Formats & Pricing",
+                  audience: "Target Client Audience",
+                  availability: "Availability & Schedule",
+                };
+                return (
+                  <div
+                    key={secKey}
+                    style={{
+                      fontSize: "12px",
+                      background: "rgba(255, 255, 255, 0.8)",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      marginBottom: "6px",
+                      border: "1px solid #fed7aa",
+                    }}
+                  >
+                    <strong style={{ color: "#c2410c" }}>{titles[secKey] || secKey}:</strong>{" "}
+                    {v.note || "Please provide the requested details."}
+                  </div>
+                );
+              })}
+          </div>
         </div>
       )}
 
