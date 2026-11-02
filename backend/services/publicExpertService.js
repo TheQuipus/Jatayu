@@ -102,6 +102,7 @@ export function serializePublicExpert(expert, { includeCredentials = true } = {}
     price: values.price,
     replyTime: values.replyTime,
     replyTimeMinutes: values.replyTimeMinutes,
+    rating: expert.rating ?? null,
     credentials: includeCredentials
       ? (expert.credentials || []).map(serializeCredential)
       : undefined,
@@ -124,9 +125,10 @@ function matchesAny(selected, available) {
   return selected.some((value) => normalizedAvailable.includes(normalized(value)));
 }
 
-function matchesNonSearchFilters(expert, filters) {
+export function matchesNonSearchFilters(expert, filters) {
   if (!matchesAny(filters.categories, [expert.category, ...expert.topics])) return false;
   if (!matchesAny(filters.languages, expert.languages)) return false;
+  if (filters.ratings.length > 0 && !filters.ratings.some((minimumRating) => expert.rating >= minimumRating)) return false;
   if (filters.minPrice !== null && (expert.price === null || expert.price < filters.minPrice)) return false;
   if (filters.maxPrice !== null && (expert.price === null || expert.price > filters.maxPrice)) return false;
   if (filters.availability.length > 0 && (
@@ -200,6 +202,9 @@ export function parsePublicExpertListQuery(query) {
   const categories = queryValues(query.category);
   const languages = queryValues(query.language);
   const availability = queryValues(query.availability).map(Number);
+  const ratings = queryValues(query.ratings)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value >= 1 && value <= 5);
   const allowedSorts = new Set(['popularity', 'price-asc', 'price-desc', 'alphabetical', 'newest']);
   const sort = String(query.sort || 'popularity');
   const errors = [];
@@ -212,8 +217,11 @@ export function parsePublicExpertListQuery(query) {
   if (availability.some((value) => ![15, 30, 120].includes(value))) {
     errors.push('availability values must be 15, 30, or 120');
   }
+  if (query.ratings !== undefined && ratings.length === 0) {
+    errors.push('ratings values must be between 1 and 5');
+  }
   if (!allowedSorts.has(sort)) errors.push('sort is invalid');
-  return { page, limit, minPrice, maxPrice, search, categories, languages, availability, sort, errors };
+  return { page, limit, minPrice, maxPrice, search, categories, languages, availability, ratings, sort, errors };
 }
 
 export async function findPublicExperts(filters) {
