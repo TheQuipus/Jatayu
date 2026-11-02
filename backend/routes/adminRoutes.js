@@ -4,6 +4,7 @@ import {
   listApplications,
   getApplication,
   updateApplicationStatus,
+  updateApplicationSectionDecision,
   getApplicationStats,
 } from '../controllers/adminApplicationController.js';
 import { adminLogin, getAdminMe } from '../controllers/adminAuthController.js';
@@ -44,5 +45,6 @@ router.get('/applications/:id/digilocker-documents', protectAdmin, listApplicati
 router.get('/applications/:id/digilocker-documents/:documentId/file', protectAdmin, getApplicationDigilockerDocumentFile);
 router.get('/applications/:id', protectAdmin, getApplication);
 router.patch('/applications/:id/status', protectAdmin, updateApplicationStatus);
+router.patch('/applications/:id/section-decision', protectAdmin, updateApplicationSectionDecision);
 
 export default router;

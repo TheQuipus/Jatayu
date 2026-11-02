@@ -19,6 +19,8 @@ export type SectionReviewState = {
   decision: SectionDecision;
   note: string;
   notes?: SectionNote[];
+  clarificationStatus?: "waiting" | "received";
+  clarificationRequestedAt?: string;
 };
 
 interface SectionDecisionControlProps {
@@ -187,6 +189,30 @@ export default function SectionDecisionControl({
           <span>Reject</span>
         </button>
       </div>
+
+      {submittedDecision === "clarification" && (
+        <div className={styles.clarificationStatusBanner}>
+          <div className={styles.clarificationStatusHeader}>
+            <span
+              className={
+                state?.clarificationStatus === "received"
+                  ? styles.clarificationReceivedPill
+                  : styles.clarificationWaitingPill
+              }
+            >
+              <span className={styles.clarificationStatusDot} />
+              {state?.clarificationStatus === "received"
+                ? "Clarification Received"
+                : "Waiting for Clarification"}
+            </span>
+          </div>
+          <p className={styles.clarificationBannerDesc}>
+            {state?.clarificationStatus === "received"
+              ? "The expert has updated this section with clarification. Review the updated details and adjust your decision when ready."
+              : "Clarification requested from expert. The Sections Nav button displays '!' (Waiting for Clarification on hover)."}
+          </p>
+        </div>
+      )}
 
       <div className={`${styles.inlineReasonContainer} ${
         (currentDecision === "clarification" || currentDecision === "reject") ? styles.inlineReasonContainerActive : ""

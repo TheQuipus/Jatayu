@@ -857,6 +857,26 @@ export async function updateAdminApplicationStatus(
   );
 }
 
+export async function updateAdminApplicationSectionDecision(
+  appId: string,
+  payload: {
+    sectionId?: string;
+    decision?: string | null;
+    note?: string;
+    notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>;
+    clarificationStatus?: "waiting" | "received";
+    sectionDecisions?: Record<string, unknown>;
+  },
+): Promise<{ message: string; expert: BackendExpertApplicationRecord }> {
+  return adminApiFetch<{ message: string; expert: BackendExpertApplicationRecord }>(
+    `/api/admin/applications/${encodeURIComponent(appId)}/section-decision`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 export async function getAdminApplicationStats(): Promise<Record<string, number>> {
   return adminApiFetch<Record<string, number>>("/api/admin/applications/stats", {
     method: "GET",
@@ -1658,7 +1678,7 @@ export async function updateExpertRequestStatusApi(
   try {
     const isDeclined = status === "declined";
     const isAccepted = status === "accepted";
-    const decisionVal = isDeclined ? "declined" : isAccepted ? "accepted" : (status as any);
+    const decisionVal = isDeclined ? "declined" : isAccepted ? "accepted" : (status as unknown as "accepted" | "declined");
 
     return await submitExpertRequestDecision(requestId, {
       decision: decisionVal,

@@ -3496,6 +3496,7 @@
 }
 
 .chipButton {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -3920,4 +3921,149 @@
   max-height: 180px;
   opacity: 1;
   margin-top: 10px;
+}
+
+/* ── Sections Nav Exclamation Badge & Clarification Tooltip ────── */
+.navExclamationBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: auto;
+  cursor: pointer;
+  background: #fff7ed;
+  border: 1.5px solid #f97316;
+  color: #ea580c;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.navExclamationBadge:hover {
+  transform: scale(1.12);
+}
+
+.chipActive .navExclamationBadge {
+  background: #ea580c;
+  border-color: #f97316;
+  color: #ffffff;
+}
+
+.navExclamationIcon {
+  display: inline-block;
+  user-select: none;
+  font-weight: 800;
+  transform: translateY(-0.5px);
+}
+
+.navClarificationTooltip {
+  visibility: hidden;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: -4px;
+  background: #18181b;
+  color: #ffffff;
+  font-family: var(--font-body, sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.navClarificationTooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 9px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #18181b transparent transparent transparent;
+}
+
+.navExclamationBadge:hover .navClarificationTooltip,
+.chipButton:hover .navClarificationTooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Section Decision Clarification Banner ────── */
+.clarificationStatusBanner {
+  width: 100%;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--gallery, #f8f8f9);
+  border: 1px solid var(--mercury, #e2e8f0);
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.clarificationStatusHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.clarificationWaitingPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #ea580c;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-body);
+}
+
+.clarificationReceivedPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-body);
+}
+
+.clarificationStatusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.clarificationBannerDesc {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--dove-gray);
+  line-height: 1.4;
+  font-family: var(--font-body);
 }

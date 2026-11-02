@@ -246,6 +246,61 @@ export const updateProfile = async (req, res) => {
         expert.profilePhotoSrc = req.body.profilePhotoSrc;
       }
 
+      // Check if any sections waiting for clarification were updated by the expert
+      let currentMetadata = {};
+      try {
+        currentMetadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+      } catch {
+        currentMetadata = {};
+      }
+
+      const clarifications = currentMetadata.sectionClarifications || {};
+      const sectionDecisions = currentMetadata.sectionDecisions || {};
+      let clarificationsUpdated = false;
+
+      const updatedSections = new Set();
+      if (category !== undefined || skills !== undefined || experienceLevel !== undefined) {
+        updatedSections.add('category');
+      }
+      if (credentials !== undefined || (onboardingMetadata && (onboardingMetadata.portfolio !== undefined || onboardingMetadata.linkedin !== undefined))) {
+        updatedSections.add('experience');
+      }
+      if (fullName !== undefined || professionalTitle !== undefined || tagLine !== undefined || bio !== undefined || req.file) {
+        updatedSections.add('profile');
+      }
+      if (onboardingMetadata && (onboardingMetadata.governmentId !== undefined || onboardingMetadata.kycVideoUrl !== undefined || onboardingMetadata.certificates !== undefined || onboardingMetadata.portfolioSamples !== undefined)) {
+        updatedSections.add('credentials');
+      }
+      if (selectedFormats !== undefined || selectedLengths !== undefined || formatPrices !== undefined || (onboardingMetadata && onboardingMetadata.acceptCustomRequests !== undefined)) {
+        updatedSections.add('preferences');
+      }
+      if (targetAudience !== undefined || focusAreas !== undefined || (onboardingMetadata && onboardingMetadata.audiences !== undefined)) {
+        updatedSections.add('audience');
+      }
+      if (availabilitySlots !== undefined || timezone !== undefined) {
+        updatedSections.add('availability');
+      }
+
+      for (const [secKey, clar] of Object.entries(clarifications)) {
+        if (clar && clar.status === 'waiting') {
+          if (updatedSections.has(secKey) || updatedSections.size === 0) {
+            clar.status = 'received';
+            clar.receivedAt = new Date().toISOString();
+            clarificationsUpdated = true;
+            if (sectionDecisions[secKey]) {
+              sectionDecisions[secKey].clarificationStatus = 'received';
+              sectionDecisions[secKey].clarificationReceivedAt = new Date().toISOString();
+            }
+          }
+        }
+      }
+
+      if (clarificationsUpdated) {
+        currentMetadata.sectionClarifications = clarifications;
+        currentMetadata.sectionDecisions = sectionDecisions;
+        expert.onboardingMetadata = currentMetadata;
+      }
+
       if (step) expert.onboardingStep = step;
       await expert.save({ transaction });
 

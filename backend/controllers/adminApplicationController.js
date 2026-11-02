@@ -344,3 +344,95 @@ export const getApplicationStats = async (req, res) => {
     return res.status(500).json({ message: 'Server error retrieving application stats', error: error.message });
   }
 };
+
+/**
+ * Update section review decision and clarifications on an expert application
+ */
+export const updateApplicationSectionDecision = async (req, res) => {
+  const { id } = req.params;
+  const { sectionId, decision, note, notes, clarificationStatus, sectionDecisions } = req.body;
+
+  try {
+    const expert = await findExpertForAdmin(buildDetailWhere(id));
+    if (!expert) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    let metadata = {};
+    try {
+      metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+    } catch {
+      metadata = {};
+    }
+
+    const currentSectionDecisions = metadata.sectionDecisions || {};
+    const currentClarifications = metadata.sectionClarifications || {};
+
+    if (sectionDecisions && typeof sectionDecisions === 'object') {
+      // Bulk update
+      Object.entries(sectionDecisions).forEach(([secKey, secVal]) => {
+        if (!secVal) return;
+        currentSectionDecisions[secKey] = {
+          decision: secVal.decision || null,
+          note: secVal.note || '',
+          notes: secVal.notes || [],
+          clarificationStatus: secVal.clarificationStatus || (secVal.decision === 'clarification' ? 'waiting' : undefined),
+          clarificationRequestedAt: secVal.decision === 'clarification' ? (secVal.clarificationRequestedAt || new Date().toISOString()) : undefined,
+          updatedAt: new Date().toISOString(),
+        };
+
+        if (secVal.decision === 'clarification') {
+          currentClarifications[secKey] = {
+            sectionId: secKey,
+            status: secVal.clarificationStatus || 'waiting',
+            requestedAt: secVal.clarificationRequestedAt || new Date().toISOString(),
+            note: secVal.note || (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '',
+            notes: secVal.notes || [],
+            receivedAt: secVal.clarificationStatus === 'received' ? (secVal.clarificationReceivedAt || new Date().toISOString()) : null,
+          };
+        } else if (secVal.decision === 'approve' || secVal.decision === 'reject') {
+          delete currentClarifications[secKey];
+        }
+      });
+    } else if (sectionId) {
+      // Single section update
+      currentSectionDecisions[sectionId] = {
+        decision: decision || null,
+        note: note || '',
+        notes: notes || [],
+        clarificationStatus: decision === 'clarification' ? (clarificationStatus || 'waiting') : undefined,
+        clarificationRequestedAt: decision === 'clarification' ? new Date().toISOString() : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (decision === 'clarification') {
+        currentClarifications[sectionId] = {
+          sectionId,
+          status: clarificationStatus || 'waiting',
+          requestedAt: new Date().toISOString(),
+          note: note || (notes && notes[notes.length - 1]?.text) || '',
+          notes: notes || [],
+          receivedAt: clarificationStatus === 'received' ? new Date().toISOString() : null,
+        };
+      } else if (decision === 'approve' || decision === 'reject') {
+        delete currentClarifications[sectionId];
+      }
+    }
+
+    metadata.sectionDecisions = currentSectionDecisions;
+    metadata.sectionClarifications = currentClarifications;
+
+    expert.onboardingMetadata = metadata;
+    await saveExpertForAdmin(expert);
+
+    const updated = await findExpertByIdForAdmin(expert.id);
+    return res.status(200).json({
+      message: 'Section decision updated successfully',
+      expert: serializeExpert(updated),
+    });
+  } catch (error) {
+    console.error('Update Section Decision Error:', error);
+    return res.status(500).json({ message: 'Server error updating section decision', error: error.message });
+  }
+};
+
