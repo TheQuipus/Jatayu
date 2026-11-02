@@ -841,6 +841,68 @@ Return a JSON object strictly in this format:
   }
 }
 
+export async function recommendExpertMatches(context = {}) {
+  const candidates = Array.isArray(context.candidates) ? context.candidates : [];
+
+  let settings;
+  try {
+    settings = await readAiSettings();
+  } catch {
+    return { matches: [], source: 'fallback' };
+  }
+
+  if (!settings.configured || candidates.length === 0) {
+    return { matches: [], source: 'fallback' };
+  }
+
+  const seekerCategory = String(context.seeker?.category || '').trim();
+  const seekerTopics = Array.isArray(context.seeker?.topics) ? context.seeker.topics : [];
+  const seekerSummary = String(context.seeker?.needsText || context.seeker?.summary || '').trim();
+
+  const prompt = [
+    'You are ranking approved expert candidates for a seeker consultation marketplace.',
+    'Return valid JSON only.',
+    'Return a top-level object with a "matches" array.',
+    'Each match must include: expertId, relevanceReason, confidence.',
+    'confidence must be a number between 0 and 1.',
+    'Use only expert IDs that are present in the candidate list below.',
+    'Do not invent or guess IDs.',
+    'If no candidate is a plausible fit, return an empty matches array.',
+    '',
+    `Seeker primary skill/category: ${seekerCategory || 'Not specified'}`,
+    `Seeker topics: ${seekerTopics.join(', ') || 'Not specified'}`,
+    `Seeker summary: ${seekerSummary || 'Not specified'}`,
+    '',
+    'Candidate list:',
+    JSON.stringify(candidates.slice(0, 20), null, 2),
+    '',
+    'Return JSON in this exact shape:',
+    '{"matches":[{"expertId":"EXPERT_ID","relevanceReason":"short reason why this expert is relevant","confidence":0.82}]}'
+  ].join('\n');
+
+  try {
+    const raw = await completeChat({ settings, prompt });
+    const parsed = parseJsonObject(raw);
+    const candidateIds = new Set(candidates.map((candidate) => String(candidate.id || candidate.expertId || '').trim()).filter(Boolean));
+    const entries = Array.isArray(parsed.matches) ? parsed.matches : [];
+    const matches = entries
+      .map((entry) => ({
+        expertId: String(entry?.expertId || entry?.id || '').trim(),
+        relevanceReason: String(entry?.relevanceReason || entry?.reason || '').trim(),
+        confidence: Number(entry?.confidence ?? entry?.score ?? 0),
+      }))
+      .filter((entry) => candidateIds.has(entry.expertId))
+      .filter((entry) => Number.isFinite(entry.confidence) && entry.confidence > 0)
+      .filter((entry, index, all) => all.findIndex((other) => other.expertId === entry.expertId) === index)
+      .sort((left, right) => right.confidence - left.confidence)
+      .slice(0, 5);
+
+    return { matches, source: 'ai' };
+  } catch {
+    return { matches: [], source: 'fallback' };
+  }
+}
+
 export const SEEKER_GOAL_OPTIONS = [
   'Clarity & Direction',
   'Actionable Plan',
