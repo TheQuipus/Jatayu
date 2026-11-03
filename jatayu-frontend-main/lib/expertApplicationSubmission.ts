@@ -85,6 +85,7 @@ export type ExpertApplicationSubmission = {
   termsAcceptedAt: string;
   reviewerNote?: string;
   onboardingStep?: string;
+  onboardingMetadata?: Record<string, unknown>;
 };
 
 export type ExpertApplicationDraft = Partial<

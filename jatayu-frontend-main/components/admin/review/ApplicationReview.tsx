@@ -96,6 +96,7 @@ import DocumentPreviewModal, { type PreviewDocument } from "./DocumentPreviewMod
 import SectionDecisionControl, {
   type SectionDecision,
   type SectionReviewState,
+  type SectionNote,
 } from "./SectionDecisionControl";
 import SectionApproveConfirmModal from "./SectionApproveConfirmModal";
 
@@ -883,12 +884,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   const getSectionClarificationStatus = (
     sectionId: string,
   ): "waiting" | "received" | null => {
-    const sub = submittedDecisions[sectionId];
-    if (sub?.decision !== "clarification") {
-      return null;
-    }
-
-    // Check backend application metadata first
+    // 1. Check backend application metadata sectionClarifications first
     const appMeta = application?.onboardingMetadata as Record<string, unknown> | undefined;
     const backendClarifications = appMeta?.sectionClarifications as Record<
       string,
@@ -902,10 +898,52 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       return "waiting";
     }
 
-    if (sub.clarificationStatus === "received") {
+    // 2. Check backend application metadata sectionDecisions
+    const backendDecisions = appMeta?.sectionDecisions as Record<
+      string,
+      SectionReviewState
+    > | undefined;
+    if (backendDecisions?.[sectionId]?.clarificationStatus === "received") {
       return "received";
     }
-    return "waiting";
+    if (
+      backendDecisions?.[sectionId]?.decision === "clarification" ||
+      backendDecisions?.[sectionId]?.clarificationStatus === "waiting"
+    ) {
+      return "waiting";
+    }
+
+    // 3. Check submitted decisions state
+    const sub = submittedDecisions[sectionId];
+    if (sub?.clarificationStatus === "received") {
+      return "received";
+    }
+    if (sub?.decision === "clarification") {
+      return "waiting";
+    }
+
+    // 4. Check active draft decisions (e.g. admin selected "Need Clarification" radio)
+    const draft = sectionDecisions[sectionId];
+    if (draft?.clarificationStatus === "received") {
+      return "received";
+    }
+    if (draft?.decision === "clarification") {
+      return "waiting";
+    }
+
+    // 5. Fallback for legacy applications: if the application itself is on_hold,
+    // and this section has note/notes in draft or submitted
+    if (
+      application?.status === "on_hold" &&
+      ((draft?.notes && draft.notes.length > 0) ||
+        (sub?.notes && sub.notes.length > 0) ||
+        draft?.note?.trim() ||
+        sub?.note?.trim())
+    ) {
+      return "waiting";
+    }
+
+    return null;
   };
 
 
