@@ -46,6 +46,23 @@ export async function ensureExpertColumns(db = expertDb) {
     await db.query('CREATE INDEX `idx_experts_approved_updated` ON `Experts` (`approvedAt`, `updatedAt`)');
     console.log('[Auto-Migrate] Created index idx_experts_approved_updated on Experts (approvedAt, updatedAt).');
   }
+  // Support approved expert discovery filtering and ordering.
+  const [discoveryIndexRows] = await db.query(
+    `SELECT COUNT(*) AS count
+     FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'Experts'
+       AND INDEX_NAME = 'idx_experts_status_submitted_updated'`,
+  );
+
+  if (Number(discoveryIndexRows[0]?.count ?? 0) === 0) {
+    await db.query(
+      'CREATE INDEX `idx_experts_status_submitted_updated` ON `Experts` (`status`, `submittedAt`, `updatedAt`)',
+    );
+    console.log(
+      '[Auto-Migrate] Created index idx_experts_status_submitted_updated on Experts (status, submittedAt, updatedAt).',
+    );
+  }
 }
 
 // When executed directly from CLI: node scripts/migrateExpertColumns.js
