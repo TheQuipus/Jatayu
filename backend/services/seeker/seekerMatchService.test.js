@@ -51,6 +51,30 @@ test('parseMatchLimit validates bounds', () => {
   assert.equal(parseMatchLimit('99'), null);
 });
 
+test('findFeaturedMatches limits database candidate retrieval to 200 experts', async (t) => {
+  let queryOptions;
+
+  t.mock.method(expertModel, 'findAll', async (options) => {
+    queryOptions = options;
+    return [];
+  });
+
+  await findFeaturedMatches({
+    category: 'Career',
+    topics: [],
+    needsText: '',
+    selectedNeedChips: [],
+    selectedFormats: [],
+  });
+
+  assert.equal(queryOptions.limit, 200);
+  assert.deepEqual(queryOptions.where, { status: 'approved' });
+  assert.deepEqual(queryOptions.order, [
+    ['submittedAt', 'DESC'],
+    ['updatedAt', 'DESC'],
+  ]);
+});
+
 test('findFeaturedMatches prefers exact category and topic matches before fallback matches', async (t) => {
   t.mock.method(expertModel, 'findAll', async () => [
     createExpert({ id: 'exact', category: 'Career', skills: ['resume writing'] }),
@@ -587,4 +611,34 @@ test('getSeekerDiscover controller returns normalized expert list for the seeker
   assert.deepEqual(payload.experts.map((item) => item.id), ['discover-exact']);
   assert.equal(payload.pagination.total, 1);
   assert.equal(payload.pagination.page, 1);
+});
+
+test('findFeaturedMatches rejects AI confidence outside the 0 to 1 range', async (t) => {
+  t.mock.method(expertModel, 'findAll', async () => [
+    createExpert({ id: 'below-zero', category: 'Design', skills: ['Brand identity'] }),
+    createExpert({ id: 'valid-zero', category: 'Strategy', skills: ['Planning'] }),
+    createExpert({ id: 'valid-one', category: 'Career', skills: ['Career coaching'] }),
+    createExpert({ id: 'above-one', category: 'Finance', skills: ['Accounting'] }),
+  ]);
+
+  t.mock.method(aiModel, 'recommendExpertMatches', async () => ({
+    matches: [
+      { expertId: 'below-zero', relevanceReason: 'Invalid low confidence', confidence: -0.1 },
+      { expertId: 'valid-zero', relevanceReason: 'Boundary zero', confidence: 0 },
+      { expertId: 'valid-one', relevanceReason: 'Boundary one', confidence: 1 },
+      { expertId: 'above-one', relevanceReason: 'Invalid high confidence', confidence: 1.5 },
+    ],
+  }));
+
+  const results = await findFeaturedMatches({
+    category: 'Unmatched',
+    topics: ['unrelated'],
+    needsText: 'Need unrelated support',
+    selectedNeedChips: ['unrelated'],
+    selectedFormats: [],
+  }, 5);
+
+  assert.deepEqual(results.map((item) => item.id), ['valid-one', 'valid-zero']);
+  assert.deepEqual(results.map((item) => item.confidence), [1, 0]);
+  assert.deepEqual(results.map((item) => item.matchScore), [100, 0]);
 });
