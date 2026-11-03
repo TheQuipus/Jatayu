@@ -243,6 +243,7 @@ export function mapBackendExpertToApplication(
         : expert.submittedAt || expert.updatedAt || new Date().toISOString(),
     reviewerNote: expert.reviewerNote || undefined,
     onboardingStep: expert.onboardingStep || undefined,
+    onboardingMetadata: metadata,
   };
 }
 
