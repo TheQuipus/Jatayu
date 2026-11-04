@@ -22,6 +22,7 @@ import {
 } from "@/lib/adminNavigation";
 import type { ApplicationStatus } from "@/lib/expertApplicationSubmission";
 import { useExpertApplications, type ExpertApplicationListItem } from "@/hooks/useExpertApplications";
+import ChamferCardBorder from "@/components/ui/ChamferCardBorder";
 import styles from "./ExpertApplications.module.css";
 
 type ColumnFilters = {
@@ -332,6 +333,7 @@ export default function ExpertApplications() {
                   onClick={() => handleCardClick(kpi.id)}
                   aria-pressed={isActive}
                 >
+                  <ChamferCardBorder />
                   <div className={styles.kpiHeader}>
                     <span className={styles.kpiLabel}>{kpi.label}</span>
                     <span className={styles.kpiIconBox}>
