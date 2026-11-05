@@ -4,6 +4,7 @@ import { matchesNonSearchFilters, parsePublicExpertListQuery, serializePublicExp
 const DEFAULT_LIMIT = 3;
 const MAX_LIMIT = 20;
 const AI_CANDIDATE_LIMIT = 20;
+const DISCOVER_CANDIDATE_LIMIT = 200;
 const MIN_COMMON_FEATURE_SCORE = 12;
 
 function parseJson(value, fallback) {
@@ -226,7 +227,7 @@ function normalizeAiMatches(matches, candidateMap) {
     }))
     .filter((entry) => {
       if (!entry.expertId || !candidateMap.has(entry.expertId)) return false;
-      if (!Number.isFinite(entry.confidence) || entry.confidence <= 0) return false;
+      if (!Number.isFinite(entry.confidence) || entry.confidence < 0 || entry.confidence > 1) return false;
       if (seen.has(entry.expertId)) return false;
       seen.add(entry.expertId);
       return true;
@@ -358,19 +359,40 @@ function matchesDiscoverQuery(expert, filters) {
 }
 
 export async function findFeaturedMatches(seeker, limit = DEFAULT_LIMIT, rawCriteria = {}) {
+  const filters = parseDiscoverCriteria(rawCriteria);
+  if (filters.errors && filters.errors.length > 0) {
+    throw Object.assign(new Error(filters.errors.join('; ')), { statusCode: 400 });
+  }
   const experts = await Expert.findAll({
+    attributes: [
+      'id',
+      'fullName',
+      'professionalTitle',
+      'tagLine',
+      'bio',
+      'profilePhotoSrc',
+      'category',
+      'skills',
+      'focusAreas',
+      'experienceLevel',
+      'timezone',
+      'selectedFormats',
+      'selectedLengths',
+      'formatPrices',
+      'targetAudience',
+      'onboardingMetadata',
+      'submittedAt',
+      'updatedAt',
+    ],
     where: { status: 'approved' },
     order: [['submittedAt', 'DESC'], ['updatedAt', 'DESC']],
+    limit: DISCOVER_CANDIDATE_LIMIT,
   });
 
   if (experts.length === 0) {
     return [];
   }
 
-  const filters = parseDiscoverCriteria(rawCriteria);
-  if (filters.errors && filters.errors.length > 0) {
-    throw Object.assign(new Error(filters.errors.join('; ')), { statusCode: 400 });
-  }
   const candidatePairs = experts
     .map((expert) => ({
       expert,
