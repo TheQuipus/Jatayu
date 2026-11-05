@@ -24,6 +24,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import problemStyles from "@/components/homepage/Problem.module.css";
+import ChamferCardBorder from "@/components/ui/ChamferCardBorder";
 import {
   useUserManagement,
 } from "@/hooks/useUserManagement";
@@ -146,6 +147,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                 onClick={() => setStatusFilter(isActive && kpi.id !== "all" ? "all" : kpi.id)}
                 aria-pressed={isActive}
               >
+                <ChamferCardBorder />
                 <div className={styles.kpiHeader}>
                   <span className={styles.kpiLabel}>{kpi.label}</span>
                   <span className={styles.kpiIconBox}>
@@ -180,6 +182,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                 onClick={() => setStatusFilter(isActive && kpi.id !== "all" ? "all" : kpi.id)}
                 aria-pressed={isActive}
               >
+                <ChamferCardBorder />
                 <div className={styles.kpiHeader}>
                   <span className={styles.kpiLabel}>{kpi.label}</span>
                   <span className={styles.kpiIconBox}>
