@@ -842,6 +842,7 @@ export async function getAdminDigilockerDocumentBlobUrl(
 export interface UpdateApplicationStatusPayload {
   status: "pending" | "in_review" | "on_hold" | "approved" | "rejected";
   reviewerNote?: string;
+  isBlacklisted?: boolean;
 }
 
 export async function updateAdminApplicationStatus(

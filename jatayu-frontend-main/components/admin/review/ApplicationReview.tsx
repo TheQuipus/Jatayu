@@ -383,7 +383,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     }
   };
 
-  const handleRejectConfirm = async (notes: string) => {
+  const handleRejectConfirm = async (notes: string, isBlacklisted: boolean = false) => {
     if (!review || isUpdatingStatus) return;
     setIsUpdatingStatus(true);
     setActionError(null);
@@ -430,7 +430,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         });
       }
 
-      await updateExpertApplicationStatus(review.appId, "rejected", notes);
+      await updateExpertApplicationStatus(review.appId, "rejected", notes, isBlacklisted);
       refresh();
       setShowRejectConfirm(false);
     } catch (error) {
@@ -1348,8 +1348,14 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
               </p>
             </div>
             <div className={styles.metaTagsRow}>
-              <span className={`${styles.statusTag} ${REVIEW_STATUS_CLASS[review.status]}`}>
-                {REVIEW_STATUS_LABEL[review.status]}
+              <span
+                className={`${styles.statusTag} ${
+                  application?.isBlacklisted
+                    ? styles.statusBlacklisted
+                    : REVIEW_STATUS_CLASS[review.status]
+                }`}
+              >
+                {application?.isBlacklisted ? "Blacklisted" : REVIEW_STATUS_LABEL[review.status]}
               </span>
             </div>
           </header>

@@ -132,6 +132,13 @@
   color: var(--pomegranate);
 }
 
+.statusBlacklisted {
+  background: #18181b;
+  border: 1px solid #7f1d1d;
+  color: #fca5a5;
+  font-weight: 600;
+}
+
 .pageSubtitle {
   margin: 0;
   font-family: var(--font-body);
@@ -3380,6 +3387,58 @@
   width: 14px;
   height: 14px;
   cursor: pointer;
+}
+
+/* Modal Blacklist Option */
+.modalBlacklistOption {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.modalBlacklistOption:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.modalBlacklistLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.modalBlacklistCheckbox {
+  margin-top: 3px;
+  accent-color: #ef4444;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modalBlacklistContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modalBlacklistTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.modalBlacklistSubtext {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--scorpion);
+  line-height: 1.35;
 }
 
 .modalConfirmBtn:disabled {

@@ -10,6 +10,8 @@ export const EXPERT_COLUMN_DEFINITIONS = [
   ['submittedAt', 'DATETIME NULL'],
   ['approvedAt', 'DATETIME NULL'],
   ['reviewerNote', 'TEXT NULL'],
+  ['isBlacklisted', 'TINYINT(1) NOT NULL DEFAULT 0'],
+  ['blacklistedAt', 'DATETIME NULL'],
 ];
 
 async function columnExists(db, tableName, columnName) {
@@ -62,6 +64,19 @@ export async function ensureExpertColumns(db = expertDb) {
     console.log(
       '[Auto-Migrate] Created index idx_experts_status_submitted_updated on Experts (status, submittedAt, updatedAt).',
     );
+  }
+
+  // Ensure index on isBlacklisted for fast lookup during login/registration
+  const [blacklistIndexRows] = await db.query(
+    `SELECT COUNT(*) AS count
+     FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'Experts'
+       AND INDEX_NAME = 'idx_experts_is_blacklisted'`,
+  );
+  if (Number(blacklistIndexRows[0]?.count ?? 0) === 0) {
+    await db.query('CREATE INDEX `idx_experts_is_blacklisted` ON `Experts` (`isBlacklisted`)');
+    console.log('[Auto-Migrate] Created index idx_experts_is_blacklisted on Experts (isBlacklisted).');
   }
 }
 

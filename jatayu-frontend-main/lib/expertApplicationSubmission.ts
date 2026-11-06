@@ -84,6 +84,8 @@ export type ExpertApplicationSubmission = {
   acceptCustomRequests: boolean;
   termsAcceptedAt: string;
   reviewerNote?: string;
+  isBlacklisted?: boolean;
+  blacklistedAt?: string;
   onboardingStep?: string;
   onboardingMetadata?: Record<string, unknown>;
 };

@@ -40,6 +40,8 @@ export type ExpertApplicationListItem = {
   status: ApplicationStatus;
   reviewer: { name: string; avatar: string } | null;
   onboardingStep?: string;
+  isBlacklisted?: boolean;
+  blacklistedAt?: string;
 };
 
 function toListItem(application: ExpertApplicationSubmission): ExpertApplicationListItem {
@@ -64,6 +66,8 @@ function toListItem(application: ExpertApplicationSubmission): ExpertApplication
     status: application.status,
     reviewer: null,
     onboardingStep: application.onboardingStep,
+    isBlacklisted: application.isBlacklisted,
+    blacklistedAt: application.blacklistedAt,
   };
 }
 

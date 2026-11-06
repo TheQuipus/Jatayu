@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { ExpertSession } from '../models/index.js';
+import { Expert, ExpertSession } from '../models/index.js';
 
 dotenv.config();
 
@@ -18,6 +18,14 @@ export const protect = async (req, res, next) => {
         const session = await ExpertSession.findByPk(decoded.jti);
         if (!session || session.revokedAt || new Date(session.expiresAt) <= new Date()) {
           return res.status(401).json({ message: 'Session has expired or was revoked' });
+        }
+      }
+
+      if (decoded.id) {
+        const expert = await Expert.findByPk(decoded.id, { attributes: ['id', 'isBlacklisted', 'onboardingMetadata'] });
+        const isBlacklisted = Boolean(expert?.isBlacklisted || expert?.onboardingMetadata?.isBlacklisted);
+        if (isBlacklisted) {
+          return res.status(403).json({ message: 'These credentials have been Blacklisted', code: 'CREDENTIALS_BLACKLISTED' });
         }
       }
       

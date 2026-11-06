@@ -7,6 +7,7 @@ import {
   saveExpertForAdmin,
   Op,
 } from '../services/expertDataService.js';
+import { ExpertSession } from '../models/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { getSetting } from '../utils/settingsHelper.js';
@@ -61,6 +62,8 @@ const APPLICATION_LIST_ATTRIBUTES = [
   'submittedAt',
   'approvedAt',
   'reviewerNote',
+  'isBlacklisted',
+  'blacklistedAt',
   'isEmailVerified',
   'isPhoneVerified',
   'createdAt',
@@ -132,6 +135,8 @@ function serializeExpert(expert) {
 
   return {
     ...json,
+    isBlacklisted: Boolean(json.isBlacklisted),
+    blacklistedAt: json.blacklistedAt || null,
     ...(json.onboardingMetadata !== undefined ? { onboardingMetadata: metadata } : {}),
     frontendStatus: BACKEND_TO_FRONTEND_STATUS[json.status] || 'pending',
   };
@@ -228,7 +233,7 @@ export const getApplication = async (req, res) => {
  */
 export const updateApplicationStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, reviewerNote } = req.body;
+  const { status, reviewerNote, isBlacklisted } = req.body;
 
   if (!status) {
     return res.status(400).json({ message: 'status is required' });
@@ -251,6 +256,35 @@ export const updateApplicationStatus = async (req, res) => {
     expert.status = backendStatus;
     if (reviewerNote !== undefined) {
       expert.reviewerNote = reviewerNote;
+    }
+
+    if (isBlacklisted !== undefined) {
+      expert.isBlacklisted = Boolean(isBlacklisted);
+      expert.blacklistedAt = expert.isBlacklisted ? new Date() : null;
+
+      // Also persist in onboardingMetadata as a fail-safe
+      let metadata = {};
+      try {
+        metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+      } catch {
+        metadata = {};
+      }
+      metadata.isBlacklisted = expert.isBlacklisted;
+      metadata.blacklistedAt = expert.blacklistedAt ? expert.blacklistedAt.toISOString() : null;
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+
+      if (expert.isBlacklisted) {
+        // Immediately revoke all active sessions for this expert
+        try {
+          await ExpertSession.update(
+            { revokedAt: new Date() },
+            { where: { expertId: expert.id, revokedAt: null } }
+          );
+        } catch (sessionErr) {
+          console.warn('Could not revoke expert sessions upon blacklisting:', sessionErr.message);
+        }
+      }
     }
 
     if (backendStatus === 'approved') {
