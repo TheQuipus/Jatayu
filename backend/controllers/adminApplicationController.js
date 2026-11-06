@@ -8,6 +8,7 @@ import {
   Op,
 } from '../services/expertDataService.js';
 import { Expert, ExpertSession } from '../models/index.js';
+import { revokeAndExpelExpertSessions } from '../services/expertSessionService.js';
 import { expertDb } from '../config/db/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
@@ -296,15 +297,12 @@ export const updateApplicationStatus = async (req, res) => {
       expert.changed('isBlacklisted', true);
       expert.changed('blacklistedAt', true);
 
-      // Immediately revoke all active sessions for this expert
-      try {
-        await ExpertSession.update(
-          { revokedAt: new Date() },
-          { where: { expertId: expert.id, revokedAt: null } }
-        );
-      } catch (sessionErr) {
-        console.warn('Could not revoke expert sessions upon blacklisting:', sessionErr.message);
-      }
+      // Immediately revoke all active sessions and forcibly disconnect all open sockets
+      await revokeAndExpelExpertSessions(
+        expert.id,
+        'CREDENTIALS_BLACKLISTED',
+        'Your profile is Marked as Blacklisted',
+      );
     } else if (shouldUnblacklist) {
       expert.isBlacklisted = false;
       expert.blacklistedAt = null;

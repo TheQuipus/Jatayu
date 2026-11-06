@@ -34,6 +34,7 @@ import ReviewStep from "@/components/expert/onboarding/ReviewStep";
 import SignupCompleteStep from "@/components/expert/onboarding/SignupCompleteStep";
 import AccountStatusStep from "@/components/expert/onboarding/AccountStatusStep";
 import SuccessStep from "@/components/expert/onboarding/SuccessStep";
+import RealtimeNotificationToast from "@/components/ui/RealtimeNotificationToast";
 import { EXPERT_ONBOARDING_STEPS } from "@/components/expert/onboarding/OnboardingProgressBar";
 import {
   createEmptyEducationDegree,
@@ -1546,6 +1547,7 @@ handleBackFromOtp();
           profilePhotoSrc={profilePhotoSrc}
         />
       )}
+      <RealtimeNotificationToast />
     </main>
   );
 }

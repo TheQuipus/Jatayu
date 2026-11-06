@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
@@ -67,6 +67,16 @@ export default function LoginStep({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("blocked") === "1") {
+        const reason = params.get("reason");
+        setSubmitError(reason || "Your profile is Marked as Blacklisted");
+      }
+    }
+  }, []);
+
   const values = { email, password };
   const canSubmit = isFormComplete(email, password);
 
@@ -131,7 +141,6 @@ export default function LoginStep({
       <RegisterLeftPanel variant="login" />
 
       <div className={register.registerRight}>
-        <p className={styles.registerFormIntro}>Enter your details to login to your account</p>
 
         <form className={styles.registerForm} onSubmit={handleSubmit} noValidate>
           <div className={register.fieldGroup}>

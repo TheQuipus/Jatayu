@@ -26,7 +26,8 @@ import { createOpenApiDocument } from './config/swagger.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import passwordRecoveryRoutes from './routes/passwordRecoveryRoutes.js';
 import { sendNotification, sendUpcomingExpertReminders, setNotificationSocketServer } from './services/notificationService.js';
-import { Booking, BookingExtension } from './models/index.js';
+import { Booking, BookingExtension, Expert, ExpertSession } from './models/index.js';
+import { isExpertBlacklisted } from './controllers/authController.js';
 import { approveExtension } from './services/bookingExtensionService.js';
 import jwt from 'jsonwebtoken';
 
@@ -125,16 +126,32 @@ const startServer = async () => {
       path: '/socket.io',
     });
 
-    io.use((socket, next) => {
+    io.use(async (socket, next) => {
       try {
         const token = socket.handshake.auth?.token;
         const user = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production');
         if (!user?.id) throw new Error();
         user.role ||= 'expert';
         if (!['seeker', 'expert', 'admin'].includes(user.role)) throw new Error();
+
+        if (user.role === 'expert') {
+          const expert = await Expert.findByPk(user.id, { attributes: ['id', 'isBlacklisted', 'onboardingMetadata'] });
+          if (isExpertBlacklisted(expert)) {
+            return next(new Error('CREDENTIALS_BLACKLISTED'));
+          }
+          if (user.jti) {
+            const session = await ExpertSession.findByPk(user.jti);
+            if (!session || session.revokedAt || new Date(session.expiresAt) <= new Date()) {
+              return next(new Error('SESSION_REVOKED'));
+            }
+          }
+        }
+
         socket.user = user;
         next();
-      } catch { next(new Error('Unauthorized')); }
+      } catch (err) {
+        next(new Error(err.message === 'CREDENTIALS_BLACKLISTED' ? 'CREDENTIALS_BLACKLISTED' : 'Unauthorized'));
+      }
     });
     setNotificationSocketServer(io);
 
