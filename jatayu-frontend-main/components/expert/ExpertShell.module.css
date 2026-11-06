@@ -20,6 +20,7 @@
   background: var(--white);
   border-right: 1px solid var(--mercury);
   overflow-y: auto;
+  overflow-x: visible;
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -163,6 +164,125 @@
 .navLinkActive .navBadgeDot {
   background: var(--white);
 }
+
+/* Unapproved Expert Restricted Nav Item & Blurred Mask */
+.navItemWrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.navLinkRestricted {
+  position: relative;
+  cursor: not-allowed !important;
+  user-select: none;
+  opacity: 0.55;
+  filter: blur(1.2px) grayscale(0.6);
+  pointer-events: auto;
+  transition: filter 0.2s ease, opacity 0.2s ease;
+}
+
+.navLinkRestricted:hover {
+  background: transparent !important;
+  color: var(--scorpion) !important;
+  filter: blur(0.8px) grayscale(0.4);
+  opacity: 0.7;
+}
+
+.navPortalTooltip {
+  position: fixed;
+  transform: translateY(-50%);
+  width: max-content;
+  max-width: 250px;
+  background: var(--bunker);
+  color: var(--white);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  z-index: 100000;
+  animation: tooltipFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.navPortalTooltip::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent var(--bunker) transparent transparent;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Route Guard Banner */
+.restrictionBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  padding: 12px 18px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.08);
+  animation: bannerFadeIn 0.3s ease-out;
+}
+
+.restrictionBannerInner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.restrictionBannerClose {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #92400e;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.restrictionBannerClose:hover {
+  background: #fef3c7;
+}
+
+@keyframes bannerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 
 .navLinkActive .navBadge {
   background: color-mix(in srgb, var(--white) 22%, transparent);
