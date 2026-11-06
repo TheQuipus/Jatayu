@@ -2,6 +2,7 @@ import { getSetting } from './settingsHelper.js';
 
 const TAGLINE_MAX = 160;
 const BIO_MAX = 160;
+const TITLE_MAX = 80;
 
 function hasPlaceholderCredential(value) {
   if (!value) return true;
@@ -429,7 +430,13 @@ function buildPrompt(context) {
   const tone = ['professional', 'casual', 'concise'].includes(String(context.tone || '').toLowerCase())
     ? String(context.tone).toLowerCase()
     : '';
-  const field = context.field === 'bio' ? 'bio' : context.field === 'tagLine' ? 'tagLine' : '';
+  const field = context.field === 'bio'
+    ? 'bio'
+    : context.field === 'tagLine'
+      ? 'tagLine'
+      : context.field === 'professionalTitle'
+        ? 'professionalTitle'
+        : '';
   const intent = context.intent === 'improve' || context.intent === 'regenerate'
     ? context.intent
     : 'suggest';
@@ -452,7 +459,13 @@ function buildPrompt(context) {
     ? Math.abs(Math.trunc(context.variantIndex))
     : 0;
 
-  const fieldLabel = field === 'bio' ? 'brief introduction' : field === 'tagLine' ? 'tag line' : 'tag line and brief introduction';
+  const fieldLabel = field === 'bio'
+    ? 'brief introduction'
+    : field === 'tagLine'
+      ? 'tag line'
+      : field === 'professionalTitle'
+        ? 'professional title'
+        : 'tag line and brief introduction';
   const intentInstructions = {
     suggest: `Write a fresh ${fieldLabel} from the context.`,
     regenerate:
@@ -465,16 +478,19 @@ function buildPrompt(context) {
     ? 'Return JSON with key bio only.'
     : field === 'tagLine'
       ? 'Return JSON with key tagLine only.'
-      : 'Return JSON with keys tagLine and bio only.';
+      : field === 'professionalTitle'
+        ? 'Return JSON with key professionalTitle only.'
+        : 'Return JSON with keys tagLine and bio only.';
 
   return [
     `Write an expert profile ${fieldLabel} for a consultation marketplace.`,
     jsonKeys,
-    field !== 'bio' ? `tagLine: one line, max ${TAGLINE_MAX} characters, no quotation marks around the whole line.` : '',
-    field !== 'tagLine' ? `bio: one short paragraph, max ${BIO_MAX} characters, first person, concrete, no hype.` : '',
+    field === 'tagLine' || field === '' ? `tagLine: one line, max ${TAGLINE_MAX} characters, no quotation marks around the whole line.` : '',
+    field === 'bio' || field === '' ? `bio: one short paragraph, max ${BIO_MAX} characters, first person, concrete, no hype.` : '',
+    field === 'professionalTitle' ? `professionalTitle: a concise title, max ${TITLE_MAX} characters, no quotes, no extra descriptors.` : '',
     'Do not invent employers, degrees, or skills that are not in the context.',
     'Do not include internal experience level labels like "emerging" or "established" in the text.',
-    field ? `Only generate the ${fieldLabel}. Do not change the other field.` : '',
+    field ? `Only generate the ${fieldLabel}. Do not change the other fields.` : '',
     tone ? `Tone: ${tone}. ${toneInstructions[tone]}` : '',
     tone ? `Variation direction: ${variationDirections[variantIndex % variationDirections.length]}` : '',
     intentInstructions[intent],
@@ -492,6 +508,7 @@ function buildPrompt(context) {
     tone ? `- Tone: ${tone}` : '',
     context.currentTagLine ? `- Current tag line: ${clip(context.currentTagLine, TAGLINE_MAX)}` : '',
     context.currentBio ? `- Current introduction: ${clip(context.currentBio, BIO_MAX)}` : '',
+    context.currentProfessionalTitle ? `- Current professional title: ${clip(context.currentProfessionalTitle, TITLE_MAX)}` : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -620,7 +637,26 @@ function withFieldLock(pair, field, avoidTag, avoidBio) {
   return pair;
 }
 
-export function buildLocalIdentityCopy(context = {}) {
+export function buildLocalTitleSuggestion(context = {}) {
+  const category = clip(context.category, 60);
+  const currentTitle = clip(context.currentProfessionalTitle || context.professionalTitle || '', TITLE_MAX);
+  const skills = asStringList(context.skills, 3);
+  const skillPhrase = skills.length > 0 ? skills[0] : category || 'Consulting';
+  const role = currentTitle || (category ? `${category} Expert` : 'Consultant');
+  const variants = [
+    role,
+    `${skillPhrase} Specialist`,
+    `${category || 'Expert'} Consultant`,
+    `Senior ${role}`,
+    `${role} • ${skillPhrase}`,
+    `${skillPhrase} Expert`,
+  ];
+  const requested = Number.isFinite(context.variantIndex) ? Number(context.variantIndex) : 0;
+  const chosen = variants[Math.abs(Math.trunc(requested)) % variants.length] || role;
+  return clip(chosen, TITLE_MAX);
+}
+
+function buildLocalIdentityCopy(context = {}) {
   const templates = identityTemplates(context);
   const avoidTag = clip(context.currentTagLine, TAGLINE_MAX);
   const avoidBio = clip(context.currentBio, BIO_MAX);
@@ -669,7 +705,6 @@ export function buildLocalIdentityCopy(context = {}) {
     avoidBio,
   );
 }
-
 function buildMultiTonePrompt(context) {
   const skills = asStringList(context.skills);
   const languages = asStringList(context.languages);
@@ -701,7 +736,7 @@ function buildMultiTonePrompt(context) {
 }
 
 export async function suggestExpertIdentityCopy(context = {}) {
-  const requestedField = context.field === 'bio' || context.field === 'tagLine'
+  const requestedField = context.field === 'bio' || context.field === 'tagLine' || context.field === 'professionalTitle'
     ? context.field
     : '';
   const requestedTone = ['professional', 'casual', 'concise'].includes(String(context.tone || '').toLowerCase())
@@ -718,18 +753,20 @@ export async function suggestExpertIdentityCopy(context = {}) {
   };
 
   const localRequested = requestedField
-    ? buildLocalIdentityCopy({
-      ...context,
-      field: requestedField,
-      tone: requestedTone,
-      variantIndex: Number.isFinite(context.variantIndex)
-        ? Number(context.variantIndex) + { professional: 0, casual: 2, concise: 4 }[requestedTone]
-        : { professional: 0, casual: 2, concise: 4 }[requestedTone],
-    })
+    ? requestedField === 'professionalTitle'
+      ? buildLocalTitleSuggestion({ ...context, tone: requestedTone, variantIndex: Number.isFinite(context.variantIndex) ? Number(context.variantIndex) : 0 })
+      : buildLocalIdentityCopy({
+        ...context,
+        field: requestedField,
+        tone: requestedTone,
+        variantIndex: Number.isFinite(context.variantIndex)
+          ? Number(context.variantIndex) + { professional: 0, casual: 2, concise: 4 }[requestedTone]
+          : { professional: 0, casual: 2, concise: 4 }[requestedTone],
+      })
     : null;
   const selectedFallback = fallbackAll[requestedTone] || fallbackAll.professional;
   const fallbackText = requestedField
-    ? localRequested[requestedField]
+    ? (requestedField === 'professionalTitle' ? localRequested : localRequested[requestedField])
     : undefined;
   const fallbackResult = requestedField
     ? { [requestedField]: fallbackText, source: 'fallback', notice: AI_FALLBACK_NOTICE }
@@ -760,11 +797,13 @@ export async function suggestExpertIdentityCopy(context = {}) {
     if (requestedField) {
       const currentCopy = requestedField === 'tagLine'
         ? context.currentTagLine
-        : context.currentBio;
+        : requestedField === 'bio'
+          ? context.currentBio
+          : context.currentProfessionalTitle || context.professionalTitle;
       const generated = clip(
         parsed[requestedField] ||
-          (requestedField === 'bio' ? parsed.briefIntroduction : parsed.tagline),
-        requestedField === 'tagLine' ? TAGLINE_MAX : BIO_MAX,
+          (requestedField === 'bio' ? parsed.briefIntroduction : requestedField === 'professionalTitle' ? (parsed.title || parsed.professionalTitle) : parsed.tagline),
+        requestedField === 'tagLine' ? TAGLINE_MAX : requestedField === 'bio' ? BIO_MAX : TITLE_MAX,
       );
       if (!generated) {
         throw new AiProviderError(`AI returned no ${requestedField} suggestion.`);
