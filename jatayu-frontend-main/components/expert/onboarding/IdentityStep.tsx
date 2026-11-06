@@ -24,10 +24,10 @@ function friendlyAiError(error: unknown): string {
   const status = error instanceof ApiError ? error.status : undefined;
   const message = error instanceof Error ? error.message : "";
   if (status === 401) {
-    return "Please sign in again to use AI suggestions, or write your tag line and introduction yourself.";
+    return "Please sign in again to use AI suggestions, or write your title, tag line and introduction yourself.";
   }
   if (code === "AI_NOT_CONFIGURED" || message.toLowerCase().includes("not configured")) {
-    return "AI suggestions are unavailable. You can write your tag line and introduction yourself.";
+    return "AI suggestions are unavailable. You can write your title, tag line and introduction yourself.";
   }
   return "Could not generate suggestions. You can write these yourself or try again.";
 }
@@ -85,17 +85,17 @@ export default function IdentityStep({
 }: IdentityStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoError, setPhotoError] = useState("");
-  const [aiLoading, setAiLoading] = useState({ tagLine: false, bio: false });
-  const [aiErrors, setAiErrors] = useState({ tagLine: "", bio: "" });
-  const [aiNotices, setAiNotices] = useState({ tagLine: "", bio: "" });
-  const [hasGenerated, setHasGenerated] = useState({ tagLine: false, bio: false });
+  const [aiLoading, setAiLoading] = useState({ tagLine: false, bio: false, professionalTitle: false });
+  const [aiErrors, setAiErrors] = useState({ tagLine: "", bio: "", professionalTitle: "" });
+  const [hasGenerated, setHasGenerated] = useState({ tagLine: false, bio: false, professionalTitle: false });
   const [selectedTones, setSelectedTones] = useState<{
     tagLine: IdentityTone | null;
     bio: IdentityTone | null;
-  }>({ tagLine: null, bio: null });
-  const requestIdRef = useRef({ tagLine: 0, bio: 0 });
-  const editVersionRef = useRef({ tagLine: 0, bio: 0 });
-  const variantIndexRef = useRef({ tagLine: 0, bio: 0 });
+    professionalTitle: IdentityTone | null;
+  }>({ tagLine: null, bio: null, professionalTitle: null });
+  const requestIdRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
+  const editVersionRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
+  const variantIndexRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
 
   const safeTagLine = tagLine ?? "";
   const safeBio = bio ?? "";
@@ -126,6 +126,7 @@ export default function IdentityStep({
     return () => {
       requestIds.tagLine += 1;
       requestIds.bio += 1;
+      requestIds.professionalTitle += 1;
     };
   }, []);
 
@@ -137,20 +138,19 @@ export default function IdentityStep({
     };
   }, [profilePhotoSrc]);
 
-  const handleSelectTone = (field: "tagLine" | "bio", tone: IdentityTone) => {
+  const handleSelectTone = (field: "tagLine" | "bio" | "professionalTitle", tone: IdentityTone) => {
     setSelectedTones((previous) => ({ ...previous, [field]: tone }));
   };
 
-  const handleSuggestField = async (field: "tagLine" | "bio") => {
+  const handleSuggestField = async (field: "tagLine" | "bio" | "professionalTitle") => {
     const requestId = ++requestIdRef.current[field];
     const editVersion = editVersionRef.current[field];
-    const currentText = field === "tagLine" ? safeTagLine : safeBio;
+    const currentText = field === "tagLine" ? safeTagLine : field === "bio" ? safeBio : safeTitle;
     const variantIndex = variantIndexRef.current[field]++;
     const tone = selectedTones[field] || "professional";
 
     setAiLoading((previous) => ({ ...previous, [field]: true }));
     setAiErrors((previous) => ({ ...previous, [field]: "" }));
-    setAiNotices((previous) => ({ ...previous, [field]: "" }));
 
     try {
       const response = await suggestOnboardingIdentityCopy({
@@ -164,6 +164,7 @@ export default function IdentityStep({
         education: educationDegrees,
         currentTagLine: safeTagLine,
         currentBio: safeBio,
+        currentProfessionalTitle: safeTitle,
         tone,
         intent: currentText.trim() ? "regenerate" : "suggest",
         variantIndex,
@@ -174,22 +175,22 @@ export default function IdentityStep({
         return;
       }
 
-      const generated = field === "tagLine"
-        ? response.tagLine
-        : response.bio || response.briefIntroduction;
+      const generated = field === "professionalTitle"
+        ? response.professionalTitle
+        : field === "tagLine"
+          ? response.tagLine
+          : response.bio || response.briefIntroduction;
       if (!generated?.trim()) {
         throw new Error("No suggestion was returned. Please try again.");
       }
 
-      if (field === "tagLine") onTagLineChange(generated.slice(0, maxChars));
+      if (field === "professionalTitle") onProfessionalTitleChange(generated.slice(0, maxChars));
+      else if (field === "tagLine") onTagLineChange(generated.slice(0, maxChars));
       else onBioChange(generated.slice(0, maxChars));
       setHasGenerated((previous) => ({ ...previous, [field]: true }));
 
       if (response.source === "fallback") {
-        setAiNotices((previous) => ({
-          ...previous,
-          [field]: response.notice || "AI is unavailable; this is a profile-based fallback suggestion.",
-        }));
+        return;
       }
     } catch (error) {
       if (requestId === requestIdRef.current[field] && editVersion === editVersionRef.current[field]) {
@@ -204,6 +205,7 @@ export default function IdentityStep({
   };
 
   const handleTitleChange = (val: string) => {
+    editVersionRef.current.professionalTitle += 1;
     onProfessionalTitleChange(val);
   };
 
@@ -311,9 +313,29 @@ export default function IdentityStep({
             </div>
 
             <div className={styles.fieldGroup}>
-              <label htmlFor="title-input" className={styles.fieldLabel}>
-                Professional Title
-              </label>
+              <div className={styles.fieldLabelRow}>
+                <label htmlFor="title-input" className={styles.fieldLabel}>
+                  Professional Title
+                </label>
+                <div className={styles.inlinePillsWrap}>
+                  {TONE_PILLS.map((pill) => {
+                    const isSelected = selectedTones.professionalTitle === pill.id;
+                    return (
+                      <button
+                        key={pill.id}
+                        type="button"
+                        className={`${styles.suggestedPill} ${
+                          isSelected ? styles.suggestedPillSelected : ""
+                        }`}
+                        aria-pressed={isSelected}
+                        onClick={() => handleSelectTone("professionalTitle", pill.id)}
+                      >
+                        <span>{pill.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <input
                 id="title-input"
                 type="text"
@@ -323,6 +345,30 @@ export default function IdentityStep({
                 placeholder="e.g. Senior Software Engineer"
                 autoComplete="off"
               />
+              <div className={styles.inputBoxFooter}>
+                <button
+                  type="button"
+                  className={styles.aiBioInlineBtn}
+                  onClick={() => handleSuggestField("professionalTitle")}
+                  disabled={aiLoading.professionalTitle}
+                >
+                  <ShinyText
+                    text={aiLoading.professionalTitle
+                      ? "Generating…"
+                      : hasGenerated.professionalTitle
+                        ? "Regenerate"
+                        : "Suggest by JATAYU AI"}
+                    icon="sparkles"
+                    iconSize={14}
+                    speed={2.5}
+                    color="#E53B17"
+                    shineColor="#ffffff"
+                    disabled={aiLoading.professionalTitle}
+                  />
+                </button>
+                <span className={styles.textareaFooterCounter}>{safeTitle.length}/{maxChars}</span>
+              </div>
+              {aiErrors.professionalTitle ? <p className={styles.aiSuggestError}>{aiErrors.professionalTitle}</p> : null}
             </div>
 
             <div className={styles.fieldGroup}>
@@ -389,7 +435,6 @@ export default function IdentityStep({
                 </div>
               </div>
               {aiErrors.tagLine ? <p className={styles.aiSuggestError}>{aiErrors.tagLine}</p> : null}
-              {aiNotices.tagLine ? <p className={styles.aiImproveHint}>{aiNotices.tagLine}</p> : null}
             </div>
 
             <div className={styles.fieldGroup}>
@@ -455,7 +500,6 @@ export default function IdentityStep({
                 </div>
               </div>
               {aiErrors.bio ? <p className={styles.aiSuggestError}>{aiErrors.bio}</p> : null}
-              {aiNotices.bio ? <p className={styles.aiImproveHint}>{aiNotices.bio}</p> : null}
             </div>
           </div>
 
