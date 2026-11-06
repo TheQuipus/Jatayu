@@ -562,15 +562,17 @@ export type OnboardingAiSuggestPayload = {
   }>;
   currentTagLine?: string;
   currentBio?: string;
+  currentProfessionalTitle?: string;
   tone?: string;
   intent?: "suggest" | "regenerate" | "improve";
   variantIndex?: number;
-  field?: "tagLine" | "bio";
+  field?: "tagLine" | "bio" | "professionalTitle";
 };
 
 export type OnboardingAiSuggestResponse = {
   tagLine?: string;
   bio?: string;
+  professionalTitle?: string;
   briefIntroduction?: string;
   source?: "ai" | "fallback";
   notice?: string;

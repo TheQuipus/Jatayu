@@ -495,15 +495,19 @@ export const suggestOnboardingIdentity = async (req, res) => {
         : fromDb.education,
       currentTagLine: body.currentTagLine || body.tagLine,
       currentBio: body.currentBio || body.bio || body.briefIntroduction,
+      currentProfessionalTitle: body.currentProfessionalTitle || body.professionalTitle,
       tone: body.tone,
       intent: body.intent,
       variantIndex: body.variantIndex,
-      field: body.field === 'bio' || body.field === 'tagLine' ? body.field : undefined,
+      field: body.field === 'bio' || body.field === 'tagLine' || body.field === 'professionalTitle'
+        ? body.field
+        : undefined,
     });
 
     const responsePayload = {
       tagLine: suggestion.tagLine,
       bio: suggestion.bio,
+      professionalTitle: suggestion.professionalTitle,
       briefIntroduction: suggestion.bio,
       options: suggestion.options || suggestion.suggestions,
       suggestions: suggestion.suggestions || suggestion.options,
