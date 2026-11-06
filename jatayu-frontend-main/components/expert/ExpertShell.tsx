@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState, useMemo, type CSSProperties, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useMemo, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
+  AlertCircle,
   Award,
   Bell,
   CalendarDays,
@@ -17,6 +19,7 @@ import {
   Settings,
   Star,
   User,
+  X,
 } from "lucide-react";
 import NotificationPanel from "@/components/seeker/NotificationPanel";
 import RealtimeNotificationToast from "@/components/ui/RealtimeNotificationToast";
@@ -30,10 +33,12 @@ import {
   MAIN_NAV,
   SETTINGS_NAV,
   type ExpertNavItem,
+  UNAPPROVED_RESTRICTION_TOOLTIP,
+  isNavRestrictedForExpert,
 } from "@/lib/expertDashboard";
 import { getExpertProfile } from "@/lib/expertStore";
-import { fetchExpertProfileData } from "@/lib/expertProfileApi";
-import { clearAuthSession } from "@/lib/expertAuth";
+import { fetchExpertProfileData, fetchExpertProfileRecord } from "@/lib/expertProfileApi";
+import { clearAuthSession, getStoredAuthUser } from "@/lib/expertAuth";
 import { getStoredRequests } from "@/lib/expertRequests";
 import { getExpertRequests } from "@/lib/api";
 import { fetchNotificationUnreadCount } from "@/lib/notificationApi";
@@ -80,14 +85,66 @@ function NavLink({
   pathname,
   currentHash,
   isCollapsed,
+  isApproved,
 }: {
   item: ExpertNavItem;
   pathname: string;
   currentHash: string;
   isCollapsed?: boolean;
+  isApproved: boolean;
 }) {
   const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? LayoutDashboard;
   const isActive = isNavItemActive(item.id, pathname, item.href, currentHash);
+  const isRestricted = isNavRestrictedForExpert(item.id, isApproved);
+  const itemRef = useRef<HTMLDivElement | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
+
+  const handleMouseEnter = () => {
+    if (!itemRef.current) return;
+    const rect = itemRef.current.getBoundingClientRect();
+    setTooltipPos({
+      top: rect.top + rect.height / 2,
+      left: rect.right + 12,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltipPos(null);
+  };
+
+  if (isRestricted) {
+    return (
+      <div
+        ref={itemRef}
+        className={styles.navItemWrapper}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div
+          role="button"
+          tabIndex={-1}
+          aria-disabled="true"
+          className={`${styles.navLink} ${styles.navLinkRestricted} ${isCollapsed ? styles.navLinkCollapsed : ""}`}
+          onClick={(e) => e.preventDefault()}
+        >
+          <Icon size={16} aria-hidden="true" />
+          {!isCollapsed && <span>{item.label}</span>}
+        </div>
+        {tooltipPos && typeof document !== "undefined"
+          ? createPortal(
+              <div
+                className={styles.navPortalTooltip}
+                role="tooltip"
+                style={{ top: tooltipPos.top, left: tooltipPos.left }}
+              >
+                {UNAPPROVED_RESTRICTION_TOOLTIP}
+              </div>,
+              document.body
+            )
+          : null}
+      </div>
+    );
+  }
 
   return (
     <Link
@@ -112,10 +169,17 @@ function NavLink({
 
 export default function ExpertShell({ children }: ExpertShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [breadcrumbs, setBreadcrumbs] = useState<ReactNode | null>(null);
   const [currentHash, setCurrentHash] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [bannerNotice, setBannerNotice] = useState<string | null>(null);
   const shellContext = useMemo(() => ({ setBreadcrumbs }), []);
+
+  const [isApproved, setIsApproved] = useState<boolean>(() => {
+    const stored = getStoredAuthUser();
+    return stored?.status === "approved";
+  });
 
   const [requestsBadgeCount, setRequestsBadgeCount] = useState<number>(() => {
     if (typeof window !== "undefined") {
@@ -125,6 +189,49 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     return 0;
   });
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    fetchExpertProfileRecord()
+      .then((record) => {
+        if (active) {
+          const approved = record.status === "approved";
+          setIsApproved(approved);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch expert profile record for shell:", err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Route guard: if expert is unapproved and visits a restricted route, redirect with a message
+  useEffect(() => {
+    if (isApproved) {
+      setBannerNotice(null);
+      return;
+    }
+
+    const restrictedRoutePrefixes = [
+      "/expert/requests",
+      "/expert/earnings",
+      "/expert/reviews",
+      "/expert/achievements",
+      "/expert/notifications",
+      "/expert/settings",
+    ];
+
+    const isRestricted = restrictedRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
+    if (isRestricted) {
+      setBannerNotice(
+        "You cannot access that section yet. All operational sections will become available once your profile application is approved."
+      );
+      router.replace(EXPERT_DASHBOARD_HREF);
+    }
+  }, [pathname, isApproved, router]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -265,6 +372,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
                 pathname={pathname}
                 currentHash={currentHash}
                 isCollapsed={isCollapsed}
+                isApproved={isApproved}
               />
             ))}
             <NavLink
@@ -272,6 +380,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
               pathname={pathname}
               currentHash={currentHash}
               isCollapsed={isCollapsed}
+              isApproved={isApproved}
             />
           </nav>
 
@@ -342,7 +451,26 @@ export default function ExpertShell({ children }: ExpertShellProps) {
               </div>
             </div>
 
-            <div className={styles.content}>{children}</div>
+            <div className={styles.content}>
+              {bannerNotice && (
+                <div className={styles.restrictionBanner} role="alert">
+                  <div className={styles.restrictionBannerInner}>
+                    <AlertCircle size={18} aria-hidden="true" />
+                    <span>{bannerNotice}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.restrictionBannerClose}
+                    onClick={() => setBannerNotice(null)}
+                    aria-label="Dismiss notice"
+                    title="Dismiss notice"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+              {children}
+            </div>
           </div>
         </div>
         <ActiveSessionAttention />
