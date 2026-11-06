@@ -126,30 +126,27 @@ export async function ensureExpertColumns(db = expertDb) {
   }
 
   // Synchronize isBlacklisted column from onboardingMetadata for any existing records
+  const syncSql = (table) => `
+    UPDATE \`${table}\`
+    SET \`isBlacklisted\` = 1,
+        \`blacklistedAt\` = COALESCE(\`blacklistedAt\`,\`updatedAt\`, NOW())
+    WHERE (\`isBlacklisted\` IS NULL OR \`isBlacklisted\` = 0)
+      AND (
+        \`onboardingMetadata\` LIKE '%"isBlacklisted": true%'
+        OR \`onboardingMetadata\` LIKE '%"isBlacklisted":true%'
+        OR \`onboardingMetadata\` LIKE '%"isBlacklisted": 1%'
+        OR \`onboardingMetadata\` LIKE '%"isBlacklisted":1%'
+        OR JSON_UNQUOTE(JSON_EXTRACT(\`onboardingMetadata\`, '$.isBlacklisted')) IN ('true', '1')
+      )
+  `;
+
   try {
-    await db.query(`
-      UPDATE \`Experts\`
-      SET \`isBlacklisted\` = 1
-      WHERE (\`isBlacklisted\` IS NULL OR \`isBlacklisted\` = 0)
-        AND (
-          \`onboardingMetadata\` LIKE '%"isBlacklisted":true%'
-          OR \`onboardingMetadata\` LIKE '%"isBlacklisted": 1%'
-          OR \`onboardingMetadata\` LIKE '%"isBlacklisted":1%'
-        )
-    `);
+    await db.query(syncSql('Experts'));
     console.log('[Auto-Migrate] Synchronized isBlacklisted flags from onboardingMetadata to Experts.');
   } catch (syncErr) {
     try {
-      await db.query(`
-        UPDATE \`experts\`
-        SET \`isBlacklisted\` = 1
-        WHERE (\`isBlacklisted\` IS NULL OR \`isBlacklisted\` = 0)
-          AND (
-            \`onboardingMetadata\` LIKE '%"isBlacklisted":true%'
-            OR \`onboardingMetadata\` LIKE '%"isBlacklisted": 1%'
-            OR \`onboardingMetadata\` LIKE '%"isBlacklisted":1%'
-          )
-      `);
+      await db.query(syncSql('experts'));
+      console.log('[Auto-Migrate] Synchronized isBlacklisted flags from onboardingMetadata to experts.');
     } catch {
       // ignore
     }

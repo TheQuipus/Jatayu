@@ -237,6 +237,8 @@ export const updateProfile = async (req, res) => {
         expert.onboardingMetadata = {
           ...storedMetadata,
           ...onboardingMetadata,
+          ...(storedMetadata.isBlacklisted !== undefined ? { isBlacklisted: storedMetadata.isBlacklisted } : {}),
+          ...(storedMetadata.blacklistedAt !== undefined ? { blacklistedAt: storedMetadata.blacklistedAt } : {}),
         };
       }
 

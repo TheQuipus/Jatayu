@@ -175,7 +175,7 @@ export const register = async (req, res) => {
 
     if (isExpertBlacklisted(existingEmail) || isExpertBlacklisted(existingPhone)) {
       return res.status(403).json({
-        message: 'These credentials have been Blacklisted',
+        message: 'Your profile is Marked as Blacklisted',
         code: 'CREDENTIALS_BLACKLISTED',
       });
     }
@@ -254,7 +254,7 @@ export const verifyOtp = async (req, res) => {
 
     if (isExpertBlacklisted(expert)) {
       return res.status(403).json({
-        message: 'These credentials have been Blacklisted',
+        message: 'Your profile is Marked as Blacklisted',
         code: 'CREDENTIALS_BLACKLISTED',
       });
     }
@@ -324,7 +324,7 @@ export const resendOtp = async (req, res) => {
 
     if (isExpertBlacklisted(expert)) {
       return res.status(403).json({
-        message: 'These credentials have been Blacklisted',
+        message: 'Your profile is Marked as Blacklisted',
         code: 'CREDENTIALS_BLACKLISTED',
       });
     }
@@ -377,7 +377,7 @@ export const login = async (req, res) => {
 
     if (isExpertBlacklisted(expert)) {
       return res.status(403).json({
-        message: 'These credentials have been Blacklisted',
+        message: 'Your profile is Marked as Blacklisted',
         code: 'CREDENTIALS_BLACKLISTED',
       });
     }
@@ -458,7 +458,7 @@ export const googleLogin = async (req, res) => {
 
     if (isExpertBlacklisted(expert)) {
       return res.status(403).json({
-        message: 'These credentials have been Blacklisted',
+        message: 'Your profile is Marked as Blacklisted',
         code: 'CREDENTIALS_BLACKLISTED',
       });
     }
@@ -520,7 +520,7 @@ export const linkedinLogin = async (req, res) => {
 
     if (isExpertBlacklisted(expert)) {
       return res.status(403).json({
-        message: 'These credentials have been Blacklisted',
+        message: 'Your profile is Marked as Blacklisted',
         code: 'CREDENTIALS_BLACKLISTED',
       });
     }

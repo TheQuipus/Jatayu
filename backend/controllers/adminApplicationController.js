@@ -37,8 +37,8 @@ const SIGNUP_COMPLETE_DRAFT_WHERE = {
   isPhoneVerified: true,
 };
 
-// Keep the queue response lightweight. Full onboarding metadata (including
-// uploaded document data) is returned only by the application detail API.
+// Keep the queue response consistent and lightweight. Include onboardingMetadata
+// so list views properly resolve computed administrative flags like isBlacklisted.
 const APPLICATION_LIST_ATTRIBUTES = [
   'id',
   'applicationNumber',
@@ -59,6 +59,7 @@ const APPLICATION_LIST_ATTRIBUTES = [
   'selectedLengths',
   'formatPrices',
   'onboardingStep',
+  'onboardingMetadata',
   'status',
   'submittedAt',
   'approvedAt',
@@ -273,9 +274,13 @@ export const updateApplicationStatus = async (req, res) => {
       expert.reviewerNote = reviewerNote;
     }
 
-    if (isBlacklisted !== undefined) {
-      expert.isBlacklisted = Boolean(isBlacklisted);
-      expert.blacklistedAt = expert.isBlacklisted ? new Date() : null;
+    const shouldUnblacklist =
+      isBlacklisted === false ||
+      (isBlacklisted === undefined && ['on_hold', 'in_review', 'approved'].includes(backendStatus));
+
+    if (isBlacklisted === true) {
+      expert.isBlacklisted = true;
+      expert.blacklistedAt = expert.blacklistedAt || new Date();
 
       // Also persist in onboardingMetadata as a fail-safe
       let metadata = {};
@@ -284,24 +289,38 @@ export const updateApplicationStatus = async (req, res) => {
       } catch {
         metadata = {};
       }
-      metadata.isBlacklisted = expert.isBlacklisted;
-      metadata.blacklistedAt = expert.blacklistedAt ? expert.blacklistedAt.toISOString() : null;
+      metadata.isBlacklisted = true;
+      metadata.blacklistedAt = expert.blacklistedAt.toISOString();
       expert.onboardingMetadata = { ...metadata };
       expert.changed('onboardingMetadata', true);
       expert.changed('isBlacklisted', true);
       expert.changed('blacklistedAt', true);
 
-      if (expert.isBlacklisted) {
-        // Immediately revoke all active sessions for this expert
-        try {
-          await ExpertSession.update(
-            { revokedAt: new Date() },
-            { where: { expertId: expert.id, revokedAt: null } }
-          );
-        } catch (sessionErr) {
-          console.warn('Could not revoke expert sessions upon blacklisting:', sessionErr.message);
-        }
+      // Immediately revoke all active sessions for this expert
+      try {
+        await ExpertSession.update(
+          { revokedAt: new Date() },
+          { where: { expertId: expert.id, revokedAt: null } }
+        );
+      } catch (sessionErr) {
+        console.warn('Could not revoke expert sessions upon blacklisting:', sessionErr.message);
       }
+    } else if (shouldUnblacklist) {
+      expert.isBlacklisted = false;
+      expert.blacklistedAt = null;
+
+      let metadata = {};
+      try {
+        metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+      } catch {
+        metadata = {};
+      }
+      metadata.isBlacklisted = false;
+      metadata.blacklistedAt = null;
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+      expert.changed('isBlacklisted', true);
+      expert.changed('blacklistedAt', true);
     }
 
     if (backendStatus === 'approved') {
@@ -354,17 +373,21 @@ export const updateApplicationStatus = async (req, res) => {
 
     await saveExpertForAdmin(expert);
 
-    if (isBlacklisted !== undefined) {
+    if (isBlacklisted !== undefined || shouldUnblacklist) {
+      const isBlkVal = expert.isBlacklisted ? 1 : 0;
+      const blkAtVal = expert.blacklistedAt;
+      const idVal = expert.id;
+      const appNumVal = expert.applicationNumber || id;
       try {
         await expertDb.query(
-          'UPDATE `Experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ?',
-          { replacements: [expert.isBlacklisted ? 1 : 0, expert.blacklistedAt, expert.id] }
+          'UPDATE `Experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+          { replacements: [isBlkVal, blkAtVal, idVal, appNumVal] }
         );
       } catch (sqlErr) {
         try {
           await expertDb.query(
-            'UPDATE `experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ?',
-            { replacements: [expert.isBlacklisted ? 1 : 0, expert.blacklistedAt, expert.id] }
+            'UPDATE `experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+            { replacements: [isBlkVal, blkAtVal, idVal, appNumVal] }
           );
         } catch (sqlErr2) {
           console.warn('[Direct SQL Sync Warning]:', sqlErr2.message);

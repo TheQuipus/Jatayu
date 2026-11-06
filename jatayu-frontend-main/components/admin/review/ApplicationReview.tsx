@@ -373,7 +373,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         });
       }
 
-      await updateExpertApplicationStatus(review.appId, "on_hold", notes);
+      await updateExpertApplicationStatus(review.appId, "on_hold", notes, false);
       refresh();
       setShowHoldConfirm(false);
     } catch (error) {
@@ -1292,6 +1292,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             name={review.name}
             appId={review.appId}
             clarificationSections={clarificationSectionsList}
+            isBlacklisted={Boolean(application?.isBlacklisted)}
             onCancel={() => setShowHoldConfirm(false)}
             onConfirm={handleHoldConfirm}
           />
@@ -2211,6 +2212,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           <button
             type="button"
             className={styles.holdBtn}
+            disabled={isUpdatingStatus}
             onClick={() => setShowHoldConfirm(true)}
           >
             Place on Hold
@@ -2218,6 +2220,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           <button
             type="button"
             className={styles.rejectBtn}
+            disabled={isUpdatingStatus}
             onClick={() => setShowRejectConfirm(true)}
           >
             Reject

@@ -25,7 +25,7 @@ export const protect = async (req, res, next) => {
       if (decoded.id) {
         const expert = await Expert.findByPk(decoded.id, { attributes: ['id', 'isBlacklisted', 'onboardingMetadata'] });
         if (isExpertBlacklisted(expert)) {
-          return res.status(403).json({ message: 'These credentials have been Blacklisted', code: 'CREDENTIALS_BLACKLISTED' });
+          return res.status(403).json({ message: 'Your profile is Marked as Blacklisted', code: 'CREDENTIALS_BLACKLISTED' });
         }
       }
       
