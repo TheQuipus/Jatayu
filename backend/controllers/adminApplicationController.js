@@ -7,6 +7,9 @@ import {
   saveExpertForAdmin,
   Op,
 } from '../services/expertDataService.js';
+import { Expert, ExpertSession } from '../models/index.js';
+import { revokeAndExpelExpertSessions } from '../services/expertSessionService.js';
+import { expertDb } from '../config/db/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { getSetting } from '../utils/settingsHelper.js';
@@ -35,8 +38,8 @@ const SIGNUP_COMPLETE_DRAFT_WHERE = {
   isPhoneVerified: true,
 };
 
-// Keep the queue response lightweight. Full onboarding metadata (including
-// uploaded document data) is returned only by the application detail API.
+// Keep the queue response consistent and lightweight. Include onboardingMetadata
+// so list views properly resolve computed administrative flags like isBlacklisted.
 const APPLICATION_LIST_ATTRIBUTES = [
   'id',
   'applicationNumber',
@@ -57,10 +60,13 @@ const APPLICATION_LIST_ATTRIBUTES = [
   'selectedLengths',
   'formatPrices',
   'onboardingStep',
+  'onboardingMetadata',
   'status',
   'submittedAt',
   'approvedAt',
   'reviewerNote',
+  'isBlacklisted',
+  'blacklistedAt',
   'isEmailVerified',
   'isPhoneVerified',
   'createdAt',
@@ -130,8 +136,24 @@ function serializeExpert(expert) {
     }
   }
 
+  if (typeof metadata === 'string') {
+    try {
+      metadata = JSON.parse(metadata);
+    } catch {
+      // ignore
+    }
+  }
+
+  const isBlacklisted = Boolean(
+    json.isBlacklisted ||
+    expert.isBlacklisted ||
+    (metadata && typeof metadata === 'object' && (metadata.isBlacklisted || metadata.isBlacklisted === 1))
+  );
+
   return {
     ...json,
+    isBlacklisted,
+    blacklistedAt: json.blacklistedAt || (metadata && typeof metadata === 'object' && metadata.blacklistedAt) || null,
     ...(json.onboardingMetadata !== undefined ? { onboardingMetadata: metadata } : {}),
     frontendStatus: BACKEND_TO_FRONTEND_STATUS[json.status] || 'pending',
   };
@@ -228,7 +250,7 @@ export const getApplication = async (req, res) => {
  */
 export const updateApplicationStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, reviewerNote } = req.body;
+  const { status, reviewerNote, isBlacklisted } = req.body;
 
   if (!status) {
     return res.status(400).json({ message: 'status is required' });
@@ -251,6 +273,52 @@ export const updateApplicationStatus = async (req, res) => {
     expert.status = backendStatus;
     if (reviewerNote !== undefined) {
       expert.reviewerNote = reviewerNote;
+    }
+
+    const shouldUnblacklist =
+      isBlacklisted === false ||
+      (isBlacklisted === undefined && ['on_hold', 'in_review', 'approved'].includes(backendStatus));
+
+    if (isBlacklisted === true) {
+      expert.isBlacklisted = true;
+      expert.blacklistedAt = expert.blacklistedAt || new Date();
+
+      // Also persist in onboardingMetadata as a fail-safe
+      let metadata = {};
+      try {
+        metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+      } catch {
+        metadata = {};
+      }
+      metadata.isBlacklisted = true;
+      metadata.blacklistedAt = expert.blacklistedAt.toISOString();
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+      expert.changed('isBlacklisted', true);
+      expert.changed('blacklistedAt', true);
+
+      // Immediately revoke all active sessions and forcibly disconnect all open sockets
+      await revokeAndExpelExpertSessions(
+        expert.id,
+        'CREDENTIALS_BLACKLISTED',
+        'Your profile is Marked as Blacklisted',
+      );
+    } else if (shouldUnblacklist) {
+      expert.isBlacklisted = false;
+      expert.blacklistedAt = null;
+
+      let metadata = {};
+      try {
+        metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+      } catch {
+        metadata = {};
+      }
+      metadata.isBlacklisted = false;
+      metadata.blacklistedAt = null;
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+      expert.changed('isBlacklisted', true);
+      expert.changed('blacklistedAt', true);
     }
 
     if (backendStatus === 'approved') {
@@ -302,6 +370,28 @@ export const updateApplicationStatus = async (req, res) => {
     }
 
     await saveExpertForAdmin(expert);
+
+    if (isBlacklisted !== undefined || shouldUnblacklist) {
+      const isBlkVal = expert.isBlacklisted ? 1 : 0;
+      const blkAtVal = expert.blacklistedAt;
+      const idVal = expert.id;
+      const appNumVal = expert.applicationNumber || id;
+      try {
+        await expertDb.query(
+          'UPDATE `Experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+          { replacements: [isBlkVal, blkAtVal, idVal, appNumVal] }
+        );
+      } catch (sqlErr) {
+        try {
+          await expertDb.query(
+            'UPDATE `experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+            { replacements: [isBlkVal, blkAtVal, idVal, appNumVal] }
+          );
+        } catch (sqlErr2) {
+          console.warn('[Direct SQL Sync Warning]:', sqlErr2.message);
+        }
+      }
+    }
 
     const updated = await findExpertByIdForAdmin(expert.id);
     const frontendUrl = (await getSetting('FRONTEND_URL', 'http://localhost:3000')).replace(/\/$/, '');

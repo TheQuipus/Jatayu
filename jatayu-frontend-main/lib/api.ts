@@ -157,6 +157,34 @@ async function apiFetch<T>(
       (data as { message?: string }).message ||
       `Request failed with status ${response.status}`;
     const code = (data as { code?: string }).code;
+
+    if (typeof window !== "undefined") {
+      if (
+        response.status === 403 &&
+        (code === "CREDENTIALS_BLACKLISTED" || message.toLowerCase().includes("blacklisted"))
+      ) {
+        removeToken();
+        removeExpertId();
+        try {
+          localStorage.removeItem("jatayu_expert_user");
+          sessionStorage.removeItem("jatayu_token");
+          sessionStorage.removeItem("jatayu_expert_id");
+        } catch {
+          // ignore
+        }
+        if (!window.location.pathname.startsWith("/login")) {
+          const msg = encodeURIComponent(message || "Your profile is Marked as Blacklisted");
+          window.location.href = `/login?role=expert&blocked=1&reason=${msg}`;
+        }
+      } else if (response.status === 401 && message.toLowerCase().includes("revoked")) {
+        removeToken();
+        removeExpertId();
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = `/login?role=expert`;
+        }
+      }
+    }
+
     throw new ApiError(message, response.status, code);
   }
 
@@ -844,6 +872,7 @@ export async function getAdminDigilockerDocumentBlobUrl(
 export interface UpdateApplicationStatusPayload {
   status: "pending" | "in_review" | "on_hold" | "approved" | "rejected";
   reviewerNote?: string;
+  isBlacklisted?: boolean;
 }
 
 export async function updateAdminApplicationStatus(

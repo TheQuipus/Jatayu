@@ -41,6 +41,7 @@ export default function AdminSettings({ section }: { section: SettingsSection })
   const [showTestSmsModal, setShowTestSmsModal] = useState(false);
   const [testPhoneNumber, setTestPhoneNumber] = useState("");
   const [testTemplateId, setTestTemplateId] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(settings);
@@ -77,9 +78,19 @@ export default function AdminSettings({ section }: { section: SettingsSection })
     return null;
   }
 
-  const handleSave = () => {
-    save(draft);
-    setTestStatus(null);
+  const handleSave = async () => {
+    setSaveError(null);
+    try {
+      await save(draft);
+      setTestStatus(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save settings.";
+      if (msg.toLowerCase().includes("token") || msg.toLowerCase().includes("not authorized")) {
+        setSaveError("Admin session expired or not authorized. Please log in again at /admin.");
+      } else {
+        setSaveError(msg);
+      }
+    }
   };
 
   const handleTest = () => {
@@ -164,6 +175,17 @@ export default function AdminSettings({ section }: { section: SettingsSection })
             ) : null}
           </div>
         </header>
+
+        {saveError ? (
+          <div
+            className={`${styles.savedBanner} ${styles.bannerForm}`}
+            style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }}
+            role="alert"
+          >
+            <X size={16} />
+            {saveError}
+          </div>
+        ) : null}
 
         {showSavedBanner ? (
           <div

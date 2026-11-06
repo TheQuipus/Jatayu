@@ -9,6 +9,7 @@ interface HoldConfirmModalProps {
   name: string;
   appId: string;
   clarificationSections: { sectionTitle: string; note: string; decision?: string | null }[];
+  isBlacklisted?: boolean;
   onCancel: () => void;
   onConfirm: (notes: string) => void;
 }
@@ -17,6 +18,7 @@ export default function HoldConfirmModal({
   name,
   appId,
   clarificationSections,
+  isBlacklisted = false,
   onCancel,
   onConfirm,
 }: HoldConfirmModalProps) {
@@ -55,6 +57,23 @@ export default function HoldConfirmModal({
           <p style={{ margin: "0 0 12px 0" }}>
             You are placing the application for <strong>{name}</strong> ({appId}) on hold.
           </p>
+
+          {isBlacklisted && (
+            <div
+              style={{
+                margin: "0 0 12px 0",
+                padding: "10px 12px",
+                background: "rgba(245, 158, 11, 0.12)",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+                borderRadius: "6px",
+                fontSize: "12px",
+                color: "#92400e",
+                lineHeight: "1.4",
+              }}
+            >
+              <strong>Notice:</strong> This profile is currently <strong>Blacklisted</strong>. Placing it on hold will lift the blacklist and restore the expert&apos;s ability to log in and update their profile.
+            </div>
+          )}
 
           <div className={styles.modalFormGroup}>
             <label className={styles.modalFormLabel}>Issues Identified from Section Reviews</label>

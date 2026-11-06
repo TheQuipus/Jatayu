@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Admin, Expert, ExpertSession, Seeker, Setting } from '../models/index.js';
 import { sendGenericEmail } from './emailService.js';
+import { isExpertBlacklisted } from '../controllers/authController.js';
 
 export const PASSWORD_RESET_PREFIX = '_PASSWORD_RESET:';
 export const PASSWORD_RESET_TTL_MS = 10 * 60 * 1000;
@@ -37,6 +38,11 @@ export async function issuePasswordReset({ role, email }) {
   const model = getPasswordRecoveryModel(role);
   const account = model ? await model.findOne({ where: { email } }) : null;
   if (!account) return;
+
+  if (role === 'expert' && isExpertBlacklisted(account)) {
+    // Suppress password recovery for blacklisted accounts
+    return;
+  }
 
   const key = `${PASSWORD_RESET_PREFIX}${role}:${account.id}`;
   const token = randomBytes(32).toString('base64url');
@@ -77,6 +83,9 @@ export async function consumePasswordReset({ role, userId, token, password }) {
   const key = `${PASSWORD_RESET_PREFIX}${role}:${userId}`;
   const account = await model.findByPk(userId);
   if (!account) return false;
+  if (role === 'expert' && isExpertBlacklisted(account)) {
+    return false;
+  }
   const passwordHash = await bcrypt.hash(password, 12);
   const consumed = await Setting.sequelize.transaction(async (transaction) => {
     const row = await Setting.findByPk(key, { transaction, lock: transaction.LOCK.UPDATE });

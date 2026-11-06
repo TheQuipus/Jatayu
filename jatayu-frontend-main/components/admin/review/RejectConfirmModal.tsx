@@ -10,7 +10,7 @@ interface RejectConfirmModalProps {
   appId: string;
   rejectedSections: { sectionTitle: string; note: string; decision?: string | null }[];
   onCancel: () => void;
-  onConfirm: (notes: string) => void;
+  onConfirm: (notes: string, isBlacklisted: boolean) => void;
 }
 
 export default function RejectConfirmModal({
@@ -21,6 +21,7 @@ export default function RejectConfirmModal({
   onConfirm,
 }: RejectConfirmModalProps) {
   const [notes, setNotes] = useState("");
+  const [isBlacklisted, setIsBlacklisted] = useState(false);
 
   const hasIssues = rejectedSections.length > 0;
   const isValid = hasIssues ? true : notes.trim().length > 0;
@@ -34,9 +35,9 @@ export default function RejectConfirmModal({
           return `[${item.sectionTitle} - ${statusLabel}]: ${item.note || "No feedback notes entered"}`;
         })
         .join("; ");
-      onConfirm(compiled);
+      onConfirm(compiled, isBlacklisted);
     } else {
-      onConfirm(notes.trim());
+      onConfirm(notes.trim(), isBlacklisted);
     }
   };
 
@@ -46,7 +47,7 @@ export default function RejectConfirmModal({
       onClose={onCancel}
       onConfirm={handleConfirmAction}
       title="Reject Application"
-      confirmText="Confirm Rejection"
+      confirmText={isBlacklisted ? "Confirm Rejection & Blacklist" : "Confirm Rejection"}
       cancelText="Cancel"
       variant="danger"
       icon={<AlertTriangle size={32} style={{ color: "#ef4444" }} />}
@@ -94,6 +95,23 @@ export default function RejectConfirmModal({
               />
             </div>
           )}
+
+          <div className={styles.modalBlacklistOption}>
+            <label className={styles.modalBlacklistLabel}>
+              <input
+                type="checkbox"
+                checked={isBlacklisted}
+                onChange={(e) => setIsBlacklisted(e.target.checked)}
+                className={styles.modalBlacklistCheckbox}
+              />
+              <div className={styles.modalBlacklistContent}>
+                <span className={styles.modalBlacklistTitle}>Blacklist this profile</span>
+                <span className={styles.modalBlacklistSubtext}>
+                  Prevents this applicant from logging in or registering with these credentials in the future.
+                </span>
+              </div>
+            </label>
+          </div>
 
           <p style={{ marginTop: "16px", margin: "16px 0 0 0", fontSize: "12px", color: "var(--scorpion)", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ color: "#E53B17" }}>ℹ</span>

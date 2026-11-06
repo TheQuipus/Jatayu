@@ -373,7 +373,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         });
       }
 
-      await updateExpertApplicationStatus(review.appId, "on_hold", notes);
+      await updateExpertApplicationStatus(review.appId, "on_hold", notes, false);
       refresh();
       setShowHoldConfirm(false);
     } catch (error) {
@@ -383,7 +383,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     }
   };
 
-  const handleRejectConfirm = async (notes: string) => {
+  const handleRejectConfirm = async (notes: string, isBlacklisted: boolean = false) => {
     if (!review || isUpdatingStatus) return;
     setIsUpdatingStatus(true);
     setActionError(null);
@@ -430,7 +430,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         });
       }
 
-      await updateExpertApplicationStatus(review.appId, "rejected", notes);
+      await updateExpertApplicationStatus(review.appId, "rejected", notes, isBlacklisted);
       refresh();
       setShowRejectConfirm(false);
     } catch (error) {
@@ -1292,6 +1292,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             name={review.name}
             appId={review.appId}
             clarificationSections={clarificationSectionsList}
+            isBlacklisted={Boolean(application?.isBlacklisted)}
             onCancel={() => setShowHoldConfirm(false)}
             onConfirm={handleHoldConfirm}
           />
@@ -1348,8 +1349,14 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
               </p>
             </div>
             <div className={styles.metaTagsRow}>
-              <span className={`${styles.statusTag} ${REVIEW_STATUS_CLASS[review.status]}`}>
-                {REVIEW_STATUS_LABEL[review.status]}
+              <span
+                className={`${styles.statusTag} ${
+                  application?.isBlacklisted
+                    ? styles.statusBlacklisted
+                    : REVIEW_STATUS_CLASS[review.status]
+                }`}
+              >
+                {application?.isBlacklisted ? "Blacklisted" : REVIEW_STATUS_LABEL[review.status]}
               </span>
             </div>
           </header>
@@ -2205,6 +2212,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           <button
             type="button"
             className={styles.holdBtn}
+            disabled={isUpdatingStatus}
             onClick={() => setShowHoldConfirm(true)}
           >
             Place on Hold
@@ -2212,6 +2220,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           <button
             type="button"
             className={styles.rejectBtn}
+            disabled={isUpdatingStatus}
             onClick={() => setShowRejectConfirm(true)}
           >
             Reject

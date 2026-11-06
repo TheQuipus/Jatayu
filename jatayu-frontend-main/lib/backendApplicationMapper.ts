@@ -37,6 +37,8 @@ export type BackendExpertApplication = {
   submittedAt?: string | null;
   updatedAt?: string | null;
   reviewerNote?: string | null;
+  isBlacklisted?: boolean | null;
+  blacklistedAt?: string | null;
   credentials?: Array<{
     id: string;
     type: string;
@@ -242,6 +244,8 @@ export function mapBackendExpertToApplication(
         ? metadata.termsAcceptedAt
         : expert.submittedAt || expert.updatedAt || new Date().toISOString(),
     reviewerNote: expert.reviewerNote || undefined,
+    isBlacklisted: Boolean(expert.isBlacklisted || (metadata as Record<string, unknown>)?.isBlacklisted),
+    blacklistedAt: expert.blacklistedAt || ((metadata as Record<string, unknown>)?.blacklistedAt as string) || undefined,
     onboardingStep: expert.onboardingStep || undefined,
     onboardingMetadata: metadata,
   };

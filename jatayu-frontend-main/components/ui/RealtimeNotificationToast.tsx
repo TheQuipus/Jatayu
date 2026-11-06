@@ -3,13 +3,34 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell, X } from "lucide-react";
 import { getAdminToken, getToken } from "@/lib/api";
-import { connectSocket } from "@/lib/socket";
+import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { clearAuthSession } from "@/lib/expertAuth";
 type Notice = { id: string; title: string; body: string; href?: string | null };
 export default function RealtimeNotificationToast() {
   const [notice, setNotice] = useState<Notice | null>(null);
-  useEffect(() => { const token = getToken() || getAdminToken(); if (!token) return; const socket = connectSocket(token);
-    const receive = (item: Notice) => { setNotice(item); window.dispatchEvent(new CustomEvent("jatayu:notification", { detail: item })); };
-    socket.on("notification:new", receive); return () => { socket.off("notification:new", receive); }; }, []);
+  useEffect(() => {
+    const token = getToken() || getAdminToken();
+    if (!token) return;
+    const socket = connectSocket(token);
+    const receive = (item: Notice) => {
+      setNotice(item);
+      window.dispatchEvent(new CustomEvent("jatayu:notification", { detail: item }));
+    };
+    const handleForceLogout = (data?: { reason?: string; message?: string }) => {
+      clearAuthSession();
+      disconnectSocket();
+      window.dispatchEvent(new CustomEvent("jatayu:auth:force_logout", { detail: data }));
+      const msg = encodeURIComponent(data?.message || "Your profile is Marked as Blacklisted");
+      window.location.href = `/login?role=expert&blocked=1&reason=${msg}`;
+    };
+
+    socket.on("notification:new", receive);
+    socket.on("auth:force_logout", handleForceLogout);
+    return () => {
+      socket.off("notification:new", receive);
+      socket.off("auth:force_logout", handleForceLogout);
+    };
+  }, []);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(null), 8000); return () => clearTimeout(timer); }, [notice]);
   if (!notice) return null;
   const content = <><Bell size={18} /><span><strong>{notice.title}</strong><br />{notice.body}</span></>;

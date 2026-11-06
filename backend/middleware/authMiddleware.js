@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { ExpertSession } from '../models/index.js';
+import { Expert, ExpertSession } from '../models/index.js';
+import { isExpertBlacklisted } from '../controllers/authController.js';
 
 dotenv.config();
 
@@ -14,6 +15,13 @@ export const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production');
+      if (decoded.id) {
+        const expert = await Expert.findByPk(decoded.id, { attributes: ['id', 'isBlacklisted', 'onboardingMetadata'] });
+        if (isExpertBlacklisted(expert)) {
+          return res.status(403).json({ message: 'Your profile is Marked as Blacklisted', code: 'CREDENTIALS_BLACKLISTED' });
+        }
+      }
+
       if (decoded.jti) {
         const session = await ExpertSession.findByPk(decoded.jti);
         if (!session || session.revokedAt || new Date(session.expiresAt) <= new Date()) {

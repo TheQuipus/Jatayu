@@ -140,6 +140,15 @@ const Expert = expertDb.define('Expert', {
   reviewerNote: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  isBlacklisted: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  blacklistedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   timestamps: true,

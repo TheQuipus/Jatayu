@@ -8,8 +8,20 @@ import { normalizeExpertNotificationPreferences } from '../config/expertNotifica
 
 let socketServer = null;
 export function setNotificationSocketServer(io) { socketServer = io; }
+export function getNotificationSocketServer() { return socketServer; }
 export function emitRealtime(recipientType, recipientId, event, payload) {
   socketServer?.to(`notifications:${recipientType}:${recipientId}`).emit(event, payload);
+}
+
+export function forceDisconnectUser(recipientType, recipientId, eventData = { reason: 'CREDENTIALS_BLACKLISTED', message: 'Your profile is Marked as Blacklisted' }) {
+  if (!socketServer) return;
+  const room = `notifications:${recipientType}:${recipientId}`;
+  socketServer.to(room).emit('auth:force_logout', eventData);
+  try {
+    socketServer.in(room).disconnectSockets(true);
+  } catch (err) {
+    console.warn(`[Socket Disconnect Warning] Could not disconnect sockets for room ${room}:`, err.message);
+  }
 }
 
 export function expertNotificationCategory(eventType) {

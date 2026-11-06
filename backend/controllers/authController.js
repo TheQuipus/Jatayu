@@ -35,6 +35,43 @@ function normalizeExpertEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+export function isExpertBlacklisted(expert) {
+  if (!expert) return false;
+  if (expert.isBlacklisted || expert.dataValues?.isBlacklisted) return true;
+
+  const rawMetadata = expert.onboardingMetadata || expert.dataValues?.onboardingMetadata;
+  if (rawMetadata) {
+    if (typeof rawMetadata === 'string') {
+      if (/"isBlacklisted"\s*:\s*(true|1)/i.test(rawMetadata)) return true;
+      try {
+        const parsed = JSON.parse(rawMetadata);
+        if (parsed && typeof parsed === 'object' && (parsed.isBlacklisted || parsed.isBlacklisted === 1)) {
+          return true;
+        }
+      } catch {
+        // ignore
+      }
+    } else if (typeof rawMetadata === 'object') {
+      if (rawMetadata.isBlacklisted || rawMetadata.isBlacklisted === 1) return true;
+      const keys = Object.keys(rawMetadata);
+      if (keys.length > 0 && keys.every((k, idx) => k === String(idx))) {
+        const decoded = keys.map((k) => rawMetadata[k]).join('');
+        if (/"isBlacklisted"\s*:\s*(true|1)/i.test(decoded)) return true;
+        try {
+          const parsed = JSON.parse(decoded);
+          if (parsed && typeof parsed === 'object' && (parsed.isBlacklisted || parsed.isBlacklisted === 1)) {
+            return true;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 function nationalPhoneDigits(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   if (digits.length >= 10) return digits.slice(-10);
@@ -134,6 +171,15 @@ export const register = async (req, res) => {
     const normalizedPhone = nationalPhoneDigits(phone);
 
     const existingEmail = await findExpertByEmail(normalizedEmail, { paranoid: false });
+    const existingPhone = await findExpertByPhone(normalizedPhone, { paranoid: false });
+
+    if (isExpertBlacklisted(existingEmail) || isExpertBlacklisted(existingPhone)) {
+      return res.status(403).json({
+        message: 'Your profile is Marked as Blacklisted',
+        code: 'CREDENTIALS_BLACKLISTED',
+      });
+    }
+
     if (existingEmail?.deletedAt) {
       return res.status(409).json({ message: 'This account was deleted. Contact support if you want it restored.', code: 'ACCOUNT_DELETED' });
     }
@@ -144,7 +190,6 @@ export const register = async (req, res) => {
       });
     }
 
-    const existingPhone = await findExpertByPhone(normalizedPhone, { paranoid: false });
     if (existingPhone?.deletedAt) {
       return res.status(409).json({ message: 'An account using this phone number was deleted. Contact support to restore it.', code: 'ACCOUNT_DELETED' });
     }
@@ -205,6 +250,13 @@ export const verifyOtp = async (req, res) => {
     const expert = await Expert.findByPk(expertId);
     if (!expert) {
       return res.status(404).json({ message: 'Expert not found' });
+    }
+
+    if (isExpertBlacklisted(expert)) {
+      return res.status(403).json({
+        message: 'Your profile is Marked as Blacklisted',
+        code: 'CREDENTIALS_BLACKLISTED',
+      });
     }
 
     let storedOtp = tempOtps.get(expertId);
@@ -270,6 +322,13 @@ export const resendOtp = async (req, res) => {
       return res.status(404).json({ message: 'Expert not found' });
     }
 
+    if (isExpertBlacklisted(expert)) {
+      return res.status(403).json({
+        message: 'Your profile is Marked as Blacklisted',
+        code: 'CREDENTIALS_BLACKLISTED',
+      });
+    }
+
     await issueOtp(expert);
 
     console.log(`[OTP Resent] Expert: ${expert.email} | OTP: (sent via provider)`);
@@ -314,6 +373,13 @@ export const login = async (req, res) => {
         return res.status(429).json(buildPasswordLoginRateLimitResponse(lockout.ipLockedUntil));
       }
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (isExpertBlacklisted(expert)) {
+      return res.status(403).json({
+        message: 'Your profile is Marked as Blacklisted',
+        code: 'CREDENTIALS_BLACKLISTED',
+      });
     }
 
     // Check password if it was registered with one (not a Google-only account)
@@ -390,6 +456,13 @@ export const googleLogin = async (req, res) => {
       throw error;
     }
 
+    if (isExpertBlacklisted(expert)) {
+      return res.status(403).json({
+        message: 'Your profile is Marked as Blacklisted',
+        code: 'CREDENTIALS_BLACKLISTED',
+      });
+    }
+
     if (!expert) {
       expert = await Expert.create({
         email,
@@ -443,6 +516,13 @@ export const linkedinLogin = async (req, res) => {
       const error = new Error('This account was deleted. Contact support if you want it restored.');
       error.status = 403;
       throw error;
+    }
+
+    if (isExpertBlacklisted(expert)) {
+      return res.status(403).json({
+        message: 'Your profile is Marked as Blacklisted',
+        code: 'CREDENTIALS_BLACKLISTED',
+      });
     }
 
     if (!expert) {

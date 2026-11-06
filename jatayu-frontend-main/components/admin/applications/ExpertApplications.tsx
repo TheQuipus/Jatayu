@@ -171,6 +171,7 @@ function filterApplications(
       app.city.toLowerCase().includes(q) ||
       app.appId.toLowerCase().includes(q) ||
       app.category.toLowerCase().includes(q) ||
+      (app.isBlacklisted && "blacklisted".includes(q)) ||
       app.languages.some((l) => l.toLowerCase().includes(q)),
   );
 }
@@ -530,8 +531,12 @@ export default function ExpertApplications() {
                         </span>
                       </td>
                       <td>
-                        <span className={`${styles.statusBadge} ${STATUS_BADGE_CLASS[app.status]}`}>
-                          {STATUS_LABEL[app.status]}
+                        <span
+                          className={`${styles.statusBadge} ${
+                            app.isBlacklisted ? styles.statusBlacklisted : STATUS_BADGE_CLASS[app.status]
+                          }`}
+                        >
+                          {app.isBlacklisted ? "Blacklisted" : STATUS_LABEL[app.status]}
                         </span>
                       </td>
                       <td>
