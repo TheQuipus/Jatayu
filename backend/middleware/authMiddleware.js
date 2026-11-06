@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { Expert, ExpertSession } from '../models/index.js';
+import { isExpertBlacklisted } from '../controllers/authController.js';
 
 dotenv.config();
 
@@ -23,8 +24,7 @@ export const protect = async (req, res, next) => {
 
       if (decoded.id) {
         const expert = await Expert.findByPk(decoded.id, { attributes: ['id', 'isBlacklisted', 'onboardingMetadata'] });
-        const isBlacklisted = Boolean(expert?.isBlacklisted || expert?.onboardingMetadata?.isBlacklisted);
-        if (isBlacklisted) {
+        if (isExpertBlacklisted(expert)) {
           return res.status(403).json({ message: 'These credentials have been Blacklisted', code: 'CREDENTIALS_BLACKLISTED' });
         }
       }

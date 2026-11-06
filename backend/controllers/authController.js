@@ -35,11 +35,40 @@ function normalizeExpertEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
-function isExpertBlacklisted(expert) {
+export function isExpertBlacklisted(expert) {
   if (!expert) return false;
-  if (expert.isBlacklisted) return true;
-  const metadata = expert.onboardingMetadata;
-  if (metadata && typeof metadata === 'object' && metadata.isBlacklisted) return true;
+  if (expert.isBlacklisted || expert.dataValues?.isBlacklisted) return true;
+
+  const rawMetadata = expert.onboardingMetadata || expert.dataValues?.onboardingMetadata;
+  if (rawMetadata) {
+    if (typeof rawMetadata === 'string') {
+      if (/"isBlacklisted"\s*:\s*(true|1)/i.test(rawMetadata)) return true;
+      try {
+        const parsed = JSON.parse(rawMetadata);
+        if (parsed && typeof parsed === 'object' && (parsed.isBlacklisted || parsed.isBlacklisted === 1)) {
+          return true;
+        }
+      } catch {
+        // ignore
+      }
+    } else if (typeof rawMetadata === 'object') {
+      if (rawMetadata.isBlacklisted || rawMetadata.isBlacklisted === 1) return true;
+      const keys = Object.keys(rawMetadata);
+      if (keys.length > 0 && keys.every((k, idx) => k === String(idx))) {
+        const decoded = keys.map((k) => rawMetadata[k]).join('');
+        if (/"isBlacklisted"\s*:\s*(true|1)/i.test(decoded)) return true;
+        try {
+          const parsed = JSON.parse(decoded);
+          if (parsed && typeof parsed === 'object' && (parsed.isBlacklisted || parsed.isBlacklisted === 1)) {
+            return true;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
   return false;
 }
 

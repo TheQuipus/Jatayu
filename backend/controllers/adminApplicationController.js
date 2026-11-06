@@ -7,7 +7,8 @@ import {
   saveExpertForAdmin,
   Op,
 } from '../services/expertDataService.js';
-import { ExpertSession } from '../models/index.js';
+import { Expert, ExpertSession } from '../models/index.js';
+import { expertDb } from '../config/db/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { getSetting } from '../utils/settingsHelper.js';
@@ -133,10 +134,24 @@ function serializeExpert(expert) {
     }
   }
 
+  if (typeof metadata === 'string') {
+    try {
+      metadata = JSON.parse(metadata);
+    } catch {
+      // ignore
+    }
+  }
+
+  const isBlacklisted = Boolean(
+    json.isBlacklisted ||
+    expert.isBlacklisted ||
+    (metadata && typeof metadata === 'object' && (metadata.isBlacklisted || metadata.isBlacklisted === 1))
+  );
+
   return {
     ...json,
-    isBlacklisted: Boolean(json.isBlacklisted),
-    blacklistedAt: json.blacklistedAt || null,
+    isBlacklisted,
+    blacklistedAt: json.blacklistedAt || (metadata && typeof metadata === 'object' && metadata.blacklistedAt) || null,
     ...(json.onboardingMetadata !== undefined ? { onboardingMetadata: metadata } : {}),
     frontendStatus: BACKEND_TO_FRONTEND_STATUS[json.status] || 'pending',
   };
@@ -273,6 +288,8 @@ export const updateApplicationStatus = async (req, res) => {
       metadata.blacklistedAt = expert.blacklistedAt ? expert.blacklistedAt.toISOString() : null;
       expert.onboardingMetadata = { ...metadata };
       expert.changed('onboardingMetadata', true);
+      expert.changed('isBlacklisted', true);
+      expert.changed('blacklistedAt', true);
 
       if (expert.isBlacklisted) {
         // Immediately revoke all active sessions for this expert
@@ -336,6 +353,24 @@ export const updateApplicationStatus = async (req, res) => {
     }
 
     await saveExpertForAdmin(expert);
+
+    if (isBlacklisted !== undefined) {
+      try {
+        await expertDb.query(
+          'UPDATE `Experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ?',
+          { replacements: [expert.isBlacklisted ? 1 : 0, expert.blacklistedAt, expert.id] }
+        );
+      } catch (sqlErr) {
+        try {
+          await expertDb.query(
+            'UPDATE `experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ?',
+            { replacements: [expert.isBlacklisted ? 1 : 0, expert.blacklistedAt, expert.id] }
+          );
+        } catch (sqlErr2) {
+          console.warn('[Direct SQL Sync Warning]:', sqlErr2.message);
+        }
+      }
+    }
 
     const updated = await findExpertByIdForAdmin(expert.id);
     const frontendUrl = (await getSetting('FRONTEND_URL', 'http://localhost:3000')).replace(/\/$/, '');
