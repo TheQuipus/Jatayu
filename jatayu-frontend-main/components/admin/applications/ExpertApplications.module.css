@@ -738,3 +738,33 @@
     width: 100%;
   }
 }
+
+/* Skeleton Loading */
+@keyframes skeletonPulse {
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.28;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+.skeletonBox {
+  background: var(--mercury, #e2e8f0);
+  border-radius: 4px;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+.skeletonAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.skeletonRow {
+  pointer-events: none;
+}

@@ -22,12 +22,12 @@ export default function RejectConfirmModal({
 }: RejectConfirmModalProps) {
   const [notes, setNotes] = useState("");
   const [isBlacklisted, setIsBlacklisted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const hasIssues = rejectedSections.length > 0;
-  const isValid = hasIssues ? true : notes.trim().length > 0;
 
   const handleConfirmAction = () => {
-    if (!isValid) return;
+    let finalNote = notes.trim();
     if (hasIssues) {
       const compiled = rejectedSections
         .map((item) => {
@@ -37,7 +37,15 @@ export default function RejectConfirmModal({
         .join("; ");
       onConfirm(compiled, isBlacklisted);
     } else {
-      onConfirm(notes.trim(), isBlacklisted);
+      if (!finalNote) {
+        if (isBlacklisted) {
+          finalNote = "Profile blacklisted and rejected by administrator.";
+        } else {
+          setErrorMsg("Please provide a reason for rejecting the application.");
+          return;
+        }
+      }
+      onConfirm(finalNote, isBlacklisted);
     }
   };
 
@@ -88,11 +96,20 @@ export default function RejectConfirmModal({
               <label className={styles.modalFormLabel}>Explain why you are rejecting this application</label>
               <textarea
                 className={styles.modalTextarea}
+                style={errorMsg ? { borderColor: "#ef4444" } : undefined}
                 placeholder="Provide a reason for rejecting the application..."
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => {
+                  setNotes(e.target.value);
+                  if (errorMsg) setErrorMsg("");
+                }}
                 required
               />
+              {errorMsg && (
+                <p style={{ color: "#ef4444", fontSize: "12px", margin: "4px 0 0 0" }}>
+                  {errorMsg}
+                </p>
+              )}
             </div>
           )}
 

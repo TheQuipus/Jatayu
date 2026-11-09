@@ -38,8 +38,8 @@ const SIGNUP_COMPLETE_DRAFT_WHERE = {
   isPhoneVerified: true,
 };
 
-// Keep the queue response consistent and lightweight. Include onboardingMetadata
-// so list views properly resolve computed administrative flags like isBlacklisted.
+// Keep the queue response consistent and lightweight. Administrative flags
+// like isBlacklisted and blacklistedAt are queried directly from Experts columns.
 const APPLICATION_LIST_ATTRIBUTES = [
   'id',
   'applicationNumber',
@@ -60,7 +60,6 @@ const APPLICATION_LIST_ATTRIBUTES = [
   'selectedLengths',
   'formatPrices',
   'onboardingStep',
-  'onboardingMetadata',
   'status',
   'submittedAt',
   'approvedAt',
@@ -201,9 +200,7 @@ export const listApplications = async (req, res) => {
       countExpertsForAdmin(where),
     ]);
 
-    for (const expert of experts) {
-      await ensureReviewMetadata(expert);
-    }
+    await Promise.all(experts.map((expert) => ensureReviewMetadata(expert)));
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
     return res.status(200).json({
@@ -436,7 +433,7 @@ export const getApplicationStats = async (req, res) => {
   try {
     const experts = await findExpertsForAdmin(
       { [Op.or]: [{ status: { [Op.in]: QUEUE_STATUSES } }, SIGNUP_COMPLETE_DRAFT_WHERE] },
-      { attributes: ['status', 'submittedAt', 'createdAt'] },
+      { attributes: ['status', 'submittedAt', 'createdAt'], include: [] },
     );
 
     const counts = {
