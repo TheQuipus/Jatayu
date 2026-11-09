@@ -78,8 +78,15 @@ function serializeExpertUser(expert, stats = {}) {
     ? data.onboardingMetadata
     : {};
 
+  const isBlacklisted = Boolean(
+    data.isBlacklisted ||
+    expert.isBlacklisted ||
+    (metadata && typeof metadata === 'object' && (metadata.isBlacklisted || metadata.isBlacklisted === 1))
+  );
+
   let normalizedStatus = 'active';
-  if (data.status === 'on_hold') normalizedStatus = 'on_hold';
+  if (isBlacklisted) normalizedStatus = 'blacklisted';
+  else if (data.status === 'on_hold') normalizedStatus = 'on_hold';
   else if (data.status === 'suspended') normalizedStatus = 'suspended';
   else if (data.status === 'approved' || data.status === 'active') normalizedStatus = 'active';
 
@@ -121,6 +128,8 @@ function serializeExpertUser(expert, stats = {}) {
     hourlyRate: Number(hourlyRate),
     status: normalizedStatus,
     rawStatus: data.status,
+    isBlacklisted,
+    blacklistedAt: data.blacklistedAt || metadata.blacklistedAt || null,
     joinedDate: formatDate(approvalDate || data.createdAt),
     lastActive: formatRelativeTime(data.updatedAt),
     city,

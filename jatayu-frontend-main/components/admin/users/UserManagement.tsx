@@ -273,9 +273,17 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                         </div>
                       </td>
                       <td>
-                        {exp.status === "active" && <span className={styles.badgeActive}>Active</span>}
-                        {exp.status === "on_hold" && <span className={styles.badgeHold}>On Hold</span>}
-                        {exp.status === "suspended" && <span className={styles.badgeSuspended}>Suspended</span>}
+                        {Boolean(exp.isBlacklisted || exp.status === "blacklisted") ? (
+                          <span className={styles.badgeBlacklisted}>Blacklisted</span>
+                        ) : exp.status === "active" ? (
+                          <span className={styles.badgeActive}>Active</span>
+                        ) : exp.status === "on_hold" ? (
+                          <span className={styles.badgeHold}>On Hold</span>
+                        ) : exp.status === "suspended" ? (
+                          <span className={styles.badgeSuspended}>Suspended</span>
+                        ) : (
+                          <span className={styles.badgeHold}>{exp.status}</span>
+                        )}
                       </td>
                       <td>
                         <span className={styles.closedSlaText}>{exp.closedSla || "—"}</span>

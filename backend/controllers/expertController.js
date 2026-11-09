@@ -13,6 +13,7 @@ import {
 } from '../utils/aiService.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { sendNotification } from '../services/notificationService.js';
+import { appendSectionAuditEvent } from '../utils/applicationAuditLog.js';
 
 function publicExpert(expert) {
   const data = expert?.toJSON ? expert.toJSON() : { ...expert };
@@ -283,6 +284,7 @@ export const updateProfile = async (req, res) => {
         updatedSections.add('availability');
       }
 
+      let currentAuditLogs = currentMetadata.sectionAuditLogs || [];
       for (const [secKey, clar] of Object.entries(clarifications)) {
         if (clar && clar.status === 'waiting') {
           if (updatedSections.has(secKey)) {
@@ -293,6 +295,12 @@ export const updateProfile = async (req, res) => {
               sectionDecisions[secKey].clarificationStatus = 'received';
               sectionDecisions[secKey].clarificationReceivedAt = new Date().toISOString();
             }
+            currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+              sectionId: secKey,
+              action: 'clarification_response',
+              badgeLabel: 'RESPONSE RECEIVED',
+              note: 'Expert updated profile details in response to clarification request.',
+            }, { id: expert.id, fullName: expert.fullName, role: 'Expert' });
           }
         }
       }
@@ -300,6 +308,7 @@ export const updateProfile = async (req, res) => {
       if (clarificationsUpdated) {
         currentMetadata.sectionClarifications = clarifications;
         currentMetadata.sectionDecisions = sectionDecisions;
+        currentMetadata.sectionAuditLogs = currentAuditLogs;
         expert.onboardingMetadata = currentMetadata;
       }
 
