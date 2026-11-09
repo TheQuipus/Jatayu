@@ -299,10 +299,6 @@ export default function ExpertApplications() {
     [listItems, query, columnFilters],
   );
 
-  if (!ready) {
-    return null;
-  }
-
   return (
     <section className={styles.dashboard}>
       <div className={`container ${styles.dashboardInner}`}>
@@ -342,7 +338,11 @@ export default function ExpertApplications() {
                     </span>
                   </div>
                   <p className={styles.kpiValue}>
-                    {String(kpi.value).padStart(2, "0")}
+                    {!ready && (kpi.value === "0" || kpi.value === "00") ? (
+                      <span className={styles.skeletonBox} style={{ display: "inline-block", width: 42, height: 28, borderRadius: 4 }} />
+                    ) : (
+                      String(kpi.value).padStart(2, "0")
+                    )}
                   </p>
                 </button>
               );
@@ -363,7 +363,7 @@ export default function ExpertApplications() {
           </div>
         </div>
 
-        {showAlert && slaAlert.count > 0 && (
+        {ready && showAlert && slaAlert.count > 0 && (
           <div className={styles.slaAlert} role="alert">
             <div className={styles.slaAlertContent}>
               <AlertTriangle className={styles.slaAlertIcon} size={20} />
@@ -473,7 +473,48 @@ export default function ExpertApplications() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {!ready ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={`skeleton-${i}`} className={styles.skeletonRow}>
+                      <td className={styles.rowNum}>
+                        <div className={styles.skeletonBox} style={{ width: 16, height: 16 }} />
+                      </td>
+                      <td>
+                        <div className={styles.applicantCell}>
+                          <div className={`${styles.skeletonBox} ${styles.skeletonAvatar}`} />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <div className={styles.skeletonBox} style={{ width: 130, height: 14 }} />
+                            <div className={styles.skeletonBox} style={{ width: 85, height: 11 }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 88, height: 22, borderRadius: 12 }} />
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 72, height: 22, borderRadius: 12 }} />
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div className={styles.skeletonBox} style={{ width: 76, height: 13 }} />
+                          <div className={styles.skeletonBox} style={{ width: 52, height: 10 }} />
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 68, height: 20, borderRadius: 12 }} />
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 78, height: 22, borderRadius: 12 }} />
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 50, height: 14 }} />
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 70, height: 28, borderRadius: 6 }} />
+                      </td>
+                    </tr>
+                  ))
+                ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan={9}>
                       <div className={styles.emptyState}>No applications match your filters.</div>
@@ -558,9 +599,11 @@ export default function ExpertApplications() {
           </div>
           <div className={styles.pagination}>
             <span className={styles.paginationSummary}>
-              {pagination.total === 0
-                ? "No applications"
-                : `Showing ${(pagination.page - 1) * pagination.limit + 1}–${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total}`}
+              {!ready
+                ? "Loading applications..."
+                : pagination.total === 0
+                  ? "No applications"
+                  : `Showing ${(pagination.page - 1) * pagination.limit + 1}–${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total}`}
             </span>
             <div className={styles.paginationActions}>
               <button

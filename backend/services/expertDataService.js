@@ -18,7 +18,7 @@ export function getExpertDatabaseName() {
 export async function findExpertsForAdmin(where, options = {}) {
   return Expert.findAll({
     where,
-    include: EXPERT_INCLUDES,
+    include: options.include !== undefined ? options.include : EXPERT_INCLUDES,
     order: options.order || [['submittedAt', 'DESC'], ['updatedAt', 'DESC']],
     attributes: options.attributes,
     limit: options.limit,
