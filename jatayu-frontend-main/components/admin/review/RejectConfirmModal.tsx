@@ -9,6 +9,7 @@ interface RejectConfirmModalProps {
   name: string;
   appId: string;
   rejectedSections: { sectionTitle: string; note: string; decision?: string | null }[];
+  initialBlacklisted?: boolean;
   onCancel: () => void;
   onConfirm: (notes: string, isBlacklisted: boolean) => void;
 }
@@ -17,11 +18,12 @@ export default function RejectConfirmModal({
   name,
   appId,
   rejectedSections,
+  initialBlacklisted = false,
   onCancel,
   onConfirm,
 }: RejectConfirmModalProps) {
   const [notes, setNotes] = useState("");
-  const [isBlacklisted, setIsBlacklisted] = useState(false);
+  const [isBlacklisted, setIsBlacklisted] = useState(Boolean(initialBlacklisted));
   const [errorMsg, setErrorMsg] = useState("");
 
   const hasIssues = rejectedSections.length > 0;

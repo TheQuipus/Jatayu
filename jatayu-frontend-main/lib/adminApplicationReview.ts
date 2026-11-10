@@ -144,6 +144,38 @@ export const REVIEW_TABS = [
 
 export type ReviewTabId = (typeof REVIEW_TABS)[number]["id"];
 
+export type SectionAuditAction =
+  | "approve"
+  | "clarification"
+  | "reject"
+  | "note_added"
+  | "cleared"
+  | "clarification_response"
+  | "on_hold"
+  | "approved"
+  | "rejected"
+  | "in_review"
+  | string;
+
+export interface SectionAuditLogEntry {
+  id: string;
+  sectionId: string;
+  sectionTitle: string;
+  action: SectionAuditAction;
+  badgeLabel?: string;
+  note?: string;
+  actor: {
+    id?: number | string | null;
+    name: string;
+    role: string;
+    email?: string | null;
+    avatar?: string | null;
+  };
+  timestamp: string;
+  previousDecision?: string | null;
+  newDecision?: string | null;
+}
+
 export function getDefaultReviewAppId(): string {
   return "APP-1079";
 }

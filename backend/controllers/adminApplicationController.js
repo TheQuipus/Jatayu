@@ -14,6 +14,11 @@ import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { getSetting } from '../utils/settingsHelper.js';
 import { sendNotification } from '../services/notificationService.js';
+import {
+  appendSectionAuditEvent,
+  synthesizeLegacyAuditLogs,
+  cleanAndDeduplicateAuditLogs,
+} from '../utils/applicationAuditLog.js';
 
 const FRONTEND_TO_BACKEND_STATUS = {
   pending: 'pending_review',
@@ -37,6 +42,33 @@ const SIGNUP_COMPLETE_DRAFT_WHERE = {
   isEmailVerified: true,
   isPhoneVerified: true,
 };
+
+/**
+ * Safely parse onboardingMetadata whether stored as JSON string, object, or null
+ */
+export function safeParseOnboardingMetadata(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object' && !Array.isArray(raw)) return { ...raw };
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return { ...parsed };
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+/**
+ * Format a Date object or ISO string into MySQL DATETIME ('YYYY-MM-DD HH:MM:SS')
+ */
+export function formatMySqlDateTime(date = new Date()) {
+  if (!date) return null;
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
 
 // Keep the queue response consistent and lightweight. Administrative flags
 // like isBlacklisted and blacklistedAt are queried directly from Experts columns.
@@ -140,6 +172,18 @@ function serializeExpert(expert) {
       metadata = JSON.parse(metadata);
     } catch {
       // ignore
+    }
+  }
+
+  if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+    if (!Array.isArray(metadata.sectionAuditLogs) || metadata.sectionAuditLogs.length === 0) {
+      const synthetic = synthesizeLegacyAuditLogs(metadata);
+      if (synthetic.length > 0) {
+        metadata = { ...metadata, sectionAuditLogs: synthetic };
+      }
+    } else {
+      // Retroactively clean and deduplicate existing stored logs
+      metadata = { ...metadata, sectionAuditLogs: cleanAndDeduplicateAuditLogs(metadata.sectionAuditLogs) };
     }
   }
 
@@ -267,28 +311,30 @@ export const updateApplicationStatus = async (req, res) => {
       return res.status(404).json({ message: 'Application not found' });
     }
 
+    let metadata = safeParseOnboardingMetadata(expert.onboardingMetadata);
+    const isAlreadyBlacklisted = Boolean(
+      expert.isBlacklisted ||
+      (metadata && (metadata.isBlacklisted || metadata.isBlacklisted === 1))
+    );
+
     expert.status = backendStatus;
     if (reviewerNote !== undefined) {
       expert.reviewerNote = reviewerNote;
     }
 
+    const shouldBlacklist = isBlacklisted === true;
     const shouldUnblacklist =
       isBlacklisted === false ||
-      (isBlacklisted === undefined && ['on_hold', 'in_review', 'approved'].includes(backendStatus));
+      (backendStatus === 'approved' && isBlacklisted !== true);
 
-    if (isBlacklisted === true) {
+    if (shouldBlacklist) {
       expert.isBlacklisted = true;
       expert.blacklistedAt = expert.blacklistedAt || new Date();
 
-      // Also persist in onboardingMetadata as a fail-safe
-      let metadata = {};
-      try {
-        metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
-      } catch {
-        metadata = {};
-      }
       metadata.isBlacklisted = true;
-      metadata.blacklistedAt = expert.blacklistedAt.toISOString();
+      metadata.blacklistedAt = expert.blacklistedAt instanceof Date
+        ? expert.blacklistedAt.toISOString()
+        : new Date().toISOString();
       expert.onboardingMetadata = { ...metadata };
       expert.changed('onboardingMetadata', true);
       expert.changed('isBlacklisted', true);
@@ -304,18 +350,19 @@ export const updateApplicationStatus = async (req, res) => {
       expert.isBlacklisted = false;
       expert.blacklistedAt = null;
 
-      let metadata = {};
-      try {
-        metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
-      } catch {
-        metadata = {};
-      }
       metadata.isBlacklisted = false;
       metadata.blacklistedAt = null;
       expert.onboardingMetadata = { ...metadata };
       expert.changed('onboardingMetadata', true);
       expert.changed('isBlacklisted', true);
       expert.changed('blacklistedAt', true);
+    } else if (isAlreadyBlacklisted) {
+      // Preserve existing blacklist state across rejections and section updates
+      expert.isBlacklisted = true;
+      metadata.isBlacklisted = true;
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+      expert.changed('isBlacklisted', true);
     }
 
     if (backendStatus === 'approved') {
@@ -325,18 +372,23 @@ export const updateApplicationStatus = async (req, res) => {
       }
     }
 
+    let currentAuditLogs = metadata.sectionAuditLogs || [];
+    if (!Array.isArray(currentAuditLogs) || currentAuditLogs.length === 0) {
+      currentAuditLogs = synthesizeLegacyAuditLogs(metadata);
+    }
+
     if (req.body.sectionDecisions && typeof req.body.sectionDecisions === 'object') {
-      let metadata = {};
-      try {
-        metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
-      } catch {
-        metadata = {};
-      }
       const currentSectionDecisions = metadata.sectionDecisions || {};
       const currentClarifications = metadata.sectionClarifications || {};
 
       Object.entries(req.body.sectionDecisions).forEach(([secKey, secVal]) => {
         if (!secVal) return;
+        const previousDecision = currentSectionDecisions[secKey]?.decision || null;
+        const previousNote = currentSectionDecisions[secKey]?.note ||
+          (currentSectionDecisions[secKey]?.notes && currentSectionDecisions[secKey]?.notes[currentSectionDecisions[secKey]?.notes.length - 1]?.text) || '';
+        const currentNote = secVal.note ||
+          (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '';
+
         currentSectionDecisions[secKey] = {
           decision: secVal.decision || null,
           note: secVal.note || '',
@@ -345,6 +397,19 @@ export const updateApplicationStatus = async (req, res) => {
           clarificationRequestedAt: secVal.decision === 'clarification' ? (secVal.clarificationRequestedAt || new Date().toISOString()) : undefined,
           updatedAt: new Date().toISOString(),
         };
+
+        const decisionChanged = Boolean(secVal.decision && secVal.decision !== previousDecision);
+        const noteChanged = Boolean(currentNote && currentNote !== previousNote);
+
+        if (decisionChanged || noteChanged) {
+          currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+            sectionId: secKey,
+            action: secVal.decision,
+            note: currentNote,
+            previousDecision,
+            newDecision: secVal.decision,
+          }, req.admin);
+        }
 
         if (secVal.decision === 'clarification') {
           currentClarifications[secKey] = {
@@ -362,15 +427,36 @@ export const updateApplicationStatus = async (req, res) => {
 
       metadata.sectionDecisions = currentSectionDecisions;
       metadata.sectionClarifications = currentClarifications;
-      expert.onboardingMetadata = { ...metadata };
-      expert.changed('onboardingMetadata', true);
     }
+
+    // Record application status change in audit log
+    const statusActionMap = {
+      approved: 'approved',
+      on_hold: 'on_hold',
+      rejected: 'rejected',
+      in_review: 'in_review',
+    };
+    if (statusActionMap[backendStatus]) {
+      currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+        sectionId: 'application',
+        sectionTitle: 'Application Overall',
+        action: statusActionMap[backendStatus],
+        note: reviewerNote || (backendStatus === 'approved' ? 'Application officially approved' : ''),
+        newDecision: backendStatus,
+      }, req.admin);
+    }
+
+    metadata.sectionAuditLogs = cleanAndDeduplicateAuditLogs(currentAuditLogs);
+    expert.onboardingMetadata = { ...metadata };
+    expert.changed('onboardingMetadata', true);
 
     await saveExpertForAdmin(expert);
 
-    if (isBlacklisted !== undefined || shouldUnblacklist) {
+    if (shouldBlacklist || shouldUnblacklist || isAlreadyBlacklisted || isBlacklisted !== undefined) {
       const isBlkVal = expert.isBlacklisted ? 1 : 0;
-      const blkAtVal = expert.blacklistedAt;
+      const blkAtVal = expert.isBlacklisted
+        ? formatMySqlDateTime(expert.blacklistedAt || new Date())
+        : null;
       const idVal = expert.id;
       const appNumVal = expert.applicationNumber || id;
       try {
@@ -480,20 +566,25 @@ export const updateApplicationSectionDecision = async (req, res) => {
       return res.status(404).json({ message: 'Application not found' });
     }
 
-    let metadata = {};
-    try {
-      metadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
-    } catch {
-      metadata = {};
-    }
+    let metadata = safeParseOnboardingMetadata(expert.onboardingMetadata);
 
     const currentSectionDecisions = metadata.sectionDecisions || {};
     const currentClarifications = metadata.sectionClarifications || {};
+    let currentAuditLogs = metadata.sectionAuditLogs || [];
+    if (!Array.isArray(currentAuditLogs) || currentAuditLogs.length === 0) {
+      currentAuditLogs = synthesizeLegacyAuditLogs(metadata);
+    }
 
     if (sectionDecisions && typeof sectionDecisions === 'object') {
       // Bulk update
       Object.entries(sectionDecisions).forEach(([secKey, secVal]) => {
         if (!secVal) return;
+        const previousDecision = currentSectionDecisions[secKey]?.decision || null;
+        const previousNote = currentSectionDecisions[secKey]?.note ||
+          (currentSectionDecisions[secKey]?.notes && currentSectionDecisions[secKey]?.notes[currentSectionDecisions[secKey]?.notes.length - 1]?.text) || '';
+        const currentNote = secVal.note ||
+          (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '';
+
         currentSectionDecisions[secKey] = {
           decision: secVal.decision || null,
           note: secVal.note || '',
@@ -502,6 +593,19 @@ export const updateApplicationSectionDecision = async (req, res) => {
           clarificationRequestedAt: secVal.decision === 'clarification' ? (secVal.clarificationRequestedAt || new Date().toISOString()) : undefined,
           updatedAt: new Date().toISOString(),
         };
+
+        const decisionChanged = Boolean(secVal.decision && secVal.decision !== previousDecision);
+        const noteChanged = Boolean(currentNote && currentNote !== previousNote);
+
+        if (decisionChanged || noteChanged) {
+          currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+            sectionId: secKey,
+            action: secVal.decision,
+            note: currentNote,
+            previousDecision,
+            newDecision: secVal.decision,
+          }, req.admin);
+        }
 
         if (secVal.decision === 'clarification') {
           currentClarifications[secKey] = {
@@ -518,6 +622,10 @@ export const updateApplicationSectionDecision = async (req, res) => {
       });
     } else if (sectionId) {
       // Single section update
+      const previousDecision = currentSectionDecisions[sectionId]?.decision || null;
+      const previousNote = currentSectionDecisions[sectionId]?.note ||
+        (currentSectionDecisions[sectionId]?.notes && currentSectionDecisions[sectionId]?.notes[currentSectionDecisions[sectionId]?.notes.length - 1]?.text) || '';
+
       currentSectionDecisions[sectionId] = {
         decision: decision || null,
         note: note || '',
@@ -526,6 +634,20 @@ export const updateApplicationSectionDecision = async (req, res) => {
         clarificationRequestedAt: decision === 'clarification' ? new Date().toISOString() : undefined,
         updatedAt: new Date().toISOString(),
       };
+
+      const effectiveNote = note || (notes && notes[notes.length - 1]?.text) || '';
+      const decisionChanged = (decision || null) !== previousDecision;
+      const noteChanged = Boolean(effectiveNote && effectiveNote !== previousNote);
+
+      if (decisionChanged || noteChanged || (previousDecision && !decision && !effectiveNote)) {
+        currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+          sectionId,
+          action: decision || (effectiveNote ? 'note_added' : 'cleared'),
+          note: effectiveNote,
+          previousDecision,
+          newDecision: decision || null,
+        }, req.admin);
+      }
 
       if (decision === 'clarification') {
         currentClarifications[sectionId] = {
@@ -543,6 +665,7 @@ export const updateApplicationSectionDecision = async (req, res) => {
 
     metadata.sectionDecisions = currentSectionDecisions;
     metadata.sectionClarifications = currentClarifications;
+    metadata.sectionAuditLogs = cleanAndDeduplicateAuditLogs(currentAuditLogs);
 
     expert.onboardingMetadata = { ...metadata };
     expert.changed('onboardingMetadata', true);

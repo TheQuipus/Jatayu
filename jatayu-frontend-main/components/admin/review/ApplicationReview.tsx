@@ -99,6 +99,8 @@ import SectionDecisionControl, {
   type SectionNote,
 } from "./SectionDecisionControl";
 import SectionApproveConfirmModal from "./SectionApproveConfirmModal";
+import SectionAuditTimeline from "./SectionAuditTimeline";
+import type { SectionAuditLogEntry } from "@/lib/adminApplicationReview";
 
 const AUDIENCE_TYPES = [
   {
@@ -147,7 +149,7 @@ const REVIEW_SECTIONS = [
   { id: "experience", label: "Experience & Portfolio" },
   { id: "profile", label: "Profile Details" },
   { id: "credentials", label: "Credentials & KYC" },
-  { id: "preferences", label: "Preferences & Pricing" },
+  { id: "preferences", label: "Consultation Preferences" },
   { id: "audience", label: "Audience & Languages" },
   { id: "availability", label: "Availability" },
 ] as const;
@@ -165,6 +167,52 @@ const createInitialSectionDecisions = (): Record<string, SectionReviewState> => 
   portfolio: { decision: null, note: "" },
 });
 
+function synthesizeAuditLogsFromDecisions(
+  decisions: Record<string, SectionReviewState>
+): SectionAuditLogEntry[] {
+  const result: SectionAuditLogEntry[] = [];
+  const actionBadges: Record<string, string> = {
+    approve: "APPROVED",
+    clarification: "CLARIFICATION",
+    reject: "REJECTED",
+    on_hold: "ON HOLD",
+    in_review: "IN REVIEW",
+  };
+  const sectionTitles: Record<string, string> = {
+    category: "Category & Skills",
+    experience: "Work Experience & Portfolio",
+    profile: "Profile Details",
+    credentials: "Credentials & KYC",
+    preferences: "Consultation Preferences",
+    audience: "Target Audience & Languages",
+    availability: "Availability & Schedule",
+    application: "Application Overall",
+  };
+
+  Object.entries(decisions || {}).forEach(([secId, state]) => {
+    if (!state || !state.decision) return;
+    const action = state.decision;
+    const noteText = state.note || (state.notes && state.notes[state.notes.length - 1]?.text) || "";
+    result.push({
+      id: `local-sync-${secId}`,
+      sectionId: secId,
+      sectionTitle: sectionTitles[secId] || secId,
+      action,
+      badgeLabel: actionBadges[action] || action.toUpperCase(),
+      note: noteText,
+      actor: {
+        name: "Super Admin",
+        role: "Admin",
+      },
+      timestamp: state.clarificationRequestedAt || new Date().toISOString(),
+      previousDecision: null,
+      newDecision: action,
+    });
+  });
+
+  return result.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
 export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   const router = useRouter();
   const { ready, application, refresh } = useExpertApplication(appId);
@@ -179,6 +227,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   const [submittedDecisions, setSubmittedDecisions] = useState<
     Record<string, SectionReviewState>
   >(createInitialSectionDecisions);
+  const [auditLogs, setAuditLogs] = useState<SectionAuditLogEntry[]>([]);
 
   const sectionDecisionsRef = useRef(sectionDecisions);
   const submittedDecisionsRef = useRef(submittedDecisions);
@@ -315,6 +364,32 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         }
       }
 
+      const approveAuditEntry: SectionAuditLogEntry = {
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        sectionId: "application",
+        sectionTitle: "Application Overall",
+        action: "approved",
+        badgeLabel: "APPROVED",
+        note: notes.trim() || "Application officially approved",
+        actor: {
+          name: ADMIN_PROFILE.name,
+          role: ADMIN_PROFILE.role,
+          avatar: ADMIN_PROFILE.avatar,
+        },
+        timestamp: new Date().toISOString(),
+        previousDecision: review?.status || null,
+        newDecision: "approved",
+      };
+      setAuditLogs((prev) => {
+        const updated = [approveAuditEntry, ...prev];
+        if (typeof window !== "undefined" && appId) {
+          try {
+            localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(updated));
+          } catch {}
+        }
+        return updated;
+      });
+
       refresh();
       setShowApproveConfirm(false);
       router.push("/admin/users/experts");
@@ -373,7 +448,17 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         });
       }
 
-      await updateExpertApplicationStatus(review.appId, "on_hold", notes, false);
+      const res = await updateExpertApplicationStatus(review.appId, "on_hold", notes, false);
+      const serverLogs = (res as any)?.expert?.onboardingMetadata?.sectionAuditLogs;
+      if (Array.isArray(serverLogs)) {
+        setAuditLogs(serverLogs);
+        if (typeof window !== "undefined" && appId) {
+          try {
+            localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(serverLogs));
+          } catch {}
+        }
+      }
+
       refresh();
       setShowHoldConfirm(false);
     } catch (error) {
@@ -430,7 +515,17 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         });
       }
 
-      await updateExpertApplicationStatus(review.appId, "rejected", notes, isBlacklisted);
+      const res = await updateExpertApplicationStatus(review.appId, "rejected", notes, isBlacklisted);
+      const serverLogs = (res as any)?.expert?.onboardingMetadata?.sectionAuditLogs;
+      if (Array.isArray(serverLogs)) {
+        setAuditLogs(serverLogs);
+        if (typeof window !== "undefined" && appId) {
+          try {
+            localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(serverLogs));
+          } catch {}
+        }
+      }
+
       refresh();
       setShowRejectConfirm(false);
     } catch (error) {
@@ -485,6 +580,28 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         const savedTab = localStorage.getItem(`jatayu_review_active_tab_${appId}`);
         if (savedTab && REVIEW_SECTIONS.some((sec) => sec.id === savedTab)) {
           updateActiveTab(savedTab);
+        }
+
+        // 4. Restore section decision audit log timeline
+        const savedAudit = localStorage.getItem(`jatayu_review_audit_logs_${appId}`);
+        let hasRestoredAudit = false;
+        if (savedAudit) {
+          try {
+            const parsedAudit = JSON.parse(savedAudit);
+            if (Array.isArray(parsedAudit) && parsedAudit.length > 0) {
+              setAuditLogs(parsedAudit);
+              hasRestoredAudit = true;
+            }
+          } catch {}
+        }
+        if (!hasRestoredAudit && parsedSubmitted) {
+          const synthetic = synthesizeAuditLogsFromDecisions(parsedSubmitted);
+          if (synthetic.length > 0) {
+            setAuditLogs(synthetic);
+            try {
+              localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(synthetic));
+            } catch {}
+          }
         }
       } catch (e) {
         console.warn("Could not load review progress from localStorage:", e);
@@ -570,6 +687,59 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       }, 0);
 
       return () => clearTimeout(timer);
+    }
+  }, [application, appId]);
+
+  // Sync audit logs from backend application onboardingMetadata on load
+  useEffect(() => {
+    if (!application) return;
+    const metadata = application.onboardingMetadata as Record<string, unknown> | undefined;
+    const backendAuditLogs = metadata?.sectionAuditLogs as SectionAuditLogEntry[] | undefined;
+
+    if (Array.isArray(backendAuditLogs) && backendAuditLogs.length > 0) {
+      setAuditLogs((prev) => {
+        // Server logs are authoritative; only keep uncommitted local optimistic items if their action/note isn't already on server
+        const serverKeySet = new Set(
+          backendAuditLogs.map((l) => `${l.sectionId || 'application'}:${l.action}:${(l.note || '').trim()}`)
+        );
+        const uncommittedLocal = (prev || []).filter((item) => {
+          const key = `${item.sectionId || 'application'}:${item.action}:${(item.note || '').trim()}`;
+          return !serverKeySet.has(key) && item.id.startsWith('audit-');
+        });
+
+        const merged = [...backendAuditLogs, ...uncommittedLocal];
+        merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        if (typeof window !== "undefined" && appId) {
+          try {
+            localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(merged));
+          } catch {}
+        }
+        return merged;
+      });
+    } else {
+      // If server logs are empty, check if we need to synthesize from decisions or keep local storage
+      const backendDecisions = metadata?.sectionDecisions as Record<string, SectionReviewState> | undefined;
+      setAuditLogs((prev) => {
+        if (prev && prev.length > 0) {
+          if (typeof window !== "undefined" && appId) {
+            try {
+              localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(prev));
+            } catch {}
+          }
+          return prev;
+        }
+        if (backendDecisions) {
+          const synthetic = synthesizeAuditLogsFromDecisions(backendDecisions);
+          if (typeof window !== "undefined" && appId && synthetic.length > 0) {
+            try {
+              localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(synthetic));
+            } catch {}
+          }
+          return synthetic;
+        }
+        return prev;
+      });
     }
   }, [application, appId]);
 
@@ -841,6 +1011,34 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
 
     void markInReviewIfNeeded(updatedDrafts, updatedSubmitted);
 
+    const title = getSectionTitle(sectionId);
+    const effectiveNote = nextState.note || (nextState.notes && nextState.notes[nextState.notes.length - 1]?.text) || "";
+    const optimisticAuditEntry: SectionAuditLogEntry = {
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sectionId,
+      sectionTitle: title,
+      action: decision || (effectiveNote ? "note_added" : "cleared"),
+      badgeLabel: decision ? decision.toUpperCase() : "CLEARED",
+      note: effectiveNote,
+      actor: {
+        name: ADMIN_PROFILE.name,
+        role: ADMIN_PROFILE.role,
+        avatar: ADMIN_PROFILE.avatar,
+      },
+      timestamp: new Date().toISOString(),
+      previousDecision: submittedDecisions[sectionId]?.decision || null,
+      newDecision: decision || null,
+    };
+    setAuditLogs((prev) => {
+      const updated = [optimisticAuditEntry, ...prev];
+      if (typeof window !== "undefined" && appId) {
+        try {
+          localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+
     // Save to backend database
     if (appId) {
       updateAdminApplicationSectionDecision(appId, {
@@ -849,9 +1047,22 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
         note: nextState.note,
         notes: nextState.notes,
         clarificationStatus: nextState.clarificationStatus,
-      }).catch((err) => {
-        console.warn("Could not sync section decision to backend:", err);
-      });
+      })
+        .then((res) => {
+          const meta = res?.expert?.onboardingMetadata as Record<string, unknown> | undefined;
+          if (Array.isArray(meta?.sectionAuditLogs)) {
+            const logs = meta.sectionAuditLogs as SectionAuditLogEntry[];
+            setAuditLogs(logs);
+            if (typeof window !== "undefined" && appId) {
+              try {
+                localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(logs));
+              } catch {}
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn("Could not sync section decision to backend:", err);
+        });
     }
 
     // Clear from unfilledSectionIds
@@ -862,7 +1073,6 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       return next;
     });
 
-    const title = getSectionTitle(sectionId);
     let msg = "";
     let type: "success" | "warning" | "error" | "info" = "info";
     if (decision === "approve") {
@@ -1302,6 +1512,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             name={review.name}
             appId={review.appId}
             rejectedSections={rejectedSectionsList}
+            initialBlacklisted={Boolean(application?.isBlacklisted)}
             onCancel={() => setShowRejectConfirm(false)}
             onConfirm={handleRejectConfirm}
           />
@@ -1404,6 +1615,11 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                 })}
               </div>
             </div>
+
+            <SectionAuditTimeline
+              auditLogs={auditLogs}
+              onSelectSection={scrollToSection}
+            />
           </aside>
 
           {/* COLUMN 2: Center Main Content */}
