@@ -902,3 +902,224 @@
   border-radius: 3px;
   transition: width 0.15s ease-out;
 }
+
+/* --- Two-Column Split Layout Styles --- */
+
+.methodGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.methodCardBox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  border-radius: 16px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.02);
+  box-sizing: border-box;
+}
+
+/* DigiLocker Highlight Card */
+.digilockerBox {
+  border: 2px solid rgba(229, 59, 23, 0.8);
+  background: linear-gradient(to bottom, rgba(229, 59, 23, 0.15), rgba(15, 15, 15, 0.9));
+  box-shadow: 0 0 25px rgba(229, 59, 23, 0.15);
+}
+
+.fastestTag {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--pomegranate);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  margin-top: 4px;
+}
+
+.brandBadge {
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.brandTitle {
+  color: #818cf8;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.instantApprovedBadge {
+  background: rgba(52, 199, 89, 0.15);
+  border: 1px solid rgba(52, 199, 89, 0.4);
+  color: #34c759;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* Manual Secondary Card */
+/* --- Updated Manual Box Styles --- */
+
+.manualBox {
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.01);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  padding: 24px 20px;
+}
+
+.manualBox .cardHeaderCenter {
+  margin-bottom: 4px;
+}
+
+.manualBox .cardTitle {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.manualBox .cardDesc {
+  margin: 0 auto 24px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+  max-width: 280px;
+}
+
+.secondaryManualBtn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid rgba(229, 59, 23, 0.6);
+  color: var(--pomegranate);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.secondaryManualBtn:hover:not(:disabled) {
+  background: rgba(229, 59, 23, 0.12);
+  border-color: var(--pomegranate);
+  color: var(--white);
+}
+
+.cardHeaderCenter {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.cardTitle {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--white);
+  text-align: center;
+}
+
+.cardDesc {
+  margin: 0 0 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+.cardChecklist, .cardChecklistMuted {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardChecklist {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cardChecklistMuted {
+  color: rgba(255, 255, 255, 0.45);
+  align-items: center;
+}
+
+/* Buttons */
+.primaryDigiBtn {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 18px;
+  background: #e53b17;
+  border: 1px solid rgba(229, 59, 23, 0.6);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: filter 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.primaryDigiBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.primaryDigiBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.secondaryManualBtn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  font-size: 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.secondaryManualBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.6);
+  color: var(--white);
+}
+
+/* Responsive breakpoint for smaller screens */
+@media (max-width: 768px) {
+  .methodGrid {
+    grid-template-columns: 1fr;
+  }
+}

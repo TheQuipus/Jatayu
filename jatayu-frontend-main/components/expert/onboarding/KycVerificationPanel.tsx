@@ -1048,72 +1048,68 @@ export default function KycVerificationPanel({
         className={styles.kycPanel}
       >
         {phase === "intro" && !showCompleteState ? (
-          <div className={styles.intro}>
-            <div className={styles.introIconWrap}>
-              <ShieldCheck size={22} strokeWidth={1.5} />
-            </div>
-            <h3 className={styles.introTitle}>Choose a verification method</h3>
-            <p className={styles.introPrivacy}>
-              Automatic verification checks head poses. Manual capture submits photos for review only.
-            </p>
-            <div className={styles.methodCards}>
+        <div className={styles.intro}>
+          <div className={styles.introIconWrap}>
+            <ShieldCheck size={22} strokeWidth={1.5} />
+          </div>
+          <h3 className={styles.introTitle}>Choose a verification method</h3>
+          
+          {/* Two-Column Split Grid */}
+          <div className={styles.methodGrid}>
+            
+            {/* 1. DigiLocker (Primary / Highlighted) */}
+            <div className={`${styles.methodCardBox} ${styles.digilockerBox}`}>
+              <div className={styles.fastestTag}>⚡ FASTEST (10s)</div>
+              <div className={styles.cardHeader}>
+                <div className={styles.brandBadge}>
+                  <span className={styles.brandTitle}>DigiLocker</span>
+                </div>
+                <span className={styles.instantApprovedBadge}>Instant Approved</span>
+              </div>
+              <h4 className={styles.cardTitle}>Verify with DigiLocker</h4>
+              <p className={styles.cardDesc}>
+                Paperless, pre-verified & 100% secure. Fetch digital IDs in 1 click.
+              </p>
+              <ul className={styles.cardChecklist}>
+                <li>✓ No manual reviews required</li>
+                <li>✓ Pre-approved trust badge</li>
+              </ul>
               <button
                 type="button"
-                className={styles.methodCard}
-                disabled={typeof MediaRecorder === "undefined"}
-                onClick={() => void beginVerification("automatic")}
+                className={styles.primaryDigiBtn}
+                disabled={digilockerLoading}
+                onClick={onDigilockerVerification}
               >
-                <span className={styles.methodIcon}><Camera size={22} aria-hidden="true" /></span>
-                <span className={styles.methodCopy}>
-                  <span className={styles.methodTitle}>Automatic pose verification</span>
-                  <span className={styles.methodDescription}>Checks head poses automatically.</span>
-                </span>
-                <ChevronRight className={styles.methodChevron} size={20} aria-hidden="true" />
+                {digilockerVerified
+                  ? "DIGILOCKER VERIFIED"
+                  : digilockerLoading
+                    ? "OPENING..."
+                    : "CONTINUE WITH DIGILOCKER →"}
               </button>
+              {digilockerError ? <p className={styles.digilockerError} role="alert">{digilockerError}</p> : null}
+            </div>
+
+            {/* 2. Manual / Identity Verification (Secondary / Dashed) */}
+            <div className={`${styles.methodCardBox} ${styles.manualBox}`}>
+              <div className={styles.cardHeaderCenter}>
+                <ShieldCheck size={28} className={styles.shieldIcon} />
+              </div>
+              <h4 className={styles.cardTitle}>Verify your identity</h4>
+              <p className={styles.cardDesc}>
+                Encrypted and used only for verification<br />never shown on your public profile.
+              </p>
               <button
                 type="button"
-                className={styles.methodCard}
+                className={styles.secondaryManualBtn}
                 onClick={() => void beginVerification("manual")}
               >
-                <span className={styles.methodIcon}><Camera size={22} aria-hidden="true" /></span>
-                <span className={styles.methodCopy}>
-                  <span className={styles.methodTitle}>Manual photo capture</span>
-                  <span className={styles.methodDescription}>
-                    Manual photos are submitted for review and do not verify identity or pose.
-                  </span>
-                </span>
-                <ChevronRight className={styles.methodChevron} size={20} aria-hidden="true" />
+                BEGIN VERIFICATION
               </button>
-              <div className={styles.recommendedMethod}>
-                <button
-                  type="button"
-                  className={`${styles.methodCard} ${styles.digilockerMethodCard}`}
-                  disabled={digilockerLoading}
-                  onClick={onDigilockerVerification}
-                >
-                  <span className={`${styles.methodIcon} ${styles.methodIconMuted}`}><IdCard size={22} aria-hidden="true" /></span>
-                  <span className={styles.methodCopy}>
-                    <span className={styles.methodTitleRow}>
-                      <span className={styles.methodTitle}>
-                        {digilockerVerified
-                          ? "DigiLocker verified"
-                          : digilockerLoading
-                            ? "Opening DigiLocker…"
-                            : "Verify with DigiLocker"}
-                      </span>
-                      <span className={styles.recommendedLabel}>(RECOMMENDED)</span>
-                    </span>
-                    <span className={styles.methodDescription}>
-                      Securely verify your identity using your government documents.
-                    </span>
-                  </span>
-                  <ChevronRight className={styles.methodChevron} size={20} aria-hidden="true" />
-                </button>
-                {digilockerError ? <p className={styles.digilockerError} role="alert">{digilockerError}</p> : null}
-              </div>
             </div>
+
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
         {showCompleteState ? (
           <div className={styles.complete}>

@@ -6,6 +6,7 @@ import { Check, Rocket, Building, Briefcase, Store, X, Plus } from "lucide-react
 import type { LucideIcon } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./AudienceStep.module.css";
@@ -194,164 +195,162 @@ export default function AudienceStep({
         </defs>
       </svg>
       <div className={shared.cardHeader}>
-      <div className={shared.topHeader}>
-        <OnboardingStepTitle userName={userName} />
-      </div>
+        <div className={shared.topHeader}>
+          <OnboardingStepTitle userName={userName} />
+        </div>
 
-      {/* Progress Tracker */}
-      <OnboardingProgressBar currentStep={7} stepCompletion={stepCompletion} onStepClick={onJumpToStep} />
-
+        {/* Progress Tracker */}
+        <OnboardingProgressBar currentStep={7} stepCompletion={stepCompletion} onStepClick={onJumpToStep} />
       </div>
 
       <div className={shared.cardBody}>
-{/* Heading */}
-      <h1 className={`${shared.questionTitle} ${styles.questionTitle}`}>
-        Define your <span className={shared.accentWord}>target audience</span>
-      </h1>
+        {/* Heading */}
+        <h1 className={`${shared.questionTitle} ${styles.questionTitle}`}>
+          Define your <span className={shared.accentWord}>target audience</span>
+        </h1>
 
-      <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
-        Help us match you with the right clients by selecting your languages and ideal audience.
-      </p>
+        <p className={`${shared.questionSubtitle} ${styles.questionSubtitle}`}>
+          Help us match you with the right clients by selecting your languages and ideal audience.
+        </p>
 
-      {/* Languages Selection section */}
-      <div className={styles.audienceSection}>
-        <div className={styles.sectionHeaderRow}>
-          <h3 className={styles.preferencesSectionLabel}>Languages you consult in</h3>
-        </div>
+        {/* Languages Selection section */}
+        <div className={styles.audienceSection}>
+          <div className={styles.sectionHeaderRow}>
+            <h3 className={styles.preferencesSectionLabel}>Languages you consult in</h3>
+          </div>
 
-        <div className={styles.languagesCluster}>
-          <div className={styles.languagesRow}>
-            {presetLanguages.map((lang) => {
-              const isSelected = languages.includes(lang);
-              return (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => handleToggleLanguage(lang)}
-                  className={`${styles.languagePill} ${isSelected ? styles.languagePillSelected : ""}`}
-                >
-                  {lang}
-                </button>
-              );
-            })}
-            {customLanguages.map((lang) => {
-              const isSelected = languages.includes(lang);
-              return (
-                <div
-                  key={lang}
-                  className={`${styles.languagePill} ${styles.languagePillRemovable} ${
-                    isSelected ? styles.languagePillSelected : ""
-                  }`}
-                >
+          <div className={styles.languagesCluster}>
+            <div className={styles.languagesRow}>
+              {presetLanguages.map((lang) => {
+                const isSelected = languages.includes(lang);
+                return (
                   <button
+                    key={lang}
                     type="button"
                     onClick={() => handleToggleLanguage(lang)}
-                    className={styles.languagePillMain}
+                    className={`${styles.languagePill} ${isSelected ? styles.languagePillSelected : ""}`}
                   >
                     {lang}
                   </button>
-                  <button
-                    type="button"
-                    className={styles.languageRemoveBtn}
-                    aria-label={`Remove ${lang}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveCustomLanguage(lang);
-                    }}
+                );
+              })}
+              {customLanguages.map((lang) => {
+                const isSelected = languages.includes(lang);
+                return (
+                  <div
+                    key={lang}
+                    className={`${styles.languagePill} ${styles.languagePillRemovable} ${
+                      isSelected ? styles.languagePillSelected : ""
+                    }`}
                   >
-                    <X size={12} aria-hidden="true" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLanguage(lang)}
+                      className={styles.languagePillMain}
+                    >
+                      {lang}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.languageRemoveBtn}
+                      aria-label={`Remove ${lang}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveCustomLanguage(lang);
+                      }}
+                    >
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })}
+              {showInput ? (
+                <div className={`${styles.languagePill} ${styles.languagePillInput}`}>
+                  <form onSubmit={handleAddCustomLanguage} className={styles.languageInputForm}>
+                    <input
+                      type="text"
+                      placeholder="Add custom language..."
+                      value={newLanguage}
+                      onChange={(e) => setNewLanguage(e.target.value)}
+                      className={styles.languageInlineInput}
+                      onBlur={handleBlur}
+                      autoFocus
+                      aria-label="Add custom language"
+                    />
+                    <button
+                      type="submit"
+                      className={styles.languageAddBtn}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label="Add custom language"
+                    >
+                      <Plus size={14} aria-hidden="true" />
+                    </button>
+                  </form>
                 </div>
-              );
-            })}
-            {showInput ? (
-              <div className={`${styles.languagePill} ${styles.languagePillInput}`}>
-                <form onSubmit={handleAddCustomLanguage} className={styles.languageInputForm}>
-                  <input
-                    type="text"
-                    placeholder="Add custom language..."
-                    value={newLanguage}
-                    onChange={(e) => setNewLanguage(e.target.value)}
-                    className={styles.languageInlineInput}
-                    onBlur={handleBlur}
-                    autoFocus
-                    aria-label="Add custom language"
-                  />
-                  <button
-                    type="submit"
-                    className={styles.languageAddBtn}
-                    onMouseDown={(e) => e.preventDefault()}
-                    aria-label="Add custom language"
-                  >
-                    <Plus size={14} aria-hidden="true" />
-                  </button>
-                </form>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowInput(true)}
-                className={styles.languagePill}
-              >
-                <Plus size={14} />
-                <span>Add custom</span>
-              </button>
-            )}
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowInput(true)}
+                  className={styles.languagePill}
+                >
+                  <Plus size={14} />
+                  <span>Add custom</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Ideal Clients / Audiences selection section */}
-      <div className={styles.audienceSection} style={{ marginBottom: "40px" }}>
-        <p className={styles.sectionInstruction}>{audienceInstructionText}</p>
+        {/* Ideal Clients / Audiences selection section */}
+        <div className={styles.audienceSection} style={{ marginBottom: "40px" }}>
+          <p className={styles.sectionInstruction}>{audienceInstructionText}</p>
 
-        <div className={styles.audiencesGrid}>
-          {audiences.map((aud) => {
-            const isSelected = selectedAudiences.includes(aud.id);
-            const Icon = aud.icon;
-            return (
-              <button
-                key={aud.id}
-                type="button"
-                onClick={() => handleToggleAudience(aud.id)}
-                className={`${styles.audienceCard} ${isSelected ? styles.audienceCardSelected : ""}`}
-              >
-                {/* SVG border overlay */}
-                <svg className={styles.cardBorderSvg} viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-                  <path
-                    d="M0,0.086 L0.018,0 H0.676 L0.696,0.086 H0.978 L1,0.311 V0.743 L0.984,0.839 L0.955,0.845 L0.9,1 H0 V0.086 Z"
-                    fill="none"
-                    stroke={isSelected ? "#E53B17" : "#FFFFFF"}
-                    strokeOpacity={isSelected ? 1 : 0.08}
-                    strokeWidth="1.5"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </svg>
-
-                <div className={styles.audienceCardInner}>
-                  <div className={styles.audienceIconWrap}>
-                    <Icon className={styles.audienceCardIcon} />
-                  </div>
-                  <div className={styles.audienceTextWrap}>
-                    <h4 className={styles.audienceTitle}>{aud.title}</h4>
-                    <p className={styles.audienceDesc}>{aud.desc}</p>
-                  </div>
-                </div>
-                <div
-                  className={`${styles.audienceCheckbox} ${isSelected ? styles.audienceCheckboxSelected : ""}`}
-                  aria-hidden="true"
+          <div className={styles.audiencesGrid}>
+            {audiences.map((aud) => {
+              const isSelected = selectedAudiences.includes(aud.id);
+              const Icon = aud.icon;
+              return (
+                <button
+                  key={aud.id}
+                  type="button"
+                  onClick={() => handleToggleAudience(aud.id)}
+                  className={`${styles.audienceCard} ${isSelected ? styles.audienceCardSelected : ""}`}
                 >
-                  {isSelected && <Check size={10} strokeWidth={3} />}
-                </div>
-              </button>
-            );
-          })}
+                  {/* SVG border overlay */}
+                  <svg className={styles.cardBorderSvg} viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                    <path
+                      d="M0,0.086 L0.018,0 H0.676 L0.696,0.086 H0.978 L1,0.311 V0.743 L0.984,0.839 L0.955,0.845 L0.9,1 H0 V0.086 Z"
+                      fill="none"
+                      stroke={isSelected ? "#E53B17" : "#FFFFFF"}
+                      strokeOpacity={isSelected ? 1 : 0.08}
+                      strokeWidth="1.5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+
+                  <div className={styles.audienceCardInner}>
+                    <div className={styles.audienceIconWrap}>
+                      <Icon className={styles.audienceCardIcon} />
+                    </div>
+                    <div className={styles.audienceTextWrap}>
+                      <h4 className={styles.audienceTitle}>{aud.title}</h4>
+                      <p className={styles.audienceDesc}>{aud.desc}</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`${styles.audienceCheckbox} ${isSelected ? styles.audienceCheckboxSelected : ""}`}
+                    aria-hidden="true"
+                  >
+                    {isSelected && <Check size={10} strokeWidth={3} />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </div> {/* This properly closes cardBody */}
 
       {/* Footer */}
-      </div>
-
       <div className={shared.onboardingFooter}>
         <div className={shared.footerLeft}>
           <div className={shared.avatarMiniWrap}>
@@ -370,18 +369,14 @@ export default function AudienceStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={handleContinue}>
-            Skip
-          </button>
+          <TextButton label="Back" onClick={() => onBack()} />
+          <TextButton label="Skip" onClick={() => onContinue({ languages: [], audiences: [] })} />
           <ContinueButton
             onClick={handleContinue}
             disabled={languages.length === 0 || selectedAudiences.length === 0}
           />
         </div>
       </div>
-    </section>
+   </section>
   );
 }

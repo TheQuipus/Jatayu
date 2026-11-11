@@ -6,6 +6,7 @@ import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import ExpertAvailability from "@/components/expert/availability/ExpertAvailability";
 import type { TimeSlot } from "@/lib/expertAvailability";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./AvailabilityStep.module.css";
@@ -84,12 +85,8 @@ export default function AvailabilityStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+          <TextButton label="Back" onClick={onBack} />
+          <TextButton label="Skip" onClick={onContinue} />
           <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>

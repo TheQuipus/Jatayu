@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./PreferencesStep.module.css";
@@ -65,7 +66,7 @@ export default function PreferencesStep({
   const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
 
   const canContinue = areRequiredSessionPreferencesValid(selectedFormats, formatPrices);
-  const showValidationError = hasAttemptedContinue && !canContinue;
+  const showValidationError = selectedFormats.length > 0 && !canContinue;
 
   useEffect(() => {
     onStepCompleteChange?.(6, canContinue);
@@ -167,13 +168,11 @@ export default function PreferencesStep({
               <div
                 key={fmt.id}
                 onClick={() => handleToggleFormat(fmt.id)}
-                className={`${styles.formatCard} ${isSelected ? styles.formatCardSelected : ""} ${showValidationError ? styles.formatCardInvalid : ""}`}
+                className={`${styles.formatCard} ${isSelected ? styles.formatCardSelected : ""}`}
                 role="button"
                 tabIndex={0}
                 aria-pressed={isSelected}
-                aria-describedby={showValidationError ? "preferences-validation-error" : undefined}
                 onKeyDown={(e) => {
-                  if (e.target !== e.currentTarget) return;
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     handleToggleFormat(fmt.id);
@@ -201,11 +200,13 @@ export default function PreferencesStep({
 
                 <div className={styles.formatCardBody}>
                   <div className={styles.formatCardInner}>
-                    <div className={styles.formatIconCircle}>
-                      <IconComponent className={styles.formatIcon} />
-                    </div>
                     <div className={styles.formatInfo}>
-                      <h3 className={styles.formatTitle}>{fmt.title}</h3>
+                      {/* Heading and Icon in a flex row */}
+                      <div className={styles.formatHeaderRow}>
+                        <h3 className={styles.formatTitle}>{fmt.title}
+                        </h3>
+                        <IconComponent className={`${styles.formatIcon} ${isSelected ? styles.formatIconSelected : ""}`} />
+                      </div>
                       <p className={styles.formatDesc}>{fmt.desc}</p>
                     </div>
                   </div>
@@ -251,11 +252,11 @@ export default function PreferencesStep({
                     >
                       /min
                     </span>
-                    {!hasValidPrice && (
+                    {/* {!hasValidPrice && (
                       <span className={styles.formatPriceAttention} aria-hidden="true">
                         !
                       </span>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </div>
@@ -264,9 +265,9 @@ export default function PreferencesStep({
         </div>
         {showValidationError && (
           <p id="preferences-validation-error" className={styles.preferencesValidationError} role="alert">
-            {selectedFormats.length === 0
-              ? "Select at least one consultation type."
-              : "Enter a rate greater than ₹0 per minute for each selected consultation type."}
+              {selectedFormats.length === 0
+                ? "Select at least one consultation type."
+                : "NOTE: Enter a rate greater than ₹0 per minute for each selected consultation type."}
           </p>
         )}
       </div>
@@ -335,9 +336,7 @@ export default function PreferencesStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
+          <TextButton label="Back" onClick={onBack} />
           <ContinueButton onClick={handleContinue} disabled={selectedFormats.length === 0} />
         </div>
       </div>

@@ -157,10 +157,18 @@
 }
 
 .skillPillInput {
-  width: 250px;
+ width: 250px;
   max-height: 36px;
   cursor: text;
   padding-right: 6px;
+  background: var(--background-chip, rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.15s ease;
+}
+
+.skillPillInput:focus-within {
+  background: var(--background-chip, rgba(255, 255, 255, 0.03)) !important;
+  border-color: var(--pomegranate) !important;
 }
 
 .skillInputForm {
@@ -175,7 +183,8 @@
   min-width: 120px;
   background: transparent;
   border: none;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
   font-family: var(--font-body);
   font-size: inherit;
   font-weight: inherit;

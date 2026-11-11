@@ -82,8 +82,14 @@
   background-color: #080A10;
 }
 
+/* Isolated focus without bleeding */
 .formatCard:focus-visible {
+  outline: none;
   filter: drop-shadow(0 0 3px var(--pomegranate));
+}
+
+.formatCard:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .formatPriceRow {
@@ -161,7 +167,7 @@
   transition: color 0.2s ease;
 }
 
-.formatPriceAttention {
+/* .formatPriceAttention {
   position: absolute;
   top: 50%;
   right: -12px;
@@ -171,8 +177,7 @@
   font-weight: 700;
   line-height: 1;
   transform: translateY(-50%);
-  animation: formatPriceAttentionPulse 1.8s ease-in-out infinite;
-}
+} */
 
 .formatPriceActive {
   color: rgba(255, 255, 255, 0.75);
@@ -184,25 +189,6 @@
   font-family: var(--font-body);
   font-size: 13px;
   text-align: left;
-}
-
-@keyframes formatPriceAttentionPulse {
-  0%,
-  100% {
-    opacity: 0.65;
-    transform: translateY(-50%) scale(0.9);
-  }
-
-  50% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .formatPriceAttention {
-    animation: none;
-  }
 }
 
 .cardBorderSvg {
@@ -246,35 +232,40 @@
   z-index: 12;
 }
 
-.formatIconCircle {
-  display: grid;
-  place-items: center;
-  color: var(--silver);
-  flex-shrink: 0;
-  transition: color 0.2s ease;
+.formatInfo {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
 }
 
-.formatCardSelected .formatIconCircle {
-  color: var(--pomegranate);
+.formatHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.formatTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  text-align: left;
 }
 
 .formatIcon {
   width: 18px;
   height: 18px;
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
 }
 
-.formatInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.formatTitle {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--white);
-  margin: 0;
+.formatIconSelected {
+  color: #E53B17;
 }
 
 .formatDesc {

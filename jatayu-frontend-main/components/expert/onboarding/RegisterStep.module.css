@@ -52,11 +52,9 @@
 .forgotPasswordRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-end;
   width: 100%;
-  min-height: 20px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .forgotPasswordError {
@@ -70,7 +68,6 @@
 }
 
 .forgotPasswordLink {
-  margin-left: auto;
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 600;
