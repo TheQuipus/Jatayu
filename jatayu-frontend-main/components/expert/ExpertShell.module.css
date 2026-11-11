@@ -165,28 +165,41 @@
   background: var(--white);
 }
 
-/* Unapproved Expert Restricted Nav Item & Blurred Mask */
+/* Unapproved Expert Restricted Nav Item (Disabled Button without blur) */
 .navItemWrapper {
   position: relative;
   display: flex;
   flex-direction: column;
+  cursor: default !important;
 }
 
 .navLinkRestricted {
   position: relative;
-  cursor: not-allowed !important;
+  width: 100%;
+  border: none;
+  background: transparent !important;
+  color: var(--silver-chalice) !important;
+  opacity: 0.5;
+  filter: none !important;
+  cursor: default !important;
   user-select: none;
-  opacity: 0.55;
-  filter: blur(1.2px) grayscale(0.6);
-  pointer-events: auto;
-  transition: filter 0.2s ease, opacity 0.2s ease;
+  outline: none;
+  pointer-events: none;
+  text-align: left;
+  transition: none;
 }
 
-.navLinkRestricted:hover {
+.navItemWrapper:hover .navLinkRestricted,
+.navLinkRestricted:hover,
+.navLinkRestricted:focus,
+.navLinkRestricted:active {
   background: transparent !important;
-  color: var(--scorpion) !important;
-  filter: blur(0.8px) grayscale(0.4);
-  opacity: 0.7;
+  color: var(--silver-chalice) !important;
+  opacity: 0.5 !important;
+  filter: none !important;
+  cursor: default !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .navPortalTooltip {

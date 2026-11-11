@@ -120,16 +120,15 @@ function NavLink({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div
-          role="button"
-          tabIndex={-1}
+        <button
+          type="button"
+          disabled
           aria-disabled="true"
           className={`${styles.navLink} ${styles.navLinkRestricted} ${isCollapsed ? styles.navLinkCollapsed : ""}`}
-          onClick={(e) => e.preventDefault()}
         >
           <Icon size={16} aria-hidden="true" />
           {!isCollapsed && <span>{item.label}</span>}
-        </div>
+        </button>
         {tooltipPos && typeof document !== "undefined"
           ? createPortal(
               <div

@@ -188,6 +188,11 @@ export default function ExpertProfileEditor() {
     () => new Set(["category", "experience", "profile", "credentials", "preferences", "audience", "availability"])
   );
   const [editingSections, setEditingSections] = useState<Set<string>>(new Set());
+  const [resolvedClarifications, setResolvedClarifications] = useState<Set<string>>(new Set());
+  const [openClarificationId, setOpenClarificationId] = useState<string | null>(null);
+  const [isSubmittedForReview, setIsSubmittedForReview] = useState<boolean>(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
+
   const [savedSectionId, setSavedSectionId] = useState<string | null>(null);
   const [activeSavingSectionId, setActiveSavingSectionId] = useState<string | null>(null);
   const categoryRecommendationRequests = useRef(new Set<string>());
@@ -288,6 +293,54 @@ export default function ExpertProfileEditor() {
         setAvailabilitySlots(availability.slots);
 
         const metadata = record.onboardingMetadata || {};
+        const appNum = record.applicationNumber || "";
+        const initialResolved = new Set<string>();
+        if (metadata.sectionClarifications && typeof metadata.sectionClarifications === "object") {
+          const clarMap = metadata.sectionClarifications as Record<string, { status: string; note?: string }>;
+          Object.keys(clarMap).forEach((key) => {
+            if (clarMap[key]?.status === "received") {
+              initialResolved.add(key);
+            }
+          });
+        }
+        if (metadata.sectionDecisions && typeof metadata.sectionDecisions === "object") {
+          const decMap = metadata.sectionDecisions as Record<string, { decision: string; clarificationStatus?: string }>;
+          Object.keys(decMap).forEach((key) => {
+            if (decMap[key]?.clarificationStatus === "received") {
+              initialResolved.add(key);
+            }
+          });
+        }
+        if (typeof window !== "undefined" && appNum) {
+          ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"].forEach((sec) => {
+            if (localStorage.getItem(`jatayu_clarification_resolved_${appNum}_${sec}`) === "true") {
+              initialResolved.add(sec);
+            }
+          });
+        }
+        setResolvedClarifications(initialResolved);
+
+        const cachedSubmitted = typeof window !== "undefined" && appNum
+          ? localStorage.getItem(`jatayu_clarifications_submitted_${appNum}`) === "true"
+          : false;
+
+        const hasWaiting =
+          Object.values((metadata.sectionClarifications as Record<string, any>) || {}).some(
+            (c) => c?.status === "waiting"
+          ) ||
+          Object.values((metadata.sectionDecisions as Record<string, any>) || {}).some(
+            (d) => d?.decision === "clarification" && d?.clarificationStatus === "waiting"
+          );
+
+        if (hasWaiting) {
+          setIsSubmittedForReview(false);
+          if (typeof window !== "undefined" && appNum) {
+            localStorage.removeItem(`jatayu_clarifications_submitted_${appNum}`);
+          }
+        } else if (metadata.clarificationsAllSubmitted || cachedSubmitted) {
+          setIsSubmittedForReview(true);
+        }
+
         setLinkedinConnected(Boolean(metadata.linkedinConnectedAt));
         if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
         if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
@@ -721,6 +774,19 @@ export default function ExpertProfileEditor() {
         setSavedSectionId(null);
       }, 2500);
 
+      setResolvedClarifications((prev) => {
+        const next = new Set(prev);
+        if (activeSecId) next.add(activeSecId);
+        return next;
+      });
+      if (typeof window !== "undefined" && appId && activeSecId) {
+        try {
+          localStorage.setItem(`jatayu_clarification_resolved_${appId}_${activeSecId}`, "true");
+        } catch {
+          // ignore
+        }
+      }
+
       setPendingClarifications((prev) => {
         const next = { ...prev };
         if (activeSecId) {
@@ -930,215 +996,207 @@ export default function ExpertProfileEditor() {
 
   const yearOptions = useMemo(() => getYearOptions(35), []);
 
-  const renderAccordionSection = (
-    secId: string,
-    num: string,
-    title: string,
-    content: React.ReactNode,
-  ) => {
-    const isOpen = openSections.has(secId);
-    const locked = isSectionLocked(secId);
-    const clarNote = getSectionClarification(secId);
-    const rejNote = getSectionRejection(secId);
-    const isEditing = editingSections.has(secId);
 
-    return (
-      <div
-        key={secId}
-        className={`${styles.accordionCard} ${isOpen ? styles.accordionCardOpen : ""} ${
-          locked
-            ? styles.accordionCardLocked
-            : clarNote
-            ? styles.accordionCardClarification
-            : rejNote
-            ? styles.accordionCardRejected
-            : ""
-        }`}
-        id={`${secId}-section`}
-      >
-        <div
-          className={styles.accordionHeader}
-          onClick={() => toggleSection(secId)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              toggleSection(secId);
-            }
-          }}
-          aria-expanded={isOpen}
-        >
-          <div className={styles.accordionHeaderLeft}>
-            <span className={styles.accordionIndex}>{num}</span>
-            <h3 className={styles.accordionTitle}>{title}</h3>
-            {renderStatusBadge(secId)}
-            {clarNote && (
-              <div className={styles.alertBannerClarification} title={clarNote}>
-                <AlertCircle size={13} className={styles.alertBannerIcon} />
-                <span className={styles.alertBannerText}>
-                  <strong>Clarification:</strong> {clarNote}
-                </span>
-              </div>
-            )}
-            {rejNote && (
-              <div className={styles.alertBannerRejection} title={rejNote}>
-                <AlertTriangle size={13} className={styles.alertBannerIcon} />
-                <span className={styles.alertBannerText}>
-                  <strong>Changes needed:</strong> {rejNote}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className={styles.accordionHeaderRight} onClick={(e) => e.stopPropagation()}>
-            {!locked ? (
-              <button
-                type="button"
-                className={`${styles.editSectionButton} ${
-                  isEditing ? styles.editSectionButtonActive : ""
-                }`}
-                onClick={() => handleToggleEditSection(secId)}
-                aria-label={`Edit ${title}`}
-              >
-                <Pencil size={12} />
-                <span>{isEditing ? "Editing" : "Edit"}</span>
-              </button>
-            ) : (
-              <span className={styles.lockedPill}>
-                <Lock size={12} />
-                <span>Locked</span>
-              </span>
-            )}
-            <button
-              type="button"
-              className={styles.chevronButton}
-              onClick={() => toggleSection(secId)}
-              aria-label={isOpen ? "Collapse section" : "Expand section"}
-            >
-              <ChevronDown
-                size={18}
-                className={`${styles.chevronIcon} ${isOpen ? styles.chevronIconRotated : ""}`}
-              />
-            </button>
-          </div>
-        </div>
+  const ALL_PROFILE_SECTIONS = useMemo(() => [
+    {
+      id: "category",
+      num: "01",
+      numPill: "001",
+      title: "Category & Skills",
+      displayName: "Category & Skills",
+      subtitle: "Add your core competencies and tags so seekers find you for specific problems.",
+      icon: Layers,
+    },
+    {
+      id: "experience",
+      num: "02",
+      numPill: "002",
+      title: "Work Experience & Portfolio",
+      displayName: "Work Experience & Portfolio",
+      subtitle: "Highlight your track record and professional achievements.",
+      icon: Briefcase,
+    },
+    {
+      id: "profile",
+      num: "03",
+      numPill: "003",
+      title: "Profile Identity & Public Presence",
+      displayName: "Profile Details",
+      subtitle: "Your core name, avatar, bio, and social presence visible to seekers.",
+      icon: User,
+    },
+    {
+      id: "credentials",
+      num: "04",
+      numPill: "004",
+      title: "Education & Certifications",
+      displayName: "Credentials & KYC",
+      subtitle: "Add your academic degrees, certifications, and verification files.",
+      icon: Award,
+    },
+    {
+      id: "preferences",
+      num: "05",
+      numPill: "005",
+      title: "Consultation Preferences & Pricing",
+      displayName: "Consultation Preferences & Pricing",
+      subtitle: "Set up your session pricing, consultation formats, and communication channels.",
+      icon: DollarSign,
+    },
+    {
+      id: "audience",
+      num: "06",
+      numPill: "006",
+      title: "Target Audience & Languages",
+      displayName: "Target Audience & Languages",
+      subtitle: "Specify the types of clients you advise and languages you speak fluently.",
+      icon: Users,
+    },
+    {
+      id: "availability",
+      num: "07",
+      numPill: "007",
+      title: "Availability & Schedule",
+      displayName: "Availability & Schedule",
+      subtitle: "Set up your weekly recurring time slots for bookings.",
+      icon: Calendar,
+    },
+  ], []);
 
-        {isOpen && (
-          <div className={styles.accordionBody}>
-            {locked && (
-              <div className={styles.lockedBanner}>
-                <Lock size={15} />
-                <span>
-                  This section has been approved by the review team and is locked from modification while your application is on hold.
-                </span>
-              </div>
-            )}
-            <fieldset className={locked ? styles.disabledFieldset : undefined} disabled={locked}>
-              {content}
-            </fieldset>
+  const clarificationSections = useMemo(() => {
+    return ALL_PROFILE_SECTIONS.filter((s) => {
+      const clarNote = getSectionClarification(s.id);
+      const rejNote = getSectionRejection(s.id);
+      const dec = sectionDecisions[s.id];
+      const clar = pendingClarifications[s.id];
+      if (dec?.decision === "approve") return false;
+      return (
+        dec?.decision === "clarification" ||
+        dec?.decision === "reject" ||
+        clar?.status === "waiting" ||
+        Boolean(clarNote) ||
+        Boolean(rejNote)
+      );
+    }).map((s, idx) => {
+      const clarNote = getSectionClarification(s.id) || getSectionRejection(s.id);
+      return {
+        ...s,
+        numPill: `00${idx + 1}`.slice(-3),
+        note: clarNote || "Please review and update requested information",
+      };
+    });
+  }, [ALL_PROFILE_SECTIONS, sectionDecisions, pendingClarifications, getSectionClarification, getSectionRejection]);
 
-            {!locked && (
-              <div className={styles.sectionFooterSave}>
-                {saveError && activeSavingSectionId === secId && (
-                  <div className={styles.sectionErrorNote}>
-                    <AlertCircle size={14} /> {saveError}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className={`${styles.sectionSaveBtn} ${
-                    savedSectionId === secId || (saved && !savedSectionId)
-                      ? styles.sectionSaveBtnSaved
-                      : ""
-                  }`}
-                  onClick={() => handleSaveAll(secId)}
-                  disabled={isSaving || !isExpertProfileValid(profile)}
-                >
-                  {savedSectionId === secId || (saved && !savedSectionId) ? (
-                    <>
-                      <Check size={14} /> <span>Saved</span>
-                    </>
-                  ) : activeSavingSectionId === secId && isSaving ? (
-                    <span>Saving…</span>
-                  ) : (
-                    <>
-                      <Check size={14} /> <span>Save Changes</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
+  const approvedSections = useMemo(() => {
+    const clarIds = new Set(clarificationSections.map((s) => s.id));
+    return ALL_PROFILE_SECTIONS.filter((s) => !clarIds.has(s.id));
+  }, [ALL_PROFILE_SECTIONS, clarificationSections]);
+
+  const allClarificationsResolved =
+    clarificationSections.length > 0 &&
+    clarificationSections.every((s) => resolvedClarifications.has(s.id));
+
+  const isClarificationActive = !isSubmittedForReview && clarificationSections.length > 0;
+
+  const toggleClarificationSection = (secId: string) => {
+    setOpenClarificationId((prev) => (prev === secId ? null : secId));
   };
 
-  if (credentialsLoading) return <div className={styles.editor} role="status">Loading your profile…</div>;
-  if (credentialsError) return <div className={styles.editor} role="alert">{credentialsError}</div>;
+  const hasAutoOpenedClarification = useRef(false);
+  useEffect(() => {
+    if (!hasAutoOpenedClarification.current && isClarificationActive && clarificationSections.length > 0) {
+      hasAutoOpenedClarification.current = true;
+      const firstUnresolved = clarificationSections.find((s) => !resolvedClarifications.has(s.id));
+      if (firstUnresolved) {
+        setOpenClarificationId(firstUnresolved.id);
+      } else {
+        setOpenClarificationId(clarificationSections[0].id);
+      }
+    }
+  }, [isClarificationActive, clarificationSections, resolvedClarifications]);
 
-  return (
-    <div className={styles.editor}>
-      {/* ----------------------------------------------------
-          TOP ACTION BAR & PUBLIC PROFILE SHORTCUT
-      ---------------------------------------------------- */}
-      <div className={styles.topActionBar}>
-        <div className={styles.topActionMeta}>
-          <span className={styles.statusBadge}>
-            <ShieldCheck size={14} /> {reviewStatus === "approved" ? "Approved Expert" : `Review status: ${reviewStatus.replaceAll("_", " ")}`}
-          </span>
-          <span className={styles.appIdBadge}>
-            <Award size={13} /> {appId || "Not submitted"}
-          </span>
-        </div>
+  const handleSaveClarificationSection = async (secId: string) => {
+    await handleSaveAll(secId);
+    setResolvedClarifications((prev) => {
+      const next = new Set(prev);
+      next.add(secId);
+      return next;
+    });
+    if (typeof window !== "undefined" && appId) {
+      try {
+        localStorage.setItem(`jatayu_clarification_resolved_${appId}_${secId}`, "true");
+      } catch {
+        // ignore
+      }
+    }
 
-        <div className={styles.topButtonsGroup}>
-          <button
-            type="button"
-            className={styles.accordionToggleAllBtn}
-            onClick={toggleAllSections}
-          >
-            {openSections.size >= 7 ? "Collapse All Sections" : "Expand All Sections"}
-          </button>
-          <div className={styles.saveBtnWrapper}>
-            <PrimaryButton
-              type="button"
-              label={
-                saved ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                    <Check size={16} /> Changes Saved
-                  </span>
-                ) : (
-                  "Save Changes"
-                )
-              }
-              variant={saved ? "light" : "orange"}
-              disabled={!isExpertProfileValid(profile) || isSaving}
-              staticLabel={true}
-              onClick={() => handleSaveAll()}
-            />
-          </div>
-        </div>
-      </div>
+    const remaining = clarificationSections.filter(
+      (s) => s.id !== secId && !resolvedClarifications.has(s.id)
+    );
+    if (remaining.length > 0) {
+      const nextSec = remaining[0];
+      setOpenClarificationId(nextSec.id);
+      window.setTimeout(() => {
+        const targetEl = document.getElementById(`clarification-${nextSec.id}`);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 200);
+    }
+  };
 
-      {saveError && (
-        <div className={styles.errorNote}>
-          <AlertCircle size={15} /> {saveError}
-        </div>
-      )}
+  const handleUpdateForReview = async () => {
+    if (!allClarificationsResolved || isSubmittingReview) return;
+    setIsSubmittingReview(true);
+    try {
+      await saveExpertProfileData(profile, photoFile, {
+        selectedFormats,
+        selectedLengths,
+        formatPrices,
+        targetAudience: selectedAudiences,
+        credentials: buildCredentialsPayload(employmentPositions, educationDegrees),
+        timezone,
+        availabilitySlots: availabilitySlots.map((slot) => ({
+          days: slot.days,
+          from: slot.from,
+          to: slot.to,
+        })),
+        onboardingMetadata: {
+          linkedin,
+          portfolio,
+          acceptCustomRequests,
+          audiences: selectedAudiences,
+          governmentId,
+          kycPhotos,
+          kycVideoUrl,
+          certificates,
+          portfolioSamples,
+          clarificationsAllSubmitted: true,
+          clarificationsSubmittedAt: new Date().toISOString(),
+        },
+      });
 
-      <div className={styles.accordionContainer}>
+      setIsSubmittedForReview(true);
+      if (typeof window !== "undefined" && appId) {
+        try {
+          localStorage.setItem(`jatayu_clarifications_submitted_${appId}`, "true");
+          window.dispatchEvent(new Event("expert-applications-updated"));
+        } catch {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.error("Error submitting for review:", err);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
-      {/* ----------------------------------------------------
-          STEP 1 & 4: PROFESSIONAL IDENTITY & BASIC INFO
-      ---------------------------------------------------- */}
-      
-        {renderAccordionSection(
-          "category",
-          "01",
-          "Category & Skills",
-          (
-            <>
+  const renderSectionContent = (secId: string, isFrozen: boolean) => {
+    switch (secId) {
+      case "category":
+        return (
+          <>
               <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
@@ -1318,16 +1376,12 @@ export default function ExpertProfileEditor() {
             ))}
           </ul>
         </div>
-            </>
-          ),
-        )}
 
-        {renderAccordionSection(
-          "experience",
-          "02",
-          "Work Experience & Portfolio",
-          (
-            <>
+          </>
+        );
+      case "experience":
+        return (
+          <>
               <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
@@ -1561,16 +1615,12 @@ export default function ExpertProfileEditor() {
             <Plus size={13} /> Add Degree
           </button>
         </div>
-            </>
-          ),
-        )}
 
-        {renderAccordionSection(
-          "profile",
-          "03",
-          "Profile Details",
-          (
-            <>
+          </>
+        );
+      case "profile":
+        return (
+          <>
               <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
@@ -1857,16 +1907,12 @@ export default function ExpertProfileEditor() {
             />
           </div>
         </div>
-            </>
-          ),
-        )}
 
-        {renderAccordionSection(
-          "credentials",
-          "04",
-          "Credentials & KYC",
-          (
-            <>
+          </>
+        );
+      case "credentials":
+        return (
+          <>
               <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
@@ -1979,16 +2025,12 @@ export default function ExpertProfileEditor() {
             {portfolioSamples.length === 0 && <p className={styles.kycDetailText}>No work samples uploaded.</p>}
           </div>
         </div>}
-            </>
-          ),
-        )}
 
-        {renderAccordionSection(
-          "preferences",
-          "05",
-          "Consultation Preferences & Pricing",
-          (
-            <>
+          </>
+        );
+      case "preferences":
+        return (
+          <>
               <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
@@ -2063,16 +2105,12 @@ export default function ExpertProfileEditor() {
             })}
           </div>
         </div>
-            </>
-          ),
-        )}
 
-        {renderAccordionSection(
-          "audience",
-          "06",
-          "Target Audience & Languages",
-          (
-            <>
+          </>
+        );
+      case "audience":
+        return (
+          <>
               <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
@@ -2105,55 +2143,230 @@ export default function ExpertProfileEditor() {
             );
           })}
         </div>
-            </>
-          ),
-        )}
 
-        {renderAccordionSection(
-          "availability",
-          "07",
-          "Availability & Schedule",
-          (
-            <WeeklySchedulePanel
-              disabled={isSectionLocked("availability")}
-              onScheduleChange={(schedule) => {
-                setTimezone(schedule.timezone);
-                setAvailabilitySlots(schedule.slots);
-                setSaved(false);
-              }}
-              onSaved={() => {
-                setPendingClarifications((prev) => ({
-                  ...prev,
-                  availability: { ...prev.availability, status: "received" },
-                }));
-                setSectionDecisions((prev) => ({
-                  ...prev,
-                  availability: { ...prev.availability, clarificationStatus: "received" },
-                }));
-                const ALL_PROFILE_SECTIONS = [
-                  { id: "category", num: "01", title: "Category & Skills" },
-                  { id: "experience", num: "02", title: "Work Experience & Portfolio" },
-                  { id: "profile", num: "03", title: "Profile Details" },
-                  { id: "credentials", num: "04", title: "Credentials & KYC" },
-                  { id: "preferences", num: "05", title: "Consultation Preferences & Pricing" },
-                  { id: "audience", num: "06", title: "Target Audience & Languages" },
-                  { id: "availability", num: "07", title: "Availability & Schedule" },
-                ] as const;
-                const nextSection = ALL_PROFILE_SECTIONS.find((s) => {
-                  if (s.id === "availability") return false;
-                  const clar = pendingClarifications[s.id];
-                  const dec = sectionDecisions[s.id];
-                  return (clar?.status === "waiting" || dec?.decision === "clarification") && clar?.status !== "received";
-                });
-                if (nextSection) {
-                  setOpenSections((prev) => new Set(prev).add(nextSection.id));
-                  window.setTimeout(() => {
-                    document.getElementById(`${nextSection.id}-section`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }, 200);
-                }
-              }}
-            />
-          ),
+          </>
+        );
+      case "availability":
+        return (
+          <WeeklySchedulePanel
+            bare
+            disabled={isFrozen}
+            initialTimezone={timezone}
+            initialSlots={availabilitySlots}
+            onScheduleChange={(schedule) => {
+              setTimezone(schedule.timezone);
+              setAvailabilitySlots(schedule.slots);
+              setSaved(false);
+            }}
+            onSaved={() => {
+              handleSaveClarificationSection("availability");
+            }}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderClarificationAccordion = (
+    item: (typeof clarificationSections)[number],
+    index: number
+  ) => {
+    const isOpen = openClarificationId === item.id;
+
+    return (
+      <div
+        key={item.id}
+        id={`clarification-${item.id}`}
+        className={`${styles.clarificationCard} ${isOpen ? styles.clarificationCardOpen : ""}`}
+      >
+        <div
+          className={styles.clarificationHeader}
+          onClick={() => toggleClarificationSection(item.id)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleClarificationSection(item.id);
+            }
+          }}
+          aria-expanded={isOpen}
+        >
+          <div className={styles.clarificationHeaderLeft}>
+            <div className={styles.clarificationIndexPill}>
+              <span className={styles.markDot} />
+              <span>{item.numPill}</span>
+            </div>
+            <div className={styles.clarificationDashedRule} />
+            <div className={styles.clarificationHeaderTitle} title={`${item.displayName}: ${item.note}`}>
+              <strong>{item.displayName}:</strong> {item.note}
+            </div>
+          </div>
+          <div className={styles.clarificationHeaderRight}>
+            <div
+              className={`${styles.clarificationToggleBtn} ${
+                isOpen ? styles.clarificationToggleBtnOpen : ""
+              }`}
+              aria-hidden="true"
+            >
+              <Plus size={16} />
+            </div>
+          </div>
+        </div>
+
+        <div className={`${styles.clarificationCollapse} ${isOpen ? styles.clarificationCollapseOpen : ""}`}>
+          <div className={styles.clarificationCollapseInner}>
+            <div className={styles.clarificationBody}>
+              {renderSectionContent(item.id, false)}
+              <div className={styles.sectionFooterSave}>
+                {saveError && activeSavingSectionId === item.id && (
+                  <div className={styles.sectionErrorNote}>
+                    <AlertCircle size={14} /> {saveError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={`${styles.sectionSaveBtn} ${
+                    savedSectionId === item.id || (saved && !savedSectionId)
+                      ? styles.sectionSaveBtnSaved
+                      : ""
+                  }`}
+                  onClick={() => handleSaveClarificationSection(item.id)}
+                  disabled={isSaving || !isExpertProfileValid(profile)}
+                >
+                  {savedSectionId === item.id || (saved && !savedSectionId) ? (
+                    <>
+                      <Check size={14} /> <span>Saved</span>
+                    </>
+                  ) : activeSavingSectionId === item.id && isSaving ? (
+                    <span>Saving…</span>
+                  ) : (
+                    <>
+                      <Check size={14} /> <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFrozenCard = (item: (typeof ALL_PROFILE_SECTIONS)[number]) => {
+    const Icon = item.icon;
+    return (
+      <div key={item.id} id={`${item.id}-section`} className={styles.frozenSectionCard}>
+        <div className={styles.frozenHeader}>
+          <div className={styles.frozenHeaderLeft}>
+            <div className={styles.frozenIconBox}>
+              <Icon size={18} />
+            </div>
+            <div>
+              <h3 className={styles.frozenTitle}>{item.title}</h3>
+              <p className={styles.frozenSubtitle}>{item.subtitle}</p>
+            </div>
+          </div>
+        </div>
+        <fieldset disabled className={styles.frozenFieldset}>
+          {renderSectionContent(item.id, true)}
+        </fieldset>
+      </div>
+    );
+  };
+
+  if (credentialsLoading) return <div className={styles.editor} role="status">Loading your profile…</div>;
+  if (credentialsError) return <div className={styles.editor} role="alert">{credentialsError}</div>;
+
+  return (
+    <div className={styles.editor}>
+      {/* ----------------------------------------------------
+          TOP ACTION BAR & REVIEW SHORTCUT
+      ---------------------------------------------------- */}
+      <div className={styles.topActionBar}>
+        <div className={styles.topActionMeta}>
+          <span className={styles.statusBadge}>
+            <ShieldCheck size={14} /> {reviewStatus === "approved" ? "Approved Expert" : `Review status: ${reviewStatus.replaceAll("_", " ")}`}
+          </span>
+          <span className={styles.appIdBadge}>
+            <Award size={13} /> {appId || "Not submitted"}
+          </span>
+        </div>
+
+        <div className={styles.topButtonsGroup}>
+          <span className={styles.lockedPill}>
+            <Lock size={13} />
+            <span>
+              {reviewStatus === "approved"
+                ? "Profile Active"
+                : isClarificationActive
+                ? "Clarification Required"
+                : "Profile Locked (In Review)"}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {saveError && (
+        <div className={styles.errorNote}>
+          <AlertCircle size={15} /> {saveError}
+        </div>
+      )}
+
+      {/* ----------------------------------------------------
+          CLARIFICATION ALERT BANNER (IMAGE 1) OR SUCCESS BANNER
+      ---------------------------------------------------- */}
+      {isClarificationActive ? (
+        <div className={styles.clarificationAlertContainer}>
+          <div className={styles.clarificationAlertHeader}>
+            <div className={styles.clarificationAlertHeaderLeft}>
+              <AlertCircle size={22} className={styles.clarificationAlertIcon} />
+              <div className={styles.clarificationAlertContent}>
+                <h3 className={styles.clarificationAlertTitle}>Action Required: Review Team Requested Clarification</h3>
+                <p className={styles.clarificationAlertDesc}>
+                  Please review and update the information for the sections below. Once you click &quot;Save Changes&quot;, the review team will be notified with your updates.
+                </p>
+              </div>
+            </div>
+
+            <div className={styles.updateForReviewWrapper}>
+              <button
+                type="button"
+                className={styles.updateForReviewBtn}
+                disabled={!allClarificationsResolved || isSubmittingReview}
+                onClick={handleUpdateForReview}
+                title={!allClarificationsResolved ? "Save all clarification sections to submit for review" : "Submit all updates to review team"}
+              >
+                <Sparkles size={16} />
+                <span>{isSubmittingReview ? "Submitting…" : "Update for Review"}</span>
+              </button>
+              {!allClarificationsResolved && (
+                <span className={styles.updateForReviewHint}>
+                  Save all clarification sections to submit
+                </span>
+              )}
+            </div>
+          </div>
+          <div className={styles.clarificationAccordionsList}>
+            {clarificationSections.map((item, index) => renderClarificationAccordion(item, index))}
+          </div>
+        </div>
+      ) : isSubmittedForReview ? (
+        <div className={styles.submittedSuccessBanner}>
+          <CheckCircle2 size={18} />
+          <span>Your updates have been submitted to the review team. Your profile is currently under review and locked from editing.</span>
+        </div>
+      ) : null}
+
+      <div className={styles.accordionContainer}>
+        {isClarificationActive ? (
+          /* Render approved sections below the alert box as frozen cards without edit access (Image 2) */
+          approvedSections.map((item) => renderFrozenCard(item))
+        ) : (
+          /* When there are no sections for clarification, the entire profile page is frozen without edit access */
+          ALL_PROFILE_SECTIONS.map((item) => renderFrozenCard(item))
         )}
 
         <ConfirmModal
@@ -2186,36 +2399,40 @@ export default function ExpertProfileEditor() {
         variant="danger"
       />
 
-      {/* ----------------------------------------------------
-          STEP 6: CONSULTATION PREFERENCES & PRICING
-      ---------------------------------------------------- */}
-      </div>
 
+      </div>
 
       {/* ----------------------------------------------------
           BOTTOM ACTIONS
       ---------------------------------------------------- */}
       <div className={styles.actions}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <PrimaryButton
-            type="button"
-            label={
-              saved ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                  <Check size={16} /> Changes Saved
-                </span>
-              ) : (
-                "Save Profile Updates"
-              )
-            }
-            variant={saved ? "light" : "orange"}
-            disabled={!isExpertProfileValid(profile) || isSaving}
-            staticLabel={true}
-            onClick={() => handleSaveAll()}
-          />
+          {isClarificationActive && (
+            <PrimaryButton
+              type="button"
+              label={
+                saved ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                    <Check size={16} /> Changes Saved
+                  </span>
+                ) : (
+                  "Save Profile Updates"
+                )
+              }
+              variant={saved ? "light" : "orange"}
+              disabled={!isExpertProfileValid(profile) || isSaving}
+              staticLabel={true}
+              onClick={() => handleSaveAll()}
+            />
+          )}
           {saved && (
             <span className={styles.savedNote}>
               <CheckCircle2 size={16} /> All profile and onboarding changes are published.
+            </span>
+          )}
+          {!isClarificationActive && (
+            <span className={styles.savedNote}>
+              <CheckCircle2 size={16} /> Profile information is verified and frozen without edit access.
             </span>
           )}
         </div>

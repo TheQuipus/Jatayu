@@ -12,6 +12,9 @@ type WeeklySchedulePanelProps = {
   onScheduleChange?: (data: { timezone: string; slots: TimeSlot[] }) => void;
   onSaved?: () => void;
   disabled?: boolean;
+  bare?: boolean;
+  initialTimezone?: string;
+  initialSlots?: TimeSlot[];
 };
 
 export default function WeeklySchedulePanel({
@@ -19,6 +22,9 @@ export default function WeeklySchedulePanel({
   onScheduleChange,
   onSaved,
   disabled = false,
+  bare = false,
+  initialTimezone,
+  initialSlots,
 }: WeeklySchedulePanelProps = {}) {
   const [isValid, setIsValid] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
@@ -26,11 +32,11 @@ export default function WeeklySchedulePanel({
   const [loadedSchedule, setLoadedSchedule] = useState<{
     timezone: string;
     slots: TimeSlot[];
-  } | null>(null);
+  } | null>(() => (initialSlots ? { timezone: initialTimezone || "Asia/Kolkata", slots: initialSlots } : null));
   const [currentSchedule, setCurrentSchedule] = useState<{
     timezone: string;
     slots: TimeSlot[];
-  } | null>(null);
+  } | null>(() => (initialSlots ? { timezone: initialTimezone || "Asia/Kolkata", slots: initialSlots } : null));
 
   useEffect(() => {
     let active = true;
@@ -74,6 +80,19 @@ export default function WeeklySchedulePanel({
       setIsSaving(false);
     }
   };
+
+  if (bare) {
+    return (
+      <ExpertAvailability
+        variant="app"
+        initialTimezone={loadedSchedule?.timezone || initialTimezone}
+        initialSlots={loadedSchedule?.slots || initialSlots}
+        onValidityChange={handleValidityChange}
+        onScheduleChange={handleScheduleChange}
+        disabled={disabled}
+      />
+    );
+  }
 
   return (
     <section id="weekly-schedule" className={styles.panel}>

@@ -83,7 +83,9 @@ export default function AvailabilitySlotRow({
         <button type="button" onClick={onRemove} className={styles.slotCloseBtn} aria-label="Remove time slot">
           <X size={15} />
         </button>
-      ) : <span className={styles.slotCloseSpacer} aria-hidden="true" />}
+      ) : !disabled ? (
+        <span className={styles.slotCloseSpacer} aria-hidden="true" />
+      ) : null}
     </div>
   );
 }

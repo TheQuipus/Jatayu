@@ -91,15 +91,16 @@ export default function ExpertAvailability({
 
   return (
     <div className={styles.hoursPane}>
-      <div className={styles.hoursPaneHeader}>
-        <div>
-          <span className={appStyles.timezoneEyebrow}>Timezone</span>
-          <h4 className={styles.hoursPaneTitle}>{timezoneLabel}</h4>
-        </div>
-        <div className={styles.slotDaysCol}>
-          <span className={`${styles.hoursPaneTitle} ${styles.selectDaysLabel}`}>Select days</span>
-        </div>
-      </div>
+    {/* //   <div className={styles.hoursPaneHeader}>
+    //     <div className={styles.timezoneCol}>
+    //       <span className={appStyles.timezoneEyebrow}>Timezone</span>
+    //       <h4 className={styles.hoursPaneTitle}>{timezoneLabel}</h4>
+    //     </div>
+    //     <div className={styles.slotDaysCol}>
+    //       <span className={styles.selectDaysLabel}>Select days</span>
+    //     </div>
+    //     {!disabled && <span className={styles.slotCloseSpacer} aria-hidden="true" />}
+    //   </div> */}
 
       <div className={styles.slotsContainer}>
         {slots.map((slot, index) => (
