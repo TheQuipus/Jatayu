@@ -12,6 +12,7 @@ type AvailabilitySlotRowProps = {
   onToggleDay: (day: string) => void;
   onUpdate: (field: "from" | "to", value: string) => void;
   onRemove: () => void;
+  disabled?: boolean;
 };
 
 export default function AvailabilitySlotRow({
@@ -24,8 +25,9 @@ export default function AvailabilitySlotRow({
   onToggleDay,
   onUpdate,
   onRemove,
+  disabled = false,
 }: AvailabilitySlotRowProps) {
-  const canSelectDays = hasValidTimes(slot);
+  const canSelectDays = hasValidTimes(slot) && !disabled;
 
   return (
     <div className={`${styles.slotRow} ${isConflicting ? styles.slotRowConflict ?? "" : ""}`}>
@@ -36,6 +38,7 @@ export default function AvailabilitySlotRow({
           value={slot.from}
           theme={theme}
           required
+          disabled={disabled}
           onChange={(value) => onUpdate("from", value)}
           validateTime={(time) => !wouldConflict(time, slot.to, slot.days)}
         />
@@ -47,7 +50,7 @@ export default function AvailabilitySlotRow({
           required
           minTime={slot.from || undefined}
           onChange={(value) => onUpdate("to", value)}
-          disabled={!slot.from}
+          disabled={disabled || !slot.from}
           validateTime={(time) => !wouldConflict(slot.from, time, slot.days)}
         />
       </div>
@@ -57,7 +60,7 @@ export default function AvailabilitySlotRow({
           {WEEK_DAYS.map((day) => {
             const isSelected = slot.days.includes(day);
             const causesConflict = !isSelected && wouldConflict(slot.from, slot.to, [...slot.days, day]);
-            const isDisabled = !canSelectDays || causesConflict;
+            const isDisabled = disabled || !canSelectDays || causesConflict;
 
             return (
               <button
@@ -76,7 +79,7 @@ export default function AvailabilitySlotRow({
         </div>
       </div>
 
-      {slotIndex > 0 ? (
+      {slotIndex > 0 && !disabled ? (
         <button type="button" onClick={onRemove} className={styles.slotCloseBtn} aria-label="Remove time slot">
           <X size={15} />
         </button>

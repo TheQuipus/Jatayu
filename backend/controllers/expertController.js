@@ -205,51 +205,7 @@ export const updateProfile = async (req, res) => {
       const expert = await Expert.findByPk(expertId, { transaction, lock: transaction.LOCK.UPDATE });
       if (!expert) return false;
 
-      // Update fields based on which onboarding step/data is sent
-      if (fullName !== undefined) {
-        const normalizedName = String(fullName).trim();
-        if (!normalizedName) throw new TypeError('fullName cannot be empty');
-        expert.fullName = normalizedName;
-      }
-      if (category !== undefined) expert.category = category;
-      if (skills !== undefined) expert.skills = skills;
-      if (experienceLevel !== undefined) expert.experienceLevel = experienceLevel;
-      if (professionalTitle !== undefined) expert.professionalTitle = professionalTitle;
-      if (tagLine !== undefined) expert.tagLine = tagLine;
-      if (bio !== undefined) expert.bio = bio;
-      if (targetAudience !== undefined) {
-        expert.targetAudience = Array.isArray(targetAudience)
-          ? JSON.stringify(targetAudience)
-          : targetAudience;
-      }
-      if (focusAreas !== undefined) expert.focusAreas = focusAreas;
-      if (timezone !== undefined) expert.timezone = timezone;
-
-      if (selectedFormats !== undefined) expert.selectedFormats = selectedFormats;
-      if (selectedLengths !== undefined) expert.selectedLengths = selectedLengths;
-      if (formatPrices !== undefined) expert.formatPrices = formatPrices;
-      if (onboardingMetadata !== undefined) {
-        let storedMetadata = {};
-        try {
-          storedMetadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
-        } catch (error) {
-          console.warn(`Resetting invalid onboardingMetadata for expert ${expertId}: ${error.message}`);
-        }
-        expert.onboardingMetadata = {
-          ...storedMetadata,
-          ...onboardingMetadata,
-          ...(storedMetadata.isBlacklisted !== undefined ? { isBlacklisted: storedMetadata.isBlacklisted } : {}),
-          ...(storedMetadata.blacklistedAt !== undefined ? { blacklistedAt: storedMetadata.blacklistedAt } : {}),
-        };
-      }
-
-      if (req.file) {
-        expert.profilePhotoSrc = `/uploads/${req.file.filename}`;
-      } else if (req.body.profilePhotoSrc !== undefined) {
-        expert.profilePhotoSrc = req.body.profilePhotoSrc;
-      }
-
-      // Check if any sections waiting for clarification were updated by the expert
+      // Check if any sections are approved and locked while application is on hold/unapproved
       let currentMetadata = {};
       try {
         currentMetadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
@@ -259,28 +215,109 @@ export const updateProfile = async (req, res) => {
 
       const clarifications = currentMetadata.sectionClarifications || {};
       const sectionDecisions = currentMetadata.sectionDecisions || {};
-      let clarificationsUpdated = false;
+      const isUnapprovedOrOnHold = expert.status === 'on_hold' || expert.status === 'in_review' || expert.status === 'pending_review' || expert.status === 'pending';
+      const isSectionApproved = (secKey) => isUnapprovedOrOnHold && sectionDecisions[secKey]?.decision === 'approve';
 
+      // Update fields based on which onboarding step/data is sent (preserving locked approved sections)
+      if (!isSectionApproved('profile')) {
+        if (fullName !== undefined) {
+          const normalizedName = String(fullName).trim();
+          if (!normalizedName) throw new TypeError('fullName cannot be empty');
+          expert.fullName = normalizedName;
+        }
+        if (professionalTitle !== undefined) expert.professionalTitle = professionalTitle;
+        if (tagLine !== undefined) expert.tagLine = tagLine;
+        if (bio !== undefined) expert.bio = bio;
+        if (req.file) {
+          expert.profilePhotoSrc = `/uploads/${req.file.filename}`;
+        } else if (req.body.profilePhotoSrc !== undefined) {
+          expert.profilePhotoSrc = req.body.profilePhotoSrc;
+        }
+      }
+
+      if (!isSectionApproved('category')) {
+        if (category !== undefined) expert.category = category;
+        if (skills !== undefined) expert.skills = skills;
+        if (experienceLevel !== undefined) expert.experienceLevel = experienceLevel;
+      }
+
+      if (!isSectionApproved('audience')) {
+        if (targetAudience !== undefined) {
+          expert.targetAudience = Array.isArray(targetAudience)
+            ? JSON.stringify(targetAudience)
+            : targetAudience;
+        }
+        if (focusAreas !== undefined) expert.focusAreas = focusAreas;
+      }
+
+      if (!isSectionApproved('availability')) {
+        if (timezone !== undefined) expert.timezone = timezone;
+      }
+
+      if (!isSectionApproved('preferences')) {
+        if (selectedFormats !== undefined) expert.selectedFormats = selectedFormats;
+        if (selectedLengths !== undefined) expert.selectedLengths = selectedLengths;
+        if (formatPrices !== undefined) expert.formatPrices = formatPrices;
+      }
+
+      if (onboardingMetadata !== undefined) {
+        let storedMetadata = {};
+        try {
+          storedMetadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+        } catch (error) {
+          console.warn(`Resetting invalid onboardingMetadata for expert ${expertId}: ${error.message}`);
+        }
+
+        // Filter metadata to prevent overwriting approved section metadata
+        const filteredIncomingMeta = { ...onboardingMetadata };
+        if (isSectionApproved('experience')) {
+          delete filteredIncomingMeta.portfolio;
+          delete filteredIncomingMeta.linkedin;
+        }
+        if (isSectionApproved('credentials')) {
+          delete filteredIncomingMeta.governmentId;
+          delete filteredIncomingMeta.kycPhotos;
+          delete filteredIncomingMeta.kycVideoUrl;
+          delete filteredIncomingMeta.certificates;
+          delete filteredIncomingMeta.portfolioSamples;
+        }
+        if (isSectionApproved('preferences')) {
+          delete filteredIncomingMeta.acceptCustomRequests;
+        }
+        if (isSectionApproved('audience')) {
+          delete filteredIncomingMeta.audiences;
+        }
+
+        expert.onboardingMetadata = {
+          ...storedMetadata,
+          ...filteredIncomingMeta,
+          ...(storedMetadata.isBlacklisted !== undefined ? { isBlacklisted: storedMetadata.isBlacklisted } : {}),
+          ...(storedMetadata.blacklistedAt !== undefined ? { blacklistedAt: storedMetadata.blacklistedAt } : {}),
+        };
+      }
+
+      // Check which unapproved sections were updated
+      let clarificationsUpdated = false;
       const updatedSections = new Set();
-      if (category !== undefined || skills !== undefined || experienceLevel !== undefined) {
+      if (!isSectionApproved('category') && (category !== undefined || skills !== undefined || experienceLevel !== undefined)) {
         updatedSections.add('category');
       }
-      if (credentials !== undefined || (onboardingMetadata && (onboardingMetadata.portfolio !== undefined || onboardingMetadata.linkedin !== undefined))) {
+      if (!isSectionApproved('experience') && (credentials !== undefined || (onboardingMetadata && (onboardingMetadata.portfolio !== undefined || onboardingMetadata.linkedin !== undefined)))) {
         updatedSections.add('experience');
       }
-      if (fullName !== undefined || professionalTitle !== undefined || tagLine !== undefined || bio !== undefined || req.file) {
+      if (!isSectionApproved('profile') && (fullName !== undefined || professionalTitle !== undefined || tagLine !== undefined || bio !== undefined || req.file)) {
         updatedSections.add('profile');
       }
-      if (onboardingMetadata && (onboardingMetadata.governmentId !== undefined || onboardingMetadata.kycVideoUrl !== undefined || onboardingMetadata.certificates !== undefined || onboardingMetadata.portfolioSamples !== undefined)) {
+      if (!isSectionApproved('credentials') && onboardingMetadata && (onboardingMetadata.governmentId !== undefined || onboardingMetadata.kycVideoUrl !== undefined || onboardingMetadata.certificates !== undefined || onboardingMetadata.portfolioSamples !== undefined)) {
         updatedSections.add('credentials');
       }
-      if (selectedFormats !== undefined || selectedLengths !== undefined || formatPrices !== undefined || (onboardingMetadata && onboardingMetadata.acceptCustomRequests !== undefined)) {
+      if (!isSectionApproved('preferences') && (selectedFormats !== undefined || selectedLengths !== undefined || formatPrices !== undefined || (onboardingMetadata && onboardingMetadata.acceptCustomRequests !== undefined))) {
         updatedSections.add('preferences');
       }
-      if (targetAudience !== undefined || focusAreas !== undefined || (onboardingMetadata && onboardingMetadata.audiences !== undefined)) {
+      if (!isSectionApproved('audience') && (targetAudience !== undefined || focusAreas !== undefined || (onboardingMetadata && onboardingMetadata.audiences !== undefined))) {
         updatedSections.add('audience');
       }
-      if (availabilitySlots !== undefined || timezone !== undefined) {
+      if (!isSectionApproved('availability') && (availabilitySlots !== undefined || timezone !== undefined)) {
         updatedSections.add('availability');
       }
 
@@ -319,7 +356,7 @@ export const updateProfile = async (req, res) => {
       if (step) expert.onboardingStep = step;
       await expert.save({ transaction });
 
-      if (credentials !== undefined && Array.isArray(credentials)) {
+      if (!isSectionApproved('experience') && credentials !== undefined && Array.isArray(credentials)) {
         await Credential.destroy({ where: { expertId }, transaction });
         const credentialsToCreate = credentials.map(cred => ({
           expertId,
@@ -335,7 +372,7 @@ export const updateProfile = async (req, res) => {
         }
       }
 
-      if (availabilitySlots !== undefined && Array.isArray(availabilitySlots)) {
+      if (!isSectionApproved('availability') && availabilitySlots !== undefined && Array.isArray(availabilitySlots)) {
         await Availability.destroy({ where: { expertId }, transaction });
         const slotsToCreate = availabilitySlots.map(slot => ({
           expertId,
@@ -374,6 +411,9 @@ export const updateProfile = async (req, res) => {
       message: error.message,
       code: error.parent?.code || error.code,
     });
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     const databaseUnavailable = error.name === 'SequelizeConnectionError'
       || error.name === 'SequelizeConnectionAcquireTimeoutError'
       || error.parent?.fatal === true

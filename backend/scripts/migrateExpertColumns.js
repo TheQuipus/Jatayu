@@ -9,6 +9,7 @@ export const EXPERT_COLUMN_DEFINITIONS = [
   ['applicationNumber', 'VARCHAR(255) NULL'],
   ['submittedAt', 'DATETIME NULL'],
   ['approvedAt', 'DATETIME NULL'],
+  ['closedAt', 'DATETIME NULL'],
   ['reviewerNote', 'TEXT NULL'],
   ['isBlacklisted', 'TINYINT(1) NOT NULL DEFAULT 0'],
   ['blacklistedAt', 'DATETIME NULL'],
@@ -105,6 +106,26 @@ export async function ensureExpertColumns(db = expertDb) {
     }
   }
 
+  // Ensure index on (closedAt, updatedAt)
+  try {
+    const [closedIndexRows] = await db.query(
+      `SELECT COUNT(*) AS count
+       FROM INFORMATION_SCHEMA.STATISTICS
+       WHERE (TABLE_SCHEMA = DATABASE() OR TABLE_SCHEMA = ?)
+         AND (TABLE_NAME = 'Experts' OR LOWER(TABLE_NAME) = 'experts')
+         AND INDEX_NAME = 'idx_experts_closed_updated'`,
+      { replacements: [db.config?.database] },
+    );
+    if (Number(closedIndexRows[0]?.count ?? 0) === 0) {
+      await db.query('CREATE INDEX `idx_experts_closed_updated` ON `Experts` (`closedAt`, `updatedAt`)');
+      console.log('[Auto-Migrate] Created index idx_experts_closed_updated on Experts (closedAt, updatedAt).');
+    }
+  } catch (idxErr) {
+    if (!idxErr.message.includes('Duplicate key name')) {
+      console.warn('[Auto-Migrate] Index idx_experts_closed_updated warning:', idxErr.message);
+    }
+  }
+
   // Ensure index on isBlacklisted for fast lookup during login/registration
   try {
     const [blacklistIndexRows] = await db.query(
@@ -140,13 +161,25 @@ export async function ensureExpertColumns(db = expertDb) {
       )
   `;
 
+  // Synchronize closedAt for existing approved and rejected records
+  const syncClosedSql = (table) => `
+    UPDATE \`${table}\`
+    SET \`closedAt\` = CASE
+      WHEN \`status\` = 'approved' THEN COALESCE(\`approvedAt\`, \`updatedAt\`, NOW())
+      WHEN \`status\` = 'rejected' OR \`isBlacklisted\` = 1 THEN COALESCE(\`blacklistedAt\`, \`updatedAt\`, \`submittedAt\`, NOW())
+      ELSE \`closedAt\`
+    END
+    WHERE \`closedAt\` IS NULL
+      AND (\`status\` IN ('approved', 'rejected') OR \`isBlacklisted\` = 1)
+  `;
+
   try {
-    await db.query(syncSql('Experts'));
-    console.log('[Auto-Migrate] Synchronized isBlacklisted flags from onboardingMetadata to Experts.');
-  } catch (syncErr) {
+    await db.query(syncClosedSql('Experts'));
+    console.log('[Auto-Migrate] Synchronized closedAt timestamps on Experts.');
+  } catch (closedErr) {
     try {
-      await db.query(syncSql('experts'));
-      console.log('[Auto-Migrate] Synchronized isBlacklisted flags from onboardingMetadata to experts.');
+      await db.query(syncClosedSql('experts'));
+      console.log('[Auto-Migrate] Synchronized closedAt timestamps on experts.');
     } catch {
       // ignore
     }

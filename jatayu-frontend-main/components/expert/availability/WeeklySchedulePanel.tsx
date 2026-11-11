@@ -9,9 +9,17 @@ import { fetchExpertAvailability, saveExpertAvailability } from "@/lib/expertPro
 
 type WeeklySchedulePanelProps = {
   onValidityChange?: (isValid: boolean) => void;
+  onScheduleChange?: (data: { timezone: string; slots: TimeSlot[] }) => void;
+  onSaved?: () => void;
+  disabled?: boolean;
 };
 
-export default function WeeklySchedulePanel({ onValidityChange }: WeeklySchedulePanelProps = {}) {
+export default function WeeklySchedulePanel({
+  onValidityChange,
+  onScheduleChange,
+  onSaved,
+  disabled = false,
+}: WeeklySchedulePanelProps = {}) {
   const [isValid, setIsValid] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -48,15 +56,17 @@ export default function WeeklySchedulePanel({ onValidityChange }: WeeklySchedule
   const handleScheduleChange = useCallback((schedule: { timezone: string; slots: TimeSlot[] }) => {
     setCurrentSchedule(schedule);
     setIsSaved(false);
-  }, []);
+    onScheduleChange?.(schedule);
+  }, [onScheduleChange]);
 
   const handleSave = async () => {
-    if (!isValid || !currentSchedule || isSaving) return;
+    if (disabled || !isValid || !currentSchedule || isSaving) return;
     setIsSaving(true);
     try {
       await saveExpertAvailability(currentSchedule.timezone, currentSchedule.slots);
       setLoadedSchedule(currentSchedule);
       setIsSaved(true);
+      onSaved?.();
       window.setTimeout(() => setIsSaved(false), 2200);
     } catch (error) {
       console.error("Could not save expert availability:", error);
@@ -78,7 +88,7 @@ export default function WeeklySchedulePanel({ onValidityChange }: WeeklySchedule
             type="button"
             className={`${styles.panelSaveBtn} ${isSaved ? styles.savedState : ""}`}
             onClick={handleSave}
-            disabled={!isValid || !currentSchedule || isSaved || isSaving}
+            disabled={disabled || !isValid || !currentSchedule || isSaved || isSaving}
             aria-label="Save weekly schedule"
           >
             {isSaved ? (
@@ -102,6 +112,7 @@ export default function WeeklySchedulePanel({ onValidityChange }: WeeklySchedule
           initialSlots={loadedSchedule?.slots}
           onValidityChange={handleValidityChange}
           onScheduleChange={handleScheduleChange}
+          disabled={disabled}
         />
       </div>
     </section>

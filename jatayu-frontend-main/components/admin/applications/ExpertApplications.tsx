@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Ban,
   CheckCircle2,
@@ -57,6 +57,7 @@ const SLA_FILTER_OPTIONS = [
   { value: "breached", label: "≥ 48 hrs" },
   { value: "at_risk", label: "40–48 hrs" },
   { value: "on_track", label: "< 40 hrs" },
+  { value: "closed", label: "Closed" },
 ] as const;
 
 const KPI_ICONS = {
@@ -116,6 +117,7 @@ function completenessColor(pct: number): string {
 function slaClass(status: ExpertApplicationListItem["slaStatus"]): string {
   if (status === "breached") return styles.slaBreached;
   if (status === "at_risk") return styles.slaAtRisk;
+  if (status === "closed") return styles.slaClosed;
   return styles.slaOnTrack;
 }
 
@@ -254,6 +256,22 @@ export default function ExpertApplications() {
       overdueCard.focus();
     }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const filter = params.get("filter");
+    const hash = window.location.hash;
+
+    if (filter === "overdue" || hash === "#kpi-card-overdue") {
+      handleCardClick("overdue");
+      const overdueCard = document.getElementById("kpi-card-overdue");
+      if (overdueCard) {
+        overdueCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        overdueCard.focus();
+      }
+    }
+  }, []);
 
   const setColumnFilter = (key: keyof ColumnFilters, value: string) => {
     setPage(1);

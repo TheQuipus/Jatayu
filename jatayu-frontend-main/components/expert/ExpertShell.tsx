@@ -216,6 +216,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     }
 
     const restrictedRoutePrefixes = [
+      "/expert/availability",
       "/expert/requests",
       "/expert/earnings",
       "/expert/reviews",

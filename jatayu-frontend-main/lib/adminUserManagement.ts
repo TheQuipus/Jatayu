@@ -26,6 +26,7 @@ export type ExpertUser = {
   closedSla?: string;
   submittedAt?: string;
   approvedAt?: string;
+  closedAt?: string;
   applicationNumber?: string;
 };
 

@@ -618,6 +618,10 @@
   color: var(--pomegranate);
 }
 
+.slaClosed {
+  color: var(--ink);
+  font-weight: 500;
+}
 
 .slaAtRisk {
   color: #b87200;

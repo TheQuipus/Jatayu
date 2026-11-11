@@ -26,7 +26,12 @@ import {
   Building,
   DollarSign,
   AlertCircle,
+  ChevronDown,
+  Lock,
+  AlertTriangle,
+  Pencil,
 } from "lucide-react";
+import WeeklySchedulePanel from "@/components/expert/availability/WeeklySchedulePanel";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ShinyText from "@/components/ui/ShinyText";
@@ -176,6 +181,15 @@ export default function ExpertProfileEditor() {
   const [pendingClarifications, setPendingClarifications] = useState<
     Record<string, { status: string; note?: string }>
   >({});
+  const [sectionDecisions, setSectionDecisions] = useState<
+    Record<string, { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }>
+  >({});
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set(["category", "experience", "profile", "credentials", "preferences", "audience", "availability"])
+  );
+  const [editingSections, setEditingSections] = useState<Set<string>>(new Set());
+  const [savedSectionId, setSavedSectionId] = useState<string | null>(null);
+  const [activeSavingSectionId, setActiveSavingSectionId] = useState<string | null>(null);
   const categoryRecommendationRequests = useRef(new Set<string>());
   const spokenLanguageOptions = useMemo(() => {
     const options = new Map(SPOKEN_LANGUAGE_OPTIONS.map((option) => [option.value.toLowerCase(), option]));
@@ -293,6 +307,14 @@ export default function ExpertProfileEditor() {
           : []);
         if (metadata.sectionClarifications && typeof metadata.sectionClarifications === "object") {
           setPendingClarifications(metadata.sectionClarifications as Record<string, { status: string; note?: string }>);
+        }
+        if (metadata.sectionDecisions && typeof metadata.sectionDecisions === "object") {
+          setSectionDecisions(
+            metadata.sectionDecisions as Record<
+              string,
+              { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }
+            >
+          );
         }
       })
       .catch(() => {
@@ -626,13 +648,15 @@ export default function ExpertProfileEditor() {
   };
 
   // Save full profile + onboarding data
-  const handleSaveAll = async () => {
+  const handleSaveAll = async (triggerSecId?: string | unknown) => {
+    const activeSecId = typeof triggerSecId === "string" ? triggerSecId : undefined;
     if (credentialsLoading || credentialsError) return;
     if (!profile.name.trim()) {
       setSaveError("Please provide your Full Name before saving profile updates.");
       return;
     }
     setIsSaving(true);
+    setActiveSavingSectionId(activeSecId || "all");
     setSaveError(null);
     try {
       await saveExpertProfileData(profile, photoFile, {
@@ -691,14 +715,36 @@ export default function ExpertProfileEditor() {
       });
 
       setSaved(true);
+      setSavedSectionId(activeSecId || null);
+      window.setTimeout(() => {
+        setSaved(false);
+        setSavedSectionId(null);
+      }, 2500);
 
       setPendingClarifications((prev) => {
         const next = { ...prev };
-        Object.keys(next).forEach((key) => {
-          if (next[key]?.status === "waiting") {
-            next[key] = { ...next[key], status: "received" };
+        if (activeSecId) {
+          if (next[activeSecId]) {
+            next[activeSecId] = { ...next[activeSecId], status: "received" };
           }
-        });
+        } else {
+          Object.keys(next).forEach((key) => {
+            if (next[key]?.status === "waiting") {
+              next[key] = { ...next[key], status: "received" };
+            }
+          });
+        }
+        return next;
+      });
+
+      setSectionDecisions((prev) => {
+        const next = { ...prev };
+        if (activeSecId && next[activeSecId]) {
+          next[activeSecId] = {
+            ...next[activeSecId],
+            clarificationStatus: "received",
+          };
+        }
         return next;
       });
 
@@ -712,6 +758,7 @@ export default function ExpertProfileEditor() {
             let updated = false;
             Object.keys(parsed).forEach((secKey) => {
               if (
+                (!activeSecId || activeSecId === secKey) &&
                 parsed[secKey]?.decision === "clarification" &&
                 parsed[secKey]?.clarificationStatus === "waiting"
               ) {
@@ -729,17 +776,303 @@ export default function ExpertProfileEditor() {
           // ignore
         }
       }
+
+      // Automatically find the next section requiring clarification or changes and scroll down to it
+      if (activeSecId) {
+        const ALL_PROFILE_SECTIONS = [
+          { id: "category", num: "01", title: "Category & Skills" },
+          { id: "experience", num: "02", title: "Work Experience & Portfolio" },
+          { id: "profile", num: "03", title: "Profile Details" },
+          { id: "credentials", num: "04", title: "Credentials & KYC" },
+          { id: "preferences", num: "05", title: "Consultation Preferences & Pricing" },
+          { id: "audience", num: "06", title: "Target Audience & Languages" },
+          { id: "availability", num: "07", title: "Availability & Schedule" },
+        ] as const;
+
+        const currentIndex = ALL_PROFILE_SECTIONS.findIndex((s) => s.id === activeSecId);
+        const candidates = [
+          ...ALL_PROFILE_SECTIONS.slice(currentIndex + 1),
+          ...ALL_PROFILE_SECTIONS.slice(0, Math.max(0, currentIndex)),
+        ];
+
+        const nextSection = candidates.find((s) => {
+          if (s.id === activeSecId) return false;
+          const clar = pendingClarifications[s.id];
+          const dec = sectionDecisions[s.id];
+          const isClar = (clar?.status === "waiting" || dec?.decision === "clarification") && clar?.status !== "received";
+          const isRej = dec?.decision === "reject";
+          return isClar || isRej;
+        });
+
+        if (nextSection) {
+          setOpenSections((prev) => new Set(prev).add(nextSection.id));
+          window.setTimeout(() => {
+            const targetEl = document.getElementById(`${nextSection.id}-section`);
+            if (targetEl) {
+              targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }, 200);
+        }
+      }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Could not save profile.");
     } finally {
       setIsSaving(false);
+      setActiveSavingSectionId(null);
     }
+  };
+
+  const isSectionLocked = useCallback(
+    (secId: string): boolean => {
+      const isProfileUnapproved = ["on_hold", "in_review", "pending_review", "pending", "draft"].includes(reviewStatus);
+      const decision = sectionDecisions[secId]?.decision;
+      return isProfileUnapproved && decision === "approve";
+    },
+    [reviewStatus, sectionDecisions]
+  );
+
+  const getSectionClarification = useCallback(
+    (secId: string): string => {
+      const decision = sectionDecisions[secId];
+      const clar = pendingClarifications[secId];
+      if (decision?.decision === "clarification" && decision.note) return decision.note;
+      if (clar?.status === "waiting" && clar.note) return clar.note;
+      if (decision?.notes && decision.notes.length > 0) {
+        return decision.notes[decision.notes.length - 1].text;
+      }
+      return "";
+    },
+    [sectionDecisions, pendingClarifications]
+  );
+
+  const getSectionRejection = useCallback(
+    (secId: string): string => {
+      const decision = sectionDecisions[secId];
+      if (decision?.decision === "reject" && decision.note) return decision.note;
+      if (decision?.decision === "reject" && decision.notes && decision.notes.length > 0) {
+        return decision.notes[decision.notes.length - 1].text;
+      }
+      return "";
+    },
+    [sectionDecisions]
+  );
+
+  const toggleSection = (secId: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(secId)) next.delete(secId);
+      else next.add(secId);
+      return next;
+    });
+  };
+
+  const toggleAllSections = () => {
+    if (openSections.size >= 7) {
+      setOpenSections(new Set());
+    } else {
+      setOpenSections(new Set(["category", "experience", "profile", "credentials", "preferences", "audience", "availability"]));
+    }
+  };
+
+  const handleToggleEditSection = (secId: string) => {
+    if (isSectionLocked(secId)) return;
+    setOpenSections((prev) => new Set(prev).add(secId));
+    setEditingSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(secId)) next.delete(secId);
+      else next.add(secId);
+      return next;
+    });
+  };
+
+  const renderStatusBadge = (secId: string) => {
+    const locked = isSectionLocked(secId);
+    if (locked) {
+      return (
+        <span className={styles.sectionBadgeApproved}>
+          <Lock size={11} /> Approved
+        </span>
+      );
+    }
+    const clar = getSectionClarification(secId);
+    if (clar) {
+      return (
+        <span className={styles.sectionBadgeClarification}>
+          <AlertCircle size={11} /> Clarification
+        </span>
+      );
+    }
+    const rej = getSectionRejection(secId);
+    if (rej) {
+      return (
+        <span className={styles.sectionBadgeRejected}>
+          <AlertTriangle size={11} /> Changes Required
+        </span>
+      );
+    }
+    const decision = sectionDecisions[secId]?.decision;
+    if (decision === "approve") {
+      return (
+        <span className={styles.sectionBadgeApproved}>
+          <CheckCircle2 size={11} /> Approved
+        </span>
+      );
+    }
+    return (
+      <span className={styles.sectionBadgePending}>
+        Pending Review
+      </span>
+    );
   };
 
   const publicProfileSlug = expertSlug(profile.name);
   const publicProfileUrl = `/expert/${publicProfileSlug}`;
 
   const yearOptions = useMemo(() => getYearOptions(35), []);
+
+  const renderAccordionSection = (
+    secId: string,
+    num: string,
+    title: string,
+    content: React.ReactNode,
+  ) => {
+    const isOpen = openSections.has(secId);
+    const locked = isSectionLocked(secId);
+    const clarNote = getSectionClarification(secId);
+    const rejNote = getSectionRejection(secId);
+    const isEditing = editingSections.has(secId);
+
+    return (
+      <div
+        key={secId}
+        className={`${styles.accordionCard} ${isOpen ? styles.accordionCardOpen : ""} ${
+          locked
+            ? styles.accordionCardLocked
+            : clarNote
+            ? styles.accordionCardClarification
+            : rejNote
+            ? styles.accordionCardRejected
+            : ""
+        }`}
+        id={`${secId}-section`}
+      >
+        <div
+          className={styles.accordionHeader}
+          onClick={() => toggleSection(secId)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleSection(secId);
+            }
+          }}
+          aria-expanded={isOpen}
+        >
+          <div className={styles.accordionHeaderLeft}>
+            <span className={styles.accordionIndex}>{num}</span>
+            <h3 className={styles.accordionTitle}>{title}</h3>
+            {renderStatusBadge(secId)}
+            {clarNote && (
+              <div className={styles.alertBannerClarification} title={clarNote}>
+                <AlertCircle size={13} className={styles.alertBannerIcon} />
+                <span className={styles.alertBannerText}>
+                  <strong>Clarification:</strong> {clarNote}
+                </span>
+              </div>
+            )}
+            {rejNote && (
+              <div className={styles.alertBannerRejection} title={rejNote}>
+                <AlertTriangle size={13} className={styles.alertBannerIcon} />
+                <span className={styles.alertBannerText}>
+                  <strong>Changes needed:</strong> {rejNote}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className={styles.accordionHeaderRight} onClick={(e) => e.stopPropagation()}>
+            {!locked ? (
+              <button
+                type="button"
+                className={`${styles.editSectionButton} ${
+                  isEditing ? styles.editSectionButtonActive : ""
+                }`}
+                onClick={() => handleToggleEditSection(secId)}
+                aria-label={`Edit ${title}`}
+              >
+                <Pencil size={12} />
+                <span>{isEditing ? "Editing" : "Edit"}</span>
+              </button>
+            ) : (
+              <span className={styles.lockedPill}>
+                <Lock size={12} />
+                <span>Locked</span>
+              </span>
+            )}
+            <button
+              type="button"
+              className={styles.chevronButton}
+              onClick={() => toggleSection(secId)}
+              aria-label={isOpen ? "Collapse section" : "Expand section"}
+            >
+              <ChevronDown
+                size={18}
+                className={`${styles.chevronIcon} ${isOpen ? styles.chevronIconRotated : ""}`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {isOpen && (
+          <div className={styles.accordionBody}>
+            {locked && (
+              <div className={styles.lockedBanner}>
+                <Lock size={15} />
+                <span>
+                  This section has been approved by the review team and is locked from modification while your application is on hold.
+                </span>
+              </div>
+            )}
+            <fieldset className={locked ? styles.disabledFieldset : undefined} disabled={locked}>
+              {content}
+            </fieldset>
+
+            {!locked && (
+              <div className={styles.sectionFooterSave}>
+                {saveError && activeSavingSectionId === secId && (
+                  <div className={styles.sectionErrorNote}>
+                    <AlertCircle size={14} /> {saveError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={`${styles.sectionSaveBtn} ${
+                    savedSectionId === secId || (saved && !savedSectionId)
+                      ? styles.sectionSaveBtnSaved
+                      : ""
+                  }`}
+                  onClick={() => handleSaveAll(secId)}
+                  disabled={isSaving || !isExpertProfileValid(profile)}
+                >
+                  {savedSectionId === secId || (saved && !savedSectionId) ? (
+                    <>
+                      <Check size={14} /> <span>Saved</span>
+                    </>
+                  ) : activeSavingSectionId === secId && isSaving ? (
+                    <span>Saving…</span>
+                  ) : (
+                    <>
+                      <Check size={14} /> <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (credentialsLoading) return <div className={styles.editor} role="status">Loading your profile…</div>;
   if (credentialsError) return <div className={styles.editor} role="alert">{credentialsError}</div>;
@@ -760,6 +1093,13 @@ export default function ExpertProfileEditor() {
         </div>
 
         <div className={styles.topButtonsGroup}>
+          <button
+            type="button"
+            className={styles.accordionToggleAllBtn}
+            onClick={toggleAllSections}
+          >
+            {openSections.size >= 7 ? "Collapse All Sections" : "Expand All Sections"}
+          </button>
           <div className={styles.saveBtnWrapper}>
             <PrimaryButton
               type="button"
@@ -775,7 +1115,7 @@ export default function ExpertProfileEditor() {
               variant={saved ? "light" : "orange"}
               disabled={!isExpertProfileValid(profile) || isSaving}
               staticLabel={true}
-              onClick={handleSaveAll}
+              onClick={() => handleSaveAll()}
             />
           </div>
         </div>
@@ -787,66 +1127,451 @@ export default function ExpertProfileEditor() {
         </div>
       )}
 
-      {Object.entries(pendingClarifications).some(([, v]) => v?.status === "waiting") && (
-        <div
-          style={{
-            margin: "0 0 20px 0",
-            padding: "16px 20px",
-            borderRadius: "10px",
-            background: "#fff7ed",
-            border: "1.5px solid #fdba74",
-            color: "#9a3412",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "12px",
-          }}
-        >
-          <AlertCircle size={20} style={{ color: "#ea580c", flexShrink: 0, marginTop: "2px" }} />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px" }}>
-              Action Required: Review Team Requested Clarification
-            </div>
-            <p style={{ margin: "0 0 8px 0", fontSize: "13px", lineHeight: "1.4" }}>
-              Please review and update the information for the sections below. Once you click &quot;Save Changes&quot;, the review team will be notified with your updates.
-            </p>
-            {Object.entries(pendingClarifications)
-              .filter(([, v]) => v?.status === "waiting")
-              .map(([secKey, v]) => {
-                const titles: Record<string, string> = {
-                  category: "Category & Skills",
-                  experience: "Work Experience & Portfolio",
-                  profile: "Profile Details",
-                  credentials: "Credentials & KYC",
-                  preferences: "Consultation Formats & Pricing",
-                  audience: "Target Client Audience",
-                  availability: "Availability & Schedule",
-                };
-                return (
-                  <div
-                    key={secKey}
-                    style={{
-                      fontSize: "12px",
-                      background: "rgba(255, 255, 255, 0.8)",
-                      padding: "8px 12px",
-                      borderRadius: "6px",
-                      marginBottom: "6px",
-                      border: "1px solid #fed7aa",
-                    }}
-                  >
-                    <strong style={{ color: "#c2410c" }}>{titles[secKey] || secKey}:</strong>{" "}
-                    {v.note || "Please provide the requested details."}
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
+      <div className={styles.accordionContainer}>
 
       {/* ----------------------------------------------------
           STEP 1 & 4: PROFESSIONAL IDENTITY & BASIC INFO
       ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="identity-section">
-        <div className={styles.sectionHeader}>
+      
+        {renderAccordionSection(
+          "category",
+          "01",
+          "Category & Skills",
+          (
+            <>
+              <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeaderLeft}>
+            <div className={styles.sectionIconBox}>
+              <Layers size={18} />
+            </div>
+            <div>
+              <h2 className={styles.sectionTitle}>Skills & Specializations</h2>
+              <p className={styles.sectionSubtitle}>
+                Add your core competencies and tags so seekers find you for specific problems.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.fieldGroup}>
+          <div className={styles.fieldLabel}>Primary Skill</div>
+          <p className={styles.skillsHint}>
+            Choose one primary area, as in onboarding. Changing it clears selected Core Skills.
+          </p>
+          <div className={styles.chipsGrid} aria-label="Primary skill categories">
+            {EXPERT_SKILL_CATEGORIES.map((category) => {
+              const isSelected = matchedPrimaryCategory?.id === category.id;
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
+                  onClick={() => handleSelectPrimarySkill(isSelected ? "" : category.label)}
+                  aria-pressed={isSelected}
+                >
+                  {isSelected && <Check size={13} />}
+                  {category.label}
+                </button>
+              );
+            })}
+            {customPrimarySkill && (
+              <button
+                type="button"
+                className={`${styles.selectableChip} ${primaryCategoryIsCustom ? styles.selectableChipActive : ""}`}
+                onClick={() => handleSelectPrimarySkill(primaryCategoryIsCustom ? "" : customPrimarySkill)}
+                aria-pressed={primaryCategoryIsCustom}
+              >
+                {primaryCategoryIsCustom && <Check size={13} />}
+                {customPrimarySkill}
+              </button>
+            )}
+          </div>
+          <div className={styles.skillInputRow}>
+            <input
+              type="text"
+              value={primarySkillInput}
+              onChange={(event) => {
+                setPrimarySkillInput(event.target.value);
+                setSkillRecommendationError("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleAddCustomPrimarySkill();
+                }
+              }}
+              className={styles.textField}
+              placeholder="Add custom Primary Skill"
+              aria-label="Add custom Primary Skill"
+              disabled={isRecommendingPrimarySkill || Boolean(customPrimarySkill)}
+            />
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={() => void handleAddCustomPrimarySkill()}
+              disabled={!primarySkillInput.trim() || isRecommendingPrimarySkill || Boolean(customPrimarySkill)}
+            >
+              {isRecommendingPrimarySkill ? "Checking..." : <><Plus size={14} /> Add</>}
+            </button>
+          </div>
+          {customPrimarySkill && (
+            <button
+              type="button"
+              className={styles.removeCustomPrimarySkillBtn}
+              onClick={() => {
+                if (primaryCategoryIsCustom) handleSelectPrimarySkill("");
+                setCustomPrimarySkill("");
+              }}
+            >
+              <X size={13} /> Remove custom Primary Skill
+            </button>
+          )}
+          {skillRecommendationError && (
+            <p className={styles.skillSelectionError} role="alert">{skillRecommendationError}</p>
+          )}
+          {skillSelectionNotice && (
+            <p className={styles.skillsHint} role="status">{skillSelectionNotice}</p>
+          )}
+
+          <div className={styles.fieldLabel}>
+            Core Skills ({secondarySkills.length}/{MAX_EXPERT_SECONDARY_SKILLS})
+          </div>
+
+          {suggestedSecondarySkills.length > 0 ? (
+            <div className={styles.chipsGrid} aria-label="Available skills">
+              {suggestedSecondarySkills.map((skill) => {
+                const isSelected = secondarySkills.some(
+                  (item) => item.toLowerCase() === skill.toLowerCase(),
+                );
+                return (
+                  <button
+                    key={skill}
+                    type="button"
+                    className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
+                    onClick={() => handleToggleSkill(skill)}
+                    disabled={!isSelected && secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS}
+                    aria-pressed={isSelected}
+                  >
+                    {isSelected && <Check size={13} />}
+                    {skill}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className={styles.skillsHint}>
+              {isRecommendingPrimarySkill
+                ? "Loading suggested skills for this Primary Skill..."
+                : primarySkill
+                  ? "No predefined skills are available for this category. Add your own below."
+                  : "Choose a Primary Skill above to see relevant skills."}
+            </p>
+          )}
+          <label htmlFor="profile-skills" className={styles.fieldLabel}>
+            Add another skill
+          </label>
+          <div className={styles.skillInputRow}>
+            <input
+              id="profile-skills"
+              type="text"
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddSkill();
+                }
+              }}
+              onBlur={() => {
+                if (skillInput.trim()) handleAddSkill();
+              }}
+              className={styles.textField}
+              placeholder="Type a skill and press Enter"
+              disabled={!primarySkill || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS}
+            />
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={handleAddSkill}
+              disabled={
+                !skillInput.trim()
+                || !primarySkill
+                || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS
+              }
+            >
+              <Plus size={14} /> Add
+            </button>
+          </div>
+
+          <ul className={styles.skillList}>
+            {secondarySkills.map((skill) => (
+              <li key={skill} className={styles.skillPill}>
+                <span>{skill}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSkill(skill)}
+                  aria-label={`Remove ${skill}`}
+                >
+                  <X size={12} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+            </>
+          ),
+        )}
+
+        {renderAccordionSection(
+          "experience",
+          "02",
+          "Work Experience & Portfolio",
+          (
+            <>
+              <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeaderLeft}>
+            <div className={styles.sectionIconBox}>
+              <Briefcase size={18} />
+            </div>
+            <div>
+              <h2 className={styles.sectionTitle}>Work Experience & Background</h2>
+              <p className={styles.sectionSubtitle}>
+                Detailed track record of past leadership, consulting roles, and degrees.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`${styles.linkedinSyncBtn} ${linkedinConnected ? styles.linkedinSyncBtnDone : ""}`}
+            onClick={handleLinkedinSync}
+            disabled={isLinkedinSyncing}
+          >
+            <span className={styles.linkedinMark} aria-hidden="true">in</span>
+            {isLinkedinSyncing
+              ? "Syncing..."
+              : linkedinConnected
+                ? "LinkedIn Synced"
+                : "Fetch With LinkedIn"}
+          </button>
+        </div>
+
+        {linkedinError && <p className={styles.errorNote} role="alert">{linkedinError}</p>}
+
+        {/* Employment Positions */}
+        <div className={styles.fieldGroup}>
+          <div className={styles.fieldLabelRow}>
+            <label className={styles.fieldLabel}>
+              Employment Positions ({employmentPositions.length})
+            </label>
+          </div>
+
+          <div className={styles.itemCardList}>
+            {employmentPositions.map((pos) => (
+              <div key={pos.id} className={styles.itemCard}>
+                <div className={styles.itemCardHeader}>
+                  <h4 className={styles.itemCardTitle}>
+                    {pos.jobTitle || "Job Title"} at {pos.company || "Company"}
+                  </h4>
+                  <button
+                    type="button"
+                    className={styles.deleteItemBtn}
+                    onClick={() => setPositionToDelete(pos)}
+                    title="Remove Position"
+                    aria-label={`Delete ${pos.jobTitle || "work experience"}${pos.company ? ` at ${pos.company}` : ""}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Job Title</label>
+                    <input
+                      type="text"
+                      value={pos.jobTitle}
+                      onChange={(e) => handleUpdatePosition(pos.id, { jobTitle: e.target.value })}
+                      className={styles.textField}
+                      placeholder="e.g. VP of Product"
+                    />
+                  </div>
+
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Company / Organization</label>
+                    <input
+                      type="text"
+                      value={pos.company}
+                      onChange={(e) => handleUpdatePosition(pos.id, { company: e.target.value })}
+                      className={styles.textField}
+                      placeholder="e.g. Microsoft"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Start Year</label>
+                    <select
+                      value={pos.startYear}
+                      onChange={(e) => handleUpdatePosition(pos.id, { startYear: e.target.value })}
+                      className={styles.selectField}
+                    >
+                      <option value="">Select Year</option>
+                      {yearOptions.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>End Year</label>
+                    <select
+                      value={pos.endYear}
+                      disabled={pos.currentlyWorking}
+                      onChange={(e) => handleUpdatePosition(pos.id, { endYear: e.target.value })}
+                      className={styles.selectField}
+                    >
+                      <option value="">{pos.currentlyWorking ? "Present" : "Select Year"}</option>
+                      {yearOptions.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel}>Responsibilities & Impact</label>
+                  <textarea
+                    value={pos.responsibilities}
+                    onChange={(e) =>
+                      handleUpdatePosition(pos.id, { responsibilities: e.target.value })
+                    }
+                    className={styles.textareaField}
+                    rows={2}
+                    placeholder="Key highlights and scope of work."
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className={styles.addBtn}
+            style={{ minHeight: 34, padding: "0 12px", alignSelf: "flex-end" }}
+            onClick={handleAddPosition}
+          >
+            <Plus size={13} /> Add Position
+          </button>
+        </div>
+
+        {/* Education Degrees */}
+        <div className={styles.fieldGroup} style={{ marginTop: 12 }}>
+          <div className={styles.fieldLabelRow}>
+            <label className={styles.fieldLabel}>
+              Education & Degrees ({educationDegrees.length})
+            </label>
+          </div>
+
+          <div className={styles.itemCardList}>
+            {educationDegrees.map((deg) => (
+              <div key={deg.id} className={styles.itemCard}>
+                <div className={styles.itemCardHeader}>
+                  <h4 className={styles.itemCardTitle}>
+                    {deg.degree || "Degree"} — {deg.institution || "Institution"}
+                  </h4>
+                  <button
+                    type="button"
+                    className={styles.deleteItemBtn}
+                    onClick={() => setDegreeToDelete(deg)}
+                    title="Remove Degree"
+                    aria-label={`Delete ${deg.degree || "education record"}${deg.institution ? ` from ${deg.institution}` : ""}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Degree / Certification</label>
+                    <input
+                      type="text"
+                      value={deg.degree}
+                      onChange={(e) => handleUpdateDegree(deg.id, { degree: e.target.value })}
+                      className={styles.textField}
+                      placeholder="e.g. Master of Science"
+                    />
+                  </div>
+
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Institution</label>
+                    <input
+                      type="text"
+                      value={deg.institution}
+                      onChange={(e) => handleUpdateDegree(deg.id, { institution: e.target.value })}
+                      className={styles.textField}
+                      placeholder="e.g. IIT Delhi"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.fieldRow}>
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Field of Study</label>
+                    <input
+                      type="text"
+                      value={deg.fieldOfStudy}
+                      onChange={(e) => handleUpdateDegree(deg.id, { fieldOfStudy: e.target.value })}
+                      className={styles.textField}
+                      placeholder="e.g. Computer Science"
+                    />
+                  </div>
+
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel}>Graduation Year</label>
+                    <select
+                      value={deg.graduationYear}
+                      onChange={(e) =>
+                        handleUpdateDegree(deg.id, { graduationYear: e.target.value })
+                      }
+                      className={styles.selectField}
+                    >
+                      <option value="">Select Year</option>
+                      {yearOptions.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className={styles.addBtn}
+            style={{ minHeight: 34, padding: "0 12px", alignSelf: "flex-end" }}
+            onClick={handleAddDegree}
+          >
+            <Plus size={13} /> Add Degree
+          </button>
+        </div>
+            </>
+          ),
+        )}
+
+        {renderAccordionSection(
+          "profile",
+          "03",
+          "Profile Details",
+          (
+            <>
+              <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
               <User size={18} />
@@ -1132,586 +1857,17 @@ export default function ExpertProfileEditor() {
             />
           </div>
         </div>
-      </section>
+            </>
+          ),
+        )}
 
-      {/* ----------------------------------------------------
-          STEP 2: SKILLS & EXPERTISE
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="skills-section">
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionHeaderLeft}>
-            <div className={styles.sectionIconBox}>
-              <Layers size={18} />
-            </div>
-            <div>
-              <h2 className={styles.sectionTitle}>Skills & Specializations</h2>
-              <p className={styles.sectionSubtitle}>
-                Add your core competencies and tags so seekers find you for specific problems.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.fieldGroup}>
-          <div className={styles.fieldLabel}>Primary Skill</div>
-          <p className={styles.skillsHint}>
-            Choose one primary area, as in onboarding. Changing it clears selected Core Skills.
-          </p>
-          <div className={styles.chipsGrid} aria-label="Primary skill categories">
-            {EXPERT_SKILL_CATEGORIES.map((category) => {
-              const isSelected = matchedPrimaryCategory?.id === category.id;
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
-                  onClick={() => handleSelectPrimarySkill(isSelected ? "" : category.label)}
-                  aria-pressed={isSelected}
-                >
-                  {isSelected && <Check size={13} />}
-                  {category.label}
-                </button>
-              );
-            })}
-            {customPrimarySkill && (
-              <button
-                type="button"
-                className={`${styles.selectableChip} ${primaryCategoryIsCustom ? styles.selectableChipActive : ""}`}
-                onClick={() => handleSelectPrimarySkill(primaryCategoryIsCustom ? "" : customPrimarySkill)}
-                aria-pressed={primaryCategoryIsCustom}
-              >
-                {primaryCategoryIsCustom && <Check size={13} />}
-                {customPrimarySkill}
-              </button>
-            )}
-          </div>
-          <div className={styles.skillInputRow}>
-            <input
-              type="text"
-              value={primarySkillInput}
-              onChange={(event) => {
-                setPrimarySkillInput(event.target.value);
-                setSkillRecommendationError("");
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void handleAddCustomPrimarySkill();
-                }
-              }}
-              className={styles.textField}
-              placeholder="Add custom Primary Skill"
-              aria-label="Add custom Primary Skill"
-              disabled={isRecommendingPrimarySkill || Boolean(customPrimarySkill)}
-            />
-            <button
-              type="button"
-              className={styles.addBtn}
-              onClick={() => void handleAddCustomPrimarySkill()}
-              disabled={!primarySkillInput.trim() || isRecommendingPrimarySkill || Boolean(customPrimarySkill)}
-            >
-              {isRecommendingPrimarySkill ? "Checking..." : <><Plus size={14} /> Add</>}
-            </button>
-          </div>
-          {customPrimarySkill && (
-            <button
-              type="button"
-              className={styles.removeCustomPrimarySkillBtn}
-              onClick={() => {
-                if (primaryCategoryIsCustom) handleSelectPrimarySkill("");
-                setCustomPrimarySkill("");
-              }}
-            >
-              <X size={13} /> Remove custom Primary Skill
-            </button>
-          )}
-          {skillRecommendationError && (
-            <p className={styles.skillSelectionError} role="alert">{skillRecommendationError}</p>
-          )}
-          {skillSelectionNotice && (
-            <p className={styles.skillsHint} role="status">{skillSelectionNotice}</p>
-          )}
-
-          <div className={styles.fieldLabel}>
-            Core Skills ({secondarySkills.length}/{MAX_EXPERT_SECONDARY_SKILLS})
-          </div>
-
-          {suggestedSecondarySkills.length > 0 ? (
-            <div className={styles.chipsGrid} aria-label="Available skills">
-              {suggestedSecondarySkills.map((skill) => {
-                const isSelected = secondarySkills.some(
-                  (item) => item.toLowerCase() === skill.toLowerCase(),
-                );
-                return (
-                  <button
-                    key={skill}
-                    type="button"
-                    className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
-                    onClick={() => handleToggleSkill(skill)}
-                    disabled={!isSelected && secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS}
-                    aria-pressed={isSelected}
-                  >
-                    {isSelected && <Check size={13} />}
-                    {skill}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className={styles.skillsHint}>
-              {isRecommendingPrimarySkill
-                ? "Loading suggested skills for this Primary Skill..."
-                : primarySkill
-                  ? "No predefined skills are available for this category. Add your own below."
-                  : "Choose a Primary Skill above to see relevant skills."}
-            </p>
-          )}
-          <label htmlFor="profile-skills" className={styles.fieldLabel}>
-            Add another skill
-          </label>
-          <div className={styles.skillInputRow}>
-            <input
-              id="profile-skills"
-              type="text"
-              value={skillInput}
-              onChange={(e) => setSkillInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddSkill();
-                }
-              }}
-              onBlur={() => {
-                if (skillInput.trim()) handleAddSkill();
-              }}
-              className={styles.textField}
-              placeholder="Type a skill and press Enter"
-              disabled={!primarySkill || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS}
-            />
-            <button
-              type="button"
-              className={styles.addBtn}
-              onClick={handleAddSkill}
-              disabled={
-                !skillInput.trim()
-                || !primarySkill
-                || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS
-              }
-            >
-              <Plus size={14} /> Add
-            </button>
-          </div>
-
-          <ul className={styles.skillList}>
-            {secondarySkills.map((skill) => (
-              <li key={skill} className={styles.skillPill}>
-                <span>{skill}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveSkill(skill)}
-                  aria-label={`Remove ${skill}`}
-                >
-                  <X size={12} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------
-          STEP 3: WORK EXPERIENCE & EDUCATION
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="experience-section">
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionHeaderLeft}>
-            <div className={styles.sectionIconBox}>
-              <Briefcase size={18} />
-            </div>
-            <div>
-              <h2 className={styles.sectionTitle}>Work Experience & Background</h2>
-              <p className={styles.sectionSubtitle}>
-                Detailed track record of past leadership, consulting roles, and degrees.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className={`${styles.linkedinSyncBtn} ${linkedinConnected ? styles.linkedinSyncBtnDone : ""}`}
-            onClick={handleLinkedinSync}
-            disabled={isLinkedinSyncing}
-          >
-            <span className={styles.linkedinMark} aria-hidden="true">in</span>
-            {isLinkedinSyncing
-              ? "Syncing..."
-              : linkedinConnected
-                ? "LinkedIn Synced"
-                : "Fetch With LinkedIn"}
-          </button>
-        </div>
-
-        {linkedinError && <p className={styles.errorNote} role="alert">{linkedinError}</p>}
-
-        {/* Employment Positions */}
-        <div className={styles.fieldGroup}>
-          <div className={styles.fieldLabelRow}>
-            <label className={styles.fieldLabel}>
-              Employment Positions ({employmentPositions.length})
-            </label>
-          </div>
-
-          <div className={styles.itemCardList}>
-            {employmentPositions.map((pos) => (
-              <div key={pos.id} className={styles.itemCard}>
-                <div className={styles.itemCardHeader}>
-                  <h4 className={styles.itemCardTitle}>
-                    {pos.jobTitle || "Job Title"} at {pos.company || "Company"}
-                  </h4>
-                  <button
-                    type="button"
-                    className={styles.deleteItemBtn}
-                    onClick={() => setPositionToDelete(pos)}
-                    title="Remove Position"
-                    aria-label={`Delete ${pos.jobTitle || "work experience"}${pos.company ? ` at ${pos.company}` : ""}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>Job Title</label>
-                    <input
-                      type="text"
-                      value={pos.jobTitle}
-                      onChange={(e) => handleUpdatePosition(pos.id, { jobTitle: e.target.value })}
-                      className={styles.textField}
-                      placeholder="e.g. VP of Product"
-                    />
-                  </div>
-
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>Company / Organization</label>
-                    <input
-                      type="text"
-                      value={pos.company}
-                      onChange={(e) => handleUpdatePosition(pos.id, { company: e.target.value })}
-                      className={styles.textField}
-                      placeholder="e.g. Microsoft"
-                    />
-                  </div>
-                </div>
-
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>Start Year</label>
-                    <select
-                      value={pos.startYear}
-                      onChange={(e) => handleUpdatePosition(pos.id, { startYear: e.target.value })}
-                      className={styles.selectField}
-                    >
-                      <option value="">Select Year</option>
-                      {yearOptions.map((yr) => (
-                        <option key={yr} value={yr}>
-                          {yr}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>End Year</label>
-                    <select
-                      value={pos.endYear}
-                      disabled={pos.currentlyWorking}
-                      onChange={(e) => handleUpdatePosition(pos.id, { endYear: e.target.value })}
-                      className={styles.selectField}
-                    >
-                      <option value="">{pos.currentlyWorking ? "Present" : "Select Year"}</option>
-                      {yearOptions.map((yr) => (
-                        <option key={yr} value={yr}>
-                          {yr}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>Responsibilities & Impact</label>
-                  <textarea
-                    value={pos.responsibilities}
-                    onChange={(e) =>
-                      handleUpdatePosition(pos.id, { responsibilities: e.target.value })
-                    }
-                    className={styles.textareaField}
-                    rows={2}
-                    placeholder="Key highlights and scope of work."
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            className={styles.addBtn}
-            style={{ minHeight: 34, padding: "0 12px", alignSelf: "flex-end" }}
-            onClick={handleAddPosition}
-          >
-            <Plus size={13} /> Add Position
-          </button>
-        </div>
-
-        {/* Education Degrees */}
-        <div className={styles.fieldGroup} style={{ marginTop: 12 }}>
-          <div className={styles.fieldLabelRow}>
-            <label className={styles.fieldLabel}>
-              Education & Degrees ({educationDegrees.length})
-            </label>
-          </div>
-
-          <div className={styles.itemCardList}>
-            {educationDegrees.map((deg) => (
-              <div key={deg.id} className={styles.itemCard}>
-                <div className={styles.itemCardHeader}>
-                  <h4 className={styles.itemCardTitle}>
-                    {deg.degree || "Degree"} — {deg.institution || "Institution"}
-                  </h4>
-                  <button
-                    type="button"
-                    className={styles.deleteItemBtn}
-                    onClick={() => setDegreeToDelete(deg)}
-                    title="Remove Degree"
-                    aria-label={`Delete ${deg.degree || "education record"}${deg.institution ? ` from ${deg.institution}` : ""}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>Degree / Certification</label>
-                    <input
-                      type="text"
-                      value={deg.degree}
-                      onChange={(e) => handleUpdateDegree(deg.id, { degree: e.target.value })}
-                      className={styles.textField}
-                      placeholder="e.g. Master of Science"
-                    />
-                  </div>
-
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>Institution</label>
-                    <input
-                      type="text"
-                      value={deg.institution}
-                      onChange={(e) => handleUpdateDegree(deg.id, { institution: e.target.value })}
-                      className={styles.textField}
-                      placeholder="e.g. IIT Delhi"
-                    />
-                  </div>
-                </div>
-
-                <div className={styles.fieldRow}>
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>Field of Study</label>
-                    <input
-                      type="text"
-                      value={deg.fieldOfStudy}
-                      onChange={(e) => handleUpdateDegree(deg.id, { fieldOfStudy: e.target.value })}
-                      className={styles.textField}
-                      placeholder="e.g. Computer Science"
-                    />
-                  </div>
-
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>Graduation Year</label>
-                    <select
-                      value={deg.graduationYear}
-                      onChange={(e) =>
-                        handleUpdateDegree(deg.id, { graduationYear: e.target.value })
-                      }
-                      className={styles.selectField}
-                    >
-                      <option value="">Select Year</option>
-                      {yearOptions.map((yr) => (
-                        <option key={yr} value={yr}>
-                          {yr}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            className={styles.addBtn}
-            style={{ minHeight: 34, padding: "0 12px", alignSelf: "flex-end" }}
-            onClick={handleAddDegree}
-          >
-            <Plus size={13} /> Add Degree
-          </button>
-        </div>
-      </section>
-
-      <ConfirmModal
-        isOpen={Boolean(positionToDelete)}
-        onClose={() => setPositionToDelete(null)}
-        onConfirm={confirmRemovePosition}
-        title="Delete work experience?"
-        message={
-          positionToDelete
-            ? `Remove ${positionToDelete.jobTitle || "this position"}${positionToDelete.company ? ` at ${positionToDelete.company}` : ""} from your profile?`
-            : "Remove this position from your profile?"
-        }
-        confirmText="Delete"
-        cancelText="Keep"
-        variant="danger"
-      />
-
-      <ConfirmModal
-        isOpen={Boolean(degreeToDelete)}
-        onClose={() => setDegreeToDelete(null)}
-        onConfirm={confirmRemoveDegree}
-        title="Delete education record?"
-        message={
-          degreeToDelete
-            ? `Remove ${degreeToDelete.degree || "this education record"}${degreeToDelete.institution ? ` from ${degreeToDelete.institution}` : ""} from your profile?`
-            : "Remove this education record from your profile?"
-        }
-        confirmText="Delete"
-        cancelText="Keep"
-        variant="danger"
-      />
-
-      {/* ----------------------------------------------------
-          STEP 6: CONSULTATION PREFERENCES & PRICING
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="pricing-section">
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionHeaderLeft}>
-            <div className={styles.sectionIconBox}>
-              <DollarSign size={18} />
-            </div>
-            <div>
-              <h2 className={styles.sectionTitle}>Consultation Formats & Pricing</h2>
-              <p className={styles.sectionSubtitle}>
-                Set your offered session formats, duration options, and session fee in ₹ (INR).
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Formats Grid */}
-        <div className={styles.formatsGrid}>
-          {CONSULTATION_FORMATS.map((fmt) => {
-            const isEnabled = selectedFormats.includes(fmt.id);
-            return (
-              <div
-                key={fmt.id}
-                className={`${styles.formatCard} ${isEnabled ? styles.formatCardActive : ""}`}
-              >
-                <div className={styles.formatCardTop}>
-                  <h4 className={styles.formatTitle}>{fmt.title}</h4>
-                  <input
-                    type="checkbox"
-                    checked={isEnabled}
-                    onChange={() => handleToggleFormat(fmt.id)}
-                    aria-label={`Enable ${fmt.title}`}
-                  />
-                </div>
-                <p className={styles.formatDesc}>{fmt.desc.replace(/\n/g, " ")}</p>
-
-                {isEnabled && (
-                  <div className={styles.formatPriceRow}>
-                    <div className={styles.formatPriceInputWrap}>
-                      <span className={styles.currencyPrefix}>₹</span>
-                      <input
-                        type="number"
-                        value={formatPrices[fmt.id] ?? "25"}
-                        onChange={(e) => handlePriceChange(fmt.id, e.target.value)}
-                        className={styles.priceInput}
-                        placeholder="0"
-                        min="0"
-                      />
-                    </div>
-                    <span className={styles.priceUnit}>/min</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Session Lengths */}
-        <div className={styles.fieldGroup} style={{ marginTop: 12 }}>
-          <label className={styles.fieldLabel}>Supported Session Lengths</label>
-          <div className={styles.chipsGrid}>
-            {SESSION_LENGTHS.map((len) => {
-              const active = selectedLengths.includes(len.id);
-              return (
-                <button
-                  key={len.id}
-                  type="button"
-                  onClick={() => handleToggleLength(len.id)}
-                  className={`${styles.selectableChip} ${active ? styles.selectableChipActive : ""}`}
-                >
-                  <Clock size={13} /> {len.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-      </section>
-
-      {/* ----------------------------------------------------
-          STEP 7: TARGET AUDIENCE
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="audience-section">
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionHeaderLeft}>
-            <div className={styles.sectionIconBox}>
-              <Users size={18} />
-            </div>
-            <div>
-              <h2 className={styles.sectionTitle}>Target Client Audience</h2>
-              <p className={styles.sectionSubtitle}>
-                Select the types of clients and organizational tiers you specialize in advising.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.chipsGrid}>
-          {AUDIENCE_OPTIONS.map((aud) => {
-            const active = selectedAudiences.includes(aud.id);
-            return (
-              <button
-                key={aud.id}
-                type="button"
-                onClick={() => handleToggleAudience(aud.id)}
-                className={`${styles.selectableChip} ${active ? styles.selectableChipActive : ""}`}
-              >
-                <CheckCircle2 size={14} />
-                <span>
-                  <strong>{aud.label}</strong> — {aud.desc}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------
-          STEP 5: CREDENTIALS & KYC VERIFICATION
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="kyc-section">
-        <div className={styles.sectionHeader}>
+        {renderAccordionSection(
+          "credentials",
+          "04",
+          "Credentials & KYC",
+          (
+            <>
+              <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
               <ShieldCheck size={18} />
@@ -1823,7 +1979,218 @@ export default function ExpertProfileEditor() {
             {portfolioSamples.length === 0 && <p className={styles.kycDetailText}>No work samples uploaded.</p>}
           </div>
         </div>}
-      </section>
+            </>
+          ),
+        )}
+
+        {renderAccordionSection(
+          "preferences",
+          "05",
+          "Consultation Preferences & Pricing",
+          (
+            <>
+              <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeaderLeft}>
+            <div className={styles.sectionIconBox}>
+              <DollarSign size={18} />
+            </div>
+            <div>
+              <h2 className={styles.sectionTitle}>Consultation Formats & Pricing</h2>
+              <p className={styles.sectionSubtitle}>
+                Set your offered session formats, duration options, and session fee in ₹ (INR).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Formats Grid */}
+        <div className={styles.formatsGrid}>
+          {CONSULTATION_FORMATS.map((fmt) => {
+            const isEnabled = selectedFormats.includes(fmt.id);
+            return (
+              <div
+                key={fmt.id}
+                className={`${styles.formatCard} ${isEnabled ? styles.formatCardActive : ""}`}
+              >
+                <div className={styles.formatCardTop}>
+                  <h4 className={styles.formatTitle}>{fmt.title}</h4>
+                  <input
+                    type="checkbox"
+                    checked={isEnabled}
+                    onChange={() => handleToggleFormat(fmt.id)}
+                    aria-label={`Enable ${fmt.title}`}
+                  />
+                </div>
+                <p className={styles.formatDesc}>{fmt.desc.replace(/\n/g, " ")}</p>
+
+                {isEnabled && (
+                  <div className={styles.formatPriceRow}>
+                    <div className={styles.formatPriceInputWrap}>
+                      <span className={styles.currencyPrefix}>₹</span>
+                      <input
+                        type="number"
+                        value={formatPrices[fmt.id] ?? "25"}
+                        onChange={(e) => handlePriceChange(fmt.id, e.target.value)}
+                        className={styles.priceInput}
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                    <span className={styles.priceUnit}>/min</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Session Lengths */}
+        <div className={styles.fieldGroup} style={{ marginTop: 12 }}>
+          <label className={styles.fieldLabel}>Supported Session Lengths</label>
+          <div className={styles.chipsGrid}>
+            {SESSION_LENGTHS.map((len) => {
+              const active = selectedLengths.includes(len.id);
+              return (
+                <button
+                  key={len.id}
+                  type="button"
+                  onClick={() => handleToggleLength(len.id)}
+                  className={`${styles.selectableChip} ${active ? styles.selectableChipActive : ""}`}
+                >
+                  <Clock size={13} /> {len.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+            </>
+          ),
+        )}
+
+        {renderAccordionSection(
+          "audience",
+          "06",
+          "Target Audience & Languages",
+          (
+            <>
+              <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeaderLeft}>
+            <div className={styles.sectionIconBox}>
+              <Users size={18} />
+            </div>
+            <div>
+              <h2 className={styles.sectionTitle}>Target Client Audience</h2>
+              <p className={styles.sectionSubtitle}>
+                Select the types of clients and organizational tiers you specialize in advising.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.chipsGrid}>
+          {AUDIENCE_OPTIONS.map((aud) => {
+            const active = selectedAudiences.includes(aud.id);
+            return (
+              <button
+                key={aud.id}
+                type="button"
+                onClick={() => handleToggleAudience(aud.id)}
+                className={`${styles.selectableChip} ${active ? styles.selectableChipActive : ""}`}
+              >
+                <CheckCircle2 size={14} />
+                <span>
+                  <strong>{aud.label}</strong> — {aud.desc}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+            </>
+          ),
+        )}
+
+        {renderAccordionSection(
+          "availability",
+          "07",
+          "Availability & Schedule",
+          (
+            <WeeklySchedulePanel
+              disabled={isSectionLocked("availability")}
+              onScheduleChange={(schedule) => {
+                setTimezone(schedule.timezone);
+                setAvailabilitySlots(schedule.slots);
+                setSaved(false);
+              }}
+              onSaved={() => {
+                setPendingClarifications((prev) => ({
+                  ...prev,
+                  availability: { ...prev.availability, status: "received" },
+                }));
+                setSectionDecisions((prev) => ({
+                  ...prev,
+                  availability: { ...prev.availability, clarificationStatus: "received" },
+                }));
+                const ALL_PROFILE_SECTIONS = [
+                  { id: "category", num: "01", title: "Category & Skills" },
+                  { id: "experience", num: "02", title: "Work Experience & Portfolio" },
+                  { id: "profile", num: "03", title: "Profile Details" },
+                  { id: "credentials", num: "04", title: "Credentials & KYC" },
+                  { id: "preferences", num: "05", title: "Consultation Preferences & Pricing" },
+                  { id: "audience", num: "06", title: "Target Audience & Languages" },
+                  { id: "availability", num: "07", title: "Availability & Schedule" },
+                ] as const;
+                const nextSection = ALL_PROFILE_SECTIONS.find((s) => {
+                  if (s.id === "availability") return false;
+                  const clar = pendingClarifications[s.id];
+                  const dec = sectionDecisions[s.id];
+                  return (clar?.status === "waiting" || dec?.decision === "clarification") && clar?.status !== "received";
+                });
+                if (nextSection) {
+                  setOpenSections((prev) => new Set(prev).add(nextSection.id));
+                  window.setTimeout(() => {
+                    document.getElementById(`${nextSection.id}-section`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 200);
+                }
+              }}
+            />
+          ),
+        )}
+
+        <ConfirmModal
+        isOpen={Boolean(positionToDelete)}
+        onClose={() => setPositionToDelete(null)}
+        onConfirm={confirmRemovePosition}
+        title="Delete work experience?"
+        message={
+          positionToDelete
+            ? `Remove ${positionToDelete.jobTitle || "this position"}${positionToDelete.company ? ` at ${positionToDelete.company}` : ""} from your profile?`
+            : "Remove this position from your profile?"
+        }
+        confirmText="Delete"
+        cancelText="Keep"
+        variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(degreeToDelete)}
+        onClose={() => setDegreeToDelete(null)}
+        onConfirm={confirmRemoveDegree}
+        title="Delete education record?"
+        message={
+          degreeToDelete
+            ? `Remove ${degreeToDelete.degree || "this education record"}${degreeToDelete.institution ? ` from ${degreeToDelete.institution}` : ""} from your profile?`
+            : "Remove this education record from your profile?"
+        }
+        confirmText="Delete"
+        cancelText="Keep"
+        variant="danger"
+      />
+
+      {/* ----------------------------------------------------
+          STEP 6: CONSULTATION PREFERENCES & PRICING
+      ---------------------------------------------------- */}
+      </div>
+
 
       {/* ----------------------------------------------------
           BOTTOM ACTIONS
@@ -1844,7 +2211,7 @@ export default function ExpertProfileEditor() {
             variant={saved ? "light" : "orange"}
             disabled={!isExpertProfileValid(profile) || isSaving}
             staticLabel={true}
-            onClick={handleSaveAll}
+            onClick={() => handleSaveAll()}
           />
           {saved && (
             <span className={styles.savedNote}>

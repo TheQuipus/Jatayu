@@ -579,7 +579,9 @@ function buildReviewKyc(app: ExpertApplicationSubmission) {
 }
 
 export function mapToApplicationReview(app: ExpertApplicationSubmission) {
-  const sla = getSlaStatus(app.submittedAt);
+  const isClosed = app.status === "rejected" || Boolean(app.isBlacklisted) || app.status === "approved";
+  const closedAt = app.closedAt || (isClosed ? (app.rejectedAt || app.blacklistedAt || app.approvedAt || app.updatedAt) : null);
+  const sla = getSlaStatus(app.submittedAt, isClosed ? (closedAt || app.submittedAt) : null);
   const completeness = computeCompleteness(app);
   const queueIndex = 1;
   const queueTotal = 1;
@@ -976,9 +978,11 @@ export function mapToRejectionHold(app: ExpertApplicationSubmission) {
 }
 
 export function getSlaAlert(applications: ExpertApplicationSubmission[]) {
-  const breached = applications.filter(
-    (app) => getSlaStatus(app.submittedAt).slaStatus === "breached",
-  );
+  const breached = applications.filter((app) => {
+    const isClosed = app.status === "rejected" || Boolean(app.isBlacklisted) || app.status === "approved";
+    if (isClosed) return false;
+    return getSlaStatus(app.submittedAt).slaStatus === "breached";
+  });
   const oldest = breached[0];
 
   if (!oldest) {

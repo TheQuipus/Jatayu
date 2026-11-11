@@ -35,6 +35,8 @@ export type BackendExpertApplication = {
   frontendStatus?: ApplicationStatus;
   onboardingStep?: string | null;
   submittedAt?: string | null;
+  approvedAt?: string | null;
+  closedAt?: string | null;
   updatedAt?: string | null;
   reviewerNote?: string | null;
   isBlacklisted?: boolean | null;
@@ -246,6 +248,10 @@ export function mapBackendExpertToApplication(
     reviewerNote: expert.reviewerNote || undefined,
     isBlacklisted: Boolean(expert.isBlacklisted || (metadata as Record<string, unknown>)?.isBlacklisted),
     blacklistedAt: expert.blacklistedAt || ((metadata as Record<string, unknown>)?.blacklistedAt as string) || undefined,
+    approvedAt: expert.approvedAt || ((metadata as Record<string, unknown>)?.approvedAt as string) || undefined,
+    closedAt: expert.closedAt || ((metadata as Record<string, unknown>)?.closedAt as string) || undefined,
+    rejectedAt: ((metadata as Record<string, unknown>)?.rejectedAt as string) || (expert.status === "rejected" ? (expert.updatedAt || expert.submittedAt || undefined) : undefined),
+    updatedAt: expert.updatedAt || undefined,
     onboardingStep: expert.onboardingStep || undefined,
     onboardingMetadata: metadata,
   };
