@@ -8,3 +8,4 @@ jatayu-frontend-main/out
 docker/mysql/init/*.sql
 backend/.env
 .agents/
+context.md
