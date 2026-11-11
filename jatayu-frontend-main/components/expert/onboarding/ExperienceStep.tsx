@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ExperienceAccordionItem from "./ExperienceAccordionItem";
 import ExperienceSelect from "./ExperienceSelect";
@@ -750,12 +751,8 @@ export default function ExperienceStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={handleContinue}>
-            Skip
-          </button>
+          <TextButton label="Back" onClick={onBack} />
+          <TextButton label="Skip" onClick={onContinue} />
           <ContinueButton onClick={handleContinue} disabled={!isStepComplete || portfolioInvalid} />
         </div>
       </div>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ExpertCard from "@/components/ui/ExpertCard";
 import ShinyText from "@/components/ui/ShinyText";
@@ -61,6 +62,13 @@ const TONE_PILLS: Array<{ id: IdentityTone; label: string }> = [
   { id: "concise", label: "Concise" },
 ];
 
+const DEFAULT_GHOSTED_TAGLINE =
+  "I help startups build scalable design systems and intuitive user experiences.";
+
+// Shorter ghosted text for the brief introduction
+const DEFAULT_GHOSTED_BIO =
+  "I'm a product leader focused on clarity, user research, and shipping impactful work.";
+
 export default function IdentityStep({
   userName,
   categoryLabel,
@@ -84,15 +92,27 @@ export default function IdentityStep({
   onJumpToStep,
 }: IdentityStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Tag line refs
+  const tagLineTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const tagLineGhostOverlayRef = useRef<HTMLDivElement>(null);
+
+  // Brief Introduction refs
+  const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const bioGhostOverlayRef = useRef<HTMLDivElement>(null);
+
   const [photoError, setPhotoError] = useState("");
   const [aiLoading, setAiLoading] = useState({ tagLine: false, bio: false, professionalTitle: false });
   const [aiErrors, setAiErrors] = useState({ tagLine: "", bio: "", professionalTitle: "" });
-  const [hasGenerated, setHasGenerated] = useState({ tagLine: false, bio: false, professionalTitle: false });
   const [selectedTones, setSelectedTones] = useState<{
     tagLine: IdentityTone | null;
     bio: IdentityTone | null;
     professionalTitle: IdentityTone | null;
   }>({ tagLine: null, bio: null, professionalTitle: null });
+  
+  const [showTagLineTones, setShowTagLineTones] = useState(false);
+  const [showBioTones, setShowBioTones] = useState(false);
+
   const requestIdRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
   const editVersionRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
   const variantIndexRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
@@ -102,7 +122,6 @@ export default function IdentityStep({
   const safeTitle = professionalTitle ?? "";
   const maxChars = 160;
   const maxPhotoBytes = 5 * 1024 * 1024;
-  const tagLineCharCount = safeTagLine.length;
   const introCharCount = safeBio.length;
   const isObjectUrl =
     profilePhotoSrc.startsWith("blob:") || profilePhotoSrc.startsWith("data:");
@@ -115,7 +134,19 @@ export default function IdentityStep({
     safeTagLine.trim().length > 0 &&
     safeBio.trim().length > 0;
 
+  // Sync scroll position between textarea and ghost text overlay for Tag Line
+  const handleTagLineScroll = () => {
+    if (tagLineTextareaRef.current && tagLineGhostOverlayRef.current) {
+      tagLineGhostOverlayRef.current.scrollTop = tagLineTextareaRef.current.scrollTop;
+    }
+  };
 
+  // Sync scroll position between textarea and ghost text overlay for Brief Introduction
+  const handleBioScroll = () => {
+    if (bioTextareaRef.current && bioGhostOverlayRef.current) {
+      bioGhostOverlayRef.current.scrollTop = bioTextareaRef.current.scrollTop;
+    }
+  };
 
   useEffect(() => {
     onStepCompleteChange?.(4, canContinue);
@@ -142,12 +173,15 @@ export default function IdentityStep({
     setSelectedTones((previous) => ({ ...previous, [field]: tone }));
   };
 
-  const handleSuggestField = async (field: "tagLine" | "bio" | "professionalTitle") => {
+  const handleSuggestField = async (
+    field: "tagLine" | "bio" | "professionalTitle",
+    overrideTone?: IdentityTone
+  ): Promise<boolean> => {
     const requestId = ++requestIdRef.current[field];
     const editVersion = editVersionRef.current[field];
     const currentText = field === "tagLine" ? safeTagLine : field === "bio" ? safeBio : safeTitle;
     const variantIndex = variantIndexRef.current[field]++;
-    const tone = selectedTones[field] || "professional";
+    const tone = overrideTone || selectedTones[field] || "professional";
 
     setAiLoading((previous) => ({ ...previous, [field]: true }));
     setAiErrors((previous) => ({ ...previous, [field]: "" }));
@@ -172,7 +206,7 @@ export default function IdentityStep({
       });
 
       if (requestId !== requestIdRef.current[field] || editVersion !== editVersionRef.current[field]) {
-        return;
+        return false;
       }
 
       const generated = field === "professionalTitle"
@@ -187,20 +221,32 @@ export default function IdentityStep({
       if (field === "professionalTitle") onProfessionalTitleChange(generated.slice(0, maxChars));
       else if (field === "tagLine") onTagLineChange(generated.slice(0, maxChars));
       else onBioChange(generated.slice(0, maxChars));
-      setHasGenerated((previous) => ({ ...previous, [field]: true }));
-
-      if (response.source === "fallback") {
-        return;
-      }
+      
+      return true;
     } catch (error) {
       if (requestId === requestIdRef.current[field] && editVersion === editVersionRef.current[field]) {
         console.warn("AI backend call error:", error);
         setAiErrors((previous) => ({ ...previous, [field]: friendlyAiError(error) }));
       }
+      return false;
     } finally {
       if (requestId === requestIdRef.current[field]) {
         setAiLoading((previous) => ({ ...previous, [field]: false }));
       }
+    }
+  };
+
+  const handleImproveTagLine = async () => {
+    const success = await handleSuggestField("tagLine");
+    if (success) {
+      setShowTagLineTones(true);
+    }
+  };
+
+  const handleImproveBio = async () => {
+    const success = await handleSuggestField("bio");
+    if (success) {
+      setShowBioTones(true);
     }
   };
 
@@ -248,6 +294,17 @@ export default function IdentityStep({
   const previewStatsText = professionalTitle.trim()
     ? professionalTitle.trim()
     : "Add your professional title";
+
+  // Ghosted mechanics logic for Tag Line
+  const tagLineTypedLength = safeTagLine.length;
+  const showTagLineGhostOverlay = tagLineTypedLength > 0 && tagLineTypedLength < DEFAULT_GHOSTED_TAGLINE.length;
+  const tagLineGhostRemainingText = showTagLineGhostOverlay ? DEFAULT_GHOSTED_TAGLINE.slice(tagLineTypedLength) : "";
+
+  // Ghosted mechanics logic for Brief Introduction (shortened)
+  const bioTypedLength = safeBio.length;
+  const showBioGhostOverlay = bioTypedLength > 0 && bioTypedLength < DEFAULT_GHOSTED_BIO.length;
+  const bioGhostRemainingText = showBioGhostOverlay ? DEFAULT_GHOSTED_BIO.slice(bioTypedLength) : "";
+
   return (
     <section className={shared.card}>
       <div className={shared.cardHeader}>
@@ -269,6 +326,7 @@ export default function IdentityStep({
 
         <div className={styles.splitLayout}>
           <div className={styles.inputsColumn}>
+            {/* Photo Upload Header */}
             <div className={styles.photoUploadContainer}>
               <label
                 htmlFor="identity-photo-upload"
@@ -312,193 +370,200 @@ export default function IdentityStep({
               </div>
             </div>
 
+            {/* PROFESSIONAL TITLE */}
             <div className={styles.fieldGroup}>
-              <div className={styles.fieldLabelRow}>
-                <label htmlFor="title-input" className={styles.fieldLabel}>
-                  Professional Title
-                </label>
-                <div className={styles.inlinePillsWrap}>
-                  {TONE_PILLS.map((pill) => {
-                    const isSelected = selectedTones.professionalTitle === pill.id;
-                    return (
-                      <button
-                        key={pill.id}
-                        type="button"
-                        className={`${styles.suggestedPill} ${
-                          isSelected ? styles.suggestedPillSelected : ""
-                        }`}
-                        aria-pressed={isSelected}
-                        onClick={() => handleSelectTone("professionalTitle", pill.id)}
-                      >
-                        <span>{pill.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+              <label htmlFor="title-input" className={styles.fieldLabel}>
+                Professional Title
+              </label>
+              <div className={styles.singleLineWrapper}>
+                <input
+                  id="title-input"
+                  type="text"
+                  value={safeTitle}
+                  onChange={(e) => handleTitleChange(e.target.value.slice(0, maxChars))}
+                  className={styles.textField}
+                  placeholder="e.g. Software Engineering Specialist"
+                />
               </div>
-              <input
-                id="title-input"
-                type="text"
-                value={professionalTitle ?? ""}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                className={styles.textField}
-                placeholder="e.g. Senior Software Engineer"
-                autoComplete="off"
-              />
-              <div className={styles.inputBoxFooter}>
-                <button
-                  type="button"
-                  className={styles.aiBioInlineBtn}
-                  onClick={() => handleSuggestField("professionalTitle")}
-                  disabled={aiLoading.professionalTitle}
-                >
-                  <ShinyText
-                    text={aiLoading.professionalTitle
-                      ? "Generating…"
-                      : hasGenerated.professionalTitle
-                        ? "Regenerate"
-                        : "Suggest by JATAYU AI"}
-                    icon="sparkles"
-                    iconSize={14}
-                    speed={2.5}
-                    color="#E53B17"
-                    shineColor="#ffffff"
-                    disabled={aiLoading.professionalTitle}
-                  />
-                </button>
-                <span className={styles.textareaFooterCounter}>{safeTitle.length}/{maxChars}</span>
-              </div>
-              {aiErrors.professionalTitle ? <p className={styles.aiSuggestError}>{aiErrors.professionalTitle}</p> : null}
             </div>
 
+            {/* TAG LINE */}
             <div className={styles.fieldGroup}>
               <label htmlFor="tagline-input" className={styles.fieldLabel}>
                 Tag Line
               </label>
-              <div className={styles.textareaWrapperBox}>
-                <div className={styles.inputBoxHeader}>
-                  <div className={styles.inlinePillsWrap}>
-                    {TONE_PILLS.map((pill) => {
-                      const isSelected = selectedTones.tagLine === pill.id;
-                      return (
-                        <button
-                          key={pill.id}
-                          type="button"
-                          className={`${styles.suggestedPill} ${styles.inlinePill} ${
-                            isSelected ? styles.suggestedPillSelected : ""
-                          }`}
-                          aria-pressed={isSelected}
-                          onClick={() => handleSelectTone("tagLine", pill.id)}
-                        >
-                          <span>{pill.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <textarea
-                  id="tagline-input"
-                  value={tagLine ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    editVersionRef.current.tagLine += 1;
-                    onTagLineChange(val.slice(0, maxChars));
-                  }}
-                  className={styles.innerBoxTextarea}
-                  rows={3}
-                  placeholder="e.g. I help startups build scalable design systems and intuitive user experiences."
-                />
-                <div className={styles.inputBoxFooter}>
-                  <button
-                    type="button"
-                    className={styles.aiBioInlineBtn}
-                    onClick={() => handleSuggestField("tagLine")}
-                    disabled={aiLoading.tagLine}
+
+              <div className={styles.tagLineBox}>
+                <div className={styles.ghostTextareaContainer}>
+                  <div
+                    ref={tagLineGhostOverlayRef}
+                    className={styles.ghostTextOverlay}
+                    aria-hidden="true"
                   >
-                    <ShinyText
-                      text={aiLoading.tagLine
-                        ? "Generating…"
-                        : hasGenerated.tagLine
-                          ? "Regenerate"
-                          : "Suggest by JATAYU AI"}
-                      icon="sparkles"
-                      iconSize={14}
-                      speed={2.5}
-                      color="#E53B17"
-                      shineColor="#ffffff"
+                    <span className={styles.ghostTypedSpacer}>{safeTagLine}</span>
+                    <span className={styles.ghostTextRemaining}>{tagLineGhostRemainingText}</span>
+                  </div>
+
+                  <textarea
+                    ref={tagLineTextareaRef}
+                    id="tagline-input"
+                    value={safeTagLine}
+                    onChange={(e) => {
+                      editVersionRef.current.tagLine += 1;
+                      onTagLineChange(e.target.value.slice(0, maxChars));
+                      if (showTagLineTones) {
+                        setShowTagLineTones(false);
+                      }
+                    }}
+                    onScroll={handleTagLineScroll}
+                    className={`${styles.boxTextarea} ${styles.ghostInputTextarea}`}
+                    rows={3}
+                    style={{ resize: "none" }}
+                    placeholder={DEFAULT_GHOSTED_TAGLINE}
+                  />
+                </div>
+
+                <div className={styles.boxFooter}>
+                  {showTagLineTones ? (
+                    <div className={styles.pillsHeaderRow}>
+                      {TONE_PILLS.map((pill) => {
+                        const isSelected = selectedTones.tagLine === pill.id;
+                        return (
+                          <button
+                            key={pill.id}
+                            type="button"
+                            className={`${styles.suggestedPill} ${
+                              isSelected ? styles.suggestedPillSelected : ""
+                            }`}
+                            aria-pressed={isSelected}
+                            onClick={() => {
+                              handleSelectTone("tagLine", pill.id);
+                              handleSuggestField("tagLine", pill.id);
+                            }}
+                          >
+                            <span>{pill.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : safeTagLine.trim().length > 0 ? (
+                    <button
+                      type="button"
+                      className={styles.aiTagLineBtn}
+                      onClick={handleImproveTagLine}
                       disabled={aiLoading.tagLine}
-                    />
-                  </button>
+                    >
+                      <ShinyText
+                        text={aiLoading.tagLine ? "Improving..." : "Improve with JATAYU AI"}
+                        icon="sparkles"
+                        iconSize={14}
+                        speed={2.5}
+                        color="#E53B17"
+                        shineColor="#ffffff"
+                        disabled={aiLoading.tagLine}
+                      />
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+
                   <span className={styles.textareaFooterCounter}>
-                    {tagLineCharCount}/{maxChars}
+                    {safeTagLine.length}/{maxChars}
                   </span>
                 </div>
               </div>
-              {aiErrors.tagLine ? <p className={styles.aiSuggestError}>{aiErrors.tagLine}</p> : null}
+
+              {aiErrors.tagLine ? (
+                <p className={styles.aiSuggestError}>{aiErrors.tagLine}</p>
+              ) : null}
             </div>
 
+            {/* BRIEF INTRODUCTION */}
             <div className={styles.fieldGroup}>
-              <div className={styles.fieldLabelRow}>
-                <label htmlFor="intro-input" className={styles.fieldLabel}>
-                  Brief Introduction
-                </label>
-                <div className={styles.inlinePillsWrap}>
-                  {TONE_PILLS.map((pill) => {
-                    const isSelected = selectedTones.bio === pill.id;
-                    return (
-                      <button
-                        key={pill.id}
-                        type="button"
-                        className={`${styles.suggestedPill} ${
-                          isSelected ? styles.suggestedPillSelected : ""
-                        }`}
-                        aria-pressed={isSelected}
-                        onClick={() => handleSelectTone("bio", pill.id)}
-                      >
-                        <span>{pill.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className={styles.textareaWrapper}>
-                <textarea
-                  id="intro-input"
-                  value={bio ?? ""}
-                  onChange={(e) => {
-                    editVersionRef.current.bio += 1;
-                    onBioChange(e.target.value.slice(0, maxChars));
-                  }}
-                  className={`${styles.textareaField} ${styles.textareaWithBioFooter}`}
-                  rows={5}
-                  placeholder="e.g. I'm a product leader with 8+ years guiding teams through complex launches. I focus on clarity, user research, and shipping work that moves the needle."
-                />
-                <div className={styles.textareaFooterInline}>
-                  <button
-                    type="button"
-                    className={styles.aiBioInlineBtn}
-                    onClick={() => handleSuggestField("bio")}
-                    disabled={aiLoading.bio}
+              <label htmlFor="intro-input" className={styles.fieldLabel}>
+                Brief Introduction
+              </label>
+
+              <div className={styles.introBox}>
+                <div className={styles.ghostTextareaContainer}>
+                  <div
+                    ref={bioGhostOverlayRef}
+                    className={styles.ghostTextOverlay}
+                    aria-hidden="true"
                   >
-                    <ShinyText
-                      text={aiLoading.bio
-                        ? "Generating…"
-                        : hasGenerated.bio
-                          ? "Regenerate"
-                          : "Suggest by JATAYU AI"}
-                      icon="sparkles"
-                      iconSize={14}
-                      speed={2.5}
-                      color="#E53B17"
-                      shineColor="#ffffff"
+                    <span className={styles.ghostTypedSpacer}>{safeBio}</span>
+                    <span className={styles.ghostTextRemaining}>{bioGhostRemainingText}</span>
+                  </div>
+
+                  <textarea
+                    ref={bioTextareaRef}
+                    id="intro-input"
+                    value={safeBio}
+                    onChange={(e) => {
+                      editVersionRef.current.bio += 1;
+                      onBioChange(e.target.value.slice(0, maxChars));
+                      if (showBioTones) {
+                        setShowBioTones(false);
+                      }
+                    }}
+                    onScroll={handleBioScroll}
+                    className={`${styles.boxTextarea} ${styles.ghostInputTextarea}`}
+                    rows={4}
+                    style={{ resize: "none" }}
+                    placeholder={DEFAULT_GHOSTED_BIO}
+                  />
+                </div>
+
+                <div className={styles.boxFooter}>
+                  {showBioTones ? (
+                    <div className={styles.pillsHeaderRow}>
+                      {TONE_PILLS.map((pill) => {
+                        const isSelected = selectedTones.bio === pill.id;
+                        return (
+                          <button
+                            key={pill.id}
+                            type="button"
+                            className={`${styles.suggestedPill} ${
+                              isSelected ? styles.suggestedPillSelected : ""
+                            }`}
+                            aria-pressed={isSelected}
+                            onClick={() => {
+                              handleSelectTone("bio", pill.id);
+                              handleSuggestField("bio", pill.id);
+                            }}
+                          >
+                            <span>{pill.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : safeBio.trim().length > 0 ? (
+                    <button
+                      type="button"
+                      className={styles.aiBioInlineBtn}
+                      onClick={handleImproveBio}
                       disabled={aiLoading.bio}
-                    />
-                  </button>
+                    >
+                      <ShinyText
+                        text={aiLoading.bio ? "Improving..." : "Improve with JATAYU AI"}
+                        icon="sparkles"
+                        iconSize={14}
+                        speed={2.5}
+                        color="#E53B17"
+                        shineColor="#ffffff"
+                        disabled={aiLoading.bio}
+                      />
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+
                   <span className={styles.textareaFooterCounter}>
                     {introCharCount}/{maxChars}
                   </span>
                 </div>
               </div>
+
               {aiErrors.bio ? <p className={styles.aiSuggestError}>{aiErrors.bio}</p> : null}
             </div>
           </div>
@@ -535,12 +600,8 @@ export default function IdentityStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+          <TextButton label="Back" onClick={onBack} />
+          <TextButton label="Skip" onClick={onContinue} />
           <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>
