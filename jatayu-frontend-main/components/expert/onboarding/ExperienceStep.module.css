@@ -24,12 +24,23 @@
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Card container hover effect for collapsed items */
+.accItem:hover:not(.accItemExpanded) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Optional: Make the plus icon or button subtly brighten on hover */
+.accItem:hover:not(.accItemExpanded) .accPlus {
+  color: var(--white);
 }
 
 .accItemExpanded {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .accMain {
@@ -272,7 +283,14 @@
   font-size: 16px;
   color: var(--white);
   outline: none;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.textField:hover:not(:focus):not(:disabled),
+.textareaField:hover:not(:focus):not(:disabled),
+.selectField:hover:not(:disabled):not(.selectFieldError) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .textField,
@@ -295,12 +313,12 @@
   color-scheme: dark;
 }
 
-/* 
+
 .textField:focus,
 .textareaField:focus {
   border-color: rgba(255, 255, 255, 0.18);
-  background-color: rgba(255, 255, 255, 0.05);
-} */
+  background-color: rgba(255, 255, 255, 0.08);
+}
 
 .textField::placeholder,
 .textareaField::placeholder {
@@ -524,6 +542,11 @@
   width: 100%;
 }
 
+.inputWithIconWrap:hover:not(:focus-within) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
 .inputInnerIcon {
   position: absolute;
   left: 14px;
@@ -554,10 +577,10 @@
   color: var(--silver-chalice);
 }
 
-/* .textFieldWithIcon:focus {
+.textFieldWithIcon:focus {
   border-color: rgba(255, 255, 255, 0.18);
   background-color: rgba(255, 255, 255, 0.05);
-} */
+}
 
 .fieldLabelRow {
   display: flex;

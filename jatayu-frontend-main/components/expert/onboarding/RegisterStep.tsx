@@ -212,6 +212,7 @@ export default function RegisterStep({
                     onBlur={() => markTouched("firstName")}
                     autoComplete="given-name"
                     aria-invalid={Boolean(fieldError("firstName"))}
+                    suppressHydrationWarning
                   />
                 </div>
                 {fieldError("firstName") && (
@@ -236,6 +237,7 @@ export default function RegisterStep({
                     onBlur={() => markTouched("lastName")}
                     autoComplete="family-name"
                     aria-invalid={Boolean(fieldError("lastName"))}
+                    suppressHydrationWarning={true}
                   />
                 </div>
                 {fieldError("lastName") && (
@@ -262,6 +264,7 @@ export default function RegisterStep({
                   onBlur={() => markTouched("email")}
                   autoComplete="email"
                   aria-invalid={Boolean(fieldError("email"))}
+                  suppressHydrationWarning={true}
                 />
               </div>
               {fieldError("email") && (
@@ -286,6 +289,7 @@ export default function RegisterStep({
                 onBlur={() => markTouched("password")}
                 autoComplete="new-password"
                 aria-invalid={Boolean(fieldError("password"))}
+                suppressHydrationWarning={true}
               />
               <button
                 type="button"

@@ -85,6 +85,7 @@
   border: 1px solid rgba(255, 255, 255, 0.04);
   padding: 12px 16px;
   overflow: visible;
+  /* transition: border-color 0.2s ease, background-color 0.2s ease; */
 }
 
 .slotTimes {
@@ -117,6 +118,12 @@
   color: var(--silver-chalice);
   transition: all 0.2s ease;
   padding: 0;
+}
+
+.dayBtn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--white);
 }
 
 .dayBtnSelected {

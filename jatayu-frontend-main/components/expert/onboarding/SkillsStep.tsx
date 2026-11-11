@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Medal, Tag, X, Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import { MAX_EXPERT_SECONDARY_SKILLS } from "@/lib/expertSkillCatalog";
 import shared from "./onboarding.shared.module.css";
@@ -347,12 +348,8 @@ export default function SkillsStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+          <TextButton label="Back" onClick={onBack} />
+          <TextButton label="Skip" onClick={onContinue} />
           <ContinueButton
             onClick={onContinue}
             disabled={selectedSkills.length === 0}

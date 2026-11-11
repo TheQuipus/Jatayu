@@ -14,6 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import KycVerificationPanel from "./KycVerificationPanel";
 import shared from "./onboarding.shared.module.css";
@@ -757,12 +758,8 @@ export default function CredentialsStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={handleSkip}>
-            Skip
-          </button>
+          <TextButton label="Back" onClick={onBack} />
+          <TextButton label="Skip" onClick={onContinue} />
           <ContinueButton
             onClick={handleContinue}
             disabled={!canContinue || pendingCertificateUploads > 0}

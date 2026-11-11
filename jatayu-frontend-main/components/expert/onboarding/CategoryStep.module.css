@@ -181,6 +181,9 @@
   max-height: 36px;
   cursor: text;
   padding-right: 6px;
+  background: var(--background-chip, rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.15s ease;
 }
 
 .categoryInputForm {
@@ -190,18 +193,29 @@
   gap: 8px;
 }
 
+.categoryItemInput:focus-within {
+  background: var(--background-chip, rgba(255, 255, 255, 0.03)) !important;
+  border-color: var(--pomegranate) !important;
+}
+
 .categoryInlineInput {
   flex: 1;
   min-width: 120px;
   background: transparent;
   border: none;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
   font-family: var(--font-body);
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
   color: var(--white);
   padding: 0;
+}
+
+.categoryInlineInput:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .categoryInlineInput::placeholder {

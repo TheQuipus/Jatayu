@@ -141,6 +141,14 @@
   max-height: 36px;
   cursor: text;
   padding-right: 6px;
+  background: var(--background-chip, rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.15s ease;
+}
+
+.languagePillInput:focus-within {
+  background: var(--background-chip, rgba(255, 255, 255, 0.03)) !important;
+  border-color: var(--pomegranate) !important;
 }
 
 .languageInputForm {
@@ -155,8 +163,9 @@
   min-width: 120px;
   background: transparent;
   border: none;
-  outline: none;
-  font-family: inherit;
+  outline: none !important;
+  box-shadow: none !important;
+  font-family: var(--font-body);
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;

@@ -114,12 +114,12 @@
   border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 0 16px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-.inputWithIconWrap:focus-within {
-  border-color: var(--pomegranate);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pomegranate) 40%, transparent);
+.inputWithIconWrap:hover:not(:focus-within):not(.inputWithIconWrapError) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .inputWithIconWrapError {
@@ -248,18 +248,18 @@
   align-items: center;
   gap: 10px;
   height: 48px;
-  background: var(--background-chip);
+  background: var(--background-chip, rgba(255, 255, 255, 0.03));
   border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 0 52px 0 16px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   box-sizing: border-box;
   color-scheme: dark;
 }
 
-.inputWithActionWrap:focus-within {
-  border-color: var(--pomegranate);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pomegranate) 40%, transparent);
+.inputWithActionWrap:hover:not(:focus-within) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .inputActionBtn {

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./ReviewStep.module.css";
@@ -524,9 +525,7 @@ export default function ReviewStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
+          <TextButton label="Back" onClick={() => onBack()} />
           <ContinueButton
             label="Submit for Verification"
             showArrow={false}
