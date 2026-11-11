@@ -263,7 +263,10 @@ export default function AdminOverviewDashboard() {
   const [applicationStats, setApplicationStats] = useState<Record<string, number> | null>(
     null,
   );
-  const { ready, pendingCount, applications } = useExpertApplications();
+  const { ready, pendingCount, statusCounts, breachedApplications, applications } =
+    useExpertApplications();
+  const overdueCount =
+    applicationStats?.overdue ?? statusCounts?.overdue ?? breachedApplications?.length ?? 0;
   const reviewHref = useMemo(() => {
     const appId = getFirstReviewAppId(applications);
     return appId ? `/admin/review/${appId}` : "/admin/applications";
@@ -340,19 +343,22 @@ export default function AdminOverviewDashboard() {
           </div>
         </header>
 
-        <div className={styles.alertBanner} role="alert">
-          <div className={styles.alertContent}>
-            <Info className={styles.alertIcon} size={20} />
-            <p className={styles.alertText}>
-              {ready
-                ? `${pendingCount} expert application${pendingCount === 1 ? "" : "s"} pending review in the queue.`
-                : "Expert applications are loading."}
-            </p>
+        {ready && overdueCount > 0 ? (
+          <div className={styles.alertBanner} role="alert">
+            <div className={styles.alertContent}>
+              <AlertTriangle className={styles.alertIcon} size={20} />
+              <p className={styles.alertText}>
+                {`${overdueCount} expert application${overdueCount === 1 ? "" : "s"} overdue in the queue.`}
+              </p>
+            </div>
+            <Link
+              href="/admin/applications?filter=overdue#kpi-card-overdue"
+              className={styles.alertBtn}
+            >
+              Review Now
+            </Link>
           </div>
-          <Link href="/admin/applications" className={styles.alertBtn}>
-            Review Now
-          </Link>
-        </div>
+        ) : null}
 
         <div className={styles.statsGrid}>
           {metrics.map((metric) => {

@@ -396,7 +396,7 @@ export function formatExpertCurrency(amount: number): string {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
 
-export const UNAPPROVED_ALLOWED_NAV_IDS = new Set(["dashboard", "profile", "availability"]);
+export const UNAPPROVED_ALLOWED_NAV_IDS = new Set(["dashboard", "profile"]);
 export const UNAPPROVED_RESTRICTION_TOOLTIP = "You may access these after approval of your profile";
 
 export function isNavRestrictedForExpert(navId: string, isApproved: boolean): boolean {

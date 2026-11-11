@@ -108,7 +108,8 @@ function serializeExpertUser(expert, stats = {}) {
     1500;
 
   const approvalDate = data.approvedAt || (['approved', 'active', 'on_hold', 'suspended'].includes(data.status) ? data.updatedAt : null);
-  const closedSla = formatClosedSla(data.submittedAt, approvalDate);
+  const closedDate = data.closedAt || approvalDate || (isBlacklisted ? (data.blacklistedAt || data.updatedAt) : null);
+  const closedSla = formatClosedSla(data.submittedAt, closedDate);
 
   return {
     id: data.id,
@@ -138,6 +139,7 @@ function serializeExpertUser(expert, stats = {}) {
     closedSla,
     submittedAt: data.submittedAt,
     approvedAt: data.approvedAt || approvalDate,
+    closedAt: data.closedAt || closedDate,
     onboardingStep: data.onboardingStep,
   };
 }

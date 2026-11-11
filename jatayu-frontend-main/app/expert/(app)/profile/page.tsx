@@ -6,11 +6,6 @@ export const metadata: Metadata = {
   description: "View and manage your Jatayu expert profile.",
 };
 
-type ExpertProfileRouteProps = {
-  searchParams: Promise<{ mode?: string | string[] }>;
-};
-
-export default async function ExpertProfileRoute({ searchParams }: ExpertProfileRouteProps) {
-  const { mode } = await searchParams;
-  return <ExpertProfilePage isEditing={mode === "edit"} />;
+export default function ExpertProfileRoute() {
+  return <ExpertProfilePage />;
 }

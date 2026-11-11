@@ -137,6 +137,10 @@ const Expert = expertDb.define('Expert', {
     type: DataTypes.DATE,
     allowNull: true
   },
+  closedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   reviewerNote: {
     type: DataTypes.TEXT,
     allowNull: true

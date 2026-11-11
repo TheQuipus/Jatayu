@@ -95,6 +95,7 @@ const APPLICATION_LIST_ATTRIBUTES = [
   'status',
   'submittedAt',
   'approvedAt',
+  'closedAt',
   'reviewerNote',
   'isBlacklisted',
   'blacklistedAt',
@@ -193,8 +194,18 @@ function serializeExpert(expert) {
     (metadata && typeof metadata === 'object' && (metadata.isBlacklisted || metadata.isBlacklisted === 1))
   );
 
+  const isTerminal = json.status === 'rejected' || isBlacklisted || json.status === 'approved';
+  const closedAt =
+    json.closedAt ||
+    expert.closedAt ||
+    (metadata && typeof metadata === 'object' && metadata.closedAt) ||
+    (json.status === 'approved' ? (json.approvedAt || expert.approvedAt) : null) ||
+    (isTerminal ? (metadata?.rejectedAt || json.blacklistedAt || json.updatedAt || json.submittedAt) : null) ||
+    null;
+
   return {
     ...json,
+    closedAt,
     isBlacklisted,
     blacklistedAt: json.blacklistedAt || (metadata && typeof metadata === 'object' && metadata.blacklistedAt) || null,
     ...(json.onboardingMetadata !== undefined ? { onboardingMetadata: metadata } : {}),
@@ -370,6 +381,21 @@ export const updateApplicationStatus = async (req, res) => {
       if (!expert.approvedAt) {
         expert.approvedAt = new Date();
       }
+      if (!expert.closedAt) {
+        expert.closedAt = expert.approvedAt;
+      }
+      metadata.closedAt = expert.closedAt instanceof Date ? expert.closedAt.toISOString() : expert.closedAt;
+      expert.changed('closedAt', true);
+    } else if (backendStatus === 'rejected') {
+      expert.closedAt = expert.closedAt || new Date();
+      metadata.closedAt = expert.closedAt instanceof Date ? expert.closedAt.toISOString() : expert.closedAt;
+      metadata.rejectedAt = metadata.closedAt;
+      expert.changed('closedAt', true);
+    } else if (backendStatus === 'pending_review' || backendStatus === 'in_review') {
+      expert.closedAt = null;
+      delete metadata.closedAt;
+      delete metadata.rejectedAt;
+      expert.changed('closedAt', true);
     }
 
     let currentAuditLogs = metadata.sectionAuditLogs || [];
@@ -476,6 +502,27 @@ export const updateApplicationStatus = async (req, res) => {
       }
     }
 
+    if (expert.closedAt !== undefined) {
+      const closedAtVal = expert.closedAt ? formatMySqlDateTime(expert.closedAt) : null;
+      const idVal = expert.id;
+      const appNumVal = expert.applicationNumber || id;
+      try {
+        await expertDb.query(
+          'UPDATE `Experts` SET `closedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+          { replacements: [closedAtVal, idVal, appNumVal] }
+        );
+      } catch (sqlErr) {
+        try {
+          await expertDb.query(
+            'UPDATE `experts` SET `closedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+            { replacements: [closedAtVal, idVal, appNumVal] }
+          );
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     const updated = await findExpertByIdForAdmin(expert.id);
     const frontendUrl = (await getSetting('FRONTEND_URL', 'http://localhost:3000')).replace(/\/$/, '');
 
@@ -519,7 +566,7 @@ export const getApplicationStats = async (req, res) => {
   try {
     const experts = await findExpertsForAdmin(
       { [Op.or]: [{ status: { [Op.in]: QUEUE_STATUSES } }, SIGNUP_COMPLETE_DRAFT_WHERE] },
-      { attributes: ['status', 'submittedAt', 'createdAt'], include: [] },
+      { attributes: ['status', 'submittedAt', 'createdAt', 'isBlacklisted', 'closedAt'], include: [] },
     );
 
     const counts = {
@@ -540,8 +587,9 @@ export const getApplicationStats = async (req, res) => {
       if (frontendStatus in counts) {
         counts[frontendStatus] += 1;
       }
+      const isTerminal = frontendStatus === 'rejected' || Boolean(expert.isBlacklisted) || frontendStatus === 'approved' || Boolean(expert.closedAt);
       const submitted = expert.submittedAt || expert.createdAt;
-      if (submitted && now - new Date(submitted).getTime() >= SLA_MS) {
+      if (!isTerminal && submitted && now - new Date(submitted).getTime() >= SLA_MS) {
         counts.overdue += 1;
       }
     }

@@ -45,7 +45,9 @@ export type ExpertApplicationListItem = {
 };
 
 function toListItem(application: ExpertApplicationSubmission): ExpertApplicationListItem {
-  const sla = getSlaStatus(application.submittedAt);
+  const isClosed = application.status === "rejected" || Boolean(application.isBlacklisted) || application.status === "approved";
+  const closedAt = application.closedAt || (isClosed ? (application.rejectedAt || application.blacklistedAt || application.approvedAt || application.updatedAt) : null);
+  const sla = getSlaStatus(application.submittedAt, isClosed ? (closedAt || application.submittedAt) : null);
   const city = application.location.split(",")[0]?.trim() || application.location;
 
   return {
@@ -165,9 +167,11 @@ export function useExpertApplications({
 
   const breachedApplications = useMemo(
     () =>
-      applications.filter(
-        (application) => getSlaStatus(application.submittedAt).slaStatus === "breached",
-      ),
+      applications.filter((application) => {
+        const isClosed = application.status === "rejected" || Boolean(application.isBlacklisted) || application.status === "approved";
+        if (isClosed) return false;
+        return getSlaStatus(application.submittedAt).slaStatus === "breached";
+      }),
     [applications],
   );
 

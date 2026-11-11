@@ -24,6 +24,7 @@ type ExpertAvailabilityProps = {
   initialSlots?: TimeSlot[];
   onValidityChange?: (isValid: boolean) => void;
   onScheduleChange?: (data: { timezone: string; slots: TimeSlot[] }) => void;
+  disabled?: boolean;
 };
 
 const DEFAULT_SLOT: TimeSlot = {
@@ -39,6 +40,7 @@ export default function ExpertAvailability({
   initialSlots,
   onValidityChange,
   onScheduleChange,
+  disabled = false,
 }: ExpertAvailabilityProps) {
   const styles = variant === "app" ? appStyles : onboardingStyles;
   const theme = variant === "app" ? "light" : "dark";
@@ -89,15 +91,16 @@ export default function ExpertAvailability({
 
   return (
     <div className={styles.hoursPane}>
-      <div className={styles.hoursPaneHeader}>
-        <div>
-          <span className={appStyles.timezoneEyebrow}>Timezone</span>
-          <h4 className={styles.hoursPaneTitle}>{timezoneLabel}</h4>
-        </div>
-        <div className={styles.slotDaysCol}>
-          <span className={`${styles.hoursPaneTitle} ${styles.selectDaysLabel}`}>Select days</span>
-        </div>
-      </div>
+    {/* //   <div className={styles.hoursPaneHeader}>
+    //     <div className={styles.timezoneCol}>
+    //       <span className={appStyles.timezoneEyebrow}>Timezone</span>
+    //       <h4 className={styles.hoursPaneTitle}>{timezoneLabel}</h4>
+    //     </div>
+    //     <div className={styles.slotDaysCol}>
+    //       <span className={styles.selectDaysLabel}>Select days</span>
+    //     </div>
+    //     {!disabled && <span className={styles.slotCloseSpacer} aria-hidden="true" />}
+    //   </div> */}
 
       <div className={styles.slotsContainer}>
         {slots.map((slot, index) => (
@@ -112,6 +115,7 @@ export default function ExpertAvailability({
             onToggleDay={(day) => handleToggleDay(slot.id, day)}
             onUpdate={(field, value) => handleUpdateSlot(slot.id, field, value)}
             onRemove={() => setSlots((current) => current.filter((item) => item.id !== slot.id))}
+            disabled={disabled}
           />
         ))}
 
@@ -123,7 +127,7 @@ export default function ExpertAvailability({
           type="button"
           onClick={() => setSlots((current) => [...current, createEmptySlot()])}
           className={`${styles.addSlotBtn} ${slots.length >= 5 ? appStyles.limitButton : ""}`}
-          disabled={slots.length >= 5}
+          disabled={disabled || slots.length >= 5}
         >
           {slots.length < 5 ? <><Plus size={14} /><span>Add time slot</span></> : <span>Maximum of 5 time slots reached</span>}
         </button>

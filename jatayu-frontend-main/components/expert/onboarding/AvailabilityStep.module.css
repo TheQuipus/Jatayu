@@ -19,10 +19,17 @@
 
 .hoursPaneHeader {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr) auto;
   gap: 16px;
-  align-items: center;
-  padding: 0 5px 3px;
+  align-items: flex-end;
+  padding: 0 16px 14px;
+}
+
+.timezoneCol {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .hoursPaneTitle {
@@ -54,6 +61,11 @@
   display: block;
   text-align: left;
   margin: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .slotsContainer {
