@@ -52,6 +52,51 @@ function isFormComplete(email: string, password: string): boolean {
   );
 }
 
+function renderAuthErrorMessage(text: string | null) {
+  if (!text) return null;
+  const match = text.match(/^(.*?\b)(Contact Us\??)(.*)$/i);
+  if (match) {
+    const [, before, linkText, after] = match;
+    return (
+      <span style={{ pointerEvents: "auto", position: "relative", zIndex: 20 }}>
+        {before}
+        <a
+          href="/#contact"
+          onClick={(e) => {
+            e.preventDefault();
+            if (typeof window !== "undefined") {
+              if (window.location.pathname === "/") {
+                const el = document.getElementById("contact");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth" });
+                  window.history.pushState(null, "", "/#contact");
+                  return;
+                }
+              }
+              window.location.href = "/#contact";
+            }
+          }}
+          style={{
+            color: "inherit",
+            textDecoration: "underline",
+            textUnderlineOffset: "3px",
+            fontWeight: 600,
+            cursor: "pointer",
+            pointerEvents: "auto",
+            position: "relative",
+            zIndex: 30,
+            display: "inline",
+          }}
+        >
+          {linkText}
+        </a>
+        {after}
+      </span>
+    );
+  }
+  return text;
+}
+
 export default function LoginStep({
   onContinue,
   onRequiresOtp,
@@ -202,8 +247,12 @@ export default function LoginStep({
               
               {/* Error message placed in the exact same container location as Email */}
               {(fieldError("password") || submitError) && (
-                <span className={register.fieldErrorBelow} role="alert">
-                  {fieldError("password") || submitError}
+                <span
+                  className={register.fieldErrorBelow}
+                  role="alert"
+                  style={{ pointerEvents: "auto", zIndex: 10 }}
+                >
+                  {renderAuthErrorMessage(fieldError("password") || submitError)}
                 </span>
               )}
             </div>

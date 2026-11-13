@@ -100,7 +100,19 @@
   line-height: 1;
   color: #FF3B30;
   pointer-events: none;
-  z-index: 1;
+  z-index: 5;
+}
+
+.fieldErrorBelow:has(a),
+.fieldErrorBelow:has(button) {
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.fieldErrorBelow a,
+.fieldErrorBelow button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
 }
 
 .inputWithIconWrap {

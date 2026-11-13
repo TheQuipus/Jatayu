@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
+  Languages,
   Users,
   Building,
   DollarSign,
@@ -127,6 +128,106 @@ const SPOKEN_LANGUAGE_OPTIONS: SmartOption[] = [
   "Portuguese",
   "Spanish",
 ].map((language) => ({ value: language, label: language }));
+
+function parseHoldReviewerNote(reviewerNote?: string | null): Record<string, string> {
+  if (!reviewerNote || typeof reviewerNote !== "string") return {};
+  const result: Record<string, string> = {};
+  const regex = /\[(.*?)(?:\s*-\s*(?:Needs Clarification|Clarification|Rejected|REJECTED))?\]\s*:\s*([^;]+)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(reviewerNote)) !== null) {
+    const rawTitle = match[1].trim().toLowerCase();
+    const noteText = match[2].trim();
+
+    if (rawTitle.includes("category") || rawTitle.includes("skill")) {
+      result["category"] = noteText;
+    } else if (rawTitle.includes("experience") || rawTitle.includes("portfolio") || rawTitle.includes("work")) {
+      result["experience"] = noteText;
+    } else if (rawTitle.includes("profile") || rawTitle.includes("identity")) {
+      result["profile"] = noteText;
+    } else if (rawTitle.includes("credential") || rawTitle.includes("kyc") || rawTitle.includes("education")) {
+      result["credentials"] = noteText;
+    } else if (rawTitle.includes("preference") || rawTitle.includes("pricing") || rawTitle.includes("consultation")) {
+      result["preferences"] = noteText;
+    } else if (rawTitle.includes("audience") || rawTitle.includes("language")) {
+      result["audience"] = noteText;
+    } else if (rawTitle.includes("availab") || rawTitle.includes("schedule")) {
+      result["availability"] = noteText;
+    }
+  }
+  return result;
+}
+
+function parseSectionAuditLogs(rawLogs: unknown): Record<string, { status: "waiting" | "received"; note: string }> {
+  let logs: Array<Record<string, unknown>> = [];
+  if (Array.isArray(rawLogs)) {
+    logs = rawLogs;
+  } else if (typeof rawLogs === "string") {
+    try {
+      const parsed = JSON.parse(rawLogs);
+      if (Array.isArray(parsed)) logs = parsed;
+    } catch {}
+  }
+  if (!logs.length) return {};
+
+  const result: Record<string, { status: "waiting" | "received"; note: string }> = {};
+  const sorted = [...logs].sort((a, b) => {
+    const ta = new Date(String(a.timestamp || 0)).getTime();
+    const tb = new Date(String(b.timestamp || 0)).getTime();
+    return tb - ta;
+  });
+
+  for (const entry of sorted) {
+    const secId = String(entry.sectionId || "");
+    if (!secId || secId === "application" || result[secId]) continue;
+    const action = String(entry.action || "");
+    if (action === "clarification") {
+      result[secId] = {
+        status: "waiting",
+        note: String(entry.note || "").trim(),
+      };
+    } else if (action === "clarification_response" || action === "response_received") {
+      result[secId] = {
+        status: "received",
+        note: String(entry.note || "").trim(),
+      };
+    } else if (action === "approve") {
+      result[secId] = {
+        status: "received",
+        note: "",
+      };
+    }
+  }
+  return result;
+}
+
+function parseLocalStorageReviewDecisions(appNum: string): Record<string, { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }> {
+  if (typeof window === "undefined" || !appNum) return {};
+  try {
+    const saved = localStorage.getItem(`jatayu_review_submitted_${appNum}`) || localStorage.getItem(`jatayu_review_decisions_${appNum}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === "object") {
+        return parsed;
+      }
+    }
+  } catch {}
+  return {};
+}
+
+function safeParseJsonRecord(value: unknown): Record<string, any> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, any>;
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch {}
+  }
+  return {};
+}
 
 export default function ExpertProfileEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -295,44 +396,119 @@ export default function ExpertProfileEditor() {
         const metadata = record.onboardingMetadata || {};
         const appNum = record.applicationNumber || "";
         const initialResolved = new Set<string>();
-        if (metadata.sectionClarifications && typeof metadata.sectionClarifications === "object") {
-          const clarMap = metadata.sectionClarifications as Record<string, { status: string; note?: string }>;
-          Object.keys(clarMap).forEach((key) => {
-            if (clarMap[key]?.status === "received") {
-              initialResolved.add(key);
+
+        const clarMap = safeParseJsonRecord(metadata.sectionClarifications);
+        const decMap = safeParseJsonRecord(metadata.sectionDecisions);
+        const auditLogMap = parseSectionAuditLogs(metadata.sectionAuditLogs);
+        const noteMap = parseHoldReviewerNote(record.reviewerNote);
+        const localReviewMap = parseLocalStorageReviewDecisions(appNum);
+
+        const allSectionsList = ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"];
+        const isOnHold = record.status === "on_hold";
+
+        // Merge all sources of truth
+        const combinedDecisions: Record<string, { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }> = {};
+        const combinedClarifications: Record<string, { status: string; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }> }> = {};
+
+        for (const secKey of allSectionsList) {
+          const dec = decMap[secKey] || localReviewMap[secKey];
+          const clar = clarMap[secKey];
+          const audit = auditLogMap[secKey];
+          const noteText = noteMap[secKey] || "";
+
+          let effectiveDecision: "approve" | "clarification" | "reject" | null = dec?.decision || null;
+          let effectiveNote = dec?.note || clar?.note || noteText || "";
+          let effectiveNotes = dec?.notes || clar?.notes || [];
+          let effectiveStatus: "waiting" | "received" | undefined = clar?.status || dec?.clarificationStatus;
+
+          if (audit) {
+            if (audit.status === "waiting") {
+              effectiveDecision = effectiveDecision || "clarification";
+              effectiveStatus = "waiting";
+              if (!effectiveNote && audit.note) effectiveNote = audit.note;
             }
-          });
+          }
+
+          if (noteText && isOnHold) {
+            effectiveDecision = effectiveDecision || "clarification";
+            effectiveStatus = "waiting";
+            effectiveNote = noteText;
+          }
+
+          if (effectiveDecision === "clarification" && isOnHold) {
+            effectiveStatus = "waiting";
+          }
+
+          if (effectiveDecision) {
+            combinedDecisions[secKey] = {
+              decision: effectiveDecision,
+              note: effectiveNote,
+              notes: effectiveNotes,
+              clarificationStatus: effectiveStatus,
+            };
+          }
+
+          if (effectiveDecision === "clarification" || effectiveStatus === "waiting") {
+            combinedClarifications[secKey] = {
+              status: effectiveStatus || "waiting",
+              note: effectiveNote,
+              notes: effectiveNotes,
+            };
+          }
         }
-        if (metadata.sectionDecisions && typeof metadata.sectionDecisions === "object") {
-          const decMap = metadata.sectionDecisions as Record<string, { decision: string; clarificationStatus?: string }>;
-          Object.keys(decMap).forEach((key) => {
-            if (decMap[key]?.clarificationStatus === "received") {
-              initialResolved.add(key);
-            }
-          });
-        }
+
+        // Helper to check if a section is actively waiting for clarification
+        const isSectionWaitingClarification = (secKey: string) => {
+          const clar = combinedClarifications[secKey];
+          const dec = combinedDecisions[secKey];
+          if (dec?.decision === "clarification") {
+            if (isOnHold) return true;
+            return dec.clarificationStatus !== "received" || clar?.status !== "received";
+          }
+          if (clar) {
+            if (isOnHold && clar.status !== "approved") return true;
+            return clar.status === "waiting";
+          }
+          return false;
+        };
+
+        // Invalidate stale local storage keys for any section actively waiting clarification
         if (typeof window !== "undefined" && appNum) {
-          ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"].forEach((sec) => {
-            if (localStorage.getItem(`jatayu_clarification_resolved_${appNum}_${sec}`) === "true") {
+          if (isOnHold) {
+            localStorage.removeItem(`jatayu_clarifications_submitted_${appNum}`);
+          }
+          allSectionsList.forEach((sec) => {
+            if (isSectionWaitingClarification(sec)) {
+              localStorage.removeItem(`jatayu_clarification_resolved_${appNum}_${sec}`);
+            } else if (!isOnHold && localStorage.getItem(`jatayu_clarification_resolved_${appNum}_${sec}`) === "true") {
               initialResolved.add(sec);
             }
           });
         }
+
+        // Add backend-confirmed received clarifications (only if not waiting)
+        if (!isOnHold) {
+          Object.keys(combinedClarifications).forEach((key) => {
+            if (combinedClarifications[key]?.status === "received" && !isSectionWaitingClarification(key)) {
+              initialResolved.add(key);
+            }
+          });
+          Object.keys(combinedDecisions).forEach((key) => {
+            if (combinedDecisions[key]?.clarificationStatus === "received" && !isSectionWaitingClarification(key)) {
+              initialResolved.add(key);
+            }
+          });
+        }
+
         setResolvedClarifications(initialResolved);
+
+        const hasWaiting = allSectionsList.some((sec) => isSectionWaitingClarification(sec));
 
         const cachedSubmitted = typeof window !== "undefined" && appNum
           ? localStorage.getItem(`jatayu_clarifications_submitted_${appNum}`) === "true"
           : false;
 
-        const hasWaiting =
-          Object.values((metadata.sectionClarifications as Record<string, any>) || {}).some(
-            (c) => c?.status === "waiting"
-          ) ||
-          Object.values((metadata.sectionDecisions as Record<string, any>) || {}).some(
-            (d) => d?.decision === "clarification" && d?.clarificationStatus === "waiting"
-          );
-
-        if (hasWaiting) {
+        if (isOnHold || hasWaiting) {
           setIsSubmittedForReview(false);
           if (typeof window !== "undefined" && appNum) {
             localStorage.removeItem(`jatayu_clarifications_submitted_${appNum}`);
@@ -358,17 +534,9 @@ export default function ExpertProfileEditor() {
         setPortfolioSamples(Array.isArray(metadata.portfolioSamples)
           ? metadata.portfolioSamples as PortfolioSampleFile[]
           : []);
-        if (metadata.sectionClarifications && typeof metadata.sectionClarifications === "object") {
-          setPendingClarifications(metadata.sectionClarifications as Record<string, { status: string; note?: string }>);
-        }
-        if (metadata.sectionDecisions && typeof metadata.sectionDecisions === "object") {
-          setSectionDecisions(
-            metadata.sectionDecisions as Record<
-              string,
-              { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }
-            >
-          );
-        }
+
+        setPendingClarifications(combinedClarifications);
+        setSectionDecisions(combinedDecisions);
       })
       .catch(() => {
         setCredentialsError("Unable to load saved credentials. Please reload to retry.");
@@ -730,6 +898,7 @@ export default function ExpertProfileEditor() {
           portfolio,
           acceptCustomRequests,
           audiences: selectedAudiences,
+          languages: profile.languages,
           governmentId,
           kycPhotos,
           kycVideoUrl,
@@ -903,6 +1072,7 @@ export default function ExpertProfileEditor() {
       const clar = pendingClarifications[secId];
       if (decision?.decision === "clarification" && decision.note) return decision.note;
       if (clar?.status === "waiting" && clar.note) return clar.note;
+      if (clar?.note) return clar.note;
       if (decision?.notes && decision.notes.length > 0) {
         return decision.notes[decision.notes.length - 1].text;
       }
@@ -1064,7 +1234,7 @@ export default function ExpertProfileEditor() {
   ], []);
 
   const clarificationSections = useMemo(() => {
-    return ALL_PROFILE_SECTIONS.filter((s) => {
+    const list = ALL_PROFILE_SECTIONS.filter((s) => {
       const clarNote = getSectionClarification(s.id);
       const rejNote = getSectionRejection(s.id);
       const dec = sectionDecisions[s.id];
@@ -1074,10 +1244,19 @@ export default function ExpertProfileEditor() {
         dec?.decision === "clarification" ||
         dec?.decision === "reject" ||
         clar?.status === "waiting" ||
+        (reviewStatus === "on_hold" && Boolean(clar)) ||
         Boolean(clarNote) ||
         Boolean(rejNote)
       );
-    }).map((s, idx) => {
+    });
+
+    // Fallback: If application is on hold, but no specific sections matched (e.g. general hold note),
+    // ensure all unapproved sections can be edited in clarification accordions
+    const effectiveSections = (list.length === 0 && reviewStatus === "on_hold")
+      ? ALL_PROFILE_SECTIONS.filter((s) => sectionDecisions[s.id]?.decision !== "approve")
+      : list;
+
+    return effectiveSections.map((s, idx) => {
       const clarNote = getSectionClarification(s.id) || getSectionRejection(s.id);
       return {
         ...s,
@@ -1085,7 +1264,7 @@ export default function ExpertProfileEditor() {
         note: clarNote || "Please review and update requested information",
       };
     });
-  }, [ALL_PROFILE_SECTIONS, sectionDecisions, pendingClarifications, getSectionClarification, getSectionRejection]);
+  }, [ALL_PROFILE_SECTIONS, sectionDecisions, pendingClarifications, reviewStatus, getSectionClarification, getSectionRejection]);
 
   const approvedSections = useMemo(() => {
     const clarIds = new Set(clarificationSections.map((s) => s.id));
@@ -1166,6 +1345,7 @@ export default function ExpertProfileEditor() {
           portfolio,
           acceptCustomRequests,
           audiences: selectedAudiences,
+          languages: profile.languages,
           governmentId,
           kycPhotos,
           kycVideoUrl,
@@ -2111,39 +2291,97 @@ export default function ExpertProfileEditor() {
       case "audience":
         return (
           <>
-              <div className={styles.sectionHeader}>
-          <div className={styles.sectionHeaderLeft}>
-            <div className={styles.sectionIconBox}>
-              <Users size={18} />
-            </div>
-            <div>
-              <h2 className={styles.sectionTitle}>Target Client Audience</h2>
-              <p className={styles.sectionSubtitle}>
-                Select the types of clients and organizational tiers you specialize in advising.
-              </p>
-            </div>
-          </div>
-        </div>
+           {/* Languages Consulted In */}
+           <div className={styles.fieldGroup} style={{ marginTop: "24px" }}>
+              <div className={styles.sectionHeader} style={{ marginTop: 0, paddingBottom: "8px" }}>
+                <div className={styles.sectionHeaderLeft}>
+                  <div className={styles.sectionIconBox}>
+                    <Languages size={18} />
+                  </div>
+                  <div>
+                    <h2 className={styles.sectionTitle} style={{ fontSize: "16px" }}>Languages Consulted In</h2>
+                    <p className={styles.sectionSubtitle}>
+                      Select the languages you are fluent in and comfortable consulting in.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-        <div className={styles.chipsGrid}>
-          {AUDIENCE_OPTIONS.map((aud) => {
-            const active = selectedAudiences.includes(aud.id);
-            return (
-              <button
-                key={aud.id}
-                type="button"
-                onClick={() => handleToggleAudience(aud.id)}
-                className={`${styles.selectableChip} ${active ? styles.selectableChipActive : ""}`}
-              >
-                <CheckCircle2 size={14} />
-                <span>
-                  <strong>{aud.label}</strong> — {aud.desc}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+              <label htmlFor="audience-languages-select" className={styles.fieldLabel}>
+                Add Language
+              </label>
+              <SmartSearchSelect
+                id="audience-languages-select"
+                value=""
+                options={spokenLanguageOptions}
+                onChange={(language) => {
+                  if (!profile.languages.some((item) => item.toLowerCase() === language.toLowerCase())) {
+                    updateProfile("languages", [...profile.languages, language]);
+                  }
+                }}
+                customValueTransform={(language) => language}
+                placeholder="Select or search languages..."
+                aria-label="Languages Consulted In"
+              />
 
+              {profile.languages.length > 0 && (
+                <div className={styles.chipsGrid} style={{ marginTop: "10px" }} aria-label="Selected languages consulted in">
+                  {profile.languages.map((language) => (
+                    <button
+                      key={language}
+                      type="button"
+                      className={styles.selectableChip}
+                      aria-label={`Remove ${language}`}
+                      onClick={() =>
+                        updateProfile(
+                          "languages",
+                          profile.languages.filter((item) => item !== language),
+                        )
+                      }
+                    >
+                      <span>{language}</span>
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.sectionHeader}>
+              <div className={styles.sectionHeaderLeft}>
+                <div className={styles.sectionIconBox}>
+                  <Users size={18} />
+                </div>
+                <div>
+                  <h2 className={styles.sectionTitle}>Target Client Audience</h2>
+                  <p className={styles.sectionSubtitle}>
+                    Select the types of clients and organizational tiers you specialize in advising.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.chipsGrid}>
+              {AUDIENCE_OPTIONS.map((aud) => {
+                const active = selectedAudiences.includes(aud.id);
+                return (
+                  <button
+                    key={aud.id}
+                    type="button"
+                    onClick={() => handleToggleAudience(aud.id)}
+                    className={`${styles.selectableChip} ${active ? styles.selectableChipActive : ""}`}
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>
+                      <strong>{aud.label}</strong> — {aud.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+           
+           
           </>
         );
       case "availability":

@@ -33,6 +33,7 @@ import type {
   SeekerUser,
   UserStatus,
 } from "@/lib/adminUserManagement";
+import SuspendConfirmModal from "./SuspendConfirmModal";
 import styles from "./UserManagement.module.css";
 
 type UserManagementProps = {
@@ -45,6 +46,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [expertToSuspend, setExpertToSuspend] = useState<ExpertUser | null>(null);
 
   // Expert statistics
   const totalExperts = expertCounts.all ?? experts.length;
@@ -312,7 +314,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                             <button
                               type="button"
                               className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
-                              onClick={() => updateExpertStatus(exp.id, "suspended")}
+                              onClick={() => setExpertToSuspend(exp)}
                               disabled={updatingId === exp.id}
                               title="Suspend Account"
                             >
@@ -322,7 +324,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                             <button
                               type="button"
                               className={styles.actionBtn}
-                              onClick={() => updateExpertStatus(exp.id, "active")}
+                              onClick={() => void updateExpertStatus(exp.id, "active")}
                               disabled={updatingId === exp.id}
                               title="Activate Account"
                             >
@@ -437,6 +439,19 @@ export default function UserManagement({ subSection }: UserManagementProps) {
         </div>
       </div>
     </div>
+
+    {expertToSuspend && (
+      <SuspendConfirmModal
+        name={expertToSuspend.name}
+        appId={expertToSuspend.applicationNumber}
+        onCancel={() => setExpertToSuspend(null)}
+        onConfirm={async () => {
+          const targetId = expertToSuspend.id;
+          setExpertToSuspend(null);
+          await updateExpertStatus(targetId, "suspended");
+        }}
+      />
+    )}
   </section>
   );
 }

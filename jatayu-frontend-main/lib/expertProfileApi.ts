@@ -158,6 +158,18 @@ function asRecord(value: unknown): Record<string, unknown> {
 export function normalizeBackendProfile(expert: BackendExpertProfile): BackendExpertProfile {
   const raw = expert as BackendExpertProfile & Record<string, unknown>;
   const availabilities = Array.isArray(raw.availabilities) ? raw.availabilities : [];
+  const meta = asRecord(raw.onboardingMetadata);
+  if (typeof meta.sectionClarifications === "string") {
+    meta.sectionClarifications = asRecord(meta.sectionClarifications);
+  }
+  if (typeof meta.sectionDecisions === "string") {
+    meta.sectionDecisions = asRecord(meta.sectionDecisions);
+  }
+  if (typeof meta.sectionAuditLogs === "string") {
+    try {
+      meta.sectionAuditLogs = JSON.parse(meta.sectionAuditLogs as string);
+    } catch {}
+  }
   return {
     ...expert,
     skills: asStringArray(raw.skills),
@@ -166,7 +178,7 @@ export function normalizeBackendProfile(expert: BackendExpertProfile): BackendEx
     selectedLengths: asStringArray(raw.selectedLengths),
     targetAudience: asStringArray(raw.targetAudience),
     formatPrices: asRecord(raw.formatPrices) as Record<string, string>,
-    onboardingMetadata: asRecord(raw.onboardingMetadata),
+    onboardingMetadata: meta,
     credentials: Array.isArray(raw.credentials) ? raw.credentials : [],
     availabilities: availabilities.map((slot) => ({
       ...slot,

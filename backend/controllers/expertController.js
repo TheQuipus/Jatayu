@@ -18,9 +18,16 @@ import { appendSectionAuditEvent } from '../utils/applicationAuditLog.js';
 function publicExpert(expert) {
   const data = expert?.toJSON ? expert.toJSON() : { ...expert };
   delete data.password;
-  if (data.onboardingMetadata && typeof data.onboardingMetadata === 'object') {
-    const { pendingOtp, ...safeMetadata } = data.onboardingMetadata;
-    data.onboardingMetadata = safeMetadata;
+  if (data.onboardingMetadata) {
+    if (typeof data.onboardingMetadata === 'string') {
+      try {
+        data.onboardingMetadata = JSON.parse(data.onboardingMetadata);
+      } catch {}
+    }
+    if (data.onboardingMetadata && typeof data.onboardingMetadata === 'object') {
+      const { pendingOtp, ...safeMetadata } = data.onboardingMetadata;
+      data.onboardingMetadata = safeMetadata;
+    }
   }
   return data;
 }
@@ -286,6 +293,7 @@ export const updateProfile = async (req, res) => {
         }
         if (isSectionApproved('audience')) {
           delete filteredIncomingMeta.audiences;
+          delete filteredIncomingMeta.languages;
         }
 
         expert.onboardingMetadata = {
@@ -308,23 +316,25 @@ export const updateProfile = async (req, res) => {
       if (!isSectionApproved('profile') && (fullName !== undefined || professionalTitle !== undefined || tagLine !== undefined || bio !== undefined || req.file)) {
         updatedSections.add('profile');
       }
-      if (!isSectionApproved('credentials') && onboardingMetadata && (onboardingMetadata.governmentId !== undefined || onboardingMetadata.kycVideoUrl !== undefined || onboardingMetadata.certificates !== undefined || onboardingMetadata.portfolioSamples !== undefined)) {
+      if (!isSectionApproved('credentials') && onboardingMetadata && (onboardingMetadata.governmentId !== undefined || onboardingMetadata.kycVideoUrl !== undefined || onboardingMetadata.certificates !== undefined || onboardingMetadata.portfolioSamples !== undefined || onboardingMetadata.kycPhotos !== undefined)) {
         updatedSections.add('credentials');
       }
       if (!isSectionApproved('preferences') && (selectedFormats !== undefined || selectedLengths !== undefined || formatPrices !== undefined || (onboardingMetadata && onboardingMetadata.acceptCustomRequests !== undefined))) {
         updatedSections.add('preferences');
       }
-      if (!isSectionApproved('audience') && (targetAudience !== undefined || focusAreas !== undefined || (onboardingMetadata && onboardingMetadata.audiences !== undefined))) {
+      if (!isSectionApproved('audience') && (targetAudience !== undefined || focusAreas !== undefined || (onboardingMetadata && (onboardingMetadata.audiences !== undefined || onboardingMetadata.languages !== undefined)))) {
         updatedSections.add('audience');
       }
       if (!isSectionApproved('availability') && (availabilitySlots !== undefined || timezone !== undefined)) {
         updatedSections.add('availability');
       }
 
+      // Check which unapproved sections were updated or submitted for review
       let currentAuditLogs = currentMetadata.sectionAuditLogs || [];
+      const isReviewSubmit = Boolean(onboardingMetadata && onboardingMetadata.clarificationsAllSubmitted);
       for (const [secKey, clar] of Object.entries(clarifications)) {
         if (clar && clar.status === 'waiting') {
-          if (updatedSections.has(secKey)) {
+          if (updatedSections.has(secKey) || isReviewSubmit) {
             clar.status = 'received';
             clar.receivedAt = new Date().toISOString();
             clarificationsUpdated = true;

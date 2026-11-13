@@ -72,6 +72,44 @@ export function isExpertBlacklisted(expert) {
   return false;
 }
 
+export function isExpertSuspended(expert) {
+  if (!expert) return false;
+  const status = expert.status || expert.dataValues?.status;
+  if (status === 'suspended') return true;
+
+  const rawMetadata = expert.onboardingMetadata || expert.dataValues?.onboardingMetadata;
+  if (rawMetadata) {
+    if (typeof rawMetadata === 'string') {
+      if (/"status"\s*:\s*"suspended"/i.test(rawMetadata)) return true;
+      try {
+        const parsed = JSON.parse(rawMetadata);
+        if (parsed && typeof parsed === 'object' && parsed.status === 'suspended') {
+          return true;
+        }
+      } catch {
+        // ignore
+      }
+    } else if (typeof rawMetadata === 'object') {
+      if (rawMetadata.status === 'suspended') return true;
+      const keys = Object.keys(rawMetadata);
+      if (keys.length > 0 && keys.every((k, idx) => k === String(idx))) {
+        const decoded = keys.map((k) => rawMetadata[k]).join('');
+        if (/"status"\s*:\s*"suspended"/i.test(decoded)) return true;
+        try {
+          const parsed = JSON.parse(decoded);
+          if (parsed && typeof parsed === 'object' && parsed.status === 'suspended') {
+            return true;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 function nationalPhoneDigits(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   if (digits.length >= 10) return digits.slice(-10);
@@ -180,6 +218,13 @@ export const register = async (req, res) => {
       });
     }
 
+    if (isExpertSuspended(existingEmail) || isExpertSuspended(existingPhone)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
+
     if (existingEmail?.deletedAt) {
       return res.status(409).json({ message: 'This account was deleted. Contact support if you want it restored.', code: 'ACCOUNT_DELETED' });
     }
@@ -259,6 +304,13 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
+    if (isExpertSuspended(expert)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
+
     let storedOtp = tempOtps.get(expertId);
     if (!isStoredOtpValid(storedOtp, code)) {
       storedOtp = readOtpFromModel(expert);
@@ -329,6 +381,13 @@ export const resendOtp = async (req, res) => {
       });
     }
 
+    if (isExpertSuspended(expert)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
+
     await issueOtp(expert);
 
     console.log(`[OTP Resent] Expert: ${expert.email} | OTP: (sent via provider)`);
@@ -379,6 +438,13 @@ export const login = async (req, res) => {
       return res.status(403).json({
         message: 'Your profile is Marked as Blacklisted',
         code: 'CREDENTIALS_BLACKLISTED',
+      });
+    }
+
+    if (isExpertSuspended(expert)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
       });
     }
 
@@ -463,6 +529,13 @@ export const googleLogin = async (req, res) => {
       });
     }
 
+    if (isExpertSuspended(expert)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
+
     if (!expert) {
       expert = await Expert.create({
         email,
@@ -522,6 +595,13 @@ export const linkedinLogin = async (req, res) => {
       return res.status(403).json({
         message: 'Your profile is Marked as Blacklisted',
         code: 'CREDENTIALS_BLACKLISTED',
+      });
+    }
+
+    if (isExpertSuspended(expert)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
       });
     }
 

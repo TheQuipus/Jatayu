@@ -3246,9 +3246,18 @@
   transition: all 0.2s ease;
 }
 
-.holdBtn:hover {
+.holdBtn:hover:not(:disabled) {
   background: rgba(245, 158, 11, 0.05);
   border-color: #d97706;
+}
+
+.holdBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--seashell, #f9fafb);
+  border-color: var(--mercury, #e5e7eb);
+  color: var(--dusty-gray, #9ca3af);
+  box-shadow: none;
 }
 
 .rejectBtn {
@@ -3268,9 +3277,18 @@
   transition: all 0.2s ease;
 }
 
-.rejectBtn:hover {
+.rejectBtn:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.05);
   border-color: #dc2626;
+}
+
+.rejectBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--seashell, #f9fafb);
+  border-color: var(--mercury, #e5e7eb);
+  color: var(--dusty-gray, #9ca3af);
+  box-shadow: none;
 }
 
 /* ── Section Status Badges ── */
@@ -4018,6 +4036,40 @@
   color: #ffffff;
 }
 
+/* ── Sections Nav Approved Badge ────── */
+.navApprovedBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: auto;
+  cursor: pointer;
+  background: #ecfdf5;
+  border: 1.5px solid #10b981;
+  color: #059669;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.navApprovedBadge:hover {
+  transform: scale(1.12);
+}
+
+.chipActive .navApprovedBadge {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.navApprovedIcon {
+  display: inline-block;
+  user-select: none;
+}
+
 .navExclamationIcon {
   display: inline-block;
   user-select: none;
@@ -4060,6 +4112,7 @@
 }
 
 .navExclamationBadge:hover .navClarificationTooltip,
+.navApprovedBadge:hover .navClarificationTooltip,
 .chipButton:hover .navClarificationTooltip {
   visibility: visible;
   opacity: 1;

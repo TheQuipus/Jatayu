@@ -438,19 +438,106 @@ export const updateApplicationStatus = async (req, res) => {
         }
 
         if (secVal.decision === 'clarification') {
+          const resolvedStatus = (backendStatus === 'on_hold' || secVal.clarificationStatus !== 'received') ? 'waiting' : 'received';
           currentClarifications[secKey] = {
             sectionId: secKey,
-            status: secVal.clarificationStatus || 'waiting',
+            status: resolvedStatus,
             requestedAt: secVal.clarificationRequestedAt || new Date().toISOString(),
             note: secVal.note || (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '',
             notes: secVal.notes || [],
-            receivedAt: secVal.clarificationStatus === 'received' ? (secVal.clarificationReceivedAt || new Date().toISOString()) : null,
+            receivedAt: resolvedStatus === 'received' ? (secVal.clarificationReceivedAt || new Date().toISOString()) : null,
           };
+          delete metadata.clarificationsAllSubmitted;
         } else if (secVal.decision === 'approve' || secVal.decision === 'reject') {
           delete currentClarifications[secKey];
         }
       });
 
+      metadata.sectionDecisions = currentSectionDecisions;
+      metadata.sectionClarifications = currentClarifications;
+    }
+
+    if (backendStatus === 'on_hold') {
+      delete metadata.clarificationsAllSubmitted;
+      delete metadata.clarificationsSubmittedAt;
+      const currentSectionDecisions = metadata.sectionDecisions || {};
+      const currentClarifications = metadata.sectionClarifications || {};
+
+      // If reviewerNote contains compiled section issues (e.g. from HoldConfirmModal), parse them
+      if (reviewerNote && typeof reviewerNote === 'string') {
+        const regex = /\[(.*?)(?:\s*-\s*(?:Needs Clarification|Clarification|Rejected|REJECTED))?\]\s*:\s*([^;]+)/gi;
+        let match;
+        while ((match = regex.exec(reviewerNote)) !== null) {
+          const rawTitle = match[1].trim().toLowerCase();
+          const noteText = match[2].trim();
+          let secKey = null;
+          if (rawTitle.includes('category') || rawTitle.includes('skill')) secKey = 'category';
+          else if (rawTitle.includes('experience') || rawTitle.includes('portfolio') || rawTitle.includes('work')) secKey = 'experience';
+          else if (rawTitle.includes('profile') || rawTitle.includes('identity')) secKey = 'profile';
+          else if (rawTitle.includes('credential') || rawTitle.includes('kyc') || rawTitle.includes('education')) secKey = 'credentials';
+          else if (rawTitle.includes('preference') || rawTitle.includes('pricing') || rawTitle.includes('consultation')) secKey = 'preferences';
+          else if (rawTitle.includes('audience') || rawTitle.includes('language')) secKey = 'audience';
+          else if (rawTitle.includes('availab') || rawTitle.includes('schedule')) secKey = 'availability';
+
+          if (secKey) {
+            currentSectionDecisions[secKey] = {
+              ...(currentSectionDecisions[secKey] || {}),
+              decision: 'clarification',
+              note: noteText,
+              clarificationStatus: 'waiting',
+              clarificationRequestedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            currentClarifications[secKey] = {
+              ...(currentClarifications[secKey] || {}),
+              sectionId: secKey,
+              status: 'waiting',
+              note: noteText,
+              requestedAt: new Date().toISOString(),
+              receivedAt: null,
+            };
+          }
+        }
+      }
+
+      // Check sectionAuditLogs to recover any sections marked for clarification
+      if (Array.isArray(currentAuditLogs)) {
+        for (const entry of currentAuditLogs) {
+          const secKey = entry.sectionId;
+          if (secKey && secKey !== 'application' && entry.action === 'clarification') {
+            if (!currentSectionDecisions[secKey] || currentSectionDecisions[secKey].decision !== 'approve') {
+              currentSectionDecisions[secKey] = {
+                ...(currentSectionDecisions[secKey] || {}),
+                decision: 'clarification',
+                note: currentSectionDecisions[secKey]?.note || entry.note || '',
+                clarificationStatus: 'waiting',
+                clarificationRequestedAt: currentSectionDecisions[secKey]?.clarificationRequestedAt || entry.timestamp || new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+              currentClarifications[secKey] = {
+                ...(currentClarifications[secKey] || {}),
+                sectionId: secKey,
+                status: 'waiting',
+                note: currentClarifications[secKey]?.note || entry.note || '',
+                requestedAt: currentClarifications[secKey]?.requestedAt || entry.timestamp || new Date().toISOString(),
+                receivedAt: null,
+              };
+            }
+          }
+        }
+      }
+
+      Object.keys(currentSectionDecisions).forEach((secKey) => {
+        if (currentSectionDecisions[secKey]?.decision === 'clarification') {
+          currentSectionDecisions[secKey].clarificationStatus = 'waiting';
+          currentSectionDecisions[secKey].clarificationRequestedAt = currentSectionDecisions[secKey].clarificationRequestedAt || new Date().toISOString();
+        }
+      });
+      Object.keys(currentClarifications).forEach((secKey) => {
+        currentClarifications[secKey].status = 'waiting';
+        currentClarifications[secKey].requestedAt = currentClarifications[secKey].requestedAt || new Date().toISOString();
+        currentClarifications[secKey].receivedAt = null;
+      });
       metadata.sectionDecisions = currentSectionDecisions;
       metadata.sectionClarifications = currentClarifications;
     }
@@ -656,14 +743,16 @@ export const updateApplicationSectionDecision = async (req, res) => {
         }
 
         if (secVal.decision === 'clarification') {
+          const resolvedStatus = secVal.clarificationStatus === 'received' ? 'received' : 'waiting';
           currentClarifications[secKey] = {
             sectionId: secKey,
-            status: secVal.clarificationStatus || 'waiting',
+            status: resolvedStatus,
             requestedAt: secVal.clarificationRequestedAt || new Date().toISOString(),
             note: secVal.note || (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '',
             notes: secVal.notes || [],
-            receivedAt: secVal.clarificationStatus === 'received' ? (secVal.clarificationReceivedAt || new Date().toISOString()) : null,
+            receivedAt: resolvedStatus === 'received' ? (secVal.clarificationReceivedAt || new Date().toISOString()) : null,
           };
+          delete metadata.clarificationsAllSubmitted;
         } else if (secVal.decision === 'approve' || secVal.decision === 'reject') {
           delete currentClarifications[secKey];
         }
@@ -674,12 +763,17 @@ export const updateApplicationSectionDecision = async (req, res) => {
       const previousNote = currentSectionDecisions[sectionId]?.note ||
         (currentSectionDecisions[sectionId]?.notes && currentSectionDecisions[sectionId]?.notes[currentSectionDecisions[sectionId]?.notes.length - 1]?.text) || '';
 
+      const isClarification = decision === 'clarification';
+      const resolvedStatus = isClarification
+        ? (clarificationStatus === 'received' ? 'received' : 'waiting')
+        : undefined;
+
       currentSectionDecisions[sectionId] = {
         decision: decision || null,
         note: note || '',
         notes: notes || [],
-        clarificationStatus: decision === 'clarification' ? (clarificationStatus || 'waiting') : undefined,
-        clarificationRequestedAt: decision === 'clarification' ? new Date().toISOString() : undefined,
+        clarificationStatus: resolvedStatus,
+        clarificationRequestedAt: isClarification ? new Date().toISOString() : undefined,
         updatedAt: new Date().toISOString(),
       };
 
@@ -697,15 +791,16 @@ export const updateApplicationSectionDecision = async (req, res) => {
         }, req.admin);
       }
 
-      if (decision === 'clarification') {
+      if (isClarification) {
         currentClarifications[sectionId] = {
           sectionId,
-          status: clarificationStatus || 'waiting',
+          status: resolvedStatus,
           requestedAt: new Date().toISOString(),
           note: note || (notes && notes[notes.length - 1]?.text) || '',
           notes: notes || [],
-          receivedAt: clarificationStatus === 'received' ? new Date().toISOString() : null,
+          receivedAt: resolvedStatus === 'received' ? new Date().toISOString() : null,
         };
+        delete metadata.clarificationsAllSubmitted;
       } else if (decision === 'approve' || decision === 'reject') {
         delete currentClarifications[sectionId];
       }
