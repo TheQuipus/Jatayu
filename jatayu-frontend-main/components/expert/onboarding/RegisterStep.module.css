@@ -55,6 +55,11 @@
   justify-content: flex-end;
   width: 100%;
   margin-top: 6px;
+  pointer-events: none;
+}
+
+.forgotPasswordRow > * {
+  pointer-events: auto;
 }
 
 .forgotPasswordError {

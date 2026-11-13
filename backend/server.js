@@ -27,7 +27,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import passwordRecoveryRoutes from './routes/passwordRecoveryRoutes.js';
 import { sendNotification, sendUpcomingExpertReminders, setNotificationSocketServer } from './services/notificationService.js';
 import { Booking, BookingExtension, Expert, ExpertSession } from './models/index.js';
-import { isExpertBlacklisted } from './controllers/authController.js';
+import { isExpertBlacklisted, isExpertSuspended } from './controllers/authController.js';
 import { approveExtension } from './services/bookingExtensionService.js';
 import jwt from 'jsonwebtoken';
 
@@ -135,9 +135,12 @@ const startServer = async () => {
         if (!['seeker', 'expert', 'admin'].includes(user.role)) throw new Error();
 
         if (user.role === 'expert') {
-          const expert = await Expert.findByPk(user.id, { attributes: ['id', 'isBlacklisted', 'onboardingMetadata'] });
+          const expert = await Expert.findByPk(user.id, { attributes: ['id', 'status', 'isBlacklisted', 'onboardingMetadata'] });
           if (isExpertBlacklisted(expert)) {
             return next(new Error('CREDENTIALS_BLACKLISTED'));
+          }
+          if (isExpertSuspended(expert)) {
+            return next(new Error('ACCOUNT_SUSPENDED'));
           }
           if (user.jti) {
             const session = await ExpertSession.findByPk(user.jti);
@@ -150,7 +153,8 @@ const startServer = async () => {
         socket.user = user;
         next();
       } catch (err) {
-        next(new Error(err.message === 'CREDENTIALS_BLACKLISTED' ? 'CREDENTIALS_BLACKLISTED' : 'Unauthorized'));
+        const allowedErrors = ['CREDENTIALS_BLACKLISTED', 'ACCOUNT_SUSPENDED'];
+        next(new Error(allowedErrors.includes(err.message) ? err.message : 'Unauthorized'));
       }
     });
     setNotificationSocketServer(io);

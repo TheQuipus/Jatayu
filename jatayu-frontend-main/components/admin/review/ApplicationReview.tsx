@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   AlertCircle,
   Briefcase,
+  Check,
   CheckCircle2,
   Download,
   ExternalLink,
@@ -413,21 +414,34 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       for (const sec of REVIEW_SECTIONS) {
         const draft = sectionDecisions[sec.id];
         const existing = mergedDecisions[sec.id];
-        if (draft?.decision) {
+        const effectiveDecision = draft?.decision || existing?.decision;
+        const isClarification = effectiveDecision === "clarification";
+
+        if (draft?.decision || existing?.decision) {
+          const rawNote = draft?.note?.trim() || "";
+          let updatedNotes = draft?.notes || existing?.notes || [];
+          if (rawNote && isClarification && !updatedNotes.some((n) => n.text === rawNote)) {
+            updatedNotes = [
+              ...updatedNotes,
+              {
+                id: `sn-${Date.now()}-${sec.id}`,
+                author: ADMIN_PROFILE.name,
+                avatar: ADMIN_PROFILE.avatar,
+                timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
+                text: rawNote,
+              },
+            ];
+          }
+
           mergedDecisions[sec.id] = {
             ...existing,
             ...draft,
-            clarificationStatus:
-              draft.decision === "clarification"
-                ? draft.clarificationStatus || existing?.clarificationStatus || "waiting"
-                : undefined,
-            clarificationRequestedAt:
-              draft.decision === "clarification"
-                ? draft.clarificationRequestedAt || existing?.clarificationRequestedAt || new Date().toISOString()
-                : undefined,
+            decision: effectiveDecision,
+            notes: updatedNotes,
+            note: "",
+            clarificationStatus: isClarification ? "waiting" : undefined,
+            clarificationRequestedAt: isClarification ? new Date().toISOString() : undefined,
           };
-          hasSectionDecisions = true;
-        } else if (existing?.decision) {
           hasSectionDecisions = true;
         }
       }
@@ -480,21 +494,34 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       for (const sec of REVIEW_SECTIONS) {
         const draft = sectionDecisions[sec.id];
         const existing = mergedDecisions[sec.id];
-        if (draft?.decision) {
+        const effectiveDecision = draft?.decision || existing?.decision;
+        const isClarification = effectiveDecision === "clarification";
+
+        if (draft?.decision || existing?.decision) {
+          const rawNote = draft?.note?.trim() || "";
+          let updatedNotes = draft?.notes || existing?.notes || [];
+          if (rawNote && isClarification && !updatedNotes.some((n) => n.text === rawNote)) {
+            updatedNotes = [
+              ...updatedNotes,
+              {
+                id: `sn-${Date.now()}-${sec.id}`,
+                author: ADMIN_PROFILE.name,
+                avatar: ADMIN_PROFILE.avatar,
+                timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
+                text: rawNote,
+              },
+            ];
+          }
+
           mergedDecisions[sec.id] = {
             ...existing,
             ...draft,
-            clarificationStatus:
-              draft.decision === "clarification"
-                ? draft.clarificationStatus || existing?.clarificationStatus || "waiting"
-                : undefined,
-            clarificationRequestedAt:
-              draft.decision === "clarification"
-                ? draft.clarificationRequestedAt || existing?.clarificationRequestedAt || new Date().toISOString()
-                : undefined,
+            decision: effectiveDecision,
+            notes: updatedNotes,
+            note: "",
+            clarificationStatus: isClarification ? "waiting" : undefined,
+            clarificationRequestedAt: isClarification ? new Date().toISOString() : undefined,
           };
-          hasSectionDecisions = true;
-        } else if (existing?.decision) {
           hasSectionDecisions = true;
         }
       }
@@ -811,28 +838,58 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   const clarificationSectionsList = useMemo(() => {
     return ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"]
       .filter((id) => {
-        const dec = getSectionDecision(id);
+        const draft = sectionDecisions[id];
+        const sub = submittedDecisions[id];
+        const dec = draft?.decision || sub?.decision;
         return dec === "clarification" || dec === "reject";
       })
-      .map((id) => ({
-        sectionTitle: getSectionTitle(id),
-        note: getSectionNote(id),
-        decision: getSectionDecision(id),
-      }));
-  }, [submittedDecisions]);
+      .map((id) => {
+        const draft = sectionDecisions[id];
+        const sub = submittedDecisions[id];
+        const dec = draft?.decision || sub?.decision;
+        const note = draft?.note?.trim() || getSectionNote(id);
+        return {
+          sectionTitle: getSectionTitle(id),
+          note,
+          decision: dec,
+        };
+      });
+  }, [submittedDecisions, sectionDecisions]);
 
   const rejectedSectionsList = useMemo(() => {
     return ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"]
       .filter((id) => {
-        const dec = getSectionDecision(id);
-        return dec === "clarification" || dec === "reject";
+        const draft = sectionDecisions[id];
+        const sub = submittedDecisions[id];
+        const dec = draft?.decision || sub?.decision;
+        return dec === "reject";
       })
-      .map((id) => ({
-        sectionTitle: getSectionTitle(id),
-        note: getSectionNote(id),
-        decision: getSectionDecision(id),
-      }));
-  }, [submittedDecisions]);
+      .map((id) => {
+        const draft = sectionDecisions[id];
+        const sub = submittedDecisions[id];
+        const dec = draft?.decision || sub?.decision;
+        const note = draft?.note?.trim() || getSectionNote(id);
+        return {
+          sectionTitle: getSectionTitle(id),
+          note,
+          decision: dec,
+        };
+      });
+  }, [submittedDecisions, sectionDecisions]);
+
+  const hasClarificationSection = useMemo(() => {
+    return REVIEW_SECTIONS.some((sec) => {
+      const dec = sectionDecisions[sec.id]?.decision || submittedDecisions[sec.id]?.decision;
+      return dec === "clarification";
+    });
+  }, [sectionDecisions, submittedDecisions]);
+
+  const hasRejectedSection = useMemo(() => {
+    return REVIEW_SECTIONS.some((sec) => {
+      const dec = sectionDecisions[sec.id]?.decision || submittedDecisions[sec.id]?.decision;
+      return dec === "reject";
+    });
+  }, [sectionDecisions, submittedDecisions]);
 
   const isSectionFilled = (sectionId: string): boolean => {
     // 1. Check if decision is already submitted
@@ -972,13 +1029,9 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       ...rawState,
       decision,
       clarificationStatus:
-        decision === "clarification"
-          ? rawState.clarificationStatus || "waiting"
-          : undefined,
+        decision === "clarification" ? "waiting" : undefined,
       clarificationRequestedAt:
-        decision === "clarification"
-          ? rawState.clarificationRequestedAt || new Date().toISOString()
-          : undefined,
+        decision === "clarification" ? new Date().toISOString() : undefined,
     };
     const updatedSubmitted = {
       ...submittedDecisions,
@@ -1094,66 +1147,74 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   const getSectionClarificationStatus = (
     sectionId: string,
   ): "waiting" | "received" | null => {
-    // 1. Check backend application metadata sectionClarifications first
+    const draft = sectionDecisions[sectionId];
+    const sub = submittedDecisions[sectionId];
+    const effectiveDec = draft?.decision || sub?.decision;
+    // If the section is approved or rejected, no clarification badge should show
+    if (effectiveDec === "approve" || effectiveDec === "reject") {
+      return null;
+    }
+
     const appMeta = application?.onboardingMetadata as Record<string, unknown> | undefined;
     const backendClarifications = appMeta?.sectionClarifications as Record<
       string,
       { status?: "waiting" | "received" }
     > | undefined;
-
-    if (backendClarifications?.[sectionId]?.status === "received") {
-      return "received";
-    }
-    if (backendClarifications?.[sectionId]?.status === "waiting") {
-      return "waiting";
-    }
-
-    // 2. Check backend application metadata sectionDecisions
     const backendDecisions = appMeta?.sectionDecisions as Record<
       string,
       SectionReviewState
     > | undefined;
-    if (backendDecisions?.[sectionId]?.clarificationStatus === "received") {
-      return "received";
-    }
-    if (
+
+    const hasClarification =
+      draft?.decision === "clarification" ||
+      sub?.decision === "clarification" ||
       backendDecisions?.[sectionId]?.decision === "clarification" ||
+      Boolean(backendClarifications?.[sectionId]) ||
+      (application?.status === "on_hold" &&
+        Boolean(
+          (draft?.notes && draft.notes.length > 0) ||
+            (sub?.notes && sub.notes.length > 0) ||
+            draft?.note?.trim() ||
+            sub?.note?.trim(),
+        ));
+
+    if (!hasClarification) {
+      return null;
+    }
+
+    // 1. If admin currently has an active draft marking this as clarification or waiting
+    if (draft?.decision === "clarification" && draft?.clarificationStatus !== "received") {
+      return "waiting";
+    }
+
+    // 2. If submitted decision in this admin session is explicitly waiting
+    if (sub?.decision === "clarification" && sub.clarificationStatus === "waiting") {
+      return "waiting";
+    }
+
+    // 3. Check backend clarification response from expert
+    const isBackendReceived =
+      backendClarifications?.[sectionId]?.status === "received" ||
+      backendDecisions?.[sectionId]?.clarificationStatus === "received";
+
+    if (isBackendReceived) {
+      if (sub?.clarificationStatus !== "waiting" && draft?.clarificationStatus !== "waiting") {
+        return "received";
+      }
+    }
+
+    if (
+      backendClarifications?.[sectionId]?.status === "waiting" ||
       backendDecisions?.[sectionId]?.clarificationStatus === "waiting"
     ) {
       return "waiting";
     }
 
-    // 3. Check submitted decisions state
-    const sub = submittedDecisions[sectionId];
-    if (sub?.clarificationStatus === "received") {
-      return "received";
-    }
     if (sub?.decision === "clarification") {
-      return "waiting";
+      return sub.clarificationStatus === "received" ? "received" : "waiting";
     }
 
-    // 4. Check active draft decisions (e.g. admin selected "Need Clarification" radio)
-    const draft = sectionDecisions[sectionId];
-    if (draft?.clarificationStatus === "received") {
-      return "received";
-    }
-    if (draft?.decision === "clarification") {
-      return "waiting";
-    }
-
-    // 5. Fallback for legacy applications: if the application itself is on_hold,
-    // and this section has note/notes in draft or submitted
-    if (
-      application?.status === "on_hold" &&
-      ((draft?.notes && draft.notes.length > 0) ||
-        (sub?.notes && sub.notes.length > 0) ||
-        draft?.note?.trim() ||
-        sub?.note?.trim())
-    ) {
-      return "waiting";
-    }
-
-    return null;
+    return "waiting";
   };
 
 
@@ -1583,7 +1644,8 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
               <div className={styles.chipsNavList}>
                 {REVIEW_SECTIONS.map((sec, idx) => {
                   const isActive = activeTab === sec.id;
-                  const clarificationStatus = getSectionClarificationStatus(sec.id);
+                  const isApproved = getSectionDecision(sec.id) === "approve";
+                  const clarificationStatus = !isApproved ? getSectionClarificationStatus(sec.id) : null;
                   return (
                     <button
                       key={sec.id}
@@ -1593,7 +1655,17 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                     >
                       <span className={styles.chipNum}>{idx + 1}</span>
                       <span className={styles.chipText}>{sec.label}</span>
-                      {clarificationStatus && (
+                      {isApproved ? (
+                        <span
+                          className={styles.navApprovedBadge}
+                          aria-label="Section Approved"
+                        >
+                          <Check size={11} strokeWidth={2.6} className={styles.navApprovedIcon} />
+                          <span className={styles.navClarificationTooltip} role="tooltip">
+                            Section Approved
+                          </span>
+                        </span>
+                      ) : clarificationStatus ? (
                         <span
                           className={styles.navExclamationBadge}
                           aria-label={
@@ -1609,7 +1681,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                               : "Waiting for Clarification"}
                           </span>
                         </span>
-                      )}
+                      ) : null}
                     </button>
                   );
                 })}
@@ -2428,16 +2500,18 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           <button
             type="button"
             className={styles.holdBtn}
-            disabled={isUpdatingStatus}
+            disabled={!hasClarificationSection || isUpdatingStatus}
             onClick={() => setShowHoldConfirm(true)}
+            title={!hasClarificationSection ? "At least one section must be sent for clarification to place application on hold" : undefined}
           >
             Place on Hold
           </button>
           <button
             type="button"
             className={styles.rejectBtn}
-            disabled={isUpdatingStatus}
+            disabled={!hasRejectedSection || isUpdatingStatus}
             onClick={() => setShowRejectConfirm(true)}
+            title={!hasRejectedSection ? "At least one section must be rejected to reject the application" : undefined}
           >
             Reject
           </button>

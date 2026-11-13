@@ -101,6 +101,51 @@ function buildFullName(firstName: string, lastName: string) {
   return [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
 }
 
+function renderAuthErrorMessage(text: string | null) {
+  if (!text) return null;
+  const match = text.match(/^(.*?\b)(Contact Us\??)(.*)$/i);
+  if (match) {
+    const [, before, linkText, after] = match;
+    return (
+      <span style={{ pointerEvents: "auto", position: "relative", zIndex: 20 }}>
+        {before}
+        <a
+          href="/#contact"
+          onClick={(e) => {
+            e.preventDefault();
+            if (typeof window !== "undefined") {
+              if (window.location.pathname === "/") {
+                const el = document.getElementById("contact");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth" });
+                  window.history.pushState(null, "", "/#contact");
+                  return;
+                }
+              }
+              window.location.href = "/#contact";
+            }
+          }}
+          style={{
+            color: "inherit",
+            textDecoration: "underline",
+            textUnderlineOffset: "3px",
+            fontWeight: 600,
+            cursor: "pointer",
+            pointerEvents: "auto",
+            position: "relative",
+            zIndex: 30,
+            display: "inline",
+          }}
+        >
+          {linkText}
+        </a>
+        {after}
+      </span>
+    );
+  }
+  return text;
+}
+
 export default function RegisterStep({
   onContinue,
   onOAuthSuccess,
@@ -369,7 +414,7 @@ export default function RegisterStep({
 
           {submitError ? (
             <div className={register.errorBannerBox} role="alert">
-              <p className={register.fieldErrorBelow}>{submitError}</p>
+              <p className={register.fieldErrorBelow}>{renderAuthErrorMessage(submitError)}</p>
               {isDuplicateRegistrationMessage(submitError) ? (
                 <p className={register.authToggle}>
                   Already registered?{" "}

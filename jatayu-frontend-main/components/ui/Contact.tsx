@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ContactActionButton from "./ContactActionButton";
 import PrimaryButton from "./PrimaryButton";
 import styles from "./Contact.module.css";
@@ -16,6 +16,18 @@ export default function Contact() {
     email?: string;
     message?: string;
   }>({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#contact") {
+      const scrollTimer = window.setTimeout(() => {
+        const el = document.getElementById("contact");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 150);
+      return () => window.clearTimeout(scrollTimer);
+    }
+  }, []);
 
   const validateField = (fieldName: string, value: string) => {
     let err = "";

@@ -161,7 +161,10 @@ async function apiFetch<T>(
     if (typeof window !== "undefined") {
       if (
         response.status === 403 &&
-        (code === "CREDENTIALS_BLACKLISTED" || message.toLowerCase().includes("blacklisted"))
+        (code === "CREDENTIALS_BLACKLISTED" ||
+          code === "ACCOUNT_SUSPENDED" ||
+          message.toLowerCase().includes("blacklisted") ||
+          message.toLowerCase().includes("suspended"))
       ) {
         removeToken();
         removeExpertId();
@@ -173,7 +176,11 @@ async function apiFetch<T>(
           // ignore
         }
         if (!window.location.pathname.startsWith("/login")) {
-          const msg = encodeURIComponent(message || "Your profile is Marked as Blacklisted");
+          const fallbackMsg =
+            code === "ACCOUNT_SUSPENDED" || message.toLowerCase().includes("suspended")
+              ? "Your Profile has been suspended. Contact Us?"
+              : "Your profile is Marked as Blacklisted";
+          const msg = encodeURIComponent(message || fallbackMsg);
           window.location.href = `/login?role=expert&blocked=1&reason=${msg}`;
         }
       } else if (response.status === 401 && message.toLowerCase().includes("revoked")) {

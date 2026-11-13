@@ -7,6 +7,7 @@ import {
   Availability,
   Notification,
 } from '../models/index.js';
+import { revokeAndExpelExpertSessions } from '../services/expertSessionService.js';
 
 const MANAGED_EXPERT_STATUSES = ['approved', 'active', 'on_hold', 'suspended'];
 
@@ -131,6 +132,7 @@ function serializeExpertUser(expert, stats = {}) {
     rawStatus: data.status,
     isBlacklisted,
     blacklistedAt: data.blacklistedAt || metadata.blacklistedAt || null,
+    suspendedAt: data.suspendedAt || metadata.suspendedAt || null,
     joinedDate: formatDate(approvalDate || data.createdAt),
     lastActive: formatRelativeTime(data.updatedAt),
     city,
@@ -351,9 +353,40 @@ export async function updateAdminExpertStatus(req, res) {
     return res.status(404).json({ message: 'Expert not found' });
   }
 
-  // When admin sets status to active, store 'active' in DB
+  let metadata = expert.onboardingMetadata;
+  if (typeof metadata === 'string') {
+    try {
+      metadata = JSON.parse(metadata);
+    } catch {
+      metadata = {};
+    }
+  }
+  if (!metadata || typeof metadata !== 'object') {
+    metadata = {};
+  }
+
   expert.status = status;
-  await expert.save();
+
+  if (status === 'suspended') {
+    metadata.suspendedAt = new Date().toISOString();
+    expert.onboardingMetadata = metadata;
+    await expert.save();
+
+    await revokeAndExpelExpertSessions(
+      expert.id,
+      'ACCOUNT_SUSPENDED',
+      'Your Profile has been suspended. Contact Us?',
+    );
+  } else if (status === 'active') {
+    if (metadata.suspendedAt) {
+      delete metadata.suspendedAt;
+      expert.onboardingMetadata = metadata;
+    }
+    await expert.save();
+  } else {
+    expert.onboardingMetadata = metadata;
+    await expert.save();
+  }
 
   return res.json({
     message: 'Expert status updated successfully',
