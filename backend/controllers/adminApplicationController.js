@@ -550,13 +550,12 @@ export const updateApplicationStatus = async (req, res) => {
       approved: 'approved',
       on_hold: 'on_hold',
       rejected: 'rejected',
-      in_review: 'in_review',
     };
-    if (statusActionMap[backendStatus]) {
+    if (statusActionMap[backendStatus] || (backendStatus === 'in_review' && reviewerNote && reviewerNote.trim())) {
       currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
         sectionId: 'application',
         sectionTitle: 'Application Overall',
-        action: statusActionMap[backendStatus],
+        action: statusActionMap[backendStatus] || 'in_review',
         note: reviewerNote || (backendStatus === 'approved' ? 'Application officially approved' : ''),
         newDecision: backendStatus,
       }, req.admin);
@@ -814,6 +813,19 @@ export const updateApplicationSectionDecision = async (req, res) => {
     metadata.sectionDecisions = currentSectionDecisions;
     metadata.sectionClarifications = currentClarifications;
     metadata.sectionAuditLogs = cleanAndDeduplicateAuditLogs(currentAuditLogs);
+
+    // If application was pending_review and there is at least one section decision,
+    // transition status to in_review. If all section decisions are cleared, revert to pending_review.
+    const hasAnySectionDecision = Object.values(currentSectionDecisions).some(
+      (d) => d && d.decision
+    );
+    if (hasAnySectionDecision && expert.status === 'pending_review') {
+      expert.status = 'in_review';
+      expert.changed('status', true);
+    } else if (!hasAnySectionDecision && expert.status === 'in_review') {
+      expert.status = 'pending_review';
+      expert.changed('status', true);
+    }
 
     expert.onboardingMetadata = { ...metadata };
     expert.changed('onboardingMetadata', true);

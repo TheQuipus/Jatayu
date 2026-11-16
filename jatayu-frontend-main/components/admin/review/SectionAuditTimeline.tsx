@@ -107,6 +107,12 @@ export default function SectionAuditTimeline({
 
     for (const item of raw) {
       const secKey = item.sectionId || "application";
+
+      // Skip phantom empty-note in_review application-level timeline entries
+      if (secKey === "application" && item.action === "in_review" && (!item.note || !item.note.trim())) {
+        continue;
+      }
+
       const key = `${secKey}:${item.action}:${(item.note || "").trim()}`;
       if (!seen.has(key)) {
         seen.add(key);

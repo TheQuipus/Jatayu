@@ -922,7 +922,7 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
 
   const markInReviewIfNeeded = useCallback(
     async (
-      customDrafts?: Record<string, SectionReviewState>,
+      _customDrafts?: Record<string, SectionReviewState>,
       customSubmitted?: Record<string, SectionReviewState>,
     ) => {
       if (isUpdatingReviewStatusRef.current || !review?.appId) return;
@@ -930,26 +930,12 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       // Only transition between pending and in_review
       if (review.status !== "pending" && review.status !== "in_review") return;
 
-      const draftsToCheck = customDrafts || sectionDecisionsRef.current;
       const submittedToCheck = customSubmitted || submittedDecisionsRef.current;
 
+      // Progress is strictly measured by SUBMITTED decisions, not uncommitted draft inputs
       const hasProgress = REVIEW_SECTIONS.some((sec) => {
-        const draft = draftsToCheck[sec.id];
         const sub = submittedToCheck[sec.id];
-        const hasDraftDecision = Boolean(draft?.decision);
-        const hasDraftNote = Boolean(draft?.note && draft.note.trim().length > 0);
-        const hasDraftNotes = Boolean(draft?.notes && draft.notes.length > 0);
-        const hasSubDecision = Boolean(sub?.decision);
-        const hasSubNote = Boolean(sub?.note && sub.note.trim().length > 0);
-        const hasSubNotes = Boolean(sub?.notes && sub.notes.length > 0);
-        return (
-          hasDraftDecision ||
-          hasDraftNote ||
-          hasDraftNotes ||
-          hasSubDecision ||
-          hasSubNote ||
-          hasSubNotes
-        );
+        return Boolean(sub?.decision);
       });
 
       if (hasProgress && review.status === "pending") {
@@ -1000,7 +986,8 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       }
     }
 
-    void markInReviewIfNeeded(updated);
+    // Uncommitted draft choices or typed notes are strictly kept in local state;
+    // status transitions to in_review happen only when the reviewer clicks "SUBMIT & CONTINUE".
 
     // If this section is now filled, clear it from unfilledSectionIds
     const isNowFilled =

@@ -112,6 +112,13 @@ console.log('--- Testing applicationAuditLog.js ---');
 {
   const rawLogs = [
     {
+      id: '0',
+      sectionId: 'application',
+      sectionTitle: 'Application Overall',
+      action: 'in_review',
+      note: '',
+    },
+    {
       id: '1',
       sectionId: 'preferences',
       sectionTitle: 'Preferences & Pricing',

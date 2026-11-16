@@ -42,6 +42,11 @@ export function cleanAndDeduplicateAuditLogs(rawLogs = []) {
     const entry = { ...item };
     const secKey = entry.sectionId || 'application';
 
+    // Ignore phantom "Application Overall" in_review logs that have no reviewer note
+    if (secKey === 'application' && entry.action === 'in_review' && (!entry.note || !String(entry.note).trim())) {
+      continue;
+    }
+
     // Normalize legacy section title
     if (secKey === 'preferences' || entry.sectionTitle === 'Preferences & Pricing') {
       entry.sectionTitle = 'Consultation Preferences';
