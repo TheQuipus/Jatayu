@@ -1,4 +1,4 @@
-import { randomInt } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Seeker } from '../../models/index.js';
@@ -138,39 +138,71 @@ export const register = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
     const existingEmail = await Seeker.findOne({ where: { email: normalizedEmail } });
-    if (existingEmail) {
-      return res.status(409).json({
-        message: 'An account with this email already exists. Please log in to continue.',
-        code: 'EMAIL_EXISTS',
-      });
-    }
-
     const existingPhone = await Seeker.findOne({ where: { phone } });
-    if (existingPhone) {
+
+    const existingAccount = existingEmail || existingPhone;
+    if (existingAccount) {
+      if (existingAccount.status !== 'draft') {
+        const isEmailMatch = Boolean(existingEmail);
+        return res.status(409).json({
+          message: isEmailMatch
+            ? 'An account with this email already exists. Please log in to continue.'
+            : 'An account with this phone number already exists. Please log in to continue.',
+          code: isEmailMatch ? 'EMAIL_EXISTS' : 'PHONE_EXISTS',
+        });
+      }
+
+      const isPasswordMatch = await bcrypt.compare(password, existingAccount.password);
+      if (isPasswordMatch) {
+        if (existingAccount.onboardingStep === 'otp') {
+          await issueOtp(existingAccount);
+          markSeekerOtpIssued(existingAccount.id);
+          return res.status(200).json({
+            message: 'Partially filled application found. Verification code resent.',
+            seekerId: existingAccount.id,
+            email: existingAccount.email,
+            phone: existingAccount.phone,
+            code: 'DRAFT_OTP_RESENT',
+          });
+        }
+
+        return res.status(200).json({
+          message: 'Partially filled application found. Resuming your application.',
+          token: buildSeekerToken(existingAccount),
+          user: buildSeekerUser(existingAccount),
+          code: 'DRAFT_RESUMED',
+        });
+      }
+
       return res.status(409).json({
-        message: 'An account with this phone number already exists. Please log in to continue.',
-        code: 'PHONE_EXISTS',
+        message: 'An incomplete registration exists for this account. Please log in with your password to continue where you left off.',
+        code: 'DRAFT_EXISTS',
       });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Create seeker in draft state immediately in DB
     const seeker = await Seeker.create({
-      fullName,
+      fullName: fullName.trim(),
       email: normalizedEmail,
       password: hashedPassword,
       phone,
       onboardingStep: 'otp',
       status: 'draft',
+      isEmailVerified: false,
+      isPhoneVerified: false,
     });
 
     await issueOtp(seeker);
+    markSeekerOtpIssued(seeker.id);
 
     console.log(`\n======================================================`);
-    console.log(`[Seeker OTP Sent] Registered: ${fullName}`);
-    console.log(`Email: ${email}`);
-    console.log(`Phone: ${phone}`);
+    console.log(`[Seeker OTP Sent] Registered: ${seeker.fullName}`);
+    console.log(`Email: ${seeker.email}`);
+    console.log(`Phone: ${seeker.phone}`);
+    console.log(`SeekerId: ${seeker.id}`);
     console.log(`======================================================\n`);
 
     return res.status(201).json({
@@ -197,7 +229,7 @@ export const verifyOtp = async (req, res) => {
   try {
     const seeker = await Seeker.findByPk(seekerId);
     if (!seeker) {
-      return res.status(404).json({ message: 'Seeker not found' });
+      return res.status(404).json({ message: 'Verification session not found or expired. Please register again.' });
     }
 
     let storedOtp = seekerTempOtps.get(seekerId);
@@ -243,7 +275,7 @@ export const resendOtp = async (req, res) => {
   try {
     const seeker = await Seeker.findByPk(seekerId);
     if (!seeker) {
-      return res.status(404).json({ message: 'Seeker not found' });
+      return res.status(404).json({ message: 'Registration session expired. Please register again.' });
     }
 
     if (!canIssueSeekerOtpNow(seeker.id)) {
@@ -251,6 +283,15 @@ export const resendOtp = async (req, res) => {
     }
 
     await issueOtp(seeker);
+    markSeekerOtpIssued(seeker.id);
+
+    console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: (sent via provider)`);
+
+    return res.status(200).json({
+      message: 'Verification code resent to your email and phone.',
+      email: seeker.email,
+      phone: seeker.phone,
+    });
     markSeekerOtpIssued(seeker.id);
 
     console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: (sent via provider)`);

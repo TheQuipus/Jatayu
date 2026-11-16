@@ -21,6 +21,7 @@ import {
 } from '../utils/applicationAuditLog.js';
 
 const FRONTEND_TO_BACKEND_STATUS = {
+  not_submitted: 'draft',
   pending: 'pending_review',
   in_review: 'in_review',
   on_hold: 'on_hold',
@@ -29,7 +30,7 @@ const FRONTEND_TO_BACKEND_STATUS = {
 };
 
 const BACKEND_TO_FRONTEND_STATUS = {
-  draft: 'pending',
+  draft: 'not_submitted',
   pending_review: 'pending',
   in_review: 'in_review',
   on_hold: 'on_hold',
@@ -39,8 +40,6 @@ const BACKEND_TO_FRONTEND_STATUS = {
 
 const SIGNUP_COMPLETE_DRAFT_WHERE = {
   status: 'draft',
-  isEmailVerified: true,
-  isPhoneVerified: true,
 };
 
 /**
@@ -121,12 +120,14 @@ function buildListWhere(statusFilter) {
     };
   }
 
+  if (statusFilter === 'not_submitted') {
+    return SIGNUP_COMPLETE_DRAFT_WHERE;
+  }
+
   const backendStatus = FRONTEND_TO_BACKEND_STATUS[statusFilter] || statusFilter;
 
   if (statusFilter === 'pending') {
-    return {
-      [Op.or]: [{ status: 'pending_review' }, SIGNUP_COMPLETE_DRAFT_WHERE],
-    };
+    return { status: 'pending_review' };
   }
 
   if (backendStatus === 'approved') {
@@ -221,7 +222,9 @@ async function ensureReviewMetadata(expert) {
     changed = true;
   }
 
-  if (!expert.submittedAt && isSignupComplete(expert)) {
+  // Only assign submittedAt if the application has been submitted (not in draft)
+  // For 'draft' (Not Submitted), submittedAt must remain null so SLA timer does NOT start
+  if (!expert.submittedAt && expert.status !== 'draft' && isSignupComplete(expert)) {
     expert.submittedAt = expert.createdAt || expert.updatedAt || new Date();
     changed = true;
   }
@@ -658,6 +661,7 @@ export const getApplicationStats = async (req, res) => {
 
     const counts = {
       all: experts.length,
+      not_submitted: 0,
       pending: 0,
       in_review: 0,
       on_hold: 0,
@@ -675,8 +679,9 @@ export const getApplicationStats = async (req, res) => {
         counts[frontendStatus] += 1;
       }
       const isTerminal = frontendStatus === 'rejected' || Boolean(expert.isBlacklisted) || frontendStatus === 'approved' || Boolean(expert.closedAt);
-      const submitted = expert.submittedAt || expert.createdAt;
-      if (!isTerminal && submitted && now - new Date(submitted).getTime() >= SLA_MS) {
+      const isDraft = frontendStatus === 'not_submitted' || expert.status === 'draft';
+      // The SLA Timer should not start for the "Not Submitted" Expert applications
+      if (!isTerminal && !isDraft && expert.submittedAt && (now - new Date(expert.submittedAt).getTime() >= SLA_MS)) {
         counts.overdue += 1;
       }
     }

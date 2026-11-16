@@ -62,6 +62,8 @@ function mapBackendStatus(expert: BackendExpertApplication): ApplicationStatus {
   if (expert.frontendStatus) return expert.frontendStatus;
 
   switch (expert.status) {
+    case "draft":
+      return "not_submitted";
     case "pending_review":
       return "pending";
     case "in_review":

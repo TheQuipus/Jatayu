@@ -130,13 +130,37 @@ export function isSignupOtpSession(session: PendingOtpSession): boolean {
 
 export function savePendingOtpSession(session: PendingOtpSession): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(PENDING_OTP_SESSION_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify(session);
+  try {
+    sessionStorage.setItem(PENDING_OTP_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
+  try {
+    localStorage.setItem(PENDING_OTP_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
 }
 
 export function readPendingOtpSession(): PendingOtpSession | null {
   if (typeof window === "undefined") return null;
 
-  const raw = sessionStorage.getItem(PENDING_OTP_SESSION_KEY);
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    raw = null;
+  }
+
+  if (!raw) {
+    try {
+      raw = localStorage.getItem(PENDING_OTP_SESSION_KEY);
+    } catch {
+      raw = null;
+    }
+  }
+
   if (!raw) return null;
 
   try {
@@ -150,7 +174,16 @@ export function readPendingOtpSession(): PendingOtpSession | null {
 
 export function clearPendingOtpSession(): void {
   if (typeof window === "undefined") return;
-  sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  try {
+    sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    // Ignore
+  }
+  try {
+    localStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    // Ignore
+  }
 }
 
 export function isAuthenticated(): boolean {

@@ -204,15 +204,20 @@ export default function RegisterStep({
         phone,
       });
 
+      if (response.token && response.user) {
+        onOAuthSuccess({ token: response.token, user: response.user });
+        return;
+      }
+
       onContinue({
-        expertId: response.expertId,
-        phone,
+        expertId: response.expertId || "",
+        phone: response.phone || phone,
         fullName,
         email: normalizeEmail(email),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Registration failed.";
-      if (isDuplicateRegistrationMessage(message)) {
+      if (isDuplicateRegistrationMessage(message) || message.includes("incomplete application")) {
         setSubmitError(
           `${message} Please log in to continue your onboarding or check your application status.`,
         );

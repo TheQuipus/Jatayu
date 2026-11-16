@@ -64,6 +64,7 @@ import {
 import styles from "./ApplicationReview.module.css";
 
 const REVIEW_STATUS_CLASS: Record<ApplicationStatus, string> = {
+  not_submitted: styles.statusNotSubmitted,
   pending: styles.statusPending,
   in_review: styles.statusInReview,
   on_hold: styles.statusOnHold,
@@ -72,6 +73,7 @@ const REVIEW_STATUS_CLASS: Record<ApplicationStatus, string> = {
 };
 
 const REVIEW_STATUS_LABEL: Record<ApplicationStatus, string> = {
+  not_submitted: "Not Submitted",
   pending: "Pending Review",
   in_review: "In Review",
   on_hold: "On Hold",

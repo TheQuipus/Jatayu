@@ -1,4 +1,4 @@
-export type ApplicationStatus = "pending" | "in_review" | "on_hold" | "approved" | "rejected";
+export type ApplicationStatus = "not_submitted" | "pending" | "in_review" | "on_hold" | "approved" | "rejected";
 
 export type SlaStatus = "on_track" | "at_risk" | "breached";
 
@@ -25,7 +25,7 @@ export type ApplicationKpi = {
   id: string;
   label: string;
   value: number;
-  variant: "pending" | "review" | "hold" | "approved" | "rejected";
+  variant: "total" | "not_submitted" | "pending" | "review" | "hold" | "overdue" | "approved" | "rejected";
 };
 
 export const APPLICATIONS_PENDING_COUNT = 24;

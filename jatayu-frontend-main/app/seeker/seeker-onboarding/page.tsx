@@ -269,6 +269,7 @@ type OnboardingStep =
 
 function SeekerOnboardingPageContent() {
   const router = useRouter();
+  const [routeInitialized, setRouteInitialized] = useState(false);
   const [step, setStep] = useState<OnboardingStep>("register");
   const [editReturnStep, setEditReturnStep] = useState<OnboardingStep | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -377,6 +378,8 @@ function SeekerOnboardingPageContent() {
   }
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    setRouteInitialized(true);
     const params = new URLSearchParams(window.location.search);
     const auth = params.get("auth");
     const flow = params.get("flow");
@@ -385,27 +388,33 @@ function SeekerOnboardingPageContent() {
     if (auth === "login") {
       clearPendingSeekerOtpSession();
       clearSeekerAuthSession();
-      queueMicrotask(() => setStep("login"));
+      setStep("login");
       return;
     }
 
     if (flow === "signup" || auth === "register" || auth === "signup") {
       clearPendingSeekerOtpSession();
       clearSeekerAuthSession();
-      queueMicrotask(() => handleSwitchToRegister());
+      handleSwitchToRegister();
       return;
     }
 
     if (resume === "otp") {
       const pendingOtp = readPendingSeekerOtpSession();
-      if (pendingOtp) {
-        queueMicrotask(() => {
-          setSeekerId(pendingOtp.seekerId);
-          setRegisteredEmail(pendingOtp.email);
-          setRegisteredPhone(pendingOtp.phone);
-          if (pendingOtp.fullName) setRegisteredName(pendingOtp.fullName);
-          setStep("otp");
-        });
+      const seekerIdParam = params.get("seekerId");
+      const emailParam = params.get("email");
+      const phoneParam = params.get("phone");
+
+      const effectiveSeekerId = pendingOtp?.seekerId || seekerIdParam || "";
+      const effectiveEmail = pendingOtp?.email || emailParam || "";
+      const effectivePhone = pendingOtp?.phone || phoneParam || "";
+
+      if (effectiveSeekerId && effectiveEmail) {
+        setSeekerId(effectiveSeekerId);
+        setRegisteredEmail(effectiveEmail);
+        setRegisteredPhone(effectivePhone);
+        if (pendingOtp?.fullName) setRegisteredName(pendingOtp.fullName);
+        setStep("otp");
         return;
       }
     }
@@ -442,11 +451,12 @@ function SeekerOnboardingPageContent() {
     // Default for unauthenticated signup / initial visit: clear any old session and show register step
     clearSeekerAuthSession();
     clearPendingSeekerOtpSession();
-    queueMicrotask(() => handleSwitchToRegister());
+    handleSwitchToRegister();
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!routeInitialized) return;
     let targetQuery = "";
     if (step === "register") {
       targetQuery = "?flow=signup";
@@ -461,7 +471,7 @@ function SeekerOnboardingPageContent() {
     if (window.location.pathname + window.location.search !== targetUrl) {
       window.history.replaceState(null, "", targetUrl);
     }
-  }, [step]);
+  }, [routeInitialized, step]);
 
   const handleStartJourney = () => {
     setStep("register");
