@@ -45,9 +45,12 @@ export type ExpertApplicationListItem = {
 };
 
 function toListItem(application: ExpertApplicationSubmission): ExpertApplicationListItem {
+  const isNotSubmitted = application.status === "not_submitted" || !application.submittedAt;
   const isClosed = application.status === "rejected" || Boolean(application.isBlacklisted) || application.status === "approved";
   const closedAt = application.closedAt || (isClosed ? (application.rejectedAt || application.blacklistedAt || application.approvedAt || application.updatedAt) : null);
-  const sla = getSlaStatus(application.submittedAt, isClosed ? (closedAt || application.submittedAt) : null);
+  const sla = isNotSubmitted
+    ? { slaStatus: "closed" as const, slaLabel: "—", slaLimit: "", hoursElapsed: 0 }
+    : getSlaStatus(application.submittedAt, isClosed ? (closedAt || application.submittedAt) : null);
   const city = application.location.split(",")[0]?.trim() || application.location;
 
   return {
@@ -168,6 +171,7 @@ export function useExpertApplications({
   const breachedApplications = useMemo(
     () =>
       applications.filter((application) => {
+        if (application.status === "not_submitted" || !application.submittedAt) return false;
         const isClosed = application.status === "rejected" || Boolean(application.isBlacklisted) || application.status === "approved";
         if (isClosed) return false;
         return getSlaStatus(application.submittedAt).slaStatus === "breached";
@@ -178,6 +182,7 @@ export function useExpertApplications({
   const statusCounts = useMemo(() => {
     const counts = {
       all: serverCounts.all ?? applications.length,
+      not_submitted: 0,
       pending: 0,
       in_review: 0,
       on_hold: 0,
@@ -186,7 +191,7 @@ export function useExpertApplications({
       overdue: serverCounts.overdue ?? breachedApplications.length,
     };
 
-    for (const key of ["pending", "in_review", "on_hold", "approved", "rejected"] as const) {
+    for (const key of ["not_submitted", "pending", "in_review", "on_hold", "approved", "rejected"] as const) {
       counts[key] = serverCounts[key] ?? 0;
     }
 
@@ -204,6 +209,12 @@ export function useExpertApplications({
         label: "Total",
         value: String(statusCounts.all).padStart(2, "0"),
         variant: "total" as const,
+      },
+      {
+        id: "not_submitted",
+        label: "Not Submitted",
+        value: String(statusCounts.not_submitted).padStart(2, "0"),
+        variant: "not_submitted" as const,
       },
       {
         id: "pending",

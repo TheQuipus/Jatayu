@@ -67,13 +67,37 @@ export function clearSeekerAuthSession(): void {
 
 export function savePendingSeekerOtpSession(session: PendingSeekerOtpSession): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(PENDING_OTP_SESSION_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify(session);
+  try {
+    sessionStorage.setItem(PENDING_OTP_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
+  try {
+    localStorage.setItem(PENDING_OTP_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
 }
 
 export function readPendingSeekerOtpSession(): PendingSeekerOtpSession | null {
   if (typeof window === "undefined") return null;
 
-  const raw = sessionStorage.getItem(PENDING_OTP_SESSION_KEY);
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    raw = null;
+  }
+
+  if (!raw) {
+    try {
+      raw = localStorage.getItem(PENDING_OTP_SESSION_KEY);
+    } catch {
+      raw = null;
+    }
+  }
+
   if (!raw) return null;
 
   try {
@@ -87,7 +111,16 @@ export function readPendingSeekerOtpSession(): PendingSeekerOtpSession | null {
 
 export function clearPendingSeekerOtpSession(): void {
   if (typeof window === "undefined") return;
-  sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  try {
+    sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    // Ignore
+  }
+  try {
+    localStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    // Ignore
+  }
 }
 
 export type SeekerOnboardingStep =

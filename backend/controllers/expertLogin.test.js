@@ -60,7 +60,7 @@ mock.module('../utils/accountLoginLockout.js', {
 });
 mock.module('../services/expertSessionService.js', { namedExports: { issueExpertToken: async () => 'test-expert-token' } });
 mock.module('../utils/expertApplicationQueue.js', { namedExports: { promoteExpertToApplicationQueue: async () => {} } });
-const { login, verifyOtp } = await import('./authController.js');
+const { login, register, verifyOtp } = await import('./authController.js');
 
 function response() {
   return {
@@ -348,3 +348,60 @@ for (const onboardingStep of ['budget', 'completed']) {
     assert.equal(deliveries.length, before);
   });
 }
+
+test('new expert registration creates DB account immediately in draft state and completes on OTP verification', async (t) => {
+  t.mock.method(Expert, 'findOne', async () => null);
+  let createdValues;
+  const expert = {
+    id: 'new-expert-id',
+    get fullName() { return createdValues?.fullName; },
+    get email() { return createdValues?.email; },
+    get phone() { return createdValues?.phone; },
+    onboardingStep: 'otp',
+    status: 'draft',
+    isEmailVerified: false,
+    isPhoneVerified: false,
+    save: async () => {},
+  };
+  t.mock.method(Expert, 'create', async (values) => {
+    createdValues = values;
+    return expert;
+  });
+  t.mock.method(Expert, 'findByPk', async () => expert);
+  const before = deliveries.length;
+
+  const res = response();
+  await register({
+    body: {
+      fullName: 'New Expert',
+      email: 'newexpert@example.com',
+      password: 'ExpertPassword1!',
+      phone: '9876543210',
+    },
+  }, res);
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(createdValues.email, 'newexpert@example.com');
+  assert.equal(createdValues.phone, '9876543210');
+  assert.equal(createdValues.onboardingStep, 'otp');
+  assert.equal(createdValues.status, 'draft');
+  assert.equal(deliveries.length, before + 1);
+  assert.equal(deliveries.at(-1).email, 'newexpert@example.com');
+  const deliveredCode = deliveries.at(-1).otpCode;
+  assert.match(deliveredCode, /^\d{6}$/);
+
+  // Now verify OTP -> onboardingStep becomes category and contacts verified
+  const verifyRes = response();
+  await verifyOtp({
+    body: {
+      expertId: res.body.expertId,
+      code: deliveredCode,
+    },
+  }, verifyRes);
+
+  assert.equal(verifyRes.statusCode, 200);
+  assert.equal(expert.isEmailVerified, true);
+  assert.equal(expert.isPhoneVerified, true);
+  assert.equal(expert.onboardingStep, 'category');
+  assert.equal(expert.status, 'draft');
+});

@@ -31,7 +31,7 @@ export default function SuspendConfirmModal({
         <div>
           <p style={{ margin: "0 0 14px 0", fontSize: "14px", lineHeight: "1.5", color: "var(--foreground, #1e293b)" }}>
             You are suspending the expert profile for <strong>{name}</strong>
-            {appId ? ` (${appId})` : ""}. This profile will be suspended from accessing any services as an expert.
+            {appId ? ` (${appId})` : ""}.
           </p>
 
           <div className={styles.modalBlacklistOption} style={{ cursor: "default" }}>
@@ -58,8 +58,8 @@ export default function SuspendConfirmModal({
               gap: "6px",
             }}
           >
-            <span style={{ color: "#E53B17" }}>ℹ</span>
-            <span>Note: This action takes effect immediately. You can reactivate this profile at any time from User Management.</span>
+            <span style={{ color: "#E53B17" }}></span>
+            <span>Note: You can reactivate this profile at any time from User Management.</span>
           </p>
         </div>
       }

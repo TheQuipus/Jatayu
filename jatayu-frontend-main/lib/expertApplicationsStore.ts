@@ -205,7 +205,8 @@ export function computeCompleteness(application: ExpertApplicationSubmission): n
   return Math.round((passed / checks.length) * 100);
 }
 
-export function getSubmittedAgo(submittedAt: string): string {
+export function getSubmittedAgo(submittedAt?: string | null): string {
+  if (!submittedAt || Number.isNaN(new Date(submittedAt).getTime())) return "—";
   const hours = Math.max(
     1,
     Math.floor((Date.now() - new Date(submittedAt).getTime()) / (1000 * 60 * 60)),
@@ -250,6 +251,15 @@ export function getSlaStatus(
   slaLimit: string;
   hoursElapsed: number;
 } {
+  if (!submittedAt || Number.isNaN(new Date(submittedAt).getTime())) {
+    return {
+      slaStatus: "closed",
+      slaLabel: "—",
+      slaLimit: "",
+      hoursElapsed: 0,
+    };
+  }
+
   if (closedAt) {
     const elapsedMs = Math.max(0, new Date(closedAt).getTime() - new Date(submittedAt).getTime());
     const hoursElapsed = Math.floor(elapsedMs / (1000 * 60 * 60));
@@ -307,7 +317,8 @@ export function getSlaStatus(
   };
 }
 
-export function formatSubmittedDate(submittedAt: string): string {
+export function formatSubmittedDate(submittedAt?: string | null): string {
+  if (!submittedAt || Number.isNaN(new Date(submittedAt).getTime())) return "—";
   return new Date(submittedAt).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",

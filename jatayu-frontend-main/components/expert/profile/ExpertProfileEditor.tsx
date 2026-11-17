@@ -200,20 +200,6 @@ function parseSectionAuditLogs(rawLogs: unknown): Record<string, { status: "wait
   return result;
 }
 
-function parseLocalStorageReviewDecisions(appNum: string): Record<string, { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }> {
-  if (typeof window === "undefined" || !appNum) return {};
-  try {
-    const saved = localStorage.getItem(`jatayu_review_submitted_${appNum}`) || localStorage.getItem(`jatayu_review_decisions_${appNum}`);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed && typeof parsed === "object") {
-        return parsed;
-      }
-    }
-  } catch {}
-  return {};
-}
-
 function safeParseJsonRecord(value: unknown): Record<string, any> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, any>;
@@ -401,17 +387,16 @@ export default function ExpertProfileEditor() {
         const decMap = safeParseJsonRecord(metadata.sectionDecisions);
         const auditLogMap = parseSectionAuditLogs(metadata.sectionAuditLogs);
         const noteMap = parseHoldReviewerNote(record.reviewerNote);
-        const localReviewMap = parseLocalStorageReviewDecisions(appNum);
 
         const allSectionsList = ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"];
         const isOnHold = record.status === "on_hold";
 
-        // Merge all sources of truth
+        // Merge all sources of truth (strictly from server metadata)
         const combinedDecisions: Record<string, { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }> = {};
         const combinedClarifications: Record<string, { status: string; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }> }> = {};
 
         for (const secKey of allSectionsList) {
-          const dec = decMap[secKey] || localReviewMap[secKey];
+          const dec = decMap[secKey];
           const clar = clarMap[secKey];
           const audit = auditLogMap[secKey];
           const noteText = noteMap[secKey] || "";
@@ -421,7 +406,7 @@ export default function ExpertProfileEditor() {
           let effectiveNotes = dec?.notes || clar?.notes || [];
           let effectiveStatus: "waiting" | "received" | undefined = clar?.status || dec?.clarificationStatus;
 
-          if (audit) {
+          if (audit && isOnHold) {
             if (audit.status === "waiting") {
               effectiveDecision = effectiveDecision || "clarification";
               effectiveStatus = "waiting";
@@ -448,7 +433,7 @@ export default function ExpertProfileEditor() {
             };
           }
 
-          if (effectiveDecision === "clarification" || effectiveStatus === "waiting") {
+          if (isOnHold && (effectiveDecision === "clarification" || effectiveStatus === "waiting")) {
             combinedClarifications[secKey] = {
               status: effectiveStatus || "waiting",
               note: effectiveNote,
@@ -459,14 +444,13 @@ export default function ExpertProfileEditor() {
 
         // Helper to check if a section is actively waiting for clarification
         const isSectionWaitingClarification = (secKey: string) => {
+          if (!isOnHold) return false;
           const clar = combinedClarifications[secKey];
           const dec = combinedDecisions[secKey];
           if (dec?.decision === "clarification") {
-            if (isOnHold) return true;
             return dec.clarificationStatus !== "received" || clar?.status !== "received";
           }
           if (clar) {
-            if (isOnHold && clar.status !== "approved") return true;
             return clar.status === "waiting";
           }
           return false;
@@ -476,14 +460,20 @@ export default function ExpertProfileEditor() {
         if (typeof window !== "undefined" && appNum) {
           if (isOnHold) {
             localStorage.removeItem(`jatayu_clarifications_submitted_${appNum}`);
-          }
-          allSectionsList.forEach((sec) => {
-            if (isSectionWaitingClarification(sec)) {
+            allSectionsList.forEach((sec) => {
+              if (isSectionWaitingClarification(sec)) {
+                localStorage.removeItem(`jatayu_clarification_resolved_${appNum}_${sec}`);
+              } else if (localStorage.getItem(`jatayu_clarification_resolved_${appNum}_${sec}`) === "true") {
+                initialResolved.add(sec);
+              }
+            });
+          } else {
+            // Clean up any stale clarification keys if application is not on hold
+            localStorage.removeItem(`jatayu_clarifications_submitted_${appNum}`);
+            allSectionsList.forEach((sec) => {
               localStorage.removeItem(`jatayu_clarification_resolved_${appNum}_${sec}`);
-            } else if (!isOnHold && localStorage.getItem(`jatayu_clarification_resolved_${appNum}_${sec}`) === "true") {
-              initialResolved.add(sec);
-            }
-          });
+            });
+          }
         }
 
         // Add backend-confirmed received clarifications (only if not waiting)
@@ -983,35 +973,6 @@ export default function ExpertProfileEditor() {
         return next;
       });
 
-      // Sync local storage review records if this appId has pending clarifications
-      if (typeof window !== "undefined" && appId) {
-        try {
-          const submittedKey = `jatayu_review_submitted_${appId}`;
-          const savedData = localStorage.getItem(submittedKey);
-          if (savedData) {
-            const parsed = JSON.parse(savedData);
-            let updated = false;
-            Object.keys(parsed).forEach((secKey) => {
-              if (
-                (!activeSecId || activeSecId === secKey) &&
-                parsed[secKey]?.decision === "clarification" &&
-                parsed[secKey]?.clarificationStatus === "waiting"
-              ) {
-                parsed[secKey].clarificationStatus = "received";
-                parsed[secKey].clarificationReceivedAt = new Date().toISOString();
-                updated = true;
-              }
-            });
-            if (updated) {
-              localStorage.setItem(submittedKey, JSON.stringify(parsed));
-              window.dispatchEvent(new Event("expert-applications-updated"));
-            }
-          }
-        } catch {
-          // ignore
-        }
-      }
-
       // Automatically find the next section requiring clarification or changes and scroll down to it
       if (activeSecId) {
         const ALL_PROFILE_SECTIONS = [
@@ -1234,6 +1195,11 @@ export default function ExpertProfileEditor() {
   ], []);
 
   const clarificationSections = useMemo(() => {
+    // Clarifications are strictly active only when the application is placed on hold
+    if (reviewStatus !== "on_hold") {
+      return [];
+    }
+
     const list = ALL_PROFILE_SECTIONS.filter((s) => {
       const clarNote = getSectionClarification(s.id);
       const rejNote = getSectionRejection(s.id);
@@ -1244,7 +1210,7 @@ export default function ExpertProfileEditor() {
         dec?.decision === "clarification" ||
         dec?.decision === "reject" ||
         clar?.status === "waiting" ||
-        (reviewStatus === "on_hold" && Boolean(clar)) ||
+        Boolean(clar) ||
         Boolean(clarNote) ||
         Boolean(rejNote)
       );
@@ -1275,7 +1241,8 @@ export default function ExpertProfileEditor() {
     clarificationSections.length > 0 &&
     clarificationSections.every((s) => resolvedClarifications.has(s.id));
 
-  const isClarificationActive = !isSubmittedForReview && clarificationSections.length > 0;
+  const isClarificationActive =
+    reviewStatus === "on_hold" && !isSubmittedForReview && clarificationSections.length > 0;
 
   const toggleClarificationSection = (secId: string) => {
     setOpenClarificationId((prev) => (prev === secId ? null : secId));
@@ -2541,6 +2508,8 @@ export default function ExpertProfileEditor() {
                 ? "Profile Active"
                 : isClarificationActive
                 ? "Clarification Required"
+                : reviewStatus === "rejected"
+                ? "Application Rejected"
                 : "Profile Locked (In Review)"}
             </span>
           </span>

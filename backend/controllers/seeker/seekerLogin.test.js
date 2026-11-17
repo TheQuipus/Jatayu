@@ -484,14 +484,18 @@ test('duplicate phone registration does not create an account or send an OTP', a
   assert.equal(deliveries.length, before);
 });
 
-test('new seeker registration still creates the account and sends one OTP', async (t) => {
+test('new seeker registration creates DB account immediately in draft state and completes on OTP verification', async (t) => {
   t.mock.method(Seeker, 'findOne', async () => null);
   let createdValues;
   const seeker = {
     id: 'new-registration-seeker',
-    get fullName() { return createdValues.fullName; },
-    get email() { return createdValues.email; },
-    get phone() { return createdValues.phone; },
+    get fullName() { return createdValues?.fullName; },
+    get email() { return createdValues?.email; },
+    get phone() { return createdValues?.phone; },
+    onboardingStep: 'otp',
+    status: 'draft',
+    isEmailVerified: false,
+    isPhoneVerified: false,
     onboardingMetadata: null,
     save: async () => {},
   };
@@ -499,6 +503,7 @@ test('new seeker registration still creates the account and sends one OTP', asyn
     createdValues = values;
     return seeker;
   });
+  t.mock.method(Seeker, 'findByPk', async () => seeker);
   const before = deliveries.length;
 
   const res = response();
@@ -514,7 +519,24 @@ test('new seeker registration still creates the account and sends one OTP', asyn
   assert.equal(res.statusCode, 201);
   assert.equal(createdValues.email, 'new@example.com');
   assert.equal(createdValues.phone, '9123456789');
+  assert.equal(createdValues.onboardingStep, 'otp');
+  assert.equal(createdValues.status, 'draft');
   assert.equal(deliveries.length, before + 1);
   assert.equal(deliveries.at(-1).email, 'new@example.com');
-  assert.match(seeker.onboardingMetadata.pendingOtp.code, /^\d{6}$/);
+  const deliveredCode = deliveries.at(-1).otpCode;
+  assert.match(deliveredCode, /^\d{6}$/);
+
+  // Now verify OTP -> onboardingStep becomes category and contacts verified
+  const verifyRes = response();
+  await verifyOtp({
+    body: {
+      seekerId: res.body.seekerId,
+      code: deliveredCode,
+    },
+  }, verifyRes);
+
+  assert.equal(verifyRes.statusCode, 200);
+  assert.equal(seeker.isEmailVerified, true);
+  assert.equal(seeker.isPhoneVerified, true);
+  assert.equal(seeker.onboardingStep, 'category');
 });

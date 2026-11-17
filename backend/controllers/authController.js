@@ -1,4 +1,4 @@
-import { randomInt } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Expert } from '../models/index.js';
 import dotenv from 'dotenv';
@@ -10,6 +10,7 @@ import {
   verifyGoogleLogin,
 } from '../utils/googleAuth.js';
 import { promoteExpertToApplicationQueue } from '../utils/expertApplicationQueue.js';
+import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { getLinkedinAuthConfig, verifyLinkedinLogin } from '../utils/linkedinAuth.js';
 import {
   storeOtpOnModel,
@@ -228,43 +229,76 @@ export const register = async (req, res) => {
     if (existingEmail?.deletedAt) {
       return res.status(409).json({ message: 'This account was deleted. Contact support if you want it restored.', code: 'ACCOUNT_DELETED' });
     }
-    if (existingEmail) {
-      return res.status(409).json({
-        message: 'An expert account with this email already exists. Please log in to continue.',
-        code: 'EMAIL_EXISTS',
-      });
-    }
 
     if (existingPhone?.deletedAt) {
       return res.status(409).json({ message: 'An account using this phone number was deleted. Contact support to restore it.', code: 'ACCOUNT_DELETED' });
     }
-    if (existingPhone) {
+
+    // If account exists in draft state and password matches, resume draft
+    const existingAccount = existingEmail || existingPhone;
+    if (existingAccount) {
+      if (existingAccount.status !== 'draft') {
+        const isEmailMatch = Boolean(existingEmail);
+        return res.status(409).json({
+          message: isEmailMatch
+            ? 'An expert account with this email already exists. Please log in to continue.'
+            : 'An expert account with this contact number already exists. Please log in to continue.',
+          code: isEmailMatch ? 'EMAIL_EXISTS' : 'PHONE_EXISTS',
+        });
+      }
+
+      const isPasswordMatch = await bcrypt.compare(password, existingAccount.password);
+      if (isPasswordMatch) {
+        if (existingAccount.onboardingStep === 'otp') {
+          await issueOtp(existingAccount);
+          return res.status(200).json({
+            message: 'Partially filled application found. Verification code resent.',
+            expertId: existingAccount.id,
+            email: existingAccount.email,
+            phone: existingAccount.phone,
+            code: 'DRAFT_OTP_RESENT',
+          });
+        }
+
+        const token = await issueExpertToken(existingAccount, req, 'password');
+        return res.status(200).json({
+          message: 'Partially filled application found. Resuming your application.',
+          token,
+          user: serializeAuthUser(existingAccount),
+          code: 'DRAFT_RESUMED',
+        });
+      }
+
       return res.status(409).json({
-        message: 'An expert account with this contact number already exists. Please log in to continue.',
-        code: 'PHONE_EXISTS',
+        message: 'An incomplete application exists for this account. Please log in with your password to continue where you left off.',
+        code: 'DRAFT_EXISTS',
       });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create expert in draft state
+    // Create expert in draft state immediately in DB
     const expert = await Expert.create({
-      fullName,
+      applicationNumber: await generateApplicationNumber(),
+      fullName: fullName.trim(),
       email: normalizedEmail,
       password: hashedPassword,
       phone: normalizedPhone,
-      onboardingStep: 'otp', // Next step is OTP verification
-      status: 'draft'
+      onboardingStep: 'otp',
+      status: 'draft',
+      isEmailVerified: false,
+      isPhoneVerified: false,
+      submittedAt: null,
     });
 
     await issueOtp(expert);
 
     console.log(`\n======================================================`);
-    console.log(`[OTP Sent] Expert Registered: ${fullName}`);
-    console.log(`Email: ${email}`);
-    console.log(`Phone: ${phone}`);
+    console.log(`[Expert OTP Sent] Registered: ${expert.fullName}`);
+    console.log(`Email: ${expert.email}`);
+    console.log(`Phone: ${expert.phone}`);
+    console.log(`ExpertId: ${expert.id}`);
     console.log(`======================================================\n`);
 
     return res.status(201).json({
@@ -294,7 +328,7 @@ export const verifyOtp = async (req, res) => {
   try {
     const expert = await Expert.findByPk(expertId);
     if (!expert) {
-      return res.status(404).json({ message: 'Expert not found' });
+      return res.status(404).json({ message: 'Registration session expired or expert not found. Please register again.' });
     }
 
     if (isExpertBlacklisted(expert)) {
@@ -323,34 +357,24 @@ export const verifyOtp = async (req, res) => {
     }
 
     const completingSignup = expert.onboardingStep === 'otp';
-    // Signup OTP verifies the registered contacts. A later 2FA OTP only
-    // authenticates the login and must not change contact verification flags.
     if (completingSignup) {
       expert.isPhoneVerified = Boolean(expert.phone);
       expert.isEmailVerified = Boolean(expert.email);
-    }
-    // Only advance to the first onboarding step for a brand-new signup. If the
-    // expert had already progressed further (re-verifying after re-submitting
-    // the signup form), keep their existing progress instead of resetting it.
-    if (completingSignup) {
       expert.onboardingStep = 'category';
     }
     expert.onboardingMetadata = clearPendingOtpMetadata(expert.onboardingMetadata);
     await expert.save();
 
-    // Signup is complete — make the expert visible in the admin approval queue
     if (completingSignup) await promoteExpertToApplicationQueue(expert);
 
-    // Clean up OTP memory
     tempOtps.delete(expertId);
 
-    // Generate JWT
     const token = await issueExpertToken(expert, req, 'otp');
 
     return res.status(200).json({
       message: 'Account verified successfully',
       token,
-      user: serializeAuthUser(expert)
+      user: serializeAuthUser(expert),
     });
   } catch (error) {
     console.error('OTP Verification Error:', error);
@@ -371,7 +395,7 @@ export const resendOtp = async (req, res) => {
   try {
     const expert = await Expert.findByPk(expertId);
     if (!expert) {
-      return res.status(404).json({ message: 'Expert not found' });
+      return res.status(404).json({ message: 'Registration session expired. Please register again.' });
     }
 
     if (isExpertBlacklisted(expert)) {

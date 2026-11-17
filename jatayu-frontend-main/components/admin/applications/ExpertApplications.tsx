@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  FileEdit,
   Hand,
   Layers,
   Search,
@@ -63,6 +64,7 @@ const SLA_FILTER_OPTIONS = [
 const KPI_ICONS = {
   total: Layers,
   all: Layers,
+  not_submitted: FileEdit,
   pending: Clock,
   review: Search,
   in_review: Search,
@@ -74,6 +76,7 @@ const KPI_ICONS = {
 } as const;
 
 const STATUS_BADGE_CLASS: Record<ApplicationStatus, string> = {
+  not_submitted: styles.statusNotSubmitted,
   pending: styles.statusPending,
   in_review: styles.statusInReview,
   on_hold: styles.statusOnHold,
@@ -82,6 +85,7 @@ const STATUS_BADGE_CLASS: Record<ApplicationStatus, string> = {
 };
 
 const STATUS_LABEL: Record<ApplicationStatus, string> = {
+  not_submitted: "Not Submitted",
   pending: "Pending",
   in_review: "In Review",
   on_hold: "On Hold",
@@ -101,6 +105,7 @@ const ONBOARDING_STEP_LABEL: Record<string, string> = {
 
 const ORDERED_CARD_IDS = [
   "total",
+  "not_submitted",
   "pending",
   "in_review",
   "on_hold",
@@ -235,6 +240,8 @@ export default function ExpertApplications() {
 
     if (cardId === "total") {
       setColumnFilters((prev) => ({ ...prev, status: "all", sla: "all" }));
+    } else if (cardId === "not_submitted") {
+      setColumnFilters((prev) => ({ ...prev, status: "not_submitted", sla: "all" }));
     } else if (cardId === "pending") {
       setColumnFilters((prev) => ({ ...prev, status: "pending", sla: "all" }));
     } else if (cardId === "in_review") {

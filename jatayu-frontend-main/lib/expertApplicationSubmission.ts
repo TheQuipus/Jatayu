@@ -2,7 +2,7 @@ import type { EducationDegree, EmploymentPosition } from "./expertEmployment";
 import type { ExperienceLevel } from "./expertProfile";
 import type { TimeSlot } from "./expertAvailability";
 
-export type ApplicationStatus = "pending" | "in_review" | "on_hold" | "approved" | "rejected";
+export type ApplicationStatus = "not_submitted" | "pending" | "in_review" | "on_hold" | "approved" | "rejected";
 
 export type SlaStatus = "on_track" | "at_risk" | "breached" | "closed";
 

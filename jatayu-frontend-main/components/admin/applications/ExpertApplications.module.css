@@ -649,6 +649,11 @@
   text-transform: none;
 }
 
+.statusNotSubmitted {
+  background: color-mix(in srgb, #64748b 14%, var(--white));
+  color: #475569;
+}
+
 .statusPending {
   background: color-mix(in srgb, #f59e0b 14%, var(--white));
   color: #b45309;

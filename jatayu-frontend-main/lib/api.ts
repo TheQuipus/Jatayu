@@ -9,6 +9,7 @@ import type { ClientRequest, RequestStatus } from "@/lib/expertRequests";
 import type { IdentityToneOptions } from "@/lib/expertIdentitySuggest";
 import { publicApiBase } from "@/lib/publicApiBase";
 import { parseUtcDate, formatUtcToLocalDate, formatUtcToLocalTime, formatUtcRelativeTime } from "@/lib/dateTimeUtils";
+import type { ApplicationStatus } from "./expertApplicationSubmission";
 
 const BASE_URL = publicApiBase();
 
@@ -218,9 +219,12 @@ export interface RegisterPayload {
 
 export interface RegisterResponse {
   message: string;
-  expertId: string;
-  email: string;
-  phone: string;
+  expertId?: string;
+  email?: string;
+  phone?: string;
+  token?: string;
+  user?: AuthUser;
+  code?: string;
   /** Returned in development mode for easy testing */
   otp?: string;
 }
@@ -877,7 +881,7 @@ export async function getAdminDigilockerDocumentBlobUrl(
 }
 
 export interface UpdateApplicationStatusPayload {
-  status: "pending" | "in_review" | "on_hold" | "approved" | "rejected";
+  status: ApplicationStatus;
   reviewerNote?: string;
   isBlacklisted?: boolean;
 }

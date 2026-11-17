@@ -979,6 +979,7 @@ export function mapToRejectionHold(app: ExpertApplicationSubmission) {
 
 export function getSlaAlert(applications: ExpertApplicationSubmission[]) {
   const breached = applications.filter((app) => {
+    if (app.status === "not_submitted" || !app.submittedAt) return false;
     const isClosed = app.status === "rejected" || Boolean(app.isBlacklisted) || app.status === "approved";
     if (isClosed) return false;
     return getSlaStatus(app.submittedAt).slaStatus === "breached";
