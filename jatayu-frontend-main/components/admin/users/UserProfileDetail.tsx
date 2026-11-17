@@ -18,6 +18,7 @@ import ProfileQuickActions from "./profile/ProfileQuickActions";
 import ProfileRecentBookings from "./profile/ProfileRecentBookings";
 import ProfileRightSidebar from "./profile/ProfileRightSidebar";
 import ProfileEngagement from "./profile/ProfileEngagement";
+import SeekerOnboardingStepper from "./profile/SeekerOnboardingStepper";
 
 import EditProfileView from "./editprofile/EditProfileView";
 import HelpSupportView from "./help/HelpSupportView";
@@ -206,11 +207,19 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   return (
     <div className={styles.container}>
       {actionError && <p role="alert">{actionError}</p>}
-      {/* Top Header / Breadcrumb */}
-      <div className={styles.topBar}>
+      {/* Top Header / Breadcrumb & Onboarding Stepper */}
+      <div className={`${styles.topBar} ${isExpert ? styles.topBarExpert : ""}`}>
         <Link href={isExpert ? ADMIN_USERS_EXPERTS_HREF : ADMIN_USERS_SEEKERS_HREF} className={styles.backLink}>
           <ArrowLeft size={16} /> Back to {isExpert ? "Experts" : "Seekers"} List
         </Link>
+        {!isExpert && seekerUser && (
+          <div className={styles.stepperContainer}>
+            <SeekerOnboardingStepper
+              seeker={seekerUser}
+              analytics={seekerDetail?.onboardingAnalytics}
+            />
+          </div>
+        )}
       </div>
 
       {/* Main Layout Grid — Left Sidebar ALWAYS stays visible */}

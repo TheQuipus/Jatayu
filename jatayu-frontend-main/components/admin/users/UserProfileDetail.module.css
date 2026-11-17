@@ -7,10 +7,22 @@
 }
 
 .topBar {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.topBar.topBarExpert {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+}
+
+.stepperContainer {
+  min-width: 0;
+  width: 100%;
 }
 
 .backLink {
@@ -78,6 +90,10 @@
 }
 
 @media (max-width: 1200px) {
+  .topBar {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
   .layoutGrid, .layoutGridWallet {
     grid-template-columns: 1fr;
   }

@@ -34,7 +34,12 @@ import {
   XCircle,
   Info,
   AlertTriangle,
+  Minus,
 } from "lucide-react";
+import {
+  analyzeExpertDropoutClient,
+  type StepStatus,
+} from "@/lib/expertDropoutTracker";
 import { ADMIN_PROFILE } from "@/lib/adminDashboard";
 import { mapToApplicationReview } from "@/lib/adminApplicationMappers";
 import type { ApplicationStatus } from "@/lib/expertApplicationSubmission";
@@ -95,6 +100,7 @@ const DOC_ICON_CLASS = {
 import ApproveConfirmModal from "./ApproveConfirmModal";
 import HoldConfirmModal from "./HoldConfirmModal";
 import RejectConfirmModal from "./RejectConfirmModal";
+import DropoutFollowUpModal from "./DropoutFollowUpModal";
 import DocumentPreviewModal, { type PreviewDocument } from "./DocumentPreviewModal";
 import SectionDecisionControl, {
   type SectionDecision,
@@ -223,6 +229,32 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
     () => (application ? mapToApplicationReview(application) : null),
     [application],
   );
+
+  const expertAnalytics = useMemo(() => {
+    if (
+      application?.onboardingAnalytics &&
+      Array.isArray(application.onboardingAnalytics.steps) &&
+      application.onboardingAnalytics.steps.length > 0
+    ) {
+      return application.onboardingAnalytics;
+    }
+    if (application) {
+      return analyzeExpertDropoutClient(application);
+    }
+    return null;
+  }, [application]);
+
+  const stepperTrailFilledHeight = useMemo(() => {
+    if (!expertAnalytics) return "0%";
+    if (expertAnalytics.isComplete) return "100%";
+    const activeIdx = expertAnalytics.steps.findIndex(
+      (s) => s.status === "dropout" || s.status === "in_progress",
+    );
+    if (activeIdx <= 0) return "0%";
+    const maxIdx = REVIEW_SECTIONS.length - 1;
+    const pct = Math.min(100, Math.round((activeIdx / maxIdx) * 100));
+    return `${pct}%`;
+  }, [expertAnalytics]);
   const [sectionDecisions, setSectionDecisions] = useState<
     Record<string, SectionReviewState>
   >(createInitialSectionDecisions);
@@ -248,6 +280,8 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [showHoldConfirm, setShowHoldConfirm] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [followUpSuccessNotice, setFollowUpSuccessNotice] = useState<string | null>(null);
   const [isTabsStuck, setIsTabsStuck] = useState(false);
   const tabsStickyRef = useRef<HTMLDivElement>(null);
   const isClickScrollingRef = useRef(false);
@@ -1587,7 +1621,42 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             }}
           />
         ) : null}
+        {showFollowUpModal && expertAnalytics && (
+          <DropoutFollowUpModal
+            isOpen={showFollowUpModal}
+            onClose={() => setShowFollowUpModal(false)}
+            onSuccess={(updatedExpert: unknown, message: string) => {
+              setFollowUpSuccessNotice(message);
+              const serverLogs = (updatedExpert as any)?.onboardingMetadata?.sectionAuditLogs;
+              if (Array.isArray(serverLogs)) {
+                setAuditLogs(serverLogs);
+              }
+              refresh();
+            }}
+            appId={review.appId}
+            applicantName={application?.name || review.name}
+            applicantEmail={application?.email || ""}
+            analytics={expertAnalytics}
+            lastFollowUpSentAt={(application?.onboardingMetadata as any)?.lastFollowUpSentAt}
+          />
+        )}
         <div className={styles.stickyTopSection}>
+          {followUpSuccessNotice && (
+            <div className={styles.followUpSuccessBanner}>
+              <div className={styles.bannerContent}>
+                <CheckCircle2 size={16} className={styles.bannerIcon} />
+                <span>{followUpSuccessNotice}</span>
+              </div>
+              <button
+                type="button"
+                className={styles.bannerDismissBtn}
+                onClick={() => setFollowUpSuccessNotice(null)}
+                aria-label="Dismiss notice"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          )}
           <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
             <Link href="/admin/dashboard" className={styles.breadcrumbLink}>
               Admin Console
@@ -1610,6 +1679,31 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
               </p>
             </div>
             <div className={styles.metaTagsRow}>
+              {/* Follow-Up CTA Button: Enabled only for dropout situations */}
+              <button
+                type="button"
+                className={`${styles.followUpCtaBtn} ${
+                  expertAnalytics?.isDropout ? styles.followUpCtaActive : styles.followUpCtaDisabled
+                }`}
+                disabled={!expertAnalytics?.isDropout}
+                onClick={() => setShowFollowUpModal(true)}
+                title={
+                  expertAnalytics?.isDropout
+                    ? `Send onboarding follow-up email to ${application?.email || "applicant"}`
+                    : "Follow-up is available when an applicant has dropped out during onboarding"
+                }
+              >
+                <Mail size={14} className={styles.followUpCtaIcon} />
+                <span>
+                  {(application?.onboardingMetadata as any)?.lastFollowUpSentAt
+                    ? "Follow-Up Sent"
+                    : "Send Follow-Up"}
+                </span>
+                {expertAnalytics?.isDropout && (
+                  <span className={styles.ctaPulseDot} aria-hidden="true" />
+                )}
+              </button>
+
               <span
                 className={`${styles.statusTag} ${
                   application?.isBlacklisted
@@ -1628,22 +1722,89 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
           <aside className={styles.leftColNav}>
             <div className={styles.chipsScrollWrapper}>
               <div className={styles.chipsNavHeader}>
-                <span className={styles.chipsNavTitle}>Sections Nav</span>
+                <div className={styles.chipsNavTitleGroup}>
+                  <span className={styles.chipsNavTitle}>Sections Nav</span>
+                  {expertAnalytics && (
+                    <span className={styles.navProgressPill}>
+                      {expertAnalytics.completionPercent}%
+                    </span>
+                  )}
+                </div>
+                {expertAnalytics?.isDropout ? (
+                  <span className={styles.navDropoutTag}>
+                    <span className={styles.navPulseDotRed} />
+                    <span>Dropout</span>
+                  </span>
+                ) : expertAnalytics?.isActiveInProgress ? (
+                  <span className={styles.navInProgressTag}>
+                    <span className={styles.navPulseDotAmber} />
+                    <span>In Progress</span>
+                  </span>
+                ) : null}
               </div>
               <div className={styles.chipsNavList}>
+                {/* Continuous vertical stepper trail running through checkpoints */}
+                <div className={styles.stepperRailLine} aria-hidden="true" />
+                <div
+                  className={styles.stepperRailLineFilled}
+                  style={{ height: stepperTrailFilledHeight }}
+                  aria-hidden="true"
+                />
+
                 {REVIEW_SECTIONS.map((sec, idx) => {
                   const isActive = activeTab === sec.id;
                   const isApproved = getSectionDecision(sec.id) === "approve";
                   const clarificationStatus = !isApproved ? getSectionClarificationStatus(sec.id) : null;
+                  const stepMetric = expertAnalytics?.steps.find((s) => s.id === sec.id);
+                  const stepStatus: StepStatus =
+                    stepMetric?.status || (expertAnalytics?.isComplete ? "submitted" : "pending");
+                  const isDropout = stepStatus === "dropout";
+                  const isInProgress = stepStatus === "in_progress";
+                  const isSubmitted = stepStatus === "submitted";
+                  const isSkipped = stepStatus === "skipped";
+
                   return (
                     <button
                       key={sec.id}
                       type="button"
-                      className={`${styles.chipButton} ${isActive ? styles.chipActive : ""}`}
+                      className={`${styles.chipButton} ${isActive ? styles.chipActive : ""} ${
+                        isDropout ? styles.chipButtonDropout : ""
+                      }`}
                       onClick={() => scrollToSection(sec.id)}
                     >
-                      <span className={styles.chipNum}>{idx + 1}</span>
+                      <span className={styles.checkpointBadgeWrapper}>
+                        {isDropout && <span className={styles.pulseBeaconRed} />}
+                        {isInProgress && <span className={styles.pulseBeaconAmber} />}
+
+                        <span
+                          className={`${styles.checkpointBadge} ${
+                            isSubmitted
+                              ? styles.checkpointSubmitted
+                              : isSkipped
+                              ? styles.checkpointSkipped
+                              : isDropout
+                              ? styles.checkpointDropout
+                              : isInProgress
+                              ? styles.checkpointInProgress
+                              : styles.checkpointPending
+                          }`}
+                        >
+                          {isSubmitted ? (
+                            <Check size={12} strokeWidth={2.8} />
+                          ) : isSkipped ? (
+                            <Minus size={11} strokeWidth={2.4} />
+                          ) : isDropout ? (
+                            <AlertTriangle size={12} strokeWidth={2.6} />
+                          ) : isInProgress ? (
+                            <Clock size={11} strokeWidth={2.4} />
+                          ) : (
+                            idx + 1
+                          )}
+                        </span>
+                      </span>
+
                       <span className={styles.chipText}>{sec.label}</span>
+
                       {isApproved ? (
                         <span
                           className={styles.navApprovedBadge}
@@ -1671,6 +1832,48 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
                           </span>
                         </span>
                       ) : null}
+
+                      {/* Floating Hover Tooltip with Status Tag and Metric Summary */}
+                      <div className={styles.checkpointTooltip} role="tooltip">
+                        <div className={styles.checkpointTooltipHeader}>
+                          <span
+                            className={`${styles.tooltipStatusBadge} ${
+                              isSubmitted
+                                ? styles.tooltipStatusSubmitted
+                                : isSkipped
+                                ? styles.tooltipStatusSkipped
+                                : isDropout
+                                ? styles.tooltipStatusDropout
+                                : isInProgress
+                                ? styles.tooltipStatusInProgress
+                                : styles.tooltipStatusPending
+                            }`}
+                          >
+                            {isSubmitted
+                              ? "[SUBMITTED]"
+                              : isSkipped
+                              ? "[SKIPPED]"
+                              : isDropout
+                              ? "[DROPPED OUT]"
+                              : isInProgress
+                              ? "[IN PROGRESS]"
+                              : "[PENDING]"}
+                          </span>
+                          {isDropout && expertAnalytics?.idleMinutes ? (
+                            <span className={styles.checkpointIdleTag}>
+                              {expertAnalytics.idleMinutes}m idle
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className={styles.tooltipSummaryText}>
+                          {stepMetric?.valueSummary ||
+                            (isSkipped
+                              ? "Skipped by applicant"
+                              : isSubmitted
+                              ? "Completed by applicant"
+                              : "Not reached")}
+                        </p>
+                      </div>
                     </button>
                   );
                 })}

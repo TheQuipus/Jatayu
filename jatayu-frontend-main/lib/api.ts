@@ -919,6 +919,24 @@ export async function updateAdminApplicationSectionDecision(
   );
 }
 
+export async function sendAdminApplicationDropoutFollowUp(
+  appId: string,
+  force: boolean = false,
+): Promise<{
+  message: string;
+  lastFollowUpSentAt: string;
+  expert: BackendExpertApplicationRecord;
+}> {
+  return adminApiFetch<{
+    message: string;
+    lastFollowUpSentAt: string;
+    expert: BackendExpertApplicationRecord;
+  }>(`/api/admin/applications/${encodeURIComponent(appId)}/dropout-followup`, {
+    method: "POST",
+    body: JSON.stringify({ force }),
+  });
+}
+
 export async function getAdminApplicationStats(): Promise<Record<string, number>> {
   return adminApiFetch<Record<string, number>>("/api/admin/applications/stats", {
     method: "GET",

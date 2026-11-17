@@ -8,6 +8,7 @@ import {
   SeekerCreditTransaction,
   seekerDb,
 } from "../models/index.js";
+import { analyzeSeekerDropout } from "../utils/seekerDropoutAnalysis.js";
 const ADMIN_SEEKER_STATUSES = new Set([
   "active",
   "suspended",
@@ -226,6 +227,7 @@ export async function getAdminSeeker(req, res) {
   );
   return res.json({
     seeker: serialize(seeker, bookingStats(bookings)),
+    onboardingAnalytics: analyzeSeekerDropout(seeker),
     bookings: bookings.map((item) => ({
       id: item.id,
       expertId: item.expertId,

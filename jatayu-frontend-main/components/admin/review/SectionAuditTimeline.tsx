@@ -11,7 +11,7 @@ interface SectionAuditTimelineProps {
   className?: string;
 }
 
-function formatAuditTimestamp(isoString: string): string {
+function formatAuditTimestamp(isoString: string, action?: string): string {
   if (!isoString) return "";
   const date = new Date(isoString);
   if (Number.isNaN(date.getTime())) return isoString;
@@ -27,7 +27,15 @@ function formatAuditTimestamp(isoString: string): string {
   hours = hours ? hours : 12; // 0 hour should be 12
   const formattedHours = String(hours).padStart(2, "0");
 
-  return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm} • section-review`;
+  const isOnboarding =
+    action === "account_verified" ||
+    action === "section_submitted" ||
+    action === "section_skipped" ||
+    action === "dropout" ||
+    action === "dropout_followup_sent" ||
+    action === "application_submitted";
+
+  return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm} • ${isOnboarding ? "onboarding" : "section-review"}`;
 }
 
 function getBadgeClassName(action: string): string {
@@ -44,6 +52,18 @@ function getBadgeClassName(action: string): string {
       return styles.badgeHold;
     case "clarification_response":
       return styles.badgeResponse;
+    case "account_verified":
+      return styles.badgeVerified;
+    case "section_submitted":
+      return styles.badgeSubmitted;
+    case "section_skipped":
+      return styles.badgeSkipped;
+    case "dropout":
+      return styles.badgeDropout;
+    case "dropout_followup_sent":
+      return styles.badgeFollowUp;
+    case "application_submitted":
+      return styles.badgeAppSubmitted;
     default:
       return styles.badgeDefault;
   }
@@ -63,6 +83,18 @@ function getBulletClassName(action: string): string {
       return styles.bulletHold;
     case "clarification_response":
       return styles.bulletResponse;
+    case "account_verified":
+      return styles.bulletVerified;
+    case "section_submitted":
+      return styles.bulletSubmitted;
+    case "section_skipped":
+      return styles.bulletSkipped;
+    case "dropout":
+      return styles.bulletDropout;
+    case "dropout_followup_sent":
+      return styles.bulletFollowUp;
+    case "application_submitted":
+      return styles.bulletAppSubmitted;
     default:
       return styles.bulletDefault;
   }
@@ -88,6 +120,18 @@ function getDefaultActionDescription(action: string, sectionTitle: string): stri
       return `Cleared review decision for ${sectionTitle}.`;
     case "clarification_response":
       return `Expert submitted updated information for ${sectionTitle}.`;
+    case "account_verified":
+      return "Account and contact details verified via OTP.";
+    case "section_submitted":
+      return `Completed and submitted ${sectionTitle}.`;
+    case "section_skipped":
+      return `Skipped optional ${sectionTitle} section during onboarding.`;
+    case "dropout":
+      return `Applicant abandoned onboarding at ${sectionTitle}.`;
+    case "dropout_followup_sent":
+      return `Sent onboarding follow-up email to applicant regarding ${sectionTitle}.`;
+    case "application_submitted":
+      return "Expert onboarding completed. Application submitted for review.";
     default:
       return `Updated review for ${sectionTitle}.`;
   }
@@ -157,9 +201,14 @@ export default function SectionAuditTimeline({
                 Boolean(entry.sectionId) &&
                 entry.sectionId !== "application";
               const noteText = entry.note?.trim() || getDefaultActionDescription(entry.action, entry.sectionTitle);
-              const actorLabel = entry.actor?.role === "Expert"
-                ? `Updated by ${entry.actor?.name || "Expert"}`
-                : `Reviewed by ${entry.actor?.name || "Super Admin"}${entry.actor?.role ? ` (${entry.actor.role})` : ""}`;
+              const actorLabel =
+                entry.action === "dropout_followup_sent"
+                  ? `Follow-up sent by ${entry.actor?.name || "Admin"}`
+                  : entry.actor?.role === "Expert" || entry.actor?.role === "Applicant"
+                    ? entry.action === "dropout"
+                      ? `Dropout recorded for ${entry.actor?.name || "Applicant"}`
+                      : `Completed by ${entry.actor?.name || "Applicant"}`
+                    : `Reviewed by ${entry.actor?.name || "Super Admin"}${entry.actor?.role ? ` (${entry.actor.role})` : ""}`;
 
               return (
                 <li key={entry.id || `${entry.sectionId}-${entry.timestamp}-${index}`} className={styles.timelineItem} role="listitem">
@@ -194,7 +243,7 @@ export default function SectionAuditTimeline({
                     </div>
 
                     <div className={styles.itemMetaRow}>
-                      <span>{formatAuditTimestamp(entry.timestamp)}</span>
+                      <span>{formatAuditTimestamp(entry.timestamp, entry.action)}</span>
                     </div>
 
                     <div className={styles.itemActorRow}>
