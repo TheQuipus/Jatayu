@@ -199,16 +199,33 @@ export default function LoginStep({
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+
+              {/* ADD THIS HERE: Matches the email field error placement exactly */}
+              {fieldError("password") && (
+                <span className={register.fieldErrorBelow}>{fieldError("password")}</span>
+              )}
             </div>
+
             <div className={styles.forgotPasswordRow}>
-              {(fieldError("password") || submitError) ? (
+              {/* REMOVE fieldError("password") from here, leaving only submitError */}
+              {submitError ? (
                 <span className={styles.forgotPasswordError} role="alert">
-                  {fieldError("password") || submitError}
+                  {submitError}
                 </span>
               ) : <span />}
-              <Link href="/forgot-password?role=user" className={styles.forgotPasswordLink}>
-                Forgot Password?
-              </Link>
+
+              <div className={styles.forgotPasswordRow}>
+                <Link href="/forgot-password?role=expert" className={styles.forgotPasswordLink}>
+                  <span className={styles.forgotPasswordText}>
+                    <span className={styles.forgotPasswordTrack}>
+                      <span className={styles.forgotPasswordUp}>Forgot Password?</span>
+                      <span className={styles.forgotPasswordUp} aria-hidden="true">
+                        Forgot Password?
+                      </span>
+                    </span>
+                  </span>
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -230,11 +247,21 @@ export default function LoginStep({
             Don&apos;t have an account?{" "}
             {onSwitchToRegister ? (
               <button type="button" className={register.authToggleBtn} onClick={onSwitchToRegister}>
-                Create one
+                <span className={register.labelText}>
+                  <span className={register.labelTrack}>
+                    <span className={register.labelUp}>CREATE ONE</span>
+                    <span className={register.labelUp} aria-hidden="true">CREATE ONE</span>
+                  </span>
+                </span>
               </button>
             ) : (
               <Link href={registerHref} className={register.authToggleBtn}>
-                Create one
+                <span className={register.labelText}>
+                  <span className={register.labelTrack}>
+                    <span className={register.labelUp}>CREATE ONE</span>
+                    <span className={register.labelUp} aria-hidden="true">CREATE ONE</span>
+                  </span>
+                </span>
               </Link>
             )}
           </p>

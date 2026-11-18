@@ -288,7 +288,7 @@
 
 .textField:hover:not(:focus):not(:disabled),
 .textareaField:hover:not(:focus):not(:disabled),
-.selectField:hover:not(:disabled):not(.selectFieldError) {
+.selectField:hover:not(:focus):not(:disabled):not(.selectFieldError):not(.selectFieldOpen) {
   background-color: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.18);
 }
@@ -316,7 +316,8 @@
 
 .textField:focus,
 .textareaField:focus {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: #E53B17;
+  box-shadow: none;
   background-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -343,12 +344,79 @@
   padding-right: 34px;
 }
 
+.customSelectEntry {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  margin: 0;
+  padding: 0 6px 0 12px;
+  border: 1px solid var(--border-chip);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.customSelectEntry:focus-within {
+  border-color: #E53B17;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.customSelectInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--white);
+}
+
+.customSelectInput::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.customSelectAddBtn {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--silver, #b0b0b0);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.customSelectAddBtn:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--white, #ffffff);
+}
+
+.customSelectAddBtn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.customSelectAddBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .selectField:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.selectField:hover:not(:disabled):not(.selectFieldError) {
+.selectField:hover:not(:focus):not(:disabled):not(.selectFieldError):not(.selectFieldOpen) {
   border-color: rgba(255, 255, 255, 0.22);
   background-color: rgba(255, 255, 255, 0.06);
 }
@@ -376,7 +444,8 @@
 
 .selectFieldOpen,
 .selectField:focus {
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: #E53B17;
+  box-shadow: none;
   background-color: rgba(255, 255, 255, 0.06);
   outline: none;
 }
@@ -456,19 +525,17 @@
   flex-shrink: 0;
 }
 
-.checkboxInput:hover,
-.checkboxInput:focus {
+.checkboxInput:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.35);
   background: transparent;
   outline: none;
   box-shadow: none;
 }
 
-.checkboxInput:focus-visible {
-  border-color: var(--pomegranate);
-  outline: 2px solid var(--pomegranate);
-  outline-offset: 3px;
-  box-shadow: none;
+.checkboxInput:focus:not(:disabled) {
+  border-color: #FF3B30;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .checkboxInput:checked {
@@ -480,11 +547,15 @@
   background-size: 12px 12px;
 }
 
-.checkboxInput:checked:hover,
-.checkboxInput:checked:focus,
-.checkboxInput:checked:focus-visible {
+.checkboxInput:checked:hover:not(:disabled) {
   border-color: var(--pomegranate);
   background-color: var(--pomegranate);
+}
+
+.checkboxInput:checked:focus:not(:disabled) {
+  border-color: #FF3B30;
+  background-color: var(--pomegranate);
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .checkboxLabel {
@@ -578,7 +649,8 @@
 }
 
 .textFieldWithIcon:focus {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: #E53B17;
+  box-shadow: none;
   background-color: rgba(255, 255, 255, 0.05);
 }
 
@@ -771,4 +843,19 @@
     align-items: flex-start;
     gap: 12px;
   }
+}
+/* Force-kill the browser/global outline ring on both :focus and :focus-visible */
+.textField:focus,
+.textField:focus-visible,
+.textareaField:focus,
+.textareaField:focus-visible,
+.selectField:focus,
+.selectField:focus-visible,
+.selectFieldOpen,
+.textFieldWithIcon:focus,
+.textFieldWithIcon:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  border-color: #E53B17 !important;
 }

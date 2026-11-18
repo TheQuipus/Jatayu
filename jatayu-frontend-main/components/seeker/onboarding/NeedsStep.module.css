@@ -23,7 +23,8 @@
 .textareaWrapper {
   width: 100%;
   margin: 0;
-  padding: 16px 18px 40px;
+  padding: 16px 18px 12px;
+  display: flex;
   flex-direction: column;
   gap: 12px;
 }
@@ -73,6 +74,12 @@
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+.needsTextarea:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 
 .needsTextarea::-webkit-scrollbar {
@@ -341,11 +348,11 @@
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  padding: 8px 14px;
+  padding: 8px 16px;
   gap: 8px;
   width: fit-content;
-  background: var(--background-chip);
-  border: 1px solid var(--border-chip);
+  background: var(--background-chip, rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
   cursor: pointer;
   text-align: left;
@@ -398,4 +405,75 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--silver-chalice);
+}
+
+.suggestedPill:hover:not(.suggestedPillSelected) {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  /* color: var(--white); */
+}
+
+.suggestedPill:hover:not(.suggestedPillSelected) .suggestedPillIcon {
+  color: var(--white);
+}
+
+.boxFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  width: 100%;
+}
+
+.pillsHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tonePillButton {
+  min-width: auto;
+  padding: 6px 10px 6px 0;
+}
+
+.charCounter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.aiAssistTextBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.2s ease;
+}
+
+.aiAssistTextBtn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.aiAssistTextBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aiAssistTextBtn:focus-visible {
+  opacity: 1;
+}
+
+.aiAssistShinyText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }

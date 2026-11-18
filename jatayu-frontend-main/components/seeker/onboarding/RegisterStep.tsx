@@ -390,11 +390,21 @@ export default function RegisterStep({
                 className={register.authToggleBtn}
                 onClick={() => onSwitchToLogin(normalizeEmail(email))}
               >
-                Login
+                <span className={register.labelText}>
+                  <span className={register.labelTrack}>
+                    <span className={register.labelUp}>LOGIN</span>
+                    <span className={register.labelUp} aria-hidden="true">LOGIN</span>
+                  </span>
+                </span>
               </button>
             ) : (
               <Link href={loginHref} className={register.authToggleBtn}>
-                Login
+                <span className={register.labelText}>
+                  <span className={register.labelTrack}>
+                    <span className={register.labelUp}>LOGIN</span>
+                    <span className={register.labelUp} aria-hidden="true">LOGIN</span>
+                  </span>
+                </span>
               </Link>
             )}
           </p>

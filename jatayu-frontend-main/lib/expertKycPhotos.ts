@@ -42,11 +42,12 @@ export async function runKycPoseDetection<T>(
   lock: KycPoseDetectionLock,
   sessionId: number,
   isCurrent: () => boolean,
-  detect: () => Promise<T>,
+  detect: () => T | Promise<T>,
   onResult: (result: T) => void,
 ): Promise<boolean> {
   if (!tryStartKycPoseDetection(lock, sessionId)) return false;
   try {
+    if (!isCurrent()) return false;
     const result = await detect();
     if (!isCurrent()) return false;
     onResult(result);

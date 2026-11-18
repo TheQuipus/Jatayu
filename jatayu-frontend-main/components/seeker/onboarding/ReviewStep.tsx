@@ -12,6 +12,7 @@ import type { ProgressCompletion, ProgressStepKey } from "./MatchingProgress";
 import shared from "./onboarding.shared.module.css";
 import styles from "./ReviewStep.module.css";
 import detailStyles from "../../expert/ExpertDetail.module.css";
+import TextButton from "@/components/ui/TextButton";
 type ReviewStepProps = {
   userName: string;
   categoryLabel: string;
@@ -265,9 +266,7 @@ export default function ReviewStep({
               {submissionError}
             </p>
           ) : null}
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
+          <TextButton type="button" className={shared.textBtn} onClick={onBack} label="Back"/>
           <ContinueButton
             label={isSubmitting ? "Saving..." : "Find My Matches"}
             showArrow={false}

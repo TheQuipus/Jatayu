@@ -49,7 +49,7 @@
   color: var(--silver-chalice);
 }
 
-.timePickerField:hover:not(:disabled) {
+.timePickerField:hover:not(:focus):not(:disabled) {
   border-color: color-mix(in srgb, var(--ink) 14%, var(--mercury));
 }
 
@@ -59,8 +59,8 @@
 
 .timePickerFieldOpen,
 .timePickerField:focus {
-  border-color: var(--pomegranate);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pomegranate) 10%, transparent);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .timePickerField:disabled {

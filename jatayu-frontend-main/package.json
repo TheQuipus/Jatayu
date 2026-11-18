@@ -15,6 +15,7 @@
     "@emnapi/wasi-threads": "1.2.3",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@mediapipe/tasks-vision": "0.10.17",
     "@mui/material": "^9.2.0",
     "@mui/x-date-pickers": "^9.10.1",
     "@react-three/drei": "^10.7.7",

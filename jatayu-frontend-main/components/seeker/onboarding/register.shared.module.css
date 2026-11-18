@@ -161,11 +161,17 @@
   border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 0 16px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.inputWithIconWrap:hover:not(:focus-within):not(.inputWithIconWrapError) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .inputWithIconWrap:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .inputWithIconWrapError {
@@ -174,6 +180,7 @@
 
 .inputWithIconWrapError:focus-within {
   border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .fieldErrorInline {
@@ -207,6 +214,12 @@
   outline: none;
 }
 
+.textFieldWithIcon:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
 .textFieldWithIcon::placeholder {
   color: rgba(255, 255, 255, 0.3);
 }
@@ -238,7 +251,8 @@
 }
 
 .textareaWrap:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .textareaWrapLarge {
@@ -294,13 +308,19 @@
   border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 0 52px 0 16px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   box-sizing: border-box;
   color-scheme: dark;
 }
 
+.inputWithActionWrap:hover:not(:focus-within) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
 .inputWithActionWrap:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .inputActionBtn {
@@ -328,7 +348,6 @@
 }
 
 .inputActionBtn:focus-visible {
-  border-color: rgba(255, 255, 255, 0.15);
   color: var(--white);
 }
 
@@ -371,4 +390,33 @@
 .authToggleBtn:hover {
   color: var(--orange, #E53B17);
   text-decoration: none;
+}
+
+.labelText {
+  display: inline-block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* The stack holding both copies of "LOGIN" */
+.labelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Individual text lines */
+.labelUp {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Trigger the rolling effect upward on hover */
+.authToggleBtn:hover .labelTrack {
+  transform: translateY(-50%);
 }

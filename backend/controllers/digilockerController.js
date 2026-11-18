@@ -46,6 +46,7 @@ function publicVerification(record) {
   const issuedDocuments = documentsFromResponse(record.issuedDocuments);
   return {
     status: record.status,
+    authorizationExpiresAt: record.authorizationExpiresAt,
     accountDetails: record.accountDetails,
     issuedDocuments,
     consentValidTill: record.consentValidTill,
@@ -117,7 +118,16 @@ export const handleDigilockerCallback = async (req, res) => {
   if (!state) return redirectWithResult(res, config.frontendReturnUrl, 'error');
 
   const verification = await DigilockerVerification.findOne({ where: { stateHash: hashState(String(state)) } });
-  if (!verification || !verification.authorizationExpiresAt || verification.authorizationExpiresAt < new Date()) {
+  if (!verification) {
+    return redirectWithResult(res, config.frontendReturnUrl, 'error');
+  }
+  if (!verification.authorizationExpiresAt || verification.authorizationExpiresAt < new Date()) {
+    verification.status = 'expired';
+    verification.failureCode = 'AUTHORIZATION_EXPIRED';
+    verification.failureDescription = 'DigiLocker authorization expired';
+    verification.stateHash = null;
+    verification.codeVerifier = null;
+    await verification.save();
     return redirectWithResult(res, config.frontendReturnUrl, 'error');
   }
   if (providerError || !code) {

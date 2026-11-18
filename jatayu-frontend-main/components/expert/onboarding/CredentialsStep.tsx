@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -28,14 +28,15 @@ import type {
   GovernmentIdData,
   GovernmentIdType,
 } from "@/lib/expertApplicationSubmission";
-import { areKycPhotosComplete } from "@/lib/expertKycPhotos";
 import {
   EXPERT_CERTIFICATE_MIME_TYPE,
   EXPERT_LEGACY_CERTIFICATE_MIME_TYPE,
   getExpertCertificateContentError,
   getExpertCertificateFileError,
 } from "@/lib/expertCertificateValidation";
+import { areKycPhotosComplete } from "@/lib/expertKycPhotos";
 import { getDigilockerKycStatus, startDigilockerKyc } from "@/lib/api";
+import { resolveDigilockerKycState } from "@/lib/digilockerKycStatus";
 
 type CredentialsStepProps = {
   userName: string;
@@ -148,6 +149,7 @@ export default function CredentialsStep({
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
   const certFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const digilockerStartInFlightRef = useRef(false);
 
   const [selectedIdType, setSelectedIdType] = useState<GovernmentIdType | "">(
     governmentId?.type ?? "",
@@ -172,25 +174,61 @@ export default function CredentialsStep({
     url: string;
     fileName: string;
   } | null>(null);
-  const [digilockerConfigured, setDigilockerConfigured] = useState(false);
   const [digilockerVerified, setDigilockerVerified] = useState(false);
   const [digilockerLoading, setDigilockerLoading] = useState(true);
   const [digilockerError, setDigilockerError] = useState<string | null>(null);
+  const [cameraVerificationCompleted, setCameraVerificationCompleted] = useState<boolean>(() =>
+    Boolean(kycVideoSrc),
+  );
   const hasKycVideo = Boolean(kycVideoSrc);
-  const hasManualKycPhotos = areKycPhotosComplete(kycPhotos);
-  const hasGovernmentId = Boolean(selectedIdType) && Boolean(idFront);
-  const canContinue = hasGovernmentId || hasKycVideo || hasManualKycPhotos || digilockerVerified;
+  const hasKycPhotos = areKycPhotosComplete(kycPhotos);
+  const hasSuccessfulVerification =
+    cameraVerificationCompleted || hasKycVideo || hasKycPhotos || digilockerVerified;
+  const hasGovernmentId = Boolean(selectedIdType && idFront);
+  const canContinue =
+    hasSuccessfulVerification && hasGovernmentId && pendingCertificateUploads === 0;
+
+  const handleKycVerificationComplete = useCallback(() => {
+    setCameraVerificationCompleted(true);
+  }, []);
+  const handleKycVideoChange = useCallback((src: string) => {
+    onKycVideoChange(src);
+    setCameraVerificationCompleted(Boolean(src));
+  }, [onKycVideoChange]);
 
   useEffect(() => {
     let active = true;
     getDigilockerKycStatus()
       .then((response) => {
         if (!active) return;
-        setDigilockerConfigured(response.configured);
-        setDigilockerVerified(response.kyc?.status === "verified");
+        const status = resolveDigilockerKycState(response.kyc);
+        setDigilockerVerified(status === "verified");
+        switch (status) {
+          case "authorization_pending":
+            setDigilockerError("DigiLocker authorization is pending. Complete it or try again.");
+            break;
+          case "cancelled":
+            setDigilockerError("DigiLocker authorization was cancelled. You can try again.");
+            break;
+          case "failed":
+            setDigilockerError("DigiLocker verification failed. Please try again.");
+            break;
+          case "expired":
+            setDigilockerError("DigiLocker authorization expired. Please start again.");
+            break;
+          case "unknown":
+            setDigilockerError("Could not determine DigiLocker verification status. Please try again.");
+            break;
+          default:
+            setDigilockerError(null);
+        }
       })
-      .catch(() => {
-        if (active) setDigilockerConfigured(false);
+      .catch((error) => {
+        if (!active) return;
+        setDigilockerVerified(false);
+        setDigilockerError(
+          error instanceof Error ? error.message : "Could not check DigiLocker verification.",
+        );
       })
       .finally(() => {
         if (active) setDigilockerLoading(false);
@@ -199,6 +237,8 @@ export default function CredentialsStep({
   }, []);
 
   const handleDigilockerVerification = async () => {
+    if (digilockerStartInFlightRef.current) return;
+    digilockerStartInFlightRef.current = true;
     setDigilockerLoading(true);
     setDigilockerError(null);
     try {
@@ -206,6 +246,8 @@ export default function CredentialsStep({
       window.location.assign(response.authorizationUrl);
     } catch (error) {
       setDigilockerError(error instanceof Error ? error.message : "Could not start DigiLocker verification.");
+    } finally {
+      digilockerStartInFlightRef.current = false;
       setDigilockerLoading(false);
     }
   };
@@ -418,22 +460,16 @@ export default function CredentialsStep({
       setCertificateUploadError("Please wait for certificate uploads to finish before continuing.");
       return;
     }
-    if (!canContinue) {
-      if (!selectedIdType) {
-        setValidationError("Please select a Government ID type (Aadhaar, PAN, Passport, etc.).");
-      } else if (!idFront) {
-        setValidationError("Please upload the front photo of your Government ID document.");
-      } else {
-        setValidationError("Please upload your Government ID front photo or complete video verification.");
-      }
+    if (!hasSuccessfulVerification) {
+      setValidationError("Please complete DigiLocker or automatic camera verification.");
+      return;
+    }
+    if (!hasGovernmentId) {
+      setValidationError("Please select a Government ID and upload its front side.");
       return;
     }
     setValidationError(null);
     onContinue();
-  };
-
-  const handleSkip = () => {
-    handleContinue();
   };
 
   return (
@@ -464,22 +500,24 @@ export default function CredentialsStep({
           <article>
             <KycVerificationPanel
               videoSrc={kycVideoSrc}
-              onVideoChange={onKycVideoChange}
+              onVideoChange={handleKycVideoChange}
               manualPhotos={kycPhotos}
               onManualPhotosChange={onKycPhotosChange}
               digilockerLoading={digilockerLoading}
               digilockerVerified={digilockerVerified}
               digilockerError={digilockerError}
               onDigilockerVerification={() => void handleDigilockerVerification()}
+              onVerificationComplete={handleKycVerificationComplete}
             />
           </article>
 
           {/* 2. Government ID */}
+          {hasSuccessfulVerification && (
           <article>
             <header className={styles.sectionCardHeader}>
               <div className={styles.sectionCardTitleWrap}>
                 <h2 className={styles.sectionCardTitle}>
-                  Government ID <span className={styles.requiredMark}></span>
+                  Government ID <span className={styles.requiredMark}>*</span>
                 </h2>
               </div>
             </header>
@@ -604,8 +642,10 @@ export default function CredentialsStep({
               )}
             </AnimatePresence>
           </article>
+          )}
 
           {/* 3. Professional Certificates */}
+          {hasSuccessfulVerification && (
           <article>
             <header className={styles.sectionCardHeader}>
               <div className={styles.sectionCardTitleWrap}>
@@ -716,6 +756,7 @@ export default function CredentialsStep({
               — seekers filter for this.
             </p>
           </article>
+          )}
         </div>
       </div>
 
@@ -759,10 +800,9 @@ export default function CredentialsStep({
 
         <div className={shared.footerActions}>
           <TextButton label="Back" onClick={onBack} />
-          <TextButton label="Skip" onClick={onContinue} />
           <ContinueButton
             onClick={handleContinue}
-            disabled={!canContinue || pendingCertificateUploads > 0}
+            disabled={!canContinue}
           />
         </div>
       </div>
