@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from 'node:crypto';
+import { randomInt } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { Expert } from '../models/index.js';
 import dotenv from 'dotenv';
@@ -16,8 +16,16 @@ import {
   storeOtpOnModel,
   readOtpFromModel,
   clearPendingOtpMetadata,
+  hasActivePendingOtp,
   isStoredOtpValid,
+  recordOtpFailure,
+  withOtpVerificationLock,
 } from '../utils/otpPersistence.js';
+import {
+  classifyRegistrationConflict,
+  createOtpCooldownTracker,
+  mapRegistrationUniqueError,
+} from '../utils/authRegistrationGuard.js';
 import { issueExpertToken } from '../services/expertSessionService.js';
 import {
   buildPasswordLoginLockedResponse,
@@ -163,13 +171,10 @@ function serializeAuthUser(expert) {
 
 // Cache active OTPs locally; onboarding metadata persists codes and expiry across restarts.
 const tempOtps = new Map();
+const expertOtpCooldown = createOtpCooldownTracker(30_000);
 
 function generateOtpCode() {
   return String(randomInt(100000, 1000000));
-}
-
-async function createOtpCode() {
-  return generateOtpCode();
 }
 
 async function storeOtp(expert, code) {
@@ -188,7 +193,7 @@ async function deliverOtp(expert, otp) {
 }
 
 async function issueOtp(expert) {
-  const otp = await createOtpCode();
+  const otp = generateOtpCode();
   await storeOtp(expert, otp);
   await deliverOtp(expert, otp);
 
@@ -234,44 +239,17 @@ export const register = async (req, res) => {
       return res.status(409).json({ message: 'An account using this phone number was deleted. Contact support to restore it.', code: 'ACCOUNT_DELETED' });
     }
 
-    // If account exists in draft state and password matches, resume draft
-    const existingAccount = existingEmail || existingPhone;
-    if (existingAccount) {
-      if (existingAccount.status !== 'draft') {
-        const isEmailMatch = Boolean(existingEmail);
-        return res.status(409).json({
-          message: isEmailMatch
-            ? 'An expert account with this email already exists. Please log in to continue.'
-            : 'An expert account with this contact number already exists. Please log in to continue.',
-          code: isEmailMatch ? 'EMAIL_EXISTS' : 'PHONE_EXISTS',
-        });
-      }
+    // Strict signup: reject any existing email or phone (including drafts) and direct user to log in
+    const conflict = classifyRegistrationConflict({
+      existingEmail,
+      existingPhone,
+      accountLabel: 'expert account',
+    });
 
-      const isPasswordMatch = await bcrypt.compare(password, existingAccount.password);
-      if (isPasswordMatch) {
-        if (existingAccount.onboardingStep === 'otp') {
-          await issueOtp(existingAccount);
-          return res.status(200).json({
-            message: 'Partially filled application found. Verification code resent.',
-            expertId: existingAccount.id,
-            email: existingAccount.email,
-            phone: existingAccount.phone,
-            code: 'DRAFT_OTP_RESENT',
-          });
-        }
-
-        const token = await issueExpertToken(existingAccount, req, 'password');
-        return res.status(200).json({
-          message: 'Partially filled application found. Resuming your application.',
-          token,
-          user: serializeAuthUser(existingAccount),
-          code: 'DRAFT_RESUMED',
-        });
-      }
-
-      return res.status(409).json({
-        message: 'An incomplete application exists for this account. Please log in with your password to continue where you left off.',
-        code: 'DRAFT_EXISTS',
+    if (conflict.action === 'CONFLICT') {
+      return res.status(conflict.status).json({
+        message: conflict.message,
+        code: conflict.code,
       });
     }
 
@@ -293,6 +271,7 @@ export const register = async (req, res) => {
     });
 
     await issueOtp(expert);
+    expertOtpCooldown.markIssued(expert.id);
 
     console.log(`\n======================================================`);
     console.log(`[Expert OTP Sent] Registered: ${expert.fullName}`);
@@ -308,6 +287,13 @@ export const register = async (req, res) => {
       phone: expert.phone,
     });
   } catch (error) {
+    const uniqueConflict = mapRegistrationUniqueError(error, 'expert account');
+    if (uniqueConflict) {
+      return res.status(uniqueConflict.status).json({
+        message: uniqueConflict.message,
+        code: uniqueConflict.code,
+      });
+    }
     const deliveryResponse = handleOtpDeliveryError(error, res, 'Registration');
     if (deliveryResponse) return deliveryResponse;
     console.error('Registration Error:', error);
@@ -326,55 +312,65 @@ export const verifyOtp = async (req, res) => {
   }
 
   try {
-    const expert = await Expert.findByPk(expertId);
-    if (!expert) {
-      return res.status(404).json({ message: 'Registration session expired or expert not found. Please register again.' });
-    }
+    return await withOtpVerificationLock(`expert:${expertId}`, async () => {
+      const expert = await Expert.findByPk(expertId);
+      if (!expert) {
+        return res.status(404).json({ message: 'Registration session expired or expert not found. Please register again.' });
+      }
 
-    if (isExpertBlacklisted(expert)) {
-      return res.status(403).json({
-        message: 'Your profile is Marked as Blacklisted',
-        code: 'CREDENTIALS_BLACKLISTED',
+      if (isExpertBlacklisted(expert)) {
+        return res.status(403).json({
+          message: 'Your profile is Marked as Blacklisted',
+          code: 'CREDENTIALS_BLACKLISTED',
+        });
+      }
+
+      if (isExpertSuspended(expert)) {
+        return res.status(403).json({
+          message: 'Your Profile has been suspended. Contact Us?',
+          code: 'ACCOUNT_SUSPENDED',
+        });
+      }
+
+      let storedOtp = tempOtps.get(expertId);
+      if (!isStoredOtpValid(storedOtp, code)) {
+        storedOtp = readOtpFromModel(expert);
+      }
+
+      const isCodeValid = isStoredOtpValid(storedOtp, code);
+
+      if (!isCodeValid) {
+        const failure = await recordOtpFailure(expert, tempOtps, expertId);
+        if (failure.exhausted) {
+          return res.status(429).json({
+            message: 'Too many invalid verification attempts. Please request a new verification code.',
+            code: 'OTP_ATTEMPTS_EXCEEDED',
+          });
+        }
+        return res.status(400).json({ message: 'Invalid or expired verification code' });
+      }
+
+      const completingSignup = expert.onboardingStep === 'otp';
+      if (completingSignup) {
+        expert.isPhoneVerified = Boolean(expert.phone);
+        expert.isEmailVerified = Boolean(expert.email);
+        expert.onboardingStep = 'category';
+      }
+      expert.onboardingMetadata = clearPendingOtpMetadata(expert.onboardingMetadata);
+      await expert.save();
+
+      if (completingSignup) await promoteExpertToApplicationQueue(expert);
+
+      tempOtps.delete(expertId);
+      expertOtpCooldown.clear(expertId);
+
+      const token = await issueExpertToken(expert, req, 'otp');
+
+      return res.status(200).json({
+        message: 'Account verified successfully',
+        token,
+        user: serializeAuthUser(expert),
       });
-    }
-
-    if (isExpertSuspended(expert)) {
-      return res.status(403).json({
-        message: 'Your Profile has been suspended. Contact Us?',
-        code: 'ACCOUNT_SUSPENDED',
-      });
-    }
-
-    let storedOtp = tempOtps.get(expertId);
-    if (!isStoredOtpValid(storedOtp, code)) {
-      storedOtp = readOtpFromModel(expert);
-    }
-
-    const isCodeValid = isStoredOtpValid(storedOtp, code);
-
-    if (!isCodeValid) {
-      return res.status(400).json({ message: 'Invalid or expired verification code' });
-    }
-
-    const completingSignup = expert.onboardingStep === 'otp';
-    if (completingSignup) {
-      expert.isPhoneVerified = Boolean(expert.phone);
-      expert.isEmailVerified = Boolean(expert.email);
-      expert.onboardingStep = 'category';
-    }
-    expert.onboardingMetadata = clearPendingOtpMetadata(expert.onboardingMetadata);
-    await expert.save();
-
-    if (completingSignup) await promoteExpertToApplicationQueue(expert);
-
-    tempOtps.delete(expertId);
-
-    const token = await issueExpertToken(expert, req, 'otp');
-
-    return res.status(200).json({
-      message: 'Account verified successfully',
-      token,
-      user: serializeAuthUser(expert),
     });
   } catch (error) {
     console.error('OTP Verification Error:', error);
@@ -412,7 +408,12 @@ export const resendOtp = async (req, res) => {
       });
     }
 
+    if (!expertOtpCooldown.canIssueNow(expert.id)) {
+      return res.status(429).json({ message: 'Please wait before requesting another OTP.' });
+    }
+
     await issueOtp(expert);
+    expertOtpCooldown.markIssued(expert.id);
 
     console.log(`[OTP Resent] Expert: ${expert.email} | OTP: (sent via provider)`);
 
@@ -502,7 +503,11 @@ export const login = async (req, res) => {
 
     // Signup verification is mandatory; later logins respect the expert's 2FA setting.
     if (expert.onboardingStep === 'otp' || expert.twoFactorEnabled) {
-      await issueOtp(expert);
+      const existingPendingOtp = tempOtps.get(expert.id) || readOtpFromModel(expert);
+      if (expertOtpCooldown.canIssueNow(expert.id) || !hasActivePendingOtp(existingPendingOtp)) {
+        await issueOtp(expert);
+        expertOtpCooldown.markIssued(expert.id);
+      }
 
       return res.status(403).json({
         message: 'Please verify your account with the OTP sent to your email and phone.',
@@ -608,7 +613,16 @@ export const linkedinLogin = async (req, res) => {
       await verifyLinkedinLogin({ authCode, redirectUri });
 
     let expert = await Expert.findOne({ where: { linkedinId }, paranoid: false });
-    if (!expert) expert = await findExpertByEmail(email, { paranoid: false });
+    if (!expert) {
+      const emailMatch = await findExpertByEmail(email, { paranoid: false });
+      if (emailMatch && !emailVerified) {
+        return res.status(403).json({
+          message: 'Please verify your LinkedIn email address or sign in with your password to link this account.',
+          code: 'LINKEDIN_EMAIL_UNVERIFIED',
+        });
+      }
+      expert = emailMatch;
+    }
     if (expert?.deletedAt) {
       const error = new Error('This account was deleted. Contact support if you want it restored.');
       error.status = 403;

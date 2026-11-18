@@ -37,11 +37,17 @@ for (const [user, expected] of [
     const auth = loadModule('lib/seekerAuth.ts', { '@/lib/api': {} });
     const jsx = (type, props) => ({ type, props });
     const page = loadModule('app/login/page.tsx', {
-      react: { Suspense: 'Suspense' },
+      react: {
+        Suspense: 'Suspense',
+        useState: (init) => [typeof init === 'function' ? init() : init, () => {}],
+        useEffect: () => {},
+      },
       'react/jsx-runtime': { jsx, jsxs: jsx },
       'next/navigation': { useRouter: () => ({}), useSearchParams: () => new URLSearchParams() },
       '@/components/seeker/onboarding/LoginStep': { default: 'SeekerLoginStep' },
+      '@/components/seeker/onboarding/OtpStep': { default: 'SeekerOtpStep' },
       '@/components/expert/onboarding/LoginStep': { default: 'ExpertLoginStep' },
+      '@/components/expert/onboarding/OtpStep': { default: 'ExpertOtpStep' },
       '@/lib/seekerAuth': {
         ...auth,
         persistSeekerAuthSession: (response) => { persisted = response; return response.user; },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import RegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
@@ -9,7 +9,7 @@ import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
 import { seekerLogin, SeekerOtpRequiredError, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
-import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
+import { savePendingSeekerOtpSession, SEEKER_SIGNUP_HREF } from "@/lib/seekerAuth";
 import SeekerSocialAuth from "./SeekerSocialAuth";
 
 type LoginStepProps = {
@@ -55,7 +55,7 @@ export default function LoginStep({
   onContinue,
   onRequiresOtp,
   onSwitchToRegister,
-  registerHref = "/seeker/seeker-onboarding/",
+  registerHref = SEEKER_SIGNUP_HREF,
   initialEmail = "",
 }: LoginStepProps) {
   const [email, setEmail] = useState(initialEmail);
@@ -65,6 +65,16 @@ export default function LoginStep({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("blocked") === "1") {
+        const reason = params.get("reason");
+        setSubmitError(reason || "Your Profile has been suspended. Contact Us?");
+      }
+    }
+  }, []);
 
   const values = { email, password };
   const canSubmit = isFormComplete(email, password);

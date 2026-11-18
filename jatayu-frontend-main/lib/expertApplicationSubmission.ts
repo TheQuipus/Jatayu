@@ -92,6 +92,7 @@ export type ExpertApplicationSubmission = {
   updatedAt?: string;
   onboardingStep?: string;
   onboardingMetadata?: Record<string, unknown>;
+  onboardingAnalytics?: import("./expertDropoutTracker").ExpertOnboardingAnalytics;
 };
 
 export type ExpertApplicationDraft = Partial<

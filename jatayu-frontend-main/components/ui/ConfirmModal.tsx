@@ -18,6 +18,7 @@ export type ConfirmModalProps = {
   variant?: "default" | "danger" | "warning";
   icon?: React.ReactNode;
   className?: string;
+  confirmDisabled?: boolean;
 };
 
 export default function ConfirmModal({
@@ -31,6 +32,7 @@ export default function ConfirmModal({
   variant = "default",
   icon,
   className = "",
+  confirmDisabled = false,
 }: ConfirmModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -106,7 +108,9 @@ export default function ConfirmModal({
             <ContinueButton
               label={confirmText}
               showArrow={false}
+              disabled={confirmDisabled}
               onClick={() => {
+                if (confirmDisabled) return;
                 onConfirm();
                 onClose();
               }}

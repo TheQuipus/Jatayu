@@ -15,7 +15,6 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react";
-import problemStyles from "@/components/homepage/Problem.module.css";
 import { getSlaAlert } from "@/lib/adminApplicationMappers";
 import {
   getAdminReviewHref,
@@ -351,7 +350,7 @@ export default function ExpertApplications() {
                   key={kpi.id}
                   id={`kpi-card-${kpi.id}`}
                   type="button"
-                  className={`${problemStyles.scardMini} ${styles.kpiCard} ${isActive ? problemStyles.active : ""} ${isActive ? styles.kpiCardActive : ""}`}
+                  className={`${styles.kpiCard} ${isActive ? styles.kpiCardActive : ""}`}
                   onClick={() => handleCardClick(kpi.id)}
                   aria-pressed={isActive}
                 >
@@ -359,12 +358,12 @@ export default function ExpertApplications() {
                   <div className={styles.kpiHeader}>
                     <span className={styles.kpiLabel}>{kpi.label}</span>
                     <span className={styles.kpiIconBox}>
-                      <Icon size={24} aria-hidden="true" />
+                      <Icon size={20} aria-hidden="true" />
                     </span>
                   </div>
                   <p className={styles.kpiValue}>
                     {!ready && (kpi.value === "0" || kpi.value === "00") ? (
-                      <span className={styles.skeletonBox} style={{ display: "inline-block", width: 42, height: 28, borderRadius: 4 }} />
+                      <span className={styles.skeletonBox} style={{ display: "inline-block", width: 38, height: 30, borderRadius: 4 }} />
                     ) : (
                       String(kpi.value).padStart(2, "0")
                     )}

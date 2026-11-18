@@ -203,12 +203,10 @@ export default function RegisterStep({
         password,
         phone,
       });
-
-      if (response.token && response.user) {
-        onOAuthSuccess({ token: response.token, user: response.user });
-        return;
-      }
-
+      // if (response.token && response.user) {
+      //   onOAuthSuccess({ token: response.token, user: response.user });
+      //   return;
+      // } 
       onContinue({
         expertId: response.expertId || "",
         phone: response.phone || phone,
@@ -217,7 +215,10 @@ export default function RegisterStep({
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Registration failed.";
-      if (isDuplicateRegistrationMessage(message) || message.includes("incomplete application")) {
+      if (
+        (isDuplicateRegistrationMessage(message) || message.includes("incomplete application")) &&
+        !/log\s*in/i.test(message)
+      ) {
         setSubmitError(
           `${message} Please log in to continue your onboarding or check your application status.`,
         );
@@ -420,20 +421,6 @@ export default function RegisterStep({
           {submitError ? (
             <div className={register.errorBannerBox} role="alert">
               <p className={register.fieldErrorBelow}>{renderAuthErrorMessage(submitError)}</p>
-              {isDuplicateRegistrationMessage(submitError) ? (
-                <p className={register.authToggle}>
-                  Already registered?{" "}
-                  {onSwitchToLogin ? (
-                    <button type="button" className={register.authToggleBtn} onClick={() => onSwitchToLogin(email)}>
-                      Log in to your account
-                    </button>
-                  ) : (
-                    <Link href={loginHref} className={register.authToggleBtn}>
-                      Log in to your account
-                    </Link>
-                  )}
-                </p>
-              ) : null}
             </div>
           ) : null}
 

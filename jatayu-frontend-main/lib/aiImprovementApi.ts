@@ -2,7 +2,7 @@
  * Jatayu AI Improve Needs API Integration Client
  */
 
-import { getToken } from "@/lib/api";
+import { getSeekerToken } from "@/lib/api";
 import { publicApiBase } from "@/lib/publicApiBase";
 import { NEED_STEP_CHIPS } from "@/components/seeker/onboarding/seekerOutcomeOptions";
 
@@ -81,7 +81,7 @@ export async function callAiImproveNeeds(
   payload: AiImproveNeedsRequest,
   isOnboarding: boolean = false
 ): Promise<AiImproveNeedsResponse> {
-  const token = getToken();
+  const token = getSeekerToken();
   const primaryEndpoint = isOnboarding
     ? `${BASE_URL}/api/seeker/onboarding/ai-improve-needs`
     : `${BASE_URL}/api/seeker/ai-improve-needs`;

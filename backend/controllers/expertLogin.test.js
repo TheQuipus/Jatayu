@@ -405,3 +405,75 @@ test('new expert registration creates DB account immediately in draft state and 
   assert.equal(expert.onboardingStep, 'category');
   assert.equal(expert.status, 'draft');
 });
+
+test('expert register strictly rejects existing OAuth and password drafts with 409 without sending OTP', async (t) => {
+  const oauthDraft = {
+    id: 'oauth-draft-expert',
+    email: 'oauth-expert@example.com',
+    phone: null,
+    password: null,
+    status: 'draft',
+    onboardingStep: 'category',
+  };
+  let findCall = 0;
+  t.mock.method(Expert, 'findOne', async () => {
+    findCall += 1;
+    return findCall === 1 ? oauthDraft : null;
+  });
+
+  const oauthRes = response();
+  await register({
+    body: { fullName: 'OAuth Expert', email: oauthDraft.email, password: 'ExpertPassword1!', phone: '9876543210' },
+  }, oauthRes);
+  assert.equal(oauthRes.statusCode, 409);
+  assert.equal(oauthRes.body.code, 'EMAIL_EXISTS');
+
+  // Existing password draft -> strictly rejected with 409 EMAIL_EXISTS (directs user to /login)
+  const draftExpert = {
+    id: 'draft-2fa-expert',
+    email: 'draft-2fa@example.com',
+    phone: '9876543212',
+    fullName: 'Draft Expert',
+    password: await bcrypt.hash('DraftPass1!', 4),
+    status: 'draft',
+    onboardingStep: 'category',
+    twoFactorEnabled: true,
+    onboardingMetadata: {},
+    save: async () => {},
+  };
+  t.mock.method(Expert, 'findOne', async () => draftExpert);
+
+  const before = deliveries.length;
+  const dupRes = response();
+  await register({
+    body: { fullName: 'Draft Expert', email: draftExpert.email, password: 'DraftPass1!', phone: draftExpert.phone },
+  }, dupRes);
+  assert.equal(dupRes.statusCode, 409);
+  assert.equal(dupRes.body.code, 'EMAIL_EXISTS');
+  assert.equal(dupRes.body.token, undefined);
+  assert.equal(deliveries.length, before);
+});
+
+test('expert verifyOtp locks out after 5 invalid attempts', async (t) => {
+  const expert = {
+    id: 'otp-bruteforce-expert',
+    email: 'bf-expert@example.com',
+    phone: '9555555555',
+    onboardingStep: 'otp',
+    status: 'draft',
+    isBlacklisted: false,
+    onboardingMetadata: { pendingOtp: { code: '665544', expiresAt: Date.now() + 60_000, attempts: 0 } },
+    save: async () => {},
+  };
+  t.mock.method(Expert, 'findByPk', async () => expert);
+
+  for (let i = 1; i < 5; i += 1) {
+    const bad = response();
+    await verifyOtp({ body: { expertId: expert.id, code: '000000' } }, bad);
+    assert.equal(bad.statusCode, 400);
+  }
+  const exhausted = response();
+  await verifyOtp({ body: { expertId: expert.id, code: '000000' } }, exhausted);
+  assert.equal(exhausted.statusCode, 429);
+  assert.equal(exhausted.body.code, 'OTP_ATTEMPTS_EXCEEDED');
+});

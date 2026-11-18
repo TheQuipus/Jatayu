@@ -75,10 +75,10 @@
 
 /* KPI row */
 .kpiRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
   width: 100%;
 }
 
@@ -93,11 +93,10 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  width: 190px !important;
+  width: 100% !important;
   max-width: 100%;
-  min-height: 130px !important;
-  max-height: 140px;
-  padding: 16px 18px;
+  min-height: 124px !important;
+  padding: 14px 12px;
   border-radius: 0;
   text-align: left;
   cursor: pointer;
@@ -105,9 +104,10 @@
   color: inherit;
   border: none !important;
   background: transparent !important;
+  box-shadow: none !important;
   position: relative;
   overflow: visible;
-  transition: box-shadow 0.2s ease;
+  transition: transform 0.15s ease;
 }
 
 .kpiCard :global(svg[class*="chamferSvg"]) {
@@ -143,16 +143,17 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .kpiLabel {
   font-family: var(--font-body);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.2;
   color: var(--dove-gray);
+  transition: color 0.2s ease;
 }
 
 .kpiIconBox {
@@ -161,23 +162,25 @@
   justify-content: center;
   flex-shrink: 0;
   color: var(--dove-gray);
+  transition: color 0.2s ease;
 }
 
 .kpiValue {
   position: relative;
   z-index: 1;
   margin: 0;
-  margin-top: 12px !important;
+  margin-top: auto !important;
   font-family: var(--font-display);
-  font-size: 44px;
+  font-size: 30px;
   font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.03em;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   color: var(--ink);
+  transition: color 0.2s ease;
 }
 
 .kpiCardActive {
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--bunker) 22%, transparent);
+  box-shadow: none !important;
   cursor: default;
 }
 
@@ -731,9 +734,19 @@
   opacity: 0.45;
 }
 
+@media (max-width: 1200px) {
+  .kpiRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   .dashboard {
     padding: 20px 0 48px;
+  }
+
+  .kpiRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .pagination {
@@ -743,6 +756,10 @@
 }
 
 @media (max-width: 480px) {
+  .kpiRow {
+    grid-template-columns: 1fr;
+  }
+
   .kpiCard {
     width: 100%;
   }

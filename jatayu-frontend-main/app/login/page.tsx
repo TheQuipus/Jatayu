@@ -13,6 +13,7 @@ import {
   savePendingSeekerOtpSession,
   readPendingSeekerOtpSession,
   clearPendingSeekerOtpSession,
+  SEEKER_SIGNUP_HREF,
 } from "@/lib/seekerAuth";
 import {
   persistAuthSession as persistExpertAuthSession,
@@ -180,7 +181,7 @@ function LoginPageContent({
             phone: data.phone || "",
           });
         }}
-        registerHref="/seeker/seeker-onboarding/"
+        registerHref={SEEKER_SIGNUP_HREF}
         initialEmail={initialEmail}
       />
     </LoginShell>
