@@ -4,7 +4,7 @@ export function getExpertOnboardingStepCompletion(
   savedStepCompletion: readonly boolean[],
   liveStepCompletion: readonly boolean[],
 ): boolean[] {
-  const optionalSteps = new Set([2, 3, 4, 5, 8]);
+  const optionalSteps = new Set([2, 3, 4, 8]);
 
   return currentValidity.map((isValid, index) => {
     const stepNumber = index + 1;

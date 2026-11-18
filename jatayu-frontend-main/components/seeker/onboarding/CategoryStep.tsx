@@ -9,6 +9,7 @@ import OnboardingStepTitle from "./OnboardingStepTitle";
 import MatchingProgress from "./MatchingProgress";
 import type { ProgressCompletion, ProgressStepKey } from "./MatchingProgress";
 import RegisterLeftPanel from "./RegisterLeftPanel";
+import TextButton from "@/components/ui/TextButton"; // or your relative path
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import register from "./register.shared.module.css";
@@ -624,11 +625,13 @@ export default function CategoryStep({
         </div>
 
         <div className={shared.footerActions}>
-          {onBack && (
-            <button type="button" className={shared.textBtn} onClick={onBack}>
-              Back
-            </button>
-          )}
+          {/* {onBack && (
+            <TextButton
+              label="Back"
+              onClick={onBack}
+              className={shared.textBtn} // if you want to keep your shared class styling
+            />
+          )} */}
           <ContinueButton onClick={handleContinue} disabled={!canContinue} />
         </div>
       </div>

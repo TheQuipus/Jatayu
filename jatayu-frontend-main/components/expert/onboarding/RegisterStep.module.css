@@ -83,10 +83,10 @@
   white-space: nowrap;
 }
 
-.forgotPasswordLink:hover {
+/* .forgotPasswordLink:hover {
   text-decoration: underline;
   color: var(--pomegranate);
-}
+} */
 
 .passwordStrengthRow {
   display: flex;
@@ -224,4 +224,32 @@
   .nameFieldsRow {
     grid-template-columns: 1fr;
   }
+}
+
+/* Keep your existing .forgotPasswordLink styles here */
+
+.forgotPasswordText {
+  display: block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.forgotPasswordTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.forgotPasswordUp {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.forgotPasswordLink:hover .forgotPasswordTrack,
+.forgotPasswordLink:focus-visible .forgotPasswordTrack {
+  transform: translateY(-50%);
 }

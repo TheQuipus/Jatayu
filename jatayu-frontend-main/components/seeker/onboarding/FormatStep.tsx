@@ -19,6 +19,7 @@ import cards from "./preferenceCard.shared.module.css";
 import { CONSULTATION_FORMATS } from "./preferencesData";
 import { ClipPathDefs, ClippedCardBorder, SelectionCheckbox } from "./clippedCard";
 import clipped from "./clippedCard.module.css";
+import TextButton from "@/components/ui/TextButton";
 type FormatStepProps = {
   userName: string;
   selectedFormats: string[];
@@ -140,12 +141,8 @@ export default function FormatStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+          <TextButton type="button" className={shared.textBtn} onClick={onBack} label="Back"/>
+          <TextButton type="button" className={shared.textBtn} onClick={onContinue} label="Skip" />
           <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>

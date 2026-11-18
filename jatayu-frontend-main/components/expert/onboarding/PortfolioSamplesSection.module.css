@@ -156,12 +156,18 @@
   border: 1px dashed rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.addCard:hover {
+.addCard:hover:not(:focus) {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.22);
+}
+
+.addCard:focus {
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
+  outline: none;
 }
 
 .addCardIcon {
@@ -204,8 +210,13 @@
   transition: opacity 0.2s ease;
 }
 
-.addAnotherBtn:hover {
+.addAnotherBtn:hover:not(:focus) {
   opacity: 0.85;
+}
+
+.addAnotherBtn:focus {
+  outline: 1px solid #FF3B30;
+  outline-offset: 3px;
 }
 
 .tipsBox {

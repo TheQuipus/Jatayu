@@ -52,6 +52,7 @@ import { isValidPortfolioUrl } from "@/lib/portfolioUrl";
 import { areRequiredSessionPreferencesValid } from "@/components/expert/onboarding/preferencesData";
 import {
   getProfile,
+  getDigilockerKycStatus,
   submitOnboarding,
   updateProfile,
   type AuthResponse,
@@ -228,6 +229,7 @@ function ExpertOnboardingPageContent() {
   const otpFlowLockRef = useRef(false);
   const signupFlowRef = useRef(false);
   const loginIntentRef = useRef(false);
+  const digilockerReturnRef = useRef(false);
 
   const resetOnboardingFormState = useCallback(() => {
     setSelectedCategory("");
@@ -478,11 +480,7 @@ function ExpertOnboardingPageContent() {
       selectedSkills.length > 0,
       positionsValid && degreesValid && experienceHasValidEntry,
       Boolean(professionalTitle.trim() && tagLine.trim() && bio.trim()),
-      Boolean(
-        (governmentId?.type && governmentId.front) ||
-        kycVideoUrl ||
-        areKycPhotosComplete(kycPhotos),
-      ),
+      Boolean(kycVideoUrl || areKycPhotosComplete(kycPhotos) || liveStepCompletion[5]),
       areRequiredSessionPreferencesValid(selectedFormats, formatPrices),
       languages.length > 0 && selectedAudiences.length > 0,
       isAvailabilityValid(timezone, availabilitySlots ?? []),
@@ -499,9 +497,9 @@ function ExpertOnboardingPageContent() {
     professionalTitle,
     tagLine,
     bio,
-    governmentId,
     kycVideoUrl,
     kycPhotos,
+    liveStepCompletion,
     selectedFormats,
     formatPrices,
     languages,
@@ -555,13 +553,13 @@ function ExpertOnboardingPageContent() {
       Boolean(liveStepCompletion[2] || selectedSkills.length > 0),
       Boolean(liveStepCompletion[3]),
       Boolean(liveStepCompletion[4]),
-      Boolean(liveStepCompletion[5]),
+      Boolean(liveStepCompletion[5] || kycVideoUrl || areKycPhotosComplete(kycPhotos)),
       Boolean(liveStepCompletion[6]),
       Boolean(liveStepCompletion[7]),
       Boolean(liveStepCompletion[8]),
       Boolean(liveStepCompletion[9]),
     ],
-    [liveStepCompletion, selectedCategory, selectedSkills],
+    [liveStepCompletion, selectedCategory, selectedSkills, kycVideoUrl, kycPhotos],
   );
   const stepCompletion = useMemo(
     () => getExpertOnboardingStepCompletion(validity, emptyOptionalSteps, saved, live),
@@ -619,8 +617,19 @@ function ExpertOnboardingPageContent() {
       return;
     }
 
+    const kycReturn = params.get("kyc");
+    if (
+      isAuthenticated() &&
+      (kycReturn === "success" || kycReturn === "denied" || kycReturn === "error")
+    ) {
+      digilockerReturnRef.current = true;
+      setStep("credentials");
+      return;
+    }
+
     const stepParam = params.get("step");
     if (stepParam && isAuthenticated()) {
+      if (stepParam === "credentials") digilockerReturnRef.current = true;
       setStep(stepParam as ExpertOnboardingStep);
       return;
     }
@@ -657,7 +666,7 @@ function ExpertOnboardingPageContent() {
       hydrateFromProfile(storedUser as unknown as ExpertOnboardingProfile);
       setAuthUser(storedUser);
       setAccountStatus(buildExpertAccountStatus(storedUser));
-      routeAfterAuth(storedUser);
+      if (!digilockerReturnRef.current) routeAfterAuth(storedUser);
     }
 
     let active = true;
@@ -670,8 +679,7 @@ function ExpertOnboardingPageContent() {
 
         const user = asOnboardingProfile(profile);
         hydrateFromProfile(user);
-        const kycReturn = new URLSearchParams(window.location.search).get("kyc");
-        if (kycReturn === "success" || kycReturn === "denied" || kycReturn === "error") {
+        if (digilockerReturnRef.current) {
           setStep("credentials");
           return;
         }
@@ -680,7 +688,8 @@ function ExpertOnboardingPageContent() {
       .catch(() => {
         // If GET profile endpoint doesn't exist or fails, fallback to stored user from login
         if (storedUser) {
-          routeAfterAuth(storedUser);
+          if (digilockerReturnRef.current) setStep("credentials");
+          else routeAfterAuth(storedUser);
         } else {
           clearAuthSession();
           setStep("login");
@@ -1086,6 +1095,20 @@ handleBackFromOtp();
   };
 
   const handleCredentialsContinue = async () => {
+    if (!kycVideoUrl && !areKycPhotosComplete(kycPhotos)) {
+      try {
+        const status = await getDigilockerKycStatus();
+        if (status.kyc?.status !== "verified") {
+          setProfileError("Complete DigiLocker or face capture verification before continuing.");
+          return;
+        }
+      } catch (error) {
+        setProfileError(
+          error instanceof Error ? error.message : "Could not verify DigiLocker status.",
+        );
+        return;
+      }
+    }
     const profileSaved = await saveProfileStep({
       step: "preferences",
       onboardingMetadata: {
@@ -1428,14 +1451,7 @@ handleBackFromOtp();
           kycVideoSrc={kycVideoUrl}
           onKycVideoChange={setKycVideoUrl}
           kycPhotos={kycPhotos}
-          onKycPhotosChange={(photos) => {
-            setKycPhotos(photos);
-            try {
-              saveExpertApplicationDraft({ kycPhotos: photos });
-            } catch {
-              setProfileError("Could not save the manual KYC photos locally. Continue to save them to your profile.");
-            }
-          }}
+          onKycPhotosChange={setKycPhotos}
           governmentId={governmentId}
           onGovernmentIdChange={setGovernmentId}
           certificates={certificates}

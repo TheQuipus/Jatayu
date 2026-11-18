@@ -1,0 +1,55 @@
+
+.tonePill {
+  cursor: pointer;
+  font-family: var(--font-body);
+  color: var(--silver);
+  text-transform: uppercase;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 6px 10px;
+  min-width: 90px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  transition: color 0.2s, opacity 0.2s;
+}
+
+.tonePill:hover:not(:disabled) {
+  color: var(--color-orange-550, #e53b17);
+}
+
+.tonePill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.labelText {
+  display: block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.labelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.labelUp {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.tonePill:hover:not(:disabled) .labelTrack {
+  transform: translateY(-50%);
+}
+
+.selected {
+  color: var(--color-orange-550, #e53b17);
+}

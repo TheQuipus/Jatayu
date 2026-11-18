@@ -25,6 +25,12 @@
   outline: none;
   transition: all 0.2s ease;
   width: 100%;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.optionCard:hover:not(.optionCardSelected) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .optionCardSelected {

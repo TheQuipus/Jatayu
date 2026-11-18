@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
 import TextButton from "@/components/ui/TextButton";
+import TonePillButton from "@/components/ui/TonePillButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ExpertCard from "@/components/ui/ExpertCard";
 import ShinyText from "@/components/ui/ShinyText";
@@ -57,8 +58,8 @@ type IdentityStepProps = {
 };
 
 const TONE_PILLS: Array<{ id: IdentityTone; label: string }> = [
-  { id: "professional", label: "Professional" },
   { id: "casual", label: "Casual" },
+  { id: "professional", label: "Professional" },
   { id: "concise", label: "Concise" },
 ];
 
@@ -428,21 +429,18 @@ export default function IdentityStep({
                     <div className={styles.pillsHeaderRow}>
                       {TONE_PILLS.map((pill) => {
                         const isSelected = selectedTones.tagLine === pill.id;
+
                         return (
-                          <button
+                          <TonePillButton
                             key={pill.id}
                             type="button"
-                            className={`${styles.suggestedPill} ${
-                              isSelected ? styles.suggestedPillSelected : ""
-                            }`}
-                            aria-pressed={isSelected}
+                            label={pill.label}
+                            className={styles.tonePillButton}
                             onClick={() => {
                               handleSelectTone("tagLine", pill.id);
                               handleSuggestField("tagLine", pill.id);
                             }}
-                          >
-                            <span>{pill.label}</span>
-                          </button>
+                          />
                         );
                       })}
                     </div>
@@ -518,22 +516,19 @@ export default function IdentityStep({
                   {showBioTones ? (
                     <div className={styles.pillsHeaderRow}>
                       {TONE_PILLS.map((pill) => {
-                        const isSelected = selectedTones.bio === pill.id;
+                        const isSelected = selectedTones.tagLine === pill.id;
+
                         return (
-                          <button
+                          <TonePillButton
                             key={pill.id}
                             type="button"
-                            className={`${styles.suggestedPill} ${
-                              isSelected ? styles.suggestedPillSelected : ""
-                            }`}
-                            aria-pressed={isSelected}
+                            label={pill.label}
+                            className={styles.tonePillButton}
                             onClick={() => {
-                              handleSelectTone("bio", pill.id);
-                              handleSuggestField("bio", pill.id);
+                              handleSelectTone("tagLine", pill.id);
+                              handleSuggestField("tagLine", pill.id);
                             }}
-                          >
-                            <span>{pill.label}</span>
-                          </button>
+                          />
                         );
                       })}
                     </div>

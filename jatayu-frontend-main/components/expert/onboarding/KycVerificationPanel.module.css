@@ -3,10 +3,55 @@
   flex-direction: column;
   flex: 1;
   min-height: 220px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(255, 255, 255, 0.14);
-  overflow: hidden;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  overflow: visible;
   transition: border-color 0.2s ease;
+}
+
+.digilockerBrand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.digilockerLogoIcon {
+  display: block;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.digilockerWordmark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.digilockerName {
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.digilockerTagline {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.brandDivider {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .cameraModal {
@@ -15,6 +60,9 @@
   z-index: 1200;
   display: flex;
   flex-direction: column;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
   background: #080a10;
 }
 
@@ -222,6 +270,16 @@
   gap: 6px;
 }
 
+.bottomPromptText {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .recommendedLabel {
   color: var(--silver-chalice);
   font-family: var(--font-body);
@@ -359,7 +417,9 @@
   position: relative;
   flex: 1;
   width: 100%;
-  min-height: 100%;
+  min-height: 100dvh;
+  height: 100%;
+  overflow: hidden;
   background: #080a10;
 }
 
@@ -376,6 +436,18 @@
   inset: 0;
   display: flex;
   flex-direction: column;
+  pointer-events: none;
+  justify-content: space-between;
+  padding: 12px 16px 14px;
+  gap: 8px;
+}
+
+.sessionOverlay::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(8, 10, 16, 0.4);
+  content: "";
   pointer-events: none;
 }
 
@@ -401,39 +473,142 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .stepDot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  transition: background 0.25s ease, transform 0.25s ease;
+  background: rgba(255, 255, 255, 0.28);
+  transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .stepDotActive {
   background: #e53b17;
-  transform: scale(1.2);
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px rgba(229, 59, 23, 0.3);
 }
 
 .stepDotDone {
-  background: rgba(255, 255, 255, 0.55);
+  background: #34c759;
 }
 
 .frameArea {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 20px 20px;
+  position: relative;
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  padding: 0 16px;
+  z-index: 1;
 }
 
 .ovalBlock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  padding-top: clamp(44px, 6vh, 56px);
+  padding-bottom: clamp(92px, 12vh, 112px);
+  gap: 10px;
+}
+
+.instructionCard {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  z-index: 2;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 16px;
+  width: min(520px, calc(100vw - 48px));
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+}
+
+.instructionInfo {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.instructionAvatar {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.instructionAvatarImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.instructionCopy {
+  min-width: 0;
+  text-align: left;
+}
+
+.instructionCard .instruction {
+  text-align: left;
+}
+
+.instructionCard .instructionSub {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.clickPhotoBtn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 132px;
+  min-height: 42px;
+  padding: 9px 16px;
+  pointer-events: auto;
+  background: #e53b17;
+  border: 1px solid rgba(229, 59, 23, 0.65);
+  border-radius: 999px;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+
+.clickPhotoBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.clickPhotoBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.clickPhotoBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .instructionBlock {
@@ -463,50 +638,87 @@
 }
 
 .faceOval {
-  width: min(220px, 58vw);
-  height: min(280px, 72vw);
+  width: clamp(340px, 46vw, 480px);
+  height: clamp(430px, 64vh, 580px);
+  max-height: 100%;
+  max-width: 86vw;
+  aspect-ratio: 3 / 4;
+  margin-top: auto;
+  margin-bottom: auto;
   border: 2.5px solid #ff4d4d;
   border-radius: 50%;
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.55),
-    0 0 24px rgba(255, 77, 77, 0.45);
+  box-shadow: 0 0 24px rgba(255, 77, 77, 0.45);
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .faceOvalNotDetected {
   border-color: #ff4d4d;
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.55),
-    0 0 24px rgba(255, 77, 77, 0.45);
+  box-shadow: 0 0 24px rgba(255, 77, 77, 0.45);
   animation: ovalPulseRed 1.5s ease-in-out infinite;
 }
 
 .faceOvalWrongPose {
   border-color: #ffca28;
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.55),
-    0 0 20px rgba(255, 202, 40, 0.4);
+  box-shadow: 0 0 20px rgba(255, 202, 40, 0.4);
 }
 
 .faceOvalMatched {
   border-color: #34c759;
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.55),
-    0 0 28px rgba(52, 199, 89, 0.5);
+  box-shadow: 0 0 28px rgba(52, 199, 89, 0.5);
   animation: ovalPulseGreen 1.2s ease-in-out infinite;
+}
+
+.cameraBackBtn {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 16px 0 12px;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.cameraBackBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateX(-1px);
+}
+
+.cameraBackBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+@media (max-width: 480px) {
+  .cameraBackBtn {
+    top: 12px;
+    left: 12px;
+    height: 34px;
+    padding: 0 12px 0 10px;
+    font-size: 12px;
+  }
 }
 
 @keyframes ovalPulseRed {
   0%,
   100% {
-    box-shadow:
-      0 0 0 9999px rgba(0, 0, 0, 0.55),
-      0 0 16px rgba(255, 77, 77, 0.3);
+    box-shadow: 0 0 16px rgba(255, 77, 77, 0.3);
   }
   50% {
-    box-shadow:
-      0 0 0 9999px rgba(0, 0, 0, 0.55),
-      0 0 28px rgba(255, 77, 77, 0.6);
+    box-shadow: 0 0 28px rgba(255, 77, 77, 0.6);
   }
 }
 
@@ -526,13 +738,221 @@
 
 .countdownWrap {
   position: absolute;
-  bottom: 32px;
+  bottom: max(48px, calc(env(safe-area-inset-bottom) + 36px));
   left: 50%;
+  z-index: 2;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  width: min(360px, calc(100vw - 32px));
+  gap: 10px;
+  pointer-events: none;
+}
+
+.countdownWrap .poseProgressBar {
+  width: min(320px, 100%);
+}
+
+.detectionError,
+.captureError {
+  max-width: min(440px, calc(100vw - 32px));
+  margin: 0;
+  color: #ffb6a8;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.captureReview {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: #080a10;
+  pointer-events: auto;
+}
+
+.captureReviewContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: min(920px, 100%);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 72px 24px 32px;
+  color: var(--white);
+  text-align: center;
+}
+
+.captureReviewTitle {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 700;
+}
+
+.captureReviewSub {
+  max-width: 560px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.captureReviewGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.captureReviewCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.captureReviewImage,
+.captureReviewPlaceholder {
+  width: 100%;
+  height: clamp(150px, 28vh, 260px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.captureReviewPlaceholder {
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+
+.captureReviewLabel {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.retakePoseButton {
+  min-height: 34px;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  color: var(--white);
+  cursor: pointer;
+}
+
+.retakePoseButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.continueCaptureButton {
+  min-width: 180px;
+  min-height: 46px;
+  padding: 10px 24px;
+  background: var(--pomegranate);
+  border: 1px solid var(--pomegranate);
+  border-radius: 999px;
+  color: var(--white);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.continueCaptureButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .ovalBlock {
+    padding-top: max(42px, calc(env(safe-area-inset-top) + 38px));
+    padding-bottom: 92px;
+    gap: 8px;
+  }
+
+  .instructionCard {
+    width: calc(100vw - 24px);
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .instructionInfo {
+    gap: 8px;
+  }
+
+  .instructionAvatar {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .instructionAvatar svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .instruction {
+    font-size: 14px;
+  }
+
+  .instructionCard .instructionSub {
+    font-size: 10px;
+  }
+
+  .clickPhotoBtn {
+    min-width: 98px;
+    min-height: 38px;
+    gap: 5px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .faceOval {
+    width: min(350px, 86vw);
+    height: min(440px, 56dvh);
+    max-height: 100%;
+  }
+
+  .poseStatusBadge {
+    max-width: 100%;
+    padding: 7px 12px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .bottomPromptText {
+    font-size: 12px;
+  }
+
+  .captureReviewContent {
+    justify-content: flex-start;
+    padding: 72px 16px 24px;
+  }
+
+  .captureReviewGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .captureReviewCard {
+    width: min(320px, 100%);
+    margin: 0 auto;
+  }
+
+  .captureReviewImage,
+  .captureReviewPlaceholder {
+    height: 180px;
+  }
 }
 
 .manualCaptureControls {
@@ -846,14 +1266,10 @@
 @keyframes ovalPulse {
   0%,
   100% {
-    box-shadow:
-      0 0 0 9999px rgba(0, 0, 0, 0.45),
-      0 0 16px rgba(52, 199, 89, 0.2);
+    box-shadow: 0 0 16px rgba(52, 199, 89, 0.2);
   }
   50% {
-    box-shadow:
-      0 0 0 9999px rgba(0, 0, 0, 0.45),
-      0 0 28px rgba(52, 199, 89, 0.45);
+    box-shadow: 0 0 28px rgba(52, 199, 89, 0.45);
   }
 }
 
@@ -907,10 +1323,10 @@
 
 .methodGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
   width: 100%;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .methodCardBox {
@@ -930,11 +1346,15 @@
   border: 2px solid rgba(229, 59, 23, 0.8);
   background: linear-gradient(to bottom, rgba(229, 59, 23, 0.15), rgba(15, 15, 15, 0.9));
   box-shadow: 0 0 25px rgba(229, 59, 23, 0.15);
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 24px 24px;
+  text-align: center;
 }
 
 .fastestTag {
   position: absolute;
-  top: -12px;
+  top: -14px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--pomegranate);
@@ -953,6 +1373,43 @@
   justify-content: space-between;
   margin-bottom: 12px;
   margin-top: 4px;
+}
+
+.digilockerBox .cardHeader {
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 20px;
+}
+
+.digilockerBox .cardTitle {
+  margin-bottom: 8px;
+  font-size: 20px;
+}
+
+.digilockerBox .cardDesc {
+  max-width: 290px;
+  margin-bottom: 18px;
+}
+
+.digilockerBox .cardChecklist {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: max-content;
+  margin: 0 auto 24px;
+  text-align: left;
+}
+
+.digilockerBox .cardChecklist li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.digilockerBox .digilockerError {
+  max-width: 290px;
+  margin: 0 auto 8px;
+  text-align: center;
 }
 
 .brandBadge {
@@ -979,9 +1436,7 @@
 }
 
 /* Manual Secondary Card */
-/* --- Updated Manual Box Styles --- */
-
-.manualBox {
+.cameraVerificationBox {
   border: 1px dashed rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.01);
   display: flex;
@@ -992,18 +1447,22 @@
   padding: 24px 20px;
 }
 
-.manualBox .cardHeaderCenter {
+.cameraVerificationBox .cardHeaderCenter {
   margin-bottom: 4px;
 }
 
-.manualBox .cardTitle {
+.shieldIcon {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.cameraVerificationBox .cardTitle {
   margin: 0 0 8px;
   font-size: 18px;
   font-weight: 700;
   color: var(--white);
 }
 
-.manualBox .cardDesc {
+.cameraVerificationBox .cardDesc {
   margin: 0 auto 24px;
   font-size: 13px;
   line-height: 1.5;
@@ -1011,24 +1470,100 @@
   max-width: 280px;
 }
 
-.secondaryManualBtn {
+.cameraVerificationBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  padding: 12px;
+  height: 46px;
+  padding: 10px 18px;
   background: transparent;
-  border: 1px solid rgba(229, 59, 23, 0.6);
-  color: var(--pomegranate);
-  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
   font-size: 12px;
-  letter-spacing: 0.03em;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.secondaryManualBtn:hover:not(:disabled) {
-  background: rgba(229, 59, 23, 0.12);
-  border-color: var(--pomegranate);
+.cameraVerificationBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.6);
   color: var(--white);
+}
+
+.cameraInstructions {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: max-content;
+  margin: 0 auto 12px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  list-style: none;
+  text-align: left;
+}
+
+.cameraInstructions li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cameraInstructions li::before {
+  content: "";
+  display: inline-block;
+  flex: 0 0 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.cameraVerificationNote {
+  margin: 0 0 16px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.beginBtnLabelViewport {
+  display: block;
+  width: 100%;
+  height: 1.2em;
+  overflow: hidden;
+}
+
+.beginBtnLabelTrack {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(0);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.beginBtnLabelText {
+  display: block;
+  min-height: 1.2em;
+  line-height: 1.2em;
+  white-space: nowrap;
+}
+
+@keyframes beginBtnLabelRoll {
+  0%,
+  40% {
+    transform: translateY(0);
+  }
+  50%,
+  90% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(0);
+  }
 }
 
 .cardHeaderCenter {
@@ -1054,7 +1589,8 @@
   text-align: center;
 }
 
-.cardChecklist, .cardChecklistMuted {
+.cardChecklist,
+.cardChecklistMuted {
   list-style: none;
   padding: 0;
   margin: 0 0 20px;
@@ -1076,15 +1612,21 @@
 /* Buttons */
 .primaryDigiBtn {
   width: 100%;
-  min-height: 44px;
+  height: 46px;
   padding: 10px 18px;
   background: #e53b17;
   border: 1px solid rgba(229, 59, 23, 0.6);
   color: var(--white);
   font-family: var(--font-body);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: filter 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
@@ -1098,28 +1640,14 @@
   cursor: not-allowed;
 }
 
-.secondaryManualBtn {
-  width: 100%;
-  padding: 12px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 600;
-  font-size: 12px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.secondaryManualBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.6);
-  color: var(--white);
-}
-
 /* Responsive breakpoint for smaller screens */
 @media (max-width: 768px) {
   .methodGrid {
     grid-template-columns: 1fr;
   }
+}
+
+.cameraVerificationBtn:hover:not(:disabled) .beginBtnLabelTrack,
+.cameraVerificationBtn:focus-visible:not(:disabled) .beginBtnLabelTrack {
+  transform: translateY(-50%);
 }

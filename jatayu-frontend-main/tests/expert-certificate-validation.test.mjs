@@ -180,7 +180,7 @@ test('certificate click opens an in-app viewer that renders the stored DOCX data
   assert.match(docxViewer, /renderAsync\(documentBlob, container/);
   assert.match(docxViewer, /aria-label="Close certificate preview"/);
   assert.match(credentialsStep, /getExpertCertificateContentError\(file\)/);
-  assert.match(credentialsStep, /disabled=\{!canContinue \|\| pendingCertificateUploads > 0\}/);
+  assert.match(credentialsStep, /disabled=\{!canContinue\}/);
   assert.match(credentialsStep, /\.doc,\.docx/);
 });
 
@@ -191,8 +191,11 @@ test('legacy DOC certificates are offered as downloads instead of being sent to 
 });
 
 test('certificate uploads do not bypass the existing KYC continuation requirements', () => {
-  assert.match(credentialsStep, /const canContinue = hasGovernmentId \|\| hasKycVideo \|\| hasManualKycPhotos \|\| digilockerVerified/);
-  assert.match(credentialsStep, /Please upload your Government ID front photo or complete video verification/);
+  assert.match(
+    credentialsStep,
+    /const canContinue =\s*hasSuccessfulVerification && hasGovernmentId && pendingCertificateUploads\s*===\s*0/,
+  );
+  assert.match(credentialsStep, /Please complete DigiLocker or automatic camera verification/);
 });
 
 test('certificate name uses a true placeholder and its informational note uses secondary text color', () => {

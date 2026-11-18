@@ -12,6 +12,7 @@ import { type Expert } from "@/lib/experts";
 import shared from "./onboarding.shared.module.css";
 import styles from "./PersonalisationStep.module.css";
 import register from "./register.shared.module.css";
+import TextButton from "@/components/ui/TextButton";
 export function isPersonalisationFormComplete(selectedLanguages: string[]): boolean {
   return selectedLanguages.length > 0;
 }
@@ -395,16 +396,13 @@ export default function PersonalisationStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button
+          <TextButton
             type="button"
             className={shared.textBtn}
             onClick={onBack}
-          >
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+            label="Back"
+          />
+          <TextButton type="button" className={shared.textBtn} onClick={onContinue} label="Skip" />
           <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>

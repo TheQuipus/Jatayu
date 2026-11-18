@@ -134,6 +134,11 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
+.inputWithIconWrap:focus-within {
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
+}
+
 .inputWithIconWrapError {
   border-color: #FF3B30;
 }
@@ -208,8 +213,8 @@
 }
 
 .textareaWrap:focus-within {
-  border-color: var(--pomegranate);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pomegranate) 40%, transparent);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .textareaWrapLarge {
@@ -274,6 +279,11 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
+.inputWithActionWrap:focus-within {
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
+}
+
 .inputActionBtn {
   position: absolute;
   right: 6px;
@@ -299,7 +309,6 @@
 }
 
 .inputActionBtn:focus-visible {
-  border-color: rgba(255, 255, 255, 0.15);
   color: var(--white);
 }
 
@@ -331,6 +340,9 @@
 }
 
 .authToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: baseline;
   background: none;
   border: none;
   padding: 0;
@@ -361,4 +373,29 @@
   margin-top: 0;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.authToggleLabelText {
+  display: block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.authToggleLabelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.authToggleLabelUp {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.authToggleBtn:hover .authToggleLabelTrack {
+  transform: translateY(-50%);
 }

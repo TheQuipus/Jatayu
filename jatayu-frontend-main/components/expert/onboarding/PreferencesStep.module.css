@@ -97,11 +97,13 @@
   z-index: 12;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0;
   flex-shrink: 0;
   margin-top: 30px;
   margin-left: auto;
-  margin-right: 20px;
+  /* Match the checkmark's 20px inset against the card's 24px content inset. */
+  margin-right: -4px;
   padding-left: 14px;
   border-left: 1px solid var(--border-chip);
 }
@@ -136,15 +138,17 @@
   transition: border-color 0.2s ease;
 }
 
+.formatPriceInput {
+  min-width: 1ch;
+  max-width: 7ch;
+}
+
 .formatPriceInput:focus {
-  border-bottom: 1.5px solid var(--pomegranate, #E53B17);
+  border-bottom: 1px solid #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
-.formatPriceInput:focus-visible:not(:disabled):not([aria-disabled="true"]) {
-  outline: none;
-}
-
-.formatPriceInput[aria-invalid="true"] {
+.formatPriceInput[aria-invalid="true"]:not(:focus) {
   border-bottom-color: var(--pomegranate);
 }
 
@@ -218,6 +222,12 @@
 }
 
 .formatCheckboxSelected {
+  background: transparent;
+  border: 2px solid #E53B17;
+  box-shadow: 0 0 0 2px rgba(229, 59, 23, 0.2);
+}
+
+.formatCheckboxSelected:has(> svg) {
   background: #E53B17;
   border-color: #E53B17;
   box-shadow: 0 2px 6px rgba(229, 59, 23, 0.3);

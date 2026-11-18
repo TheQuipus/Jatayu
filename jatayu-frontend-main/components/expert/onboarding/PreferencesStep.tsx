@@ -104,7 +104,7 @@ export default function PreferencesStep({
   const handleFormatPriceChange = (id: string, raw: string) => {
     onFormatPricesChange({
       ...formatPrices,
-      [id]: raw.replace(/\D/g, ""),
+      [id]: raw.replace(/\D/g, "").slice(0, 7),
     });
   };
 
@@ -195,7 +195,7 @@ export default function PreferencesStep({
                   className={`${styles.formatCheckbox} ${isSelected ? styles.formatCheckboxSelected : ""}`}
                   aria-hidden="true"
                 >
-                  {isSelected && <Check size={10} strokeWidth={3} />}
+                  {isSelected && hasValidPrice && <Check size={10} strokeWidth={3} />}
                 </div>
 
                 <div className={styles.formatCardBody}>
@@ -232,12 +232,16 @@ export default function PreferencesStep({
                         type="text"
                         inputMode="numeric"
                         className={styles.formatPriceInput}
-                        style={{ width: `${Math.max(1, (formatPrices[fmt.id] ?? "").length || 1)}ch` }}
+                        style={{
+                          width: `${Math.min(7, Math.max(1, (formatPrices[fmt.id] ?? "").length))}ch`,
+                        }}
                         value={formatPrices[fmt.id] ?? ""}
                         onChange={(event) => handleFormatPriceChange(fmt.id, event.target.value)}
+                        maxLength={7}
                         placeholder="0"
                         spellCheck={false}
                         autoComplete="off"
+                        max={9999999}
                         aria-label={`${fmt.title} rate in rupees per minute`}
                         aria-invalid={showValidationError && !(Number.parseInt(formatPrices[fmt.id] ?? "", 10) > 0)}
                         aria-describedby={showValidationError ? "preferences-validation-error" : undefined}
@@ -337,7 +341,7 @@ export default function PreferencesStep({
 
         <div className={shared.footerActions}>
           <TextButton label="Back" onClick={onBack} />
-          <ContinueButton onClick={handleContinue} disabled={selectedFormats.length === 0} />
+          <ContinueButton onClick={handleContinue} disabled={!canContinue} />
         </div>
       </div>
     </section>

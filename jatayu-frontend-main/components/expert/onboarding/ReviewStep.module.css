@@ -337,9 +337,10 @@
   cursor: pointer;
 }
 
-.termsCheckbox:focus-visible {
-  outline: 2px solid var(--pomegranate);
-  outline-offset: 3px;
+.termsCheckbox:focus {
+  border: 1px solid #FF3B30;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .termsText {
