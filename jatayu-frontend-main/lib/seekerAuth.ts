@@ -175,3 +175,5 @@ export function getSeekerPostAuthDestination(user: AuthUser): string | SeekerOnb
 export function isSeekerAuthenticated(): boolean {
   return Boolean(getSeekerToken());
 }
+
+export const SEEKER_SIGNUP_HREF = "/seeker/seeker-onboarding/?flow=signup";

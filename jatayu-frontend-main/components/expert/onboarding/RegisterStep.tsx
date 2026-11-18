@@ -203,12 +203,10 @@ export default function RegisterStep({
         password,
         phone,
       });
-
-      if (response.token && response.user) {
-        onOAuthSuccess({ token: response.token, user: response.user });
-        return;
-      }
-
+      // if (response.token && response.user) {
+      //   onOAuthSuccess({ token: response.token, user: response.user });
+      //   return;
+      // } 
       onContinue({
         expertId: response.expertId || "",
         phone: response.phone || phone,

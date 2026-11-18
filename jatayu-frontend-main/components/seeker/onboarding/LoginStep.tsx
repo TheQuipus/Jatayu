@@ -9,7 +9,7 @@ import register from "./register.shared.module.css";
 import styles from "./RegisterStep.module.css";
 import { seekerLogin, SeekerOtpRequiredError, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
-import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
+import { savePendingSeekerOtpSession, SEEKER_SIGNUP_HREF } from "@/lib/seekerAuth";
 import SeekerSocialAuth from "./SeekerSocialAuth";
 
 type LoginStepProps = {
@@ -55,7 +55,7 @@ export default function LoginStep({
   onContinue,
   onRequiresOtp,
   onSwitchToRegister,
-  registerHref = "/seeker/seeker-onboarding/",
+  registerHref = SEEKER_SIGNUP_HREF,
   initialEmail = "",
 }: LoginStepProps) {
   const [email, setEmail] = useState(initialEmail);
