@@ -227,6 +227,24 @@ test("the Step 3 dropdown supports arrow, Home/End, Enter, and Escape navigation
   assert.match(experienceSelect, /aria-activedescendant=/);
 });
 
+test("degree and field-of-study dropdowns support independent custom Other values", () => {
+  assert.match(
+    experienceStep,
+    /value=\{degree\.degree \?\? ""\}[\s\S]*?options=\{degreeOptions\}[\s\S]*?allowCustomOption[\s\S]*?updateDegree\(index, \{ degree: nextValue \}\)/,
+  );
+  assert.match(
+    experienceStep,
+    /value=\{degree\.fieldOfStudy \?\? ""\}[\s\S]*?options=\{fieldOfStudyOptions\}[\s\S]*?allowCustomOption[\s\S]*?updateDegree\(index, \{ fieldOfStudy: nextValue \}\)/,
+  );
+  assert.match(experienceSelect, /if \(allowCustomOption && option && isOtherOption\(option\)\)/);
+  assert.match(experienceSelect, /setIsOpen\(false\);[\s\S]*?setIsCustomEntry\(true\);/);
+  assert.match(experienceSelect, /onSubmit=\{handleCustomSubmit\}/);
+  assert.match(experienceSelect, /type="submit"[\s\S]*?styles\.customSelectAddBtn/);
+  assert.match(experienceSelect, /event\.key === "Escape"/);
+  assert.match(experienceSelect, /selectedOption\?\.label \?\? \(allowCustomOption && value \? value : placeholder\)/);
+  assert.match(experienceStyles, /\.customSelectAddBtn\s*\{[^}]*width:\s*22px;[^}]*height:\s*22px;[^}]*border-radius:\s*50%;/s);
+});
+
 test("searchable dropdown supports keyboard navigation, listbox semantics, and Escape", () => {
   assert.match(smartSearchSelect, /event\.key === "ArrowDown" \|\| event\.key === "ArrowUp"/);
   assert.match(smartSearchSelect, /event\.key === "Home" \|\| event\.key === "End"/);

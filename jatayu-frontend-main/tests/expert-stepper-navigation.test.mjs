@@ -47,6 +47,10 @@ const sharedStyles = fs.readFileSync(
   new URL("../components/expert/onboarding/onboarding.shared.module.css", import.meta.url),
   "utf8",
 );
+const seekerSharedStyles = fs.readFileSync(
+  new URL("../components/seeker/onboarding/onboarding.shared.module.css", import.meta.url),
+  "utf8",
+);
 const categoryStep = fs.readFileSync(
   new URL("../components/expert/onboarding/CategoryStep.tsx", import.meta.url),
   "utf8",
@@ -134,6 +138,21 @@ test("progress controls use accessible buttons with practical visible focus targ
   assert.match(sharedStyles, /\.progressBarSegment\s*\{[^}]*min-height:\s*44px/s);
   assert.match(sharedStyles, /\.progressBarSegment::before\s*\{[^}]*height:\s*4px/s);
   assert.match(sharedStyles, /\.progressBarSegmentClickable:focus-visible\s*\{[^}]*outline:/s);
+});
+
+test("expert and seeker scroll viewports reach the segmented progress baseline", () => {
+  assert.match(sharedStyles, /\.cardHeader\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*1;/s);
+  assert.match(sharedStyles, /\.cardBody\s*\{[^}]*margin-top:\s*-46px;[^}]*padding:\s*46px 40px 0;/s);
+  assert.match(sharedStyles, /-webkit-mask-image:\s*linear-gradient\(to bottom, transparent 0px, rgba\(0, 0, 0, 0\.35\) 23px, #000 46px\);/);
+  assert.match(sharedStyles, /mask-image:\s*linear-gradient\(to bottom, transparent 0px, rgba\(0, 0, 0, 0\.35\) 23px, #000 46px\);/);
+  assert.match(sharedStyles, /@media \(max-width: 600px\) \{[\s\S]*?\.cardBody\s*\{[^}]*margin-top:\s*-42px;[^}]*padding:\s*62px 24px 0;/s);
+  assert.match(sharedStyles, /@media \(max-width: 600px\) \{[\s\S]*?\.cardBody\s*\{[^}]*-webkit-mask-image:\s*linear-gradient\(to bottom, transparent 0px, rgba\(0, 0, 0, 0\.35\) 31px, #000 62px\);[^}]*mask-image:\s*linear-gradient\(to bottom, transparent 0px, rgba\(0, 0, 0, 0\.35\) 31px, #000 62px\);/s);
+  assert.match(seekerSharedStyles, /\.cardHeader\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*1;/s);
+  assert.match(seekerSharedStyles, /\.cardBody\s*\{[^}]*margin-top:\s*-24px;[^}]*padding:\s*24px 40px 0;/s);
+  assert.match(seekerSharedStyles, /-webkit-mask-image:\s*linear-gradient\(to bottom, transparent 0px, rgba\(0, 0, 0, 0\.35\) 12px, #000 24px\);/);
+  assert.match(seekerSharedStyles, /mask-image:\s*linear-gradient\(to bottom, transparent 0px, rgba\(0, 0, 0, 0\.35\) 12px, #000 24px\);/);
+  assert.match(seekerSharedStyles, /@media \(max-width: 600px\) \{[\s\S]*?\.cardBody\s*\{[^}]*margin-top:\s*-20px;[^}]*padding:\s*40px 24px 0;/s);
+  assert.match(seekerSharedStyles, /@media \(max-width: 600px\) \{[\s\S]*?\.cardBody\s*\{[^}]*-webkit-mask-image:\s*linear-gradient\(to bottom, transparent 0px, rgba\(0, 0, 0, 0\.35\) 20px, #000 40px\);[^}]*mask-image:\s*linear-gradient\(to bottom, transparent 0px, rgba\(0, 0, 0, 0\.35\) 20px, #000 40px\);/s);
 });
 
 test("Step 1 has no Back button while later steps retain Back and Continue", () => {

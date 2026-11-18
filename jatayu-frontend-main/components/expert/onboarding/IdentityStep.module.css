@@ -181,7 +181,8 @@
 }
 
 .textareaWrapperBox:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
   background-color: rgba(255, 255, 255, 0.03);
 }
 
@@ -330,7 +331,8 @@
 }
 
 .textField:focus {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
   background-color: rgba(255, 255, 255, 0.03);
 }
 
@@ -365,7 +367,8 @@
 }
 
 .textareaField:focus {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
   background-color: rgba(255, 255, 255, 0.03);
 }
 
@@ -468,7 +471,8 @@
 }
 
 .textFieldWithIcon:focus {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
   background-color: rgba(255, 255, 255, 0.03);
 }
 
@@ -614,14 +618,15 @@
   border-radius: 4px;
   padding: 0 16px;
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 14px;
   color: var(--white, #ffffff);
   outline: none;
   transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .textField:focus {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
   background-color: rgba(255, 255, 255, 0.05);
 }
 
@@ -632,16 +637,25 @@
   border: 1px solid var(--border-chip, rgba(255, 255, 255, 0.12));
   border-radius: 4px;
   padding: 16px;
+  padding-bottom: 2px;
   display: flex;
   flex-direction: column;
   position: relative;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.tagLineBox:focus-within,
+.introBox:focus-within {
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .pillsHeaderRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 24px;
+  padding-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .suggestedPill {
@@ -673,7 +687,7 @@
   outline: none;
   resize: none;
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--white, #ffffff);
   padding: 0;
@@ -688,7 +702,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
+  margin-top: 6px; /* was 12px — pulls the footer closer to the text */
+  min-height: 24px;
   width: 100%;
 }
 
@@ -724,7 +739,7 @@
 .ghostInputTextarea {
   /* Match exact typography across both layers */
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.5;
   letter-spacing: normal;
   word-spacing: normal;
@@ -762,4 +777,109 @@
   background: transparent !important;
   z-index: 1;
   resize: none;
+}
+
+.tonePillButton {
+  min-width: 0px;
+  width: auto;
+  height: 0;
+  padding: 6px 0px;
+}
+
+.tonePillButton :global([class*="labelUp"]) {
+  font-size: 12px;
+  line-height: 12px;
+}
+
+.textField,
+.selectField,
+.textareaField {
+  width: 100%;
+  border: 1px solid var(--border-chip);
+  border-radius: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--white);
+  outline: none !important; /* Added to block default browser focus rings */
+  box-shadow: none !important; /* Added to block default glows */
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.textField:focus,
+.textField:focus-visible,
+.textareaField:focus,
+.textareaField:focus-visible,
+.selectField:focus,
+.selectField:focus-visible,
+.selectFieldOpen,
+.textFieldWithIcon:focus,
+.textFieldWithIcon:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  border-color: #E53B17 !important;
+}
+
+/* Universal Clean Input Focus State for All Fields */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  border-color: #E53B17 !important; /* Pomegranate accent color */
+}
+
+/* 1. Highlight the outer composite box when typing inside Tag Line or Brief Introduction */
+.tagLineBox:focus-within,
+.introBox:focus-within {
+  border-color: #E53B17 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 2. Keep the inner textarea borderless so it doesn't draw a second box inside */
+.boxTextarea,
+.boxTextarea:focus,
+.boxTextarea:focus-visible,
+.ghostInputTextarea,
+.ghostInputTextarea:focus,
+.ghostInputTextarea:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.aiTagLineBtn,
+.aiBioInlineBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+}
+
+.aiTagLineBtn > *,
+.aiBioInlineBtn > * {
+  font-size: 14px;
+}
+
+.aiTagLineBtn:disabled,
+.aiBioInlineBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.textField:hover:not(:focus),
+.tagLineBox:hover:not(:focus-within),
+.introBox:hover:not(:focus-within) {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }

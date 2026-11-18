@@ -12,6 +12,7 @@ import styles from "./BudgetStep.module.css";
 import cards from "./preferenceCard.shared.module.css";
 import { ClipPathDefs, ClippedCardBorder, SelectionCheckbox } from "./clippedCard";
 import clipped from "./clippedCard.module.css";
+import TextButton from "@/components/ui/TextButton";
 type BudgetOption = {
   id: string;
   title: string;
@@ -169,16 +170,13 @@ export default function BudgetStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button
+          <TextButton
             type="button"
             className={shared.textBtn}
             onClick={onBack}
-          >
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+            label="Back"
+          />
+          <TextButton type="button" className={shared.textBtn} onClick={onContinue} label="skip"/>
           <ContinueButton onClick={onContinue} disabled={!selectedBudget} />
         </div>
       </div>

@@ -55,6 +55,11 @@
   min-width: 160px;
 }
 
+.categoryCardInput:focus-within {
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
+}
+
 .categoryInlineInput {
   flex: 1;
   min-width: 120px;
@@ -202,7 +207,8 @@
 }
 
 .searchBoxInput:focus {
-  border-color: var(--pomegranate);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -561,8 +567,77 @@
   cursor: pointer;
   outline: none;
   flex-shrink: 0;
+  transition: all 0.15s ease;
 }
 
 .categoryItemSelected .categoryRemoveBtn {
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* 1. Category Cards & Directory Pills (matches .skillPill hover) */
+.categoryCard:hover:not(.categoryCardSelected),
+.categoryItem:hover:not(.categoryItemSelected):not(.categoryItemDisabled) {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  /* color: var(--white); */
+}
+
+.categoryCard:hover:not(.categoryCardSelected) .categoryIcon,
+.categoryItem:hover:not(.categoryItemSelected):not(.categoryItemDisabled) .categoryIcon {
+  color: var(--white);
+}
+
+/* Keep selected state intact on hover */
+.categoryCardSelected:hover,
+.categoryItemSelected:hover {
+  background-color: var(--bunker);
+  border-color: var(--pomegranate);
+}
+
+/* 2. Search Input & Inline Pill Inputs (matches .inputWithIconWrap hover) */
+.searchBoxInput:hover:not(:focus),
+.categoryCardInput:hover:not(:focus-within) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* 3. Category Remove Button (matches .skillRemoveBtn hover) */
+
+.categoryRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white, #ffffff);
+}
+
+.categoryRemoveBtn:active {
+  transform: scale(0.9);
+}
+
+.categoryItemSelected .categoryRemoveBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white, #ffffff);
+}
+
+/* 1. Remove focus from the inner element and apply it to the outer pill container */
+.categoryCardInput,
+.profileLanguageProviderInput {
+  /* ... your base pill styles ... */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 2. When anything inside the pill is focused, light up the whole pill outer border */
+.categoryCardInput:focus-within,
+.categoryItemInput:focus-within,
+.profileLanguagePillInput:focus-within {
+  background: var(--background-chip, rgba(255, 255, 255, 0.03)) !important;
+  border-color: #E53B17 !important; /* Solid pomegranate accent color */
+  box-shadow: none !important; /* Removes the fuzzy glow/shadow completely */
+}
+
+/* 3. Ensure the inner inline input has NO borders or focus rings of its own */
+.categoryInlineInput,
+.profileLanguageInlineInput {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }

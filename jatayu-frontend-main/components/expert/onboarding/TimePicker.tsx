@@ -206,21 +206,25 @@ export default function TimePicker({
                         borderColor: `${isDark ? "var(--border-chip)" : "var(--mercury)"} !important`,
                       },
                     },
-                    "&.Mui-focused": {
+                    "&.Mui-focused, &:focus-within": {
                       backgroundColor: (isDark ? "rgba(255, 255, 255, 0.03)" : "var(--white)") + " !important",
-                      boxShadow: !isDark
-                        ? "0 0 0 3px color-mix(in srgb, var(--pomegranate) 10%, transparent)"
-                        : "none",
+                      boxShadow: "0 0 0 1px rgba(255, 59, 48, 0.4)",
                       "& .MuiPickersOutlinedInput-notchedOutline": {
-                        borderColor: `${isDark ? "rgba(255, 255, 255, 0.18)" : "var(--pomegranate)"} !important`,
+                        borderColor: "#FF3B30 !important",
                         borderWidth: "1px",
                       },
                     },
-                    "&.Mui-focused:hover .MuiPickersOutlinedInput-notchedOutline": {
-                      borderColor: `${isDark ? "rgba(255, 255, 255, 0.18)" : "var(--pomegranate)"} !important`,
+                    "&.Mui-focused:hover .MuiPickersOutlinedInput-notchedOutline, &:focus-within:hover .MuiPickersOutlinedInput-notchedOutline": {
+                      borderColor: "#FF3B30 !important",
                     },
                     "&.Mui-error .MuiPickersOutlinedInput-notchedOutline": {
                       borderColor: "#e53b17 !important",
+                    },
+                    "&.Mui-error.Mui-focused, &.Mui-error:focus-within": {
+                      boxShadow: "0 0 0 1px rgba(255, 59, 48, 0.4)",
+                      "& .MuiPickersOutlinedInput-notchedOutline": {
+                        borderColor: "#FF3B30 !important",
+                      },
                     },
                   },
                   "& .MuiPickersOutlinedInput-input": {

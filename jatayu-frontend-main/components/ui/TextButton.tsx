@@ -8,6 +8,7 @@ type TextButtonProps = {
   onClick?: () => void;
   disabled?: boolean;
   type?: "button" | "submit";
+  className?: string;
 };
 
 export default function TextButton({
@@ -15,11 +16,12 @@ export default function TextButton({
   onClick,
   disabled = false,
   type = "button",
+  className,
 }: TextButtonProps) {
   return (
     <button
       type={type}
-      className={styles.textBtn}
+      className={`${styles.textBtn} ${className ?? ""}`}
       onClick={onClick}
       disabled={disabled}
     >

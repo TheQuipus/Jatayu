@@ -564,6 +564,8 @@ export default function ExperienceStep({
                             value={degree.degree ?? ""}
                             options={degreeOptions}
                             placeholder="Select degree..."
+                            allowCustomOption
+                            aria-label="Degree / Qualification"
                             onChange={(nextValue) => updateDegree(index, { degree: nextValue })}
                           />
                         </div>
@@ -577,6 +579,8 @@ export default function ExperienceStep({
                             value={degree.fieldOfStudy ?? ""}
                             options={fieldOfStudyOptions}
                             placeholder="Select field of study..."
+                            allowCustomOption
+                            aria-label="Field of Study"
                             onChange={(nextValue) => updateDegree(index, { fieldOfStudy: nextValue })}
                           />
                         </div>

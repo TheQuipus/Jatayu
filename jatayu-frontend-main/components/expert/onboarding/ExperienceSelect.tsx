@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Plus } from "lucide-react";
 import {
   getExperienceSelectMenuPosition,
   shouldScrollExperienceSelectAnchor,
@@ -13,6 +14,10 @@ export type ExperienceSelectOption = {
   label: string;
 };
 
+function isOtherOption(option: ExperienceSelectOption) {
+  return option.value.trim().toLowerCase() === "other" || option.label.trim().toLowerCase() === "other";
+}
+
 type ExperienceSelectProps = {
   id?: string;
   value: string;
@@ -21,6 +26,7 @@ type ExperienceSelectProps = {
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
+  allowCustomOption?: boolean;
   error?: string;
   "aria-label"?: string;
 };
@@ -33,6 +39,7 @@ export default function ExperienceSelect({
   placeholder = "Select...",
   disabled = false,
   required = false,
+  allowCustomOption = false,
   error,
   "aria-label": ariaLabel,
 }: ExperienceSelectProps) {
@@ -44,13 +51,17 @@ export default function ExperienceSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
+  const [isCustomEntry, setIsCustomEntry] = useState(false);
+  const [customDraft, setCustomDraft] = useState("");
 
   const selectedOption = options.find((option) => option.value === value);
   const selectedOptionIndex = options.findIndex((option) => option.value === value);
+  const customOptionIndex = allowCustomOption ? options.findIndex(isOtherOption) : -1;
+  const hasCustomValue = allowCustomOption && Boolean(value) && selectedOptionIndex < 0;
   const activeIndex = options.length > 0
     ? Math.min(activeOptionIndex, options.length - 1)
     : -1;
-  const displayLabel = selectedOption?.label ?? placeholder;
+  const displayLabel = selectedOption?.label ?? (allowCustomOption && value ? value : placeholder);
 
   const updatePosition = () => {
     if (!triggerRef.current || !menuRef.current) return;
@@ -139,7 +150,18 @@ export default function ExperienceSelect({
   }, [isOpen]);
 
   const handleSelect = (optionValue: string) => {
+    const option = options.find((item) => item.value === optionValue);
+    if (allowCustomOption && option && isOtherOption(option)) {
+      setIsOpen(false);
+      setMenuStyle(null);
+      setCustomDraft(hasCustomValue ? value : "");
+      setIsCustomEntry(true);
+      return;
+    }
+
     onChange(optionValue);
+    setCustomDraft("");
+    setIsCustomEntry(false);
     setIsOpen(false);
   };
 
@@ -148,9 +170,33 @@ export default function ExperienceSelect({
     setMenuStyle(null);
     programmaticScrollAnchorRef.current = null;
     if (!isOpen) {
-      setActiveOptionIndex(selectedOptionIndex >= 0 ? selectedOptionIndex : 0);
+      setActiveOptionIndex(
+        selectedOptionIndex >= 0
+          ? selectedOptionIndex
+          : customOptionIndex >= 0
+            ? customOptionIndex
+            : 0,
+      );
     }
     setIsOpen(!isOpen);
+  };
+
+  const handleCustomSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextValue = customDraft.trim();
+    if (!nextValue) return;
+
+    onChange(nextValue);
+    setCustomDraft("");
+    setIsCustomEntry(false);
+  };
+
+  const handleCustomInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setCustomDraft("");
+      setIsCustomEntry(false);
+    }
   };
 
   const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -195,28 +241,60 @@ export default function ExperienceSelect({
 
   return (
     <div ref={rootRef} className={styles.selectRoot}>
-      <button
-        ref={triggerRef}
-        id={id}
-        type="button"
-        className={`${styles.selectField} ${
-          value ? styles.selectFieldFilled : styles.selectFieldPlaceholder
-        } ${isOpen ? styles.selectFieldOpen : ""} ${error ? styles.selectFieldError : ""}`}
-        disabled={disabled}
-        role="combobox"
-        aria-required={required ? true : undefined}
-        aria-label={ariaLabel}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error && id ? `${id}-error` : undefined}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? listboxId : undefined}
-        aria-activedescendant={isOpen && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
-        onClick={handleToggle}
-        onKeyDown={handleTriggerKeyDown}
-      >
-        <span className={styles.selectFieldValue}>{displayLabel}</span>
-      </button>
+      {isCustomEntry ? (
+        <form
+          className={`${styles.customSelectEntry} ${error ? styles.selectFieldError : ""}`}
+          onSubmit={handleCustomSubmit}
+        >
+          <input
+            id={id}
+            type="text"
+            className={styles.customSelectInput}
+            value={customDraft}
+            onChange={(event) => setCustomDraft(event.target.value)}
+            onKeyDown={handleCustomInputKeyDown}
+            placeholder="Enter custom value..."
+            autoFocus
+            disabled={disabled}
+            required={required}
+            aria-label={ariaLabel ? `Custom ${ariaLabel}` : undefined}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error && id ? `${id}-error` : undefined}
+          />
+          <button
+            type="submit"
+            className={styles.customSelectAddBtn}
+            disabled={disabled}
+            onMouseDown={(event) => event.preventDefault()}
+            aria-label={`Add custom ${ariaLabel ?? "value"}`}
+          >
+            <Plus size={14} aria-hidden="true" />
+          </button>
+        </form>
+      ) : (
+        <button
+          ref={triggerRef}
+          id={id}
+          type="button"
+          className={`${styles.selectField} ${
+            value ? styles.selectFieldFilled : styles.selectFieldPlaceholder
+          } ${isOpen ? styles.selectFieldOpen : ""} ${error ? styles.selectFieldError : ""}`}
+          disabled={disabled}
+          role="combobox"
+          aria-required={required ? true : undefined}
+          aria-label={ariaLabel}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error && id ? `${id}-error` : undefined}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? listboxId : undefined}
+          aria-activedescendant={isOpen && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
+          onClick={handleToggle}
+          onKeyDown={handleTriggerKeyDown}
+        >
+          <span className={styles.selectFieldValue}>{displayLabel}</span>
+        </button>
+      )}
       {error && id ? (
         <span
           id={`${id}-error`}
@@ -239,7 +317,7 @@ export default function ExperienceSelect({
             aria-label={id ? undefined : ariaLabel || placeholder}
           >
             {options.map((option, index) => {
-              const isSelected = option.value === value;
+              const isSelected = option.value === value || (hasCustomValue && isOtherOption(option));
               return (
                 <li
                   key={option.value || "__placeholder"}

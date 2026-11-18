@@ -168,7 +168,8 @@
 
 .skillPillInput:focus-within {
   background: var(--background-chip, rgba(255, 255, 255, 0.03)) !important;
-  border-color: var(--pomegranate) !important;
+  border-color: #FF3B30 !important;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .skillInputForm {

@@ -259,7 +259,14 @@ export default function LoginStep({
 
             <div className={styles.forgotPasswordRow}>
               <Link href="/forgot-password?role=expert" className={styles.forgotPasswordLink}>
-                Forgot Password?
+                <span className={styles.forgotPasswordText}>
+                  <span className={styles.forgotPasswordTrack}>
+                    <span className={styles.forgotPasswordUp}>Forgot Password?</span>
+                    <span className={styles.forgotPasswordUp} aria-hidden="true">
+                      Forgot Password?
+                    </span>
+                  </span>
+                </span>
               </Link>
             </div>
           </div>
@@ -281,12 +288,26 @@ export default function LoginStep({
           <p className={register.authToggle}>
             Don&apos;t have an account?{" "}
             {onSwitchToRegister ? (
-              <button type="button" className={register.authToggleBtn} onClick={onSwitchToRegister}>
-                Create one
+              <button
+                type="button"
+                className={register.authToggleBtn}
+                onClick={onSwitchToRegister}
+              >
+                <span className={register.authToggleLabelText}>
+                  <span className={register.authToggleLabelTrack}>
+                    <span className={register.authToggleLabelUp}>Create one</span>
+                    <span className={register.authToggleLabelUp} aria-hidden="true">Create one</span>
+                  </span>
+                </span>
               </button>
             ) : (
               <Link href={registerHref} className={register.authToggleBtn}>
-                Create one
+                <span className={register.authToggleLabelText}>
+                  <span className={register.authToggleLabelTrack}>
+                    <span className={register.authToggleLabelUp}>Create one</span>
+                    <span className={register.authToggleLabelUp} aria-hidden="true">Create one</span>
+                  </span>
+                </span>
               </Link>
             )}
           </p>

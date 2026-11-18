@@ -15,6 +15,8 @@
 }
 
 .cardHeader {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   width: 100%;
   padding: 48px 40px 24px;
@@ -32,7 +34,11 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: 0px 40px;
+  /* Extend the scroll viewport to the progress-line baseline without shifting initial content. */
+  margin-top: -24px;
+  padding: 24px 40px 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.35) 12px, #000 24px);
+  mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.35) 12px, #000 24px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -242,7 +248,10 @@
   }
 
   .cardBody {
-    padding: 20px 24px;
+    margin-top: -20px;
+    padding: 40px 24px 0;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.35) 20px, #000 40px);
+    mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.35) 20px, #000 40px);
   }
 
   .onboardingFooter {
