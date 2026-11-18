@@ -74,61 +74,42 @@
   flex-wrap: wrap;
 }
 
-.followUpCtaBtn {
-  position: relative;
+.followUpCtaWrap {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 16px;
-  border-radius: 99px;
-  font-family: var(--font-mono, monospace);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border: 1px solid transparent;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-sizing: border-box;
 }
 
-.followUpCtaActive {
-  background: var(--ink, #111827);
-  color: #ffffff;
-  border-color: var(--ink, #111827);
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+.followUpPrimaryBtn {
+  padding: 6px 12px 6px 20px;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  background: var(--bunker);
+  color: var(--white);
+  border: 1px solid var(--bunker);
+  box-shadow: 0 2px 8px rgba(8, 10, 16, 0.12);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
 
-.followUpCtaActive:hover {
-  background: #1f2937;
-  border-color: #1f2937;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+.followUpPrimaryBtn:hover:not(:disabled) {
+  background: #14171d;
+  border-color: #14171d;
+  box-shadow: 0 6px 16px rgba(8, 10, 16, 0.18);
 }
 
-.followUpCtaActive:active {
-  transform: translateY(0);
+.followUpPrimaryBtn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
-.followUpCtaDisabled {
-  background: #f1f5f9;
-  color: #94a3b8;
-  border-color: #e2e8f0;
-  cursor: not-allowed;
-  opacity: 0.6;
+.followUpPrimaryBtn:focus-visible {
+  outline: 2px solid var(--pomegranate);
+  outline-offset: 2px;
 }
 
-.followUpCtaIcon {
-  flex-shrink: 0;
-}
-
-.ctaPulseDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ef4444;
-  animation: beaconPulse 1.5s infinite;
+.followUpPrimaryBtn:disabled {
+  opacity: 0.45 !important;
+  box-shadow: none;
 }
 
 .followUpSuccessBanner {
@@ -484,7 +465,7 @@
 /* Cards */
 .card {
   border: 1px solid var(--mercury);
-  border-radius: 12px;
+  /* border-radius: 12px; */
   overflow: hidden;
   margin-top: 0 !important;
   margin-bottom: 16px !important;
@@ -3640,11 +3621,11 @@
 .chipsScrollWrapper {
   display: flex;
   flex-direction: column;
-  background: var(--white);
-  border: 1px solid var(--mercury);
+  background: none;
+  border: none;
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
   width: 100%;
   box-sizing: border-box;
   overflow: visible !important;
@@ -4148,11 +4129,11 @@
 }
 
 .formaSummaryCard {
-  background: var(--white);
-  border: 1px solid var(--mercury);
+  background: none;
+  border: none;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .formaSummaryTitleBar {

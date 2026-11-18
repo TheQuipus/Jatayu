@@ -9,6 +9,7 @@ import {
   seekerDb,
 } from "../models/index.js";
 import { analyzeSeekerDropout } from "../utils/seekerDropoutAnalysis.js";
+import { forceDisconnectUser } from "../services/notificationService.js";
 const ADMIN_SEEKER_STATUSES = new Set([
   "active",
   "suspended",
@@ -307,7 +308,47 @@ export async function updateAdminSeekerStatus(req, res) {
     return res
       .status(409)
       .json({ message: "Deleted seeker accounts cannot be updated" });
-  await seeker.update({ status });
+
+  if (status === "active" && seeker.status === "draft" && !seeker.onboardingCompletedAt) {
+    return res.status(422).json({
+      message: "Cannot activate seeker account: the onboarding profile has not been fully submitted by the user.",
+    });
+  }
+
+  let metadata = seeker.onboardingMetadata;
+  if (typeof metadata === "string") {
+    try {
+      metadata = JSON.parse(metadata);
+    } catch {
+      metadata = {};
+    }
+  }
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    metadata = {};
+  }
+
+  if (status === "suspended") {
+    metadata.suspendedAt = new Date().toISOString();
+    seeker.onboardingMetadata = metadata;
+    seeker.status = "suspended";
+    await seeker.save();
+
+    forceDisconnectUser("seeker", seeker.id, {
+      reason: "ACCOUNT_SUSPENDED",
+      message: "Your Profile has been suspended. Contact Us?",
+    });
+  } else if (status === "active") {
+    if (metadata.suspendedAt) {
+      delete metadata.suspendedAt;
+      seeker.onboardingMetadata = metadata;
+    }
+    seeker.status = "active";
+    await seeker.save();
+  } else {
+    seeker.status = status;
+    await seeker.save();
+  }
+
   return res.json({
     message: "Seeker status updated",
     seeker: serialize(seeker),

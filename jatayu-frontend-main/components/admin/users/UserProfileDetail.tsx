@@ -207,19 +207,11 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
   return (
     <div className={styles.container}>
       {actionError && <p role="alert">{actionError}</p>}
-      {/* Top Header / Breadcrumb & Onboarding Stepper */}
-      <div className={`${styles.topBar} ${isExpert ? styles.topBarExpert : ""}`}>
+      {/* Top Header / Breadcrumb */}
+      <div className={styles.topBar}>
         <Link href={isExpert ? ADMIN_USERS_EXPERTS_HREF : ADMIN_USERS_SEEKERS_HREF} className={styles.backLink}>
           <ArrowLeft size={16} /> Back to {isExpert ? "Experts" : "Seekers"} List
         </Link>
-        {!isExpert && seekerUser && (
-          <div className={styles.stepperContainer}>
-            <SeekerOnboardingStepper
-              seeker={seekerUser}
-              analytics={seekerDetail?.onboardingAnalytics}
-            />
-          </div>
-        )}
       </div>
 
       {/* Main Layout Grid — Left Sidebar ALWAYS stays visible */}
@@ -280,6 +272,13 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
           <>
             {/* Center Column */}
             <main className={styles.mainContent}>
+              {!isExpert && seekerUser && (
+                <SeekerOnboardingStepper
+                  seeker={seekerUser}
+                  analytics={seekerDetail?.onboardingAnalytics}
+                />
+              )}
+
               <ProfileHeroCard
                 user={user}
                 isExpert={isExpert}

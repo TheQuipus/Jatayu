@@ -4,6 +4,9 @@ import {
   setSeekerId,
   removeToken,
   removeSeekerId,
+  getSeekerToken,
+  setSeekerToken,
+  removeSeekerToken,
   type AuthResponse,
   type AuthUser,
 } from "@/lib/api";
@@ -22,7 +25,7 @@ export type PendingSeekerOtpSession = {
 const SEEKER_USER_KEY = "jatayu_seeker_user";
 
 export function persistSeekerAuthSession(response: AuthResponse): AuthUser {
-  setToken(response.token);
+  setSeekerToken(response.token);
   setSeekerId(response.user.id);
   if (typeof window !== "undefined" && response.user) {
     try {
@@ -46,14 +49,14 @@ export function getStoredSeekerUser(): AuthUser | null {
 }
 
 export function clearSeekerAuthOnly(): void {
-  removeToken();
+  removeSeekerToken();
   removeSeekerId();
   if (typeof window !== "undefined") {
     localStorage.removeItem(SEEKER_USER_KEY);
-    localStorage.removeItem("jatayu_token");
+    localStorage.removeItem("jatayu_seeker_token");
     localStorage.removeItem("jatayu_seeker_id");
     localStorage.removeItem("jatayu_seeker_profile");
-    sessionStorage.removeItem("jatayu_token");
+    sessionStorage.removeItem("jatayu_seeker_token");
     sessionStorage.removeItem("jatayu_seeker_id");
     sessionStorage.removeItem("jatayu_seeker_profile");
     sessionStorage.removeItem("jatayu_seeker_category");
@@ -170,5 +173,5 @@ export function getSeekerPostAuthDestination(user: AuthUser): string | SeekerOnb
 }
 
 export function isSeekerAuthenticated(): boolean {
-  return Boolean(getToken());
+  return Boolean(getSeekerToken());
 }

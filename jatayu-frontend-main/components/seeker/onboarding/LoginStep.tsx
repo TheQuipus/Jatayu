@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import RegisterLeftPanel from "@/components/seeker/onboarding/RegisterLeftPanel";
@@ -65,6 +65,16 @@ export default function LoginStep({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("blocked") === "1") {
+        const reason = params.get("reason");
+        setSubmitError(reason || "Your Profile has been suspended. Contact Us?");
+      }
+    }
+  }, []);
 
   const values = { email, password };
   const canSubmit = isFormComplete(email, password);

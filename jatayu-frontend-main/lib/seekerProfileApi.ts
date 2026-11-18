@@ -1,4 +1,4 @@
-import { getSeekerProfile, getSeekerMe, getToken } from "@/lib/api";
+import { getSeekerProfile, getSeekerMe, getSeekerToken } from "@/lib/api";
 import { SEEKER_PROFILE } from "@/lib/seekerDashboard";
 
 export type SeekerProfileData = {
@@ -142,7 +142,7 @@ export function mapBackendSeekerToProfile(
 
 export async function fetchSeekerProfileData(): Promise<SeekerProfileData> {
   let backendData: BackendSeekerProfile = {};
-  if (getToken()) {
+  if (getSeekerToken()) {
     try {
       backendData = (await getSeekerMe()) as BackendSeekerProfile;
     } catch {

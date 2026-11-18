@@ -1,94 +1,36 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import {
-  AlertTriangle,
-  Check,
-  Clock,
-  Mail,
-  Minus,
-  Send,
-  X,
-  Info,
-} from "lucide-react";
+import React from "react";
+import { AlertTriangle } from "lucide-react";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 import type { ExpertOnboardingAnalytics } from "@/lib/expertDropoutTracker";
-import { sendAdminApplicationDropoutFollowUp } from "@/lib/api";
-import styles from "./DropoutFollowUpModal.module.css";
+import styles from "./ApplicationReview.module.css";
 
 interface DropoutFollowUpModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: (updatedExpert: unknown, message: string) => void;
+  name: string;
   appId: string;
-  applicantName: string;
   applicantEmail: string;
   analytics: ExpertOnboardingAnalytics;
   lastFollowUpSentAt?: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
 }
 
 export default function DropoutFollowUpModal({
-  isOpen,
-  onClose,
-  onSuccess,
+  name,
   appId,
-  applicantName,
   applicantEmail,
   analytics,
   lastFollowUpSentAt,
+  onCancel,
+  onConfirm,
 }: DropoutFollowUpModalProps) {
-  const [mounted, setMounted] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen && !isSending) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, isSending, onClose]);
-
-  if (!isOpen || !mounted) return null;
-
   const dropoutStepTitle = analytics.dropoutStepTitle || "Incomplete Profile";
-  const skippedSteps = analytics.steps
-    .filter((s) => s.status === "skipped")
-    .map((s) => s.title);
-  const pendingSteps = analytics.steps
-    .filter((s) => s.status === "pending")
-    .map((s) => s.title);
+  const idleMinutes = analytics.idleMinutes || 0;
+  const skippedSteps = analytics.steps.filter((s) => s.status === "skipped");
+  const pendingSteps = analytics.steps.filter((s) => s.status === "pending");
 
   const hasEmail = Boolean(applicantEmail && applicantEmail.trim());
-
-  const handleSendFollowUp = async () => {
-    if (!hasEmail || isSending) return;
-    setIsSending(true);
-    setErrorMessage(null);
-
-    try {
-      const response = await sendAdminApplicationDropoutFollowUp(appId);
-      onSuccess(response.expert, response.message || "Follow-up email dispatched successfully.");
-      onClose();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to send follow-up email.";
-      setErrorMessage(msg);
-    } finally {
-      setIsSending(false);
-    }
-  };
 
   const formattedLastSent = lastFollowUpSentAt
     ? new Date(lastFollowUpSentAt).toLocaleString("en-IN", {
@@ -100,237 +42,120 @@ export default function DropoutFollowUpModal({
       })
     : null;
 
-  return createPortal(
-    <div
-      className={styles.backdrop}
-      onClick={() => {
-        if (!isSending) onClose();
+  return (
+    <ConfirmModal
+      isOpen={true}
+      onClose={onCancel}
+      onConfirm={() => {
+        if (hasEmail) {
+          onConfirm();
+        }
       }}
-      aria-modal="true"
-      role="dialog"
-    >
-      <div
-        className={styles.modalContainer}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Modal Header */}
-        <div className={styles.modalHeader}>
-          <div className={styles.headerTitleGroup}>
-            <div className={styles.headerIconWrapper}>
-              <Mail size={20} />
-            </div>
-            <div>
-              <h2 className={styles.modalTitle}>Send Onboarding Follow-Up</h2>
-              <p className={styles.modalSubtitle}>
-                <span>{applicantName || "Applicant"}</span>
-                <span>·</span>
-                <span>{appId}</span>
-                {hasEmail ? (
-                  <>
-                    <span>·</span>
-                    <span className={styles.recipientPill}>{applicantEmail}</span>
-                  </>
-                ) : null}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className={styles.closeButton}
-            onClick={onClose}
-            disabled={isSending}
-            aria-label="Close dialog"
-          >
-            <X size={20} />
-          </button>
-        </div>
+      title="Send Onboarding Follow-Up"
+      confirmText="Confirm & Send Follow-Up"
+      cancelText="Cancel"
+      variant="danger"
+      confirmDisabled={!hasEmail}
+      icon={<AlertTriangle size={32} style={{ color: "#ef4444" }} />}
+      message={
+        <div>
+          <p style={{ margin: "0 0 12px 0", textAlign: "center" }}>
+            You are sending an onboarding follow-up for <strong>{name}</strong> ({appId}).
+          </p>
 
-        {/* Modal Content */}
-        <div className={styles.modalContent}>
-          {/* Missing Email Alert */}
-          {!hasEmail && (
-            <div className={styles.alertWarning}>
-              <AlertTriangle size={18} />
-              <span>
-                Applicant has no email address on file. Please request contact details directly before sending follow-up.
-              </span>
-            </div>
-          )}
+          <div className={styles.modalFormGroup} style={{ textAlign: "left" }}>
+            <label className={styles.modalFormLabel} style={{ fontWeight: 700, marginBottom: "8px", display: "block" }}>
+              Dropout & Incomplete Sections
+            </label>
 
-          {/* Previous Sent Alert */}
-          {formattedLastSent && (
-            <div className={styles.alertInfo}>
-              <Info size={16} />
-              <span>
-                A reminder email was previously dispatched on <strong>{formattedLastSent}</strong>. Sending again will deliver a fresh reminder.
-              </span>
-            </div>
-          )}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                background: "rgba(239, 68, 68, 0.05)",
+                padding: "12px",
+                borderRadius: "0",
+                border: "1px solid rgba(239, 68, 68, 0.15)",
+              }}
+            >
+              <div style={{ fontSize: "12px", lineHeight: "1.4" }}>
+                <strong style={{ color: "#b91c1c" }}>
+                  {dropoutStepTitle} (Dropped Out - {idleMinutes}m idle):
+                </strong>
+                <span style={{ marginLeft: "6px", color: "var(--scorpion)" }}>
+                  Last activity recorded on this step before leaving
+                </span>
+              </div>
 
-          {/* Error Banner */}
-          {errorMessage && (
-            <div className={styles.alertError}>
-              <AlertTriangle size={18} />
-              <span>{errorMessage}</span>
-            </div>
-          )}
+              {skippedSteps.map((step) => (
+                <div key={step.id} style={{ fontSize: "12px", lineHeight: "1.4" }}>
+                  <strong style={{ color: "var(--scorpion)" }}>{step.title} (Skipped):</strong>
+                  <span style={{ marginLeft: "6px", color: "var(--scorpion)" }}>
+                    Skipped by applicant during onboarding
+                  </span>
+                </div>
+              ))}
 
-          {/* Visual Funnel Stepper */}
-          <div>
-            <div className={styles.sectionHeader}>
-              <h3 className={styles.sectionHeading}>Onboarding Sections & Dropout Funnel</h3>
-              <span className={styles.progressPill}>
-                {analytics.completionPercent}% Completed
-              </span>
-            </div>
-
-            <div className={styles.stepperContainer}>
-              <div className={styles.stepperRailLine} aria-hidden="true" />
-
-              {analytics.steps.map((step, idx) => {
-                const isDropout = step.status === "dropout";
-                const isSubmitted = step.status === "submitted";
-                const isSkipped = step.status === "skipped";
-
-                return (
-                  <div
-                    key={step.id}
-                    className={`${styles.stepRow} ${isDropout ? styles.stepRowDropout : ""}`}
-                  >
-                    <div className={styles.stepBadgeWrapper}>
-                      {isDropout && <div className={styles.stepBeaconRed} />}
-                      <div
-                        className={`${styles.stepBadge} ${
-                          isSubmitted
-                            ? styles.stepBadgeSubmitted
-                            : isDropout
-                              ? styles.stepBadgeDropout
-                              : isSkipped
-                                ? styles.stepBadgeSkipped
-                                : styles.stepBadgePending
-                        }`}
-                      >
-                        {isSubmitted ? (
-                          <Check size={13} strokeWidth={3} />
-                        ) : isDropout ? (
-                          <AlertTriangle size={13} />
-                        ) : isSkipped ? (
-                          <Minus size={13} strokeWidth={2.5} />
-                        ) : (
-                          <span>{idx + 1}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className={styles.stepContent}>
-                      <div className={styles.stepTitleRow}>
-                        <span className={styles.stepTitle}>{step.title}</span>
-                        {isSubmitted ? (
-                          <span className={styles.statusTagSubmitted}>Submitted</span>
-                        ) : isDropout ? (
-                          <span className={styles.statusTagDropout}>
-                            <AlertTriangle size={10} />
-                            Dropped Out ({analytics.idleMinutes}m idle)
-                          </span>
-                        ) : isSkipped ? (
-                          <span className={styles.statusTagSkipped}>Skipped</span>
-                        ) : (
-                          <span className={styles.statusTagPending}>Unvisited</span>
-                        )}
-                      </div>
-
-                      <p
-                        className={`${styles.stepSummaryText} ${
-                          isDropout ? styles.stepSummaryDropout : ""
-                        }`}
-                      >
-                        {isDropout
-                          ? "Applicant stopped progress here before completing the onboarding wizard."
-                          : isSkipped
-                            ? "Applicant chose to skip this optional section."
-                            : isSubmitted
-                              ? step.valueSummary || "Section details filled and verified."
-                              : "Section has not been started yet."}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              {pendingSteps.map((step) => (
+                <div key={step.id} style={{ fontSize: "12px", lineHeight: "1.4" }}>
+                  <strong style={{ color: "#ea580c" }}>{step.title} (Pending):</strong>
+                  <span style={{ marginLeft: "6px", color: "var(--scorpion)" }}>
+                    Section has not been started yet
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Email Preview Card */}
-          <div className={styles.emailPreviewCard}>
-            <div className={styles.previewHeader}>
-              <span className={styles.previewTitle}>
-                <Send size={13} /> Follow-Up Email Preview
-              </span>
-              <span className={styles.recipientPill}>
-                To: {hasEmail ? applicantEmail : "No email configured"}
-              </span>
-            </div>
-
-            <p className={styles.emailSubject}>
-              Subject: Complete your Jatayu Expert Application – Finish {dropoutStepTitle}
-            </p>
-
-            <ul className={styles.emailChecklist}>
-              <li>
-                <span className={styles.checklistDropout}>● Where you left off:</span>{" "}
-                <strong>{dropoutStepTitle}</strong>
-              </li>
-              {skippedSteps.length > 0 && (
-                <li>
-                  <span className={styles.checklistSkipped}>○ Skipped sections:</span>{" "}
-                  {skippedSteps.join(", ")}
-                </li>
-              )}
-              {pendingSteps.length > 0 && (
-                <li>
-                  <span className={styles.checklistPending}>○ Remaining sections:</span>{" "}
-                  {pendingSteps.join(", ")}
-                </li>
-              )}
-            </ul>
-
-            <div className={styles.mockCtaButton}>
-              Resume Application &rarr;
-            </div>
-          </div>
-        </div>
-
-        {/* Modal Actions Footer */}
-        <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={styles.cancelBtn}
-            onClick={onClose}
-            disabled={isSending}
+          <div
+            style={{
+              marginTop: "12px",
+              padding: "12px",
+              borderRadius: "0",
+              border: hasEmail ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid #ef4444",
+              background: "rgba(239, 68, 68, 0.05)",
+              textAlign: "left",
+            }}
           >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className={styles.confirmBtn}
-            onClick={handleSendFollowUp}
-            disabled={!hasEmail || isSending}
-          >
-            {isSending ? (
-              <>
-                <span className={styles.spinner} aria-hidden="true" />
-                <span>Sending Follow-Up...</span>
-              </>
-            ) : (
-              <>
-                <Send size={14} />
-                <span>Yes, Send Follow Up</span>
-              </>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "#b91c1c", marginBottom: "4px" }}>
+              Email Follow-Up Delivery
+            </div>
+            <div style={{ fontSize: "12px", color: "var(--scorpion)", lineHeight: 1.45 }}>
+              Recipient:{" "}
+              <strong style={{ color: hasEmail ? "var(--ink)" : "#ef4444" }}>
+                {hasEmail ? applicantEmail : "No email address on file!"}
+              </strong>
+              <br />
+              {/* {hasEmail
+                ? "A branded email listing the missing sections and containing a direct 'Resume Application' link will be delivered to the applicant."
+                : "Cannot dispatch email follow-up without an email address on file."} */}
+            </div>
+            {formattedLastSent && (
+              <div style={{ marginTop: "6px", fontSize: "11px", color: "#b45309" }}>
+                Last reminder sent on {formattedLastSent}.
+              </div>
             )}
-          </button>
+          </div>
+
+          <p
+            style={{
+              marginTop: "16px",
+              margin: "16px 0 0 0",
+              fontSize: "12px",
+              color: "var(--scorpion)",
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              textAlign: "left",
+            }}
+          >
+            <span style={{ color: "#E53B17" }}></span>
+            <span>Note: These details will be shared with the expert in their follow-up email.</span>
+          </p>
         </div>
-      </div>
-    </div>,
-    document.body
+      }
+    />
   );
 }
-

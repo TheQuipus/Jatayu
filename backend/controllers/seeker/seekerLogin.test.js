@@ -540,3 +540,184 @@ test('new seeker registration creates DB account immediately in draft state and 
   assert.equal(seeker.isPhoneVerified, true);
   assert.equal(seeker.onboardingStep, 'category');
 });
+
+test('seeker register handles OAuth null-password draft without 500 crash (Bug #1)', async (t) => {
+  const oauthDraft = {
+    id: 'oauth-draft-seeker',
+    email: 'oauth-draft@example.com',
+    phone: null,
+    password: null,
+    status: 'draft',
+    onboardingStep: 'category',
+  };
+  t.mock.method(Seeker, 'findOne', async ({ where }) =>
+    where.email === oauthDraft.email ? oauthDraft : null);
+
+  const res = response();
+  await register({
+    body: {
+      fullName: 'OAuth Seeker',
+      email: oauthDraft.email,
+      password: 'NewPassword1!',
+      phone: '9876543210',
+    },
+  }, res);
+
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.code, 'EMAIL_EXISTS');
+});
+
+test('seeker register strictly rejects existing draft accounts with 409 without sending OTP or issuing token', async (t) => {
+  const draft = {
+    id: 'draft-resume-seeker',
+    email: 'draft-resume@example.com',
+    phone: '9876543211',
+    fullName: 'Draft Seeker',
+    password: await bcrypt.hash('DraftPass1!', 4),
+    status: 'draft',
+    onboardingStep: 'category',
+    onboardingMetadata: {},
+    save: async () => {},
+  };
+  t.mock.method(Seeker, 'findOne', async ({ where }) =>
+    where.email === draft.email || where.phone === draft.phone ? draft : null);
+
+  const beforeDeliveries = deliveries.length;
+  for (const password of ['DraftPass1!', 'WrongPassword1!']) {
+    const res = response();
+    await register({
+      body: { fullName: 'Draft Seeker', email: draft.email, password, phone: draft.phone },
+    }, res);
+    assert.equal(res.statusCode, 409);
+    assert.equal(res.body.code, 'EMAIL_EXISTS');
+    assert.equal(res.body.token, undefined);
+  }
+  assert.equal(deliveries.length, beforeDeliveries);
+});
+
+test('seeker register rejects cross-account email/phone collisions and concurrent unique errors', async (t) => {
+  const draftEmail = {
+    id: 'draft-email-1',
+    email: 'draft1@example.com',
+    phone: '9111111111',
+    password: await bcrypt.hash('DraftPass1!', 4),
+    status: 'draft',
+  };
+  const activePhone = {
+    id: 'active-phone-2',
+    email: 'active2@example.com',
+    phone: '9222222222',
+    password: await bcrypt.hash('ActivePass1!', 4),
+    status: 'active',
+  };
+
+  t.mock.method(Seeker, 'findOne', async ({ where }) => {
+    if (where.email === draftEmail.email) return draftEmail;
+    if (where.phone === activePhone.phone) return activePhone;
+    return null;
+  });
+
+  const collisionRes = response();
+  await register({
+    body: { fullName: 'Test User', email: draftEmail.email, password: 'DraftPass1!', phone: activePhone.phone },
+  }, collisionRes);
+  assert.equal(collisionRes.statusCode, 409);
+  assert.equal(collisionRes.body.code, 'EMAIL_EXISTS');
+
+  const phoneOnlyRes = response();
+  await register({
+    body: { fullName: 'Test User', email: 'brandnew@example.com', password: 'DraftPass1!', phone: activePhone.phone },
+  }, phoneOnlyRes);
+  assert.equal(phoneOnlyRes.statusCode, 409);
+  assert.equal(phoneOnlyRes.body.code, 'PHONE_EXISTS');
+
+  // Concurrent DB unique constraint error maps to 409
+  t.mock.method(Seeker, 'findOne', async () => null);
+  t.mock.method(Seeker, 'create', async () => {
+    throw Object.assign(new Error('Duplicate entry'), {
+      name: 'SequelizeUniqueConstraintError',
+      fields: { email: 'race@example.com' },
+    });
+  });
+  const raceRes = response();
+  await register({
+    body: { fullName: 'Race User', email: 'race@example.com', password: 'RacePassword1!', phone: '9333333333' },
+  }, raceRes);
+  assert.equal(raceRes.statusCode, 409);
+  assert.equal(raceRes.body.code, 'EMAIL_EXISTS');
+});
+
+test('seeker verifyOtp locks out after 5 invalid attempts and blocks concurrent replay', async (t) => {
+  const seeker = {
+    id: 'otp-bruteforce-seeker',
+    email: 'bf@example.com',
+    phone: '9444444444',
+    onboardingStep: 'otp',
+    status: 'draft',
+    onboardingMetadata: { pendingOtp: { code: '112233', expiresAt: Date.now() + 60_000, attempts: 0 } },
+    save: async () => {},
+  };
+  t.mock.method(Seeker, 'findByPk', async () => seeker);
+
+  for (let i = 1; i < 5; i += 1) {
+    const bad = response();
+    await verifyOtp({ body: { seekerId: seeker.id, code: '000000' } }, bad);
+    assert.equal(bad.statusCode, 400);
+  }
+  const exhausted = response();
+  await verifyOtp({ body: { seekerId: seeker.id, code: '000000' } }, exhausted);
+  assert.equal(exhausted.statusCode, 429);
+  assert.equal(exhausted.body.code, 'OTP_ATTEMPTS_EXCEEDED');
+
+  // Even the original valid code is now rejected
+  const afterExhausted = response();
+  await verifyOtp({ body: { seekerId: seeker.id, code: '112233' } }, afterExhausted);
+  assert.equal(afterExhausted.statusCode, 400);
+});
+
+test('seeker login and OTP flows strictly block suspended seeker with 403 ACCOUNT_SUSPENDED', async (t) => {
+  const suspendedSeeker = {
+    id: 'suspended-seeker-account',
+    email: 'suspended.seeker@example.com',
+    phone: '9555555555',
+    password: await bcrypt.hash('CorrectPass123!', 10),
+    status: 'suspended',
+    onboardingStep: 'category',
+    onboardingMetadata: { suspendedAt: new Date().toISOString() },
+    save: async () => {},
+  };
+
+  t.mock.method(Seeker, 'findOne', async () => suspendedSeeker);
+  t.mock.method(Seeker, 'findByPk', async () => suspendedSeeker);
+
+  // 1. Password login is blocked with 403 ACCOUNT_SUSPENDED
+  const loginRes = response();
+  await login(
+    {
+      body: { email: 'suspended.seeker@example.com', password: 'CorrectPass123!' },
+      ip: '127.0.0.1',
+    },
+    loginRes,
+  );
+  assert.equal(loginRes.statusCode, 403);
+  assert.equal(loginRes.body.code, 'ACCOUNT_SUSPENDED');
+  assert.equal(loginRes.body.message, 'Your Profile has been suspended. Contact Us?');
+
+  // 2. verifyOtp is blocked with 403 ACCOUNT_SUSPENDED
+  const verifyRes = response();
+  await verifyOtp(
+    { body: { seekerId: suspendedSeeker.id, code: '123456' } },
+    verifyRes,
+  );
+  assert.equal(verifyRes.statusCode, 403);
+  assert.equal(verifyRes.body.code, 'ACCOUNT_SUSPENDED');
+
+  // 3. resendOtp is blocked with 403 ACCOUNT_SUSPENDED
+  const resendRes = response();
+  await resendOtp(
+    { body: { seekerId: suspendedSeeker.id } },
+    resendRes,
+  );
+  assert.equal(resendRes.statusCode, 403);
+  assert.equal(resendRes.body.code, 'ACCOUNT_SUSPENDED');
+});

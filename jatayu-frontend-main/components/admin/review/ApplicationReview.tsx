@@ -19,7 +19,6 @@ import {
   IndianRupee,
   Languages,
   Layers,
-  Mail,
   MapPin,
   Phone,
   Tag,
@@ -64,6 +63,7 @@ import {
   getAdminDigilockerDocumentBlobUrl,
   getAdminDigilockerDocuments,
   updateAdminApplicationSectionDecision,
+  sendAdminApplicationDropoutFollowUp,
   type AdminDigilockerDocument,
 } from "@/lib/api";
 import styles from "./ApplicationReview.module.css";
@@ -281,7 +281,6 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
   const [showHoldConfirm, setShowHoldConfirm] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
-  const [followUpSuccessNotice, setFollowUpSuccessNotice] = useState<string | null>(null);
   const [isTabsStuck, setIsTabsStuck] = useState(false);
   const tabsStickyRef = useRef<HTMLDivElement>(null);
   const isClickScrollingRef = useRef(false);
@@ -593,6 +592,35 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
       setShowRejectConfirm(false);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Could not reject application.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleDropoutFollowUpConfirm = async () => {
+    if (!review || isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    setActionError(null);
+
+    try {
+      const response = await sendAdminApplicationDropoutFollowUp(review.appId);
+      showToast(response.message || "Follow-up email sent successfully.", "success");
+      const serverLogs = (response.expert as any)?.onboardingMetadata?.sectionAuditLogs;
+      if (Array.isArray(serverLogs)) {
+        setAuditLogs(serverLogs);
+        if (typeof window !== "undefined" && appId) {
+          try {
+            localStorage.setItem(`jatayu_review_audit_logs_${appId}`, JSON.stringify(serverLogs));
+          } catch {}
+        }
+      }
+
+      refresh();
+      setShowFollowUpModal(false);
+    } catch (error) {
+      const errText = error instanceof Error ? error.message : "Failed to send follow-up email.";
+      setActionError(errText);
+      showToast(errText, "error");
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -1621,42 +1649,18 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             }}
           />
         ) : null}
-        {showFollowUpModal && expertAnalytics && (
+        {showFollowUpModal && expertAnalytics ? (
           <DropoutFollowUpModal
-            isOpen={showFollowUpModal}
-            onClose={() => setShowFollowUpModal(false)}
-            onSuccess={(updatedExpert: unknown, message: string) => {
-              setFollowUpSuccessNotice(message);
-              const serverLogs = (updatedExpert as any)?.onboardingMetadata?.sectionAuditLogs;
-              if (Array.isArray(serverLogs)) {
-                setAuditLogs(serverLogs);
-              }
-              refresh();
-            }}
+            name={application?.name || review.name}
             appId={review.appId}
-            applicantName={application?.name || review.name}
             applicantEmail={application?.email || ""}
             analytics={expertAnalytics}
             lastFollowUpSentAt={(application?.onboardingMetadata as any)?.lastFollowUpSentAt}
+            onCancel={() => setShowFollowUpModal(false)}
+            onConfirm={handleDropoutFollowUpConfirm}
           />
-        )}
+        ) : null}
         <div className={styles.stickyTopSection}>
-          {followUpSuccessNotice && (
-            <div className={styles.followUpSuccessBanner}>
-              <div className={styles.bannerContent}>
-                <CheckCircle2 size={16} className={styles.bannerIcon} />
-                <span>{followUpSuccessNotice}</span>
-              </div>
-              <button
-                type="button"
-                className={styles.bannerDismissBtn}
-                onClick={() => setFollowUpSuccessNotice(null)}
-                aria-label="Dismiss notice"
-              >
-                <X size={15} />
-              </button>
-            </div>
-          )}
           <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
             <Link href="/admin/dashboard" className={styles.breadcrumbLink}>
               Admin Console
@@ -1680,29 +1684,25 @@ export default function ApplicationReview({ appId }: ApplicationReviewProps) {
             </div>
             <div className={styles.metaTagsRow}>
               {/* Follow-Up CTA Button: Enabled only for dropout situations */}
-              <button
-                type="button"
-                className={`${styles.followUpCtaBtn} ${
-                  expertAnalytics?.isDropout ? styles.followUpCtaActive : styles.followUpCtaDisabled
-                }`}
-                disabled={!expertAnalytics?.isDropout}
-                onClick={() => setShowFollowUpModal(true)}
+              <span
+                className={styles.followUpCtaWrap}
                 title={
                   expertAnalytics?.isDropout
                     ? `Send onboarding follow-up email to ${application?.email || "applicant"}`
                     : "Follow-up is available when an applicant has dropped out during onboarding"
                 }
               >
-                <Mail size={14} className={styles.followUpCtaIcon} />
-                <span>
-                  {(application?.onboardingMetadata as any)?.lastFollowUpSentAt
-                    ? "Follow-Up Sent"
-                    : "Send Follow-Up"}
-                </span>
-                {expertAnalytics?.isDropout && (
-                  <span className={styles.ctaPulseDot} aria-hidden="true" />
-                )}
-              </button>
+                <PrimaryButton
+                  type="button"
+                  variant="dark"
+                  className={styles.followUpPrimaryBtn}
+                  label={
+                    "Send Follow-Up"
+                  }
+                  disabled={!expertAnalytics?.isDropout}
+                  onClick={() => setShowFollowUpModal(true)}
+                />
+              </span>
 
               <span
                 className={`${styles.statusTag} ${

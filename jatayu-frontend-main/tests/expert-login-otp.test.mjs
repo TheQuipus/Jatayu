@@ -26,17 +26,37 @@ function loadModule(file, mocks, globals = {}) {
 test('expert login requiring OTP navigates to the verification entry flow', () => {
   let pushed;
   const jsx = (type, props) => ({ type, props });
+  let savedSession = null;
   const page = loadModule('app/login/page.tsx', {
-    react: { Suspense: 'Suspense' },
+    react: {
+      Suspense: 'Suspense',
+      useState: (init) => [typeof init === 'function' ? init() : init, () => {}],
+      useEffect: () => {},
+    },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'next/navigation': {
       useRouter: () => ({ push: (href) => { pushed = href; } }),
       useSearchParams: () => new URLSearchParams('role=expert'),
     },
     '@/components/seeker/onboarding/LoginStep': { default: 'SeekerLoginStep' },
+    '@/components/seeker/onboarding/OtpStep': { default: 'SeekerOtpStep' },
     '@/components/expert/onboarding/LoginStep': { default: 'ExpertLoginStep' },
-    '@/lib/seekerAuth': {},
-    '@/lib/expertAuth': {},
+    '@/components/expert/onboarding/OtpStep': { default: 'ExpertOtpStep' },
+    '@/lib/seekerAuth': {
+      readPendingSeekerOtpSession: () => null,
+      savePendingSeekerOtpSession: () => {},
+      clearPendingSeekerOtpSession: () => {},
+      persistSeekerAuthSession: () => {},
+      getSeekerPostAuthDestination: () => '/seeker/dashboard/',
+    },
+    '@/lib/expertAuth': {
+      readPendingOtpSession: () => null,
+      savePendingOtpSession: (data) => { savedSession = data; },
+      clearPendingOtpSession: () => {},
+      persistAuthSession: () => {},
+      getPostAuthDestination: () => '/expert/expert-onboarding/?resume=otp',
+      isNavigationHref: (dest) => typeof dest === 'string' && dest.startsWith('/'),
+    },
     '@/lib/expertDashboard': {},
     '@/lib/joinAsExpertNav': {},
     '@/app/expert/expert-onboarding/page.module.css': {
@@ -53,9 +73,10 @@ test('expert login requiring OTP navigates to the verification entry flow', () =
   const roleContent = suspense.props.children.type(suspense.props.children.props);
   const loginShell = roleContent.type(roleContent.props);
   const login = loginShell.props.children;
-  login.props.onRequiresOtp();
+  login.props.onRequiresOtp({ expertId: 'expert-1', email: 'expert@example.com', phone: '9876543210' });
 
-  assert.equal(pushed, '/expert/expert-onboarding/?resume=otp');
+  assert.equal(savedSession.expertId, 'expert-1');
+  assert.equal(savedSession.flow, 'login');
 });
 
 test('only an explicit OTP-required login response starts verification', async () => {

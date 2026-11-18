@@ -7,6 +7,7 @@ import styles from "@/components/admin/review/ApplicationReview.module.css";
 interface SuspendConfirmModalProps {
   name: string;
   appId?: string;
+  userType?: "expert" | "seeker";
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -14,15 +15,18 @@ interface SuspendConfirmModalProps {
 export default function SuspendConfirmModal({
   name,
   appId,
+  userType = "expert",
   onCancel,
   onConfirm,
 }: SuspendConfirmModalProps) {
+  const isSeeker = userType === "seeker";
+
   return (
     <ConfirmModal
       isOpen={true}
       onClose={onCancel}
       onConfirm={onConfirm}
-      title="SUSPEND EXPERT ACCOUNT"
+      title={isSeeker ? "SUSPEND SEEKER ACCOUNT" : "SUSPEND EXPERT ACCOUNT"}
       confirmText="YES, SUSPEND"
       cancelText="CANCEL"
       variant="danger"
@@ -30,7 +34,7 @@ export default function SuspendConfirmModal({
       message={
         <div>
           <p style={{ margin: "0 0 14px 0", fontSize: "14px", lineHeight: "1.5", color: "var(--foreground, #1e293b)" }}>
-            You are suspending the expert profile for <strong>{name}</strong>
+            You are suspending the {isSeeker ? "seeker" : "expert"} profile for <strong>{name}</strong>
             {appId ? ` (${appId})` : ""}.
           </p>
 
@@ -40,7 +44,9 @@ export default function SuspendConfirmModal({
               <div className={styles.modalBlacklistContent}>
                 <span className={styles.modalBlacklistTitle}>Immediate Access Revocation</span>
                 <span className={styles.modalBlacklistSubtext}>
-                  Immediately terminates all active sessions, revokes authentication tokens, and blocks this expert from logging in or registering with these credentials until reactivated.
+                  {isSeeker
+                    ? "Immediately terminates all active sessions, revokes authentication tokens, and blocks this seeker from logging in until reactivated."
+                    : "Immediately terminates all active sessions, revokes authentication tokens, and blocks this expert from logging in or registering with these credentials until reactivated."}
                 </span>
               </div>
             </div>

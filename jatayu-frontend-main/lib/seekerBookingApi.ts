@@ -1,4 +1,4 @@
-import { getToken } from "@/lib/api";
+import { getSeekerToken } from "@/lib/api";
 import { generateUUID } from "@/lib/uuid";
 import type { CalendarBooking, BookingDetail } from "@/lib/seekerDashboard";
 import type { ExpertiseTag } from "@/lib/experts";
@@ -166,7 +166,7 @@ export type RazorpayCheckoutResult = {
 };
 
 async function bookingFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
+  const token = getSeekerToken();
   if (!token) throw new Error("Please sign in as a seeker before booking.");
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,

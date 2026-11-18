@@ -1,13 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Check,
   FastForward,
   AlertTriangle,
-  Compass,
-  MapPin,
-  Clock,
   CheckCircle2,
 } from "lucide-react";
 import type { SeekerUser } from "@/lib/adminUserManagement";
@@ -27,8 +24,6 @@ export default function SeekerOnboardingStepper({
   seeker,
   analytics: serverAnalytics,
 }: SeekerOnboardingStepperProps) {
-  const [activeTooltipStep, setActiveTooltipStep] = useState<string | null>(null);
-
   const data = useMemo(() => {
     if (serverAnalytics && Array.isArray(serverAnalytics.steps) && serverAnalytics.steps.length > 0) {
       return serverAnalytics;
@@ -51,42 +46,23 @@ export default function SeekerOnboardingStepper({
 
   return (
     <section className={styles.card} aria-label="Seeker Onboarding Progress & Dropout Tracker">
-      {/* Header bar: Title, Progress Metric & Dropout/Complete Status */}
+      {/* Header bar: Progress Metric & Onboarding Complete (if complete) */}
       <div className={styles.headerRow}>
         <div className={styles.headerTitleGroup}>
-          <span className={styles.headerIcon}>
-            <Compass size={15} />
-          </span>
-          <h3 className={styles.headerTitle}>Onboarding Funnel Progress</h3>
           <span className={styles.completionPill}>
             {data.completionPercent}% Complete
           </span>
         </div>
 
-        {data.isComplete ? (
+        {data.isComplete && (
           <span className={`${styles.statusPill} ${styles.statusComplete}`}>
             <CheckCircle2 size={13} />
             <span>Onboarding Complete</span>
           </span>
-        ) : data.isDropout ? (
-          <span className={`${styles.statusPill} ${styles.statusDropout}`}>
-            <span className={styles.pulseDot} />
-            <AlertTriangle size={13} />
-            <span>
-              Dropped Out at {data.dropoutStepTitle || data.dropoutStep}
-              {data.idleMinutes > 0 ? ` (${data.idleMinutes}m idle)` : ""}
-            </span>
-          </span>
-        ) : (
-          <span className={`${styles.statusPill} ${styles.statusInProgress}`}>
-            <span className={styles.pulseDot} />
-            <Clock size={13} />
-            <span>In Progress ({data.dropoutStepTitle || data.dropoutStep})</span>
-          </span>
         )}
       </div>
 
-      {/* Horizontal Stepper Timeline (Image 2 style) */}
+      {/* Horizontal Stepper Timeline */}
       <div className={styles.stepperWrapper}>
         <div className={styles.stepperTrack}>
           {/* Background grey connector line */}
@@ -105,29 +81,11 @@ export default function SeekerOnboardingStepper({
             const isSkipped = step.status === "skipped";
 
             return (
-              <button
+              <div
                 key={step.id}
-                type="button"
-                className={`${styles.stepItem} ${
-                  isDropout ? styles.stepItemDropout : ""
-                } ${isInProgress ? styles.stepItemInProgress : ""}`}
-                onClick={() => setActiveTooltipStep(activeTooltipStep === step.id ? null : step.id)}
+                className={styles.stepItem}
                 aria-label={`${step.title}: ${step.status} - ${step.valueSummary}`}
               >
-                {/* Pointer callout anchored directly above dropout / in-progress node */}
-                {isDropout && (
-                  <div className={styles.pointerCallout} role="status">
-                    <MapPin size={10} />
-                    <span>Dropped Out Here</span>
-                  </div>
-                )}
-                {isInProgress && (
-                  <div className={styles.inProgressCallout} role="status">
-                    <Clock size={10} />
-                    <span>Current Step</span>
-                  </div>
-                )}
-
                 {/* Squircle Node Badge */}
                 <div
                   className={`${styles.badge} ${
@@ -148,8 +106,6 @@ export default function SeekerOnboardingStepper({
                     <FastForward size={13} strokeWidth={2.2} />
                   ) : isDropout ? (
                     <AlertTriangle size={14} strokeWidth={2.4} />
-                  ) : isInProgress ? (
-                    <span>{idx + 1}</span>
                   ) : (
                     <span>{idx + 1}</span>
                   )}
@@ -185,12 +141,7 @@ export default function SeekerOnboardingStepper({
                             : "Pending"}
                   </span>
                 </div>
-
-                {/* Tooltip Card on Hover / Tap */}
-                <div className={styles.tooltipCard} role="tooltip">
-                  <strong>{step.title}</strong>: {step.details || step.valueSummary}
-                </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -198,4 +149,3 @@ export default function SeekerOnboardingStepper({
     </section>
   );
 }
-
