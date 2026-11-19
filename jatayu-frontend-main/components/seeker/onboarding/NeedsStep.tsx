@@ -142,16 +142,29 @@ export default function NeedsStep({
   const canUseAiAssist = userTypedSuffix.trim().length > 0;
 
   const applyImprovedText = (
-    tone: ImprovementStyleId,
+    tone: ImprovementStyleId | null,
     optionsMap: Record<string, string> | null,
     baseText: string,
     prefix: string,
   ) => {
     if (!baseText) return;
-    const improvedSuffix =
-      optionsMap && tone in optionsMap && optionsMap[tone]
-        ? optionsMap[tone]
-        : getImprovedText(tone, baseText);
+
+    let improvedSuffix: string;
+
+    if (tone) {
+      // User explicitly picked Casual, Professional, or Concise
+      improvedSuffix =
+        optionsMap && tone in optionsMap && optionsMap[tone]
+          ? optionsMap[tone]
+          : getImprovedText(baseText, tone);
+    } else {
+      // Initial "Improve with JATAYU AI" click (distinct from Professional)
+      improvedSuffix =
+        optionsMap?.default ||
+        optionsMap?.improved ||
+        optionsMap?.balanced ||
+        getImprovedText(baseText, "default");
+    }
 
     const updatedText = prefix ? `${prefix}${improvedSuffix}` : improvedSuffix;
     onChangeNeedsText(updatedText.slice(0, 1000));
@@ -164,7 +177,8 @@ export default function NeedsStep({
     const targetText = (sourceTextForImprovement || userSuffix.trim() || needsText.trim()).trim();
     if (!targetText) return;
 
-    const tone: ImprovementStyleId = overrideTone || selectedTone || "professional";
+    // Only highlight a pill if the user explicitly clicked one
+    const tone: ImprovementStyleId | null = overrideTone ?? null;
     setSelectedTone(tone);
 
     // If options are already cached for the current text, apply immediately without re-fetching

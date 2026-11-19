@@ -431,3 +431,13 @@
 .switchThumbActive {
   transform: translateX(20px);
 }
+
+/* Replace .priceInput with your actual input class name */
+input.priceInput:focus,
+input.priceInput:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
