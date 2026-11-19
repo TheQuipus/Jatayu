@@ -476,10 +476,9 @@ section {
 .section-grid-lines {
   position: absolute;
   inset: 0;
-  width: min(100%, var(--maxw));
-  margin: 0 auto;
-  left: 50%;
-  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
   display: flex;
   justify-content: space-between;
   padding: 0 var(--pad);
