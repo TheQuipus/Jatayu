@@ -4,7 +4,7 @@
 
 .workflowTop {
   display: grid;
-  grid-template-columns: repeat(4, var(--grid-col));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   align-items: start;
   margin-bottom: 40px;
@@ -21,7 +21,7 @@
   grid-column: 2 / 5;
   justify-self: start;
   margin: 0;
-  font-size: 100px;
+  font-size: clamp(48px, 6.95vw, 100px);
   line-height: 0.92;
   letter-spacing: -0.06em;
 }
@@ -36,7 +36,7 @@
 
 .workflowBottom {
   display: grid;
-  grid-template-columns: repeat(4, var(--grid-col));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   align-items: end;
 }
@@ -327,28 +327,6 @@
   display: block;
 }
 
-@media (max-width: 1200px) {
-  .workflowBottom {
-    grid-template-columns: 1fr;
-    gap: 30px;
-  }
-
-  .workflowLeft,
-  .workflowShowcase {
-    grid-column: 1;
-  }
-
-  .workflowCta {
-    margin-top: 24px;
-  }
-
-  .workflowShowcase,
-  .showcaseNav {
-    width: 100%;
-    margin-left: 0;
-  }
-}
-
 @media (max-width: 1024px) {
   .workflowTop {
     grid-template-columns: 1fr;
@@ -367,6 +345,26 @@
 
   .workflowDesc {
     font-size: 18px;
+  }
+
+  .workflowBottom {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .workflowLeft,
+  .workflowShowcase {
+    grid-column: 1;
+  }
+
+  .workflowCta {
+    margin-top: 24px;
+  }
+
+  .workflowShowcase,
+  .showcaseNav {
+    width: 100%;
+    margin-left: 0;
   }
 
   .workflowShowcase {
