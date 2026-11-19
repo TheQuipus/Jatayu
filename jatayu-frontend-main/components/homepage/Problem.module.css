@@ -409,7 +409,7 @@
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1024.98px) {
   .problem {
     padding: 60px 0 120px;
   }
