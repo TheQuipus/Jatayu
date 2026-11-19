@@ -66,6 +66,15 @@ export function transformTextWithAi(
   const points = extractPoints(trimmed);
 
   switch (styleId) {
+    case "default": {
+      const normalized = cleaned.replace(/\.$/, "");
+      if (points.length === 1) {
+        return `I'm looking for guidance on ${normalized.charAt(0).toLowerCase() + normalized.slice(1)}. I'd appreciate clear direction and practical next steps.`;
+      }
+      const list = points.map((pt) => `• ${pt.charAt(0).toUpperCase() + pt.slice(1)}`).join("\n");
+      return `I'd like help with the following:\n${list}\n\nLooking for clear direction and practical next steps.`;
+    }
+
     case "professional": {
       if (points.length === 1) {
         return `I am seeking expert advisory on the following challenge: ${cleaned}. Specifically, I would like to gain strategic insights and actionable next steps.`;

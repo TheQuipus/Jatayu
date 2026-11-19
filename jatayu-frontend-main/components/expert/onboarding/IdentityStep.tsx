@@ -516,7 +516,7 @@ export default function IdentityStep({
                   {showBioTones ? (
                     <div className={styles.pillsHeaderRow}>
                       {TONE_PILLS.map((pill) => {
-                        const isSelected = selectedTones.tagLine === pill.id;
+                        const isSelected = selectedTones.bio === pill.id;
 
                         return (
                           <TonePillButton
@@ -525,8 +525,8 @@ export default function IdentityStep({
                             label={pill.label}
                             className={styles.tonePillButton}
                             onClick={() => {
-                              handleSelectTone("tagLine", pill.id);
-                              handleSuggestField("tagLine", pill.id);
+                              handleSelectTone("bio", pill.id);
+                              handleSuggestField("bio", pill.id);
                             }}
                           />
                         );
