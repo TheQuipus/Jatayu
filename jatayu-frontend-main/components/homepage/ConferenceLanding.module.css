@@ -7,7 +7,8 @@
   position: relative;
   height: 1399px;
   background: #000;
-  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
   padding-top: 100px;
 }
 
@@ -68,8 +69,8 @@
 
 /* Perspective container */
 .rotationCircleBox {
-  width: 1200px;
-  max-width: 1200px;
+  width: min(1200px, 100vw);
+  max-width: 100%;
   height: 0;
   display: flex;
   align-items: center;
@@ -79,7 +80,8 @@
 /* The spinning hub — rotateY is applied via inline style */
 .animationBox {
   position: relative;
-  width: 1200px;
+  width: min(1200px, 100vw);
+  max-width: 100%;
   height: 0;
   flex: 1;
   display: flex;
