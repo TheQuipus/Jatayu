@@ -5,13 +5,14 @@
 
 .faqInner { 
   display: grid; 
-  grid-template-columns: repeat(4, var(--grid-col));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   row-gap: 60px;
   align-items: start; 
 }
 
 .faqLeft {
   grid-column: 1 / 3;
+  min-width: 0;
 }
 
 .faqLeft :global(.eyebrow) { 
@@ -27,6 +28,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
 }
 
 .accItem {
@@ -174,11 +176,6 @@
   transform: rotate(45deg);
 }
 
-@media (max-width: 1200px) {
-  .faqInner {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 
 @media (max-width: 1024px) {
   .faqInner { grid-template-columns: 1fr; }
