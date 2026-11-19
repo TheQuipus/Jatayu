@@ -15,7 +15,6 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      data-scroll-behavior="smooth"
       className="h-full antialiased"
     >
       <head>
@@ -33,5 +32,4 @@ export default function RootLayout({
     </html>
   );
 }
-
 

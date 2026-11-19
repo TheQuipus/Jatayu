@@ -554,6 +554,23 @@
   color: var(--pomegranate);
 }
 
+.actionBtn:disabled,
+.actionBtnDisabled {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+  pointer-events: auto;
+  border-color: var(--mercury);
+  background: var(--wild-sand, #f8fafc);
+  color: var(--dove-gray, #94a3b8);
+}
+
+.actionBtn:disabled:hover,
+.actionBtnDisabled:hover {
+  border-color: var(--mercury);
+  background: var(--wild-sand, #f8fafc);
+  color: var(--dove-gray, #94a3b8);
+}
+
 .loadingState {
   padding: 40px;
   text-align: center;

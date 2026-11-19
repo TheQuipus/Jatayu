@@ -16,6 +16,7 @@ import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ExperienceAccordionItem from "./ExperienceAccordionItem";
 import ExperienceSelect from "./ExperienceSelect";
+import DropdownFilter, { type DropdownFilterOption } from "@/components/ui/DropdownFilter";
 import PortfolioSamplesSection from "./PortfolioSamplesSection";
 import {
   createEmptyEducationDegree,
@@ -136,15 +137,40 @@ export default function ExperienceStep({
   });
   const yearOptions = useMemo(() => getYearOptions(), []);
 
-  const degreeOptions = useMemo(
-    () => DEGREE_OPTIONS.map((option) => ({ value: option, label: option })),
-    [],
+  const [customDegreeOptions, setCustomDegreeOptions] = useState<DropdownFilterOption[]>([]);
+  const [customFieldOfStudyOptions, setCustomFieldOfStudyOptions] = useState<DropdownFilterOption[]>([]);
+
+  const degreeOptions = useMemo<DropdownFilterOption[]>(
+    () => [
+      ...DEGREE_OPTIONS.map((option) => ({ value: option, label: option })),
+      ...customDegreeOptions,
+    ],
+    [customDegreeOptions],
   );
 
-  const fieldOfStudyOptions = useMemo(
-    () => FIELD_OF_STUDY_OPTIONS.map((option) => ({ value: option, label: option })),
-    [],
+  const fieldOfStudyOptions = useMemo<DropdownFilterOption[]>(
+    () => [
+      ...FIELD_OF_STUDY_OPTIONS.map((option) => ({ value: option, label: option })),
+      ...customFieldOfStudyOptions,
+    ],
+    [customFieldOfStudyOptions],
   );
+
+  const handleCreateDegreeOption = useCallback((option: DropdownFilterOption) => {
+    setCustomDegreeOptions((prev) =>
+      prev.some((item) => item.value.toLowerCase() === option.value.toLowerCase())
+        ? prev
+        : [...prev, option],
+    );
+  }, []);
+
+  const handleCreateFieldOfStudyOption = useCallback((option: DropdownFilterOption) => {
+    setCustomFieldOfStudyOptions((prev) =>
+      prev.some((item) => item.value.toLowerCase() === option.value.toLowerCase())
+        ? prev
+        : [...prev, option],
+    );
+  }, []);
 
   const updatePosition = (index: number, patch: Partial<EmploymentPosition>) => {
     onEmploymentPositionsChange(
@@ -559,14 +585,19 @@ export default function ExperienceStep({
                           <label htmlFor={`degree-${degree.id}`} className={styles.fieldLabel}>
                             Degree / Qualification
                           </label>
-                          <ExperienceSelect
+                          <DropdownFilter
                             id={`degree-${degree.id}`}
-                            value={degree.degree ?? ""}
+                            variant="dark"
+                            value={degree.degree || null}
                             options={degreeOptions}
                             placeholder="Select degree..."
+                            customInputPlaceholder="Enter degree / qualification..."
+                            isSearchable
+                            isClearable
                             allowCustomOption
-                            aria-label="Degree / Qualification"
-                            onChange={(nextValue) => updateDegree(index, { degree: nextValue })}
+                            selectOnCreate
+                            onCreateOption={handleCreateDegreeOption}
+                            onChange={(nextValue) => updateDegree(index, { degree: nextValue ?? "" })}
                           />
                         </div>
 
@@ -574,14 +605,19 @@ export default function ExperienceStep({
                           <label htmlFor={`field-${degree.id}`} className={styles.fieldLabel}>
                             Field of Study
                           </label>
-                          <ExperienceSelect
+                          <DropdownFilter
                             id={`field-${degree.id}`}
-                            value={degree.fieldOfStudy ?? ""}
+                            variant="dark"
+                            value={degree.fieldOfStudy || null}
                             options={fieldOfStudyOptions}
                             placeholder="Select field of study..."
+                            customInputPlaceholder="Enter field of study..."
+                            isSearchable
+                            isClearable
                             allowCustomOption
-                            aria-label="Field of Study"
-                            onChange={(nextValue) => updateDegree(index, { fieldOfStudy: nextValue })}
+                            selectOnCreate
+                            onCreateOption={handleCreateFieldOfStudyOption}
+                            onChange={(nextValue) => updateDegree(index, { fieldOfStudy: nextValue ?? "" })}
                           />
                         </div>
                       </div>

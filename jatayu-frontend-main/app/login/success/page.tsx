@@ -2,7 +2,7 @@
 
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { setToken, setExpertId } from "@/lib/api";
+import { setExpertToken, setExpertId } from "@/lib/api";
 import { EXPERT_DASHBOARD_HREF } from "@/lib/expertDashboard";
 
 function LoginSuccessContent() {
@@ -14,7 +14,7 @@ function LoginSuccessContent() {
     const expertId = searchParams.get("expertId");
 
     if (token) {
-      setToken(token);
+      setExpertToken(token);
     }
     if (expertId) {
       setExpertId(expertId);

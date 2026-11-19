@@ -14,11 +14,16 @@ import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { getSetting } from '../utils/settingsHelper.js';
 import { sendNotification } from '../services/notificationService.js';
+import { sendGenericEmail } from '../utils/emailService.js';
 import {
   appendSectionAuditEvent,
   synthesizeLegacyAuditLogs,
   cleanAndDeduplicateAuditLogs,
 } from '../utils/applicationAuditLog.js';
+import {
+  analyzeExpertSections,
+  synthesizeOnboardingMilestoneLogs,
+} from '../utils/expertDropoutAnalysis.js';
 
 const FRONTEND_TO_BACKEND_STATUS = {
   not_submitted: 'draft',
@@ -177,16 +182,23 @@ function serializeExpert(expert) {
     }
   }
 
+  const onboardingAnalytics = analyzeExpertSections(expert);
+  const onboardingMilestones = synthesizeOnboardingMilestoneLogs(expert, onboardingAnalytics);
+
   if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
-    if (!Array.isArray(metadata.sectionAuditLogs) || metadata.sectionAuditLogs.length === 0) {
-      const synthetic = synthesizeLegacyAuditLogs(metadata);
-      if (synthetic.length > 0) {
-        metadata = { ...metadata, sectionAuditLogs: synthetic };
-      }
+    let combinedLogs = [];
+    if (Array.isArray(metadata.sectionAuditLogs) && metadata.sectionAuditLogs.length > 0) {
+      combinedLogs = [...metadata.sectionAuditLogs, ...onboardingMilestones];
     } else {
-      // Retroactively clean and deduplicate existing stored logs
-      metadata = { ...metadata, sectionAuditLogs: cleanAndDeduplicateAuditLogs(metadata.sectionAuditLogs) };
+      const synthetic = synthesizeLegacyAuditLogs(metadata);
+      combinedLogs = [...synthetic, ...onboardingMilestones];
     }
+    combinedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    metadata = { ...metadata, sectionAuditLogs: cleanAndDeduplicateAuditLogs(combinedLogs) };
+  } else {
+    metadata = {
+      sectionAuditLogs: cleanAndDeduplicateAuditLogs(onboardingMilestones),
+    };
   }
 
   const isBlacklisted = Boolean(
@@ -209,6 +221,7 @@ function serializeExpert(expert) {
     closedAt,
     isBlacklisted,
     blacklistedAt: json.blacklistedAt || (metadata && typeof metadata === 'object' && metadata.blacklistedAt) || null,
+    onboardingAnalytics,
     ...(json.onboardingMetadata !== undefined ? { onboardingMetadata: metadata } : {}),
     frontendStatus: BACKEND_TO_FRONTEND_STATUS[json.status] || 'pending',
   };
@@ -839,6 +852,156 @@ export const updateApplicationSectionDecision = async (req, res) => {
   } catch (error) {
     console.error('Update Section Decision Error:', error);
     return res.status(500).json({ message: 'Server error updating section decision', error: error.message });
+  }
+};
+
+/**
+ * Send onboarding dropout follow-up email to applicant
+ */
+export const sendDropoutFollowUp = async (req, res) => {
+  const { id } = req.params;
+  const { force } = req.body || {};
+
+  try {
+    const expert = await findExpertForAdmin(buildDetailWhere(id));
+    if (!expert) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    if (expert.status !== 'draft') {
+      return res.status(400).json({
+        message: 'Cannot send dropout follow-up for an application that has already been submitted or completed.',
+      });
+    }
+
+    const email = expert.email;
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ message: 'Expert does not have a valid email address on file.' });
+    }
+
+    let metadata = safeParseOnboardingMetadata(expert.onboardingMetadata);
+
+    // Cooldown check: 5 minutes to prevent spam / rapid double clicks
+    const lastSentStr = metadata.lastFollowUpSentAt;
+    if (lastSentStr && !force) {
+      const lastSentTime = new Date(lastSentStr).getTime();
+      const diffMs = Date.now() - lastSentTime;
+      const cooldownMs = 5 * 60 * 1000;
+      if (diffMs < cooldownMs) {
+        const remainingMinutes = Math.ceil((cooldownMs - diffMs) / (60 * 1000));
+        return res.status(429).json({
+          message: `A follow-up email was already sent recently. Please wait ${remainingMinutes} minute(s) before sending another.`,
+          lastFollowUpSentAt: lastSentStr,
+        });
+      }
+    }
+
+    const analysis = analyzeExpertSections(expert);
+    const dropoutTitle = analysis.dropoutStepTitle || 'Incomplete Profile';
+    const skippedSteps = analysis.steps.filter((s) => s.status === 'skipped').map((s) => s.title);
+    const pendingSteps = analysis.steps.filter((s) => s.status === 'pending').map((s) => s.title);
+
+    const frontendUrl = (await getSetting('FRONTEND_URL', 'http://localhost:3000')).replace(/\/$/, '');
+    const resumeLink = `${frontendUrl}/onboarding`;
+    const recipientName = expert.fullName || 'Expert';
+
+    // Build Email Subject and HTML/Text Content
+    const subject = `Complete your Jatayu Expert Application – Finish ${dropoutTitle}`;
+
+    let missingSectionsHtml = `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 24px 0;">
+        <h3 style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Missing Application Sections:</h3>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8; color: #1e293b;">
+          <li><strong style="color: #dc2626;">Where you left off:</strong> ${dropoutTitle}</li>`;
+
+    if (skippedSteps.length > 0) {
+      missingSectionsHtml += `
+          <li><strong style="color: #64748b;">Skipped sections:</strong> ${skippedSteps.join(', ')}</li>`;
+    }
+    if (pendingSteps.length > 0) {
+      missingSectionsHtml += `
+          <li><strong style="color: #ea580c;">Remaining sections:</strong> ${pendingSteps.join(', ')}</li>`;
+    }
+
+    missingSectionsHtml += `
+        </ul>
+      </div>`;
+
+    const bodyHtml = `
+      <p style="margin-top: 0; font-size: 15px;">Hello <strong>${recipientName}</strong>,</p>
+      <p style="font-size: 15px; color: #334155;">We noticed that you started your application to become a verified Expert on Jatayu Connect, but left off before submitting it.</p>
+      <p style="font-size: 15px; color: #334155;">Your expertise is highly valued by seekers on our platform. Completing your profile takes only a few minutes and will allow our review team to approve your expert account.</p>
+      ${missingSectionsHtml}
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${resumeLink}" style="background-color: #111827; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">Resume Application &rarr;</a>
+      </div>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">If you encountered any technical issues or have questions, feel free to contact our support team at <a href="mailto:support@jatayu.app" style="color: #4f46e5; text-decoration: underline;">support@jatayu.app</a>.</p>
+    `;
+
+    const htmlContent = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; max-width: 580px; margin: 0 auto; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        <div style="background: #111827; padding: 24px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">Jatayu Connect</h1>
+        </div>
+        <div style="padding: 32px 24px;">
+          <h2 style="margin-top: 0; color: #0f172a; font-size: 20px; font-weight: 700;">Complete Your Expert Application</h2>
+          ${bodyHtml}
+        </div>
+        <div style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 12px; color: #64748b;">
+          <p style="margin: 0;">&copy; ${new Date().getFullYear()} Jatayu Connect. All rights reserved.</p>
+          <p style="margin: 4px 0 0 0;">This is an automated notification. Please do not reply directly to this email.</p>
+        </div>
+      </div>
+    `;
+
+    const textContent = `Hello ${recipientName},\n\nWe noticed you left off your Jatayu Expert application at: ${dropoutTitle}.\n\nPlease resume your application here: ${resumeLink}\n\nJatayu Connect Team`;
+
+    // Send the email
+    await sendGenericEmail({
+      recipientEmail: email,
+      recipientName,
+      subject,
+      htmlContent,
+      textContent,
+    });
+
+    // Record in audit timeline
+    const nowIso = new Date().toISOString();
+    let currentAuditLogs = Array.isArray(metadata.sectionAuditLogs) ? metadata.sectionAuditLogs : [];
+    const missingSummary = [
+      `dropout: ${dropoutTitle}`,
+      skippedSteps.length ? `skipped: ${skippedSteps.join(', ')}` : null,
+      pendingSteps.length ? `pending: ${pendingSteps.join(', ')}` : null,
+    ].filter(Boolean).join(' | ');
+
+    currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+      sectionId: analysis.dropoutStep || 'application',
+      action: 'dropout_followup_sent',
+      badgeLabel: 'FOLLOW-UP SENT',
+      note: `Sent onboarding follow-up email to ${email} (${missingSummary}).`,
+      timestamp: nowIso,
+    }, req.admin);
+
+    metadata.sectionAuditLogs = cleanAndDeduplicateAuditLogs(currentAuditLogs);
+    metadata.lastFollowUpSentAt = nowIso;
+    metadata.followUpCount = (metadata.followUpCount || 0) + 1;
+
+    expert.onboardingMetadata = { ...metadata };
+    expert.changed('onboardingMetadata', true);
+    await saveExpertForAdmin(expert);
+
+    const updated = await findExpertByIdForAdmin(expert.id);
+    return res.status(200).json({
+      message: `Follow-up email sent successfully to ${email}`,
+      lastFollowUpSentAt: nowIso,
+      expert: serializeExpert(updated),
+    });
+  } catch (error) {
+    console.error('Send Dropout Follow-Up Error:', error);
+    return res.status(500).json({
+      message: 'Failed to send follow-up email',
+      error: error.message,
+    });
   }
 };
 

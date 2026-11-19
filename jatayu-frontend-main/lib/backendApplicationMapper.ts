@@ -34,6 +34,7 @@ export type BackendExpertApplication = {
   status?: string | null;
   frontendStatus?: ApplicationStatus;
   onboardingStep?: string | null;
+  onboardingAnalytics?: import("./expertDropoutTracker").ExpertOnboardingAnalytics;
   submittedAt?: string | null;
   approvedAt?: string | null;
   closedAt?: string | null;
@@ -256,6 +257,7 @@ export function mapBackendExpertToApplication(
     updatedAt: expert.updatedAt || undefined,
     onboardingStep: expert.onboardingStep || undefined,
     onboardingMetadata: metadata,
+    onboardingAnalytics: expert.onboardingAnalytics || undefined,
   };
 }
 

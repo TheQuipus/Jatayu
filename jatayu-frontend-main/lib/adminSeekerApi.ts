@@ -1,5 +1,6 @@
 import { getAdminToken } from "@/lib/api";
 import type { SeekerUser, UserStatus } from "@/lib/adminUserManagement";
+import type { SeekerOnboardingAnalytics } from "@/lib/seekerDropoutTracker";
 import { publicApiBase } from "@/lib/publicApiBase";
 
 export type AdminSeekersResponse = {
@@ -58,6 +59,7 @@ export type AdminSeekerBooking = {
 
 export type AdminSeekerDetail = {
   seeker: SeekerUser;
+  onboardingAnalytics?: SeekerOnboardingAnalytics;
   bookings: AdminSeekerBooking[];
   metrics: {
     completedBookings: number;

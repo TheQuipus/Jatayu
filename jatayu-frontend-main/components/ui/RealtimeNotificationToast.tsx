@@ -5,6 +5,7 @@ import { Bell, X } from "lucide-react";
 import { getAdminToken, getToken } from "@/lib/api";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 import { clearAuthSession } from "@/lib/expertAuth";
+import { clearSeekerAuthSession } from "@/lib/seekerAuth";
 type Notice = { id: string; title: string; body: string; href?: string | null };
 export default function RealtimeNotificationToast() {
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -17,11 +18,18 @@ export default function RealtimeNotificationToast() {
       window.dispatchEvent(new CustomEvent("jatayu:notification", { detail: item }));
     };
     const handleForceLogout = (data?: { reason?: string; message?: string }) => {
-      clearAuthSession();
+      const isSeeker = typeof window !== "undefined" && window.location.pathname.startsWith("/seeker");
+      if (isSeeker) {
+        clearSeekerAuthSession();
+      } else {
+        clearAuthSession();
+      }
       disconnectSocket();
       window.dispatchEvent(new CustomEvent("jatayu:auth:force_logout", { detail: data }));
-      const msg = encodeURIComponent(data?.message || "Your profile is Marked as Blacklisted");
-      window.location.href = `/login?role=expert&blocked=1&reason=${msg}`;
+      const role = isSeeker ? "seeker" : "expert";
+      const fallbackMsg = isSeeker ? "Your account has been suspended" : "Your profile is Marked as Blacklisted";
+      const msg = encodeURIComponent(data?.message || fallbackMsg);
+      window.location.href = `/login?role=${role}&blocked=1&reason=${msg}`;
     };
 
     socket.on("notification:new", receive);

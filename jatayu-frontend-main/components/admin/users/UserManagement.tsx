@@ -47,6 +47,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [expertToSuspend, setExpertToSuspend] = useState<ExpertUser | null>(null);
+  const [seekerToSuspend, setSeekerToSuspend] = useState<SeekerUser | null>(null);
 
   // Expert statistics
   const totalExperts = expertCounts.all ?? experts.length;
@@ -412,22 +413,33 @@ export default function UserManagement({ subSection }: UserManagementProps) {
                               type="button"
                               className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                               disabled={Boolean(updatingId)}
-                              onClick={() => void updateSeekerStatus(skr.id, "suspended")}
+                              onClick={() => setSeekerToSuspend(skr)}
                               title="Suspend Account"
                             >
                               <Ban size={14} /> Suspend
                             </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className={styles.actionBtn}
-                              disabled={Boolean(updatingId) || skr.status === "deleted"}
-                              onClick={() => void updateSeekerStatus(skr.id, "active")}
-                              title="Activate Account"
-                            >
-                              <CheckCircle2 size={14} className={styles.activateIcon} /> Activate
-                            </button>
-                          )}
+                          ) : (() => {
+                            const isFullySubmitted = Boolean(skr.onboardingComplete);
+                            const canActivate = skr.status === "suspended" || isFullySubmitted;
+                            const isActionDisabled = Boolean(updatingId) || skr.status === "deleted" || !canActivate;
+                            const tooltipTitle = !canActivate
+                              ? "Seeker profile is incomplete (not fully submitted yet)"
+                              : skr.status === "suspended"
+                              ? "Reactivate Account"
+                              : "Activate Account";
+
+                            return (
+                              <button
+                                type="button"
+                                className={`${styles.actionBtn} ${!canActivate ? styles.actionBtnDisabled : ""}`}
+                                disabled={isActionDisabled}
+                                onClick={() => void updateSeekerStatus(skr.id, "active")}
+                                title={tooltipTitle}
+                              >
+                                <CheckCircle2 size={14} className={styles.activateIcon} /> Activate
+                              </button>
+                            );
+                          })()}
                         </span>
                       </td>
                     </tr>
@@ -442,6 +454,7 @@ export default function UserManagement({ subSection }: UserManagementProps) {
 
     {expertToSuspend && (
       <SuspendConfirmModal
+        userType="expert"
         name={expertToSuspend.name}
         appId={expertToSuspend.applicationNumber}
         onCancel={() => setExpertToSuspend(null)}
@@ -449,6 +462,19 @@ export default function UserManagement({ subSection }: UserManagementProps) {
           const targetId = expertToSuspend.id;
           setExpertToSuspend(null);
           await updateExpertStatus(targetId, "suspended");
+        }}
+      />
+    )}
+
+    {seekerToSuspend && (
+      <SuspendConfirmModal
+        userType="seeker"
+        name={seekerToSuspend.name}
+        onCancel={() => setSeekerToSuspend(null)}
+        onConfirm={async () => {
+          const targetId = seekerToSuspend.id;
+          setSeekerToSuspend(null);
+          await updateSeekerStatus(targetId, "suspended");
         }}
       />
     )}

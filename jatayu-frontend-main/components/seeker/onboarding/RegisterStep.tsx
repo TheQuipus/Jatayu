@@ -113,7 +113,6 @@ export default function RegisterStep({
   const [touched, setTouched] = useState(emptyTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isDuplicateAccountError, setIsDuplicateAccountError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const values = { firstName, lastName, email, password, phone };
@@ -158,7 +157,6 @@ export default function RegisterStep({
       });
 
       if (response.message && isDuplicateRegistrationMessage(response.message)) {
-        setIsDuplicateAccountError(true);
         setSubmitError("An account with this email or phone number already exists.");
         return;
       }
@@ -172,10 +170,8 @@ export default function RegisterStep({
     } catch (error) {
       const message = error instanceof Error ? error.message : "Registration failed.";
       if (isDuplicateRegistrationMessage(message)) {
-        setIsDuplicateAccountError(true);
         setSubmitError("An account with this email or phone number already exists.");
       } else {
-        setIsDuplicateAccountError(false);
         setSubmitError(message);
       }
     } finally {
@@ -370,24 +366,6 @@ export default function RegisterStep({
           {submitError ? (
             <div className={register.errorBannerBox} role="alert">
               <p className={register.fieldErrorBelow}>{submitError}</p>
-              {isDuplicateAccountError || isDuplicateRegistrationMessage(submitError) ? (
-                <p className={register.authToggle}>
-                  Already registered?{" "}
-                  {onSwitchToLogin ? (
-                    <button
-                      type="button"
-                      className={register.authToggleBtn}
-                      onClick={() => onSwitchToLogin(normalizeEmail(email))}
-                    >
-                      Log in to your account
-                    </button>
-                  ) : (
-                    <Link href={loginHref || "/seeker/login"} className={register.authToggleBtn}>
-                      Log in to your account
-                    </Link>
-                  )}
-                </p>
-              ) : null}
             </div>
           ) : null}
 

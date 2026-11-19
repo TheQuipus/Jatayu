@@ -98,6 +98,18 @@ function UserManagementNavGroup({ pathname, isCollapsed }: { pathname: string; i
     setExpanded(usersActive);
   }, [usersActive]);
 
+  const isExpertActive =
+    path === "/admin/users/experts" ||
+    path.startsWith("/admin/users/experts/") ||
+    path === "/admin/users/expert" ||
+    path.startsWith("/admin/users/expert/");
+
+  const isSeekerActive =
+    path === "/admin/users/seekers" ||
+    path.startsWith("/admin/users/seekers/") ||
+    path === "/admin/users/seeker" ||
+    path.startsWith("/admin/users/seeker/");
+
   return (
     <div className={styles.navGroup}>
       <button
@@ -128,14 +140,14 @@ function UserManagementNavGroup({ pathname, isCollapsed }: { pathname: string; i
         >
           <Link
             href="/admin/users/experts"
-            className={`${styles.navSubLink} ${path === "/admin/users/experts" || path === "/admin/users/expert" ? styles.navSubLinkActive : ""}`}
+            className={`${styles.navSubLink} ${isExpertActive ? styles.navSubLinkActive : ""}`}
             title={isCollapsed ? "Expert" : undefined}
           >
             {isCollapsed ? "Exp" : "Expert"}
           </Link>
           <Link
             href="/admin/users/seekers"
-            className={`${styles.navSubLink} ${path === "/admin/users/seekers" || path === "/admin/users/seeker" ? styles.navSubLinkActive : ""}`}
+            className={`${styles.navSubLink} ${isSeekerActive ? styles.navSubLinkActive : ""}`}
             title={isCollapsed ? "Seeker" : undefined}
           >
             {isCollapsed ? "Skr" : "Seeker"}

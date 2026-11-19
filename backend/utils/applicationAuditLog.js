@@ -3,6 +3,7 @@
  */
 
 export const SECTION_TITLES = {
+  account: 'Account Verification',
   category: 'Category & Skills',
   experience: 'Work Experience & Portfolio',
   profile: 'Profile Details',
@@ -24,6 +25,12 @@ const ACTION_BADGES = {
   approved: 'APPROVED',
   rejected: 'REJECTED',
   blacklisted: 'BLACKLISTED',
+  account_verified: 'VERIFIED',
+  section_submitted: 'SUBMITTED',
+  section_skipped: 'SKIPPED',
+  dropout: 'DROPPED OUT',
+  dropout_followup_sent: 'FOLLOW-UP SENT',
+  application_submitted: 'SUBMITTED FOR REVIEW',
 };
 
 /**
@@ -33,7 +40,7 @@ const ACTION_BADGES = {
 export function cleanAndDeduplicateAuditLogs(rawLogs = []) {
   if (!Array.isArray(rawLogs)) return [];
 
-  const seenPerSection = new Map();
+  const seenKeys = new Set();
   const cleaned = [];
 
   for (const item of rawLogs) {
@@ -57,15 +64,10 @@ export function cleanAndDeduplicateAuditLogs(rawLogs = []) {
     const trimmedNote = entry.note ? String(entry.note).trim() : '';
     entry.note = trimmedNote;
 
-    const previousForSection = seenPerSection.get(secKey);
-    const isDuplicate =
-      previousForSection &&
-      previousForSection.action === entry.action &&
-      (previousForSection.note || '') === trimmedNote;
-
-    if (!isDuplicate) {
+    const dedupeKey = `${secKey}:${entry.action}:${trimmedNote}`;
+    if (!seenKeys.has(dedupeKey)) {
+      seenKeys.add(dedupeKey);
       cleaned.push(entry);
-      seenPerSection.set(secKey, entry);
     }
   }
 
