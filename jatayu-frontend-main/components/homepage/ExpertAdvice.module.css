@@ -30,7 +30,7 @@
 .title {
   grid-column: 2 / 4;
   font-family: var(--font-display);
-  font-size: 100px;
+  font-size: clamp(48px, 6.95vw, 100px);
   line-height: 0.95;
   letter-spacing: -0.04em;
   text-transform: uppercase;
@@ -38,11 +38,11 @@
 
 .titleLead {
   color: var(--white);
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .titleTail {
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .titleMid {
@@ -335,6 +335,15 @@
 }
 
 @media (max-width: 1024px) {
+  .title {
+    font-size: clamp(38px, 8vw, 70px);
+  }
+
+  .titleLead,
+  .titleTail {
+    white-space: normal;
+  }
+
   .top {
     grid-template-columns: 1fr;
     padding: 0;

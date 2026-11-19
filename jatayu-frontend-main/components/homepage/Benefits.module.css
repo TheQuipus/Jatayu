@@ -12,16 +12,16 @@
 
 .benefitsTitle { 
   grid-column: 2 / span 2;
-  font-size: 100px; 
+  font-size: clamp(48px, 6.95vw, 100px); 
   line-height: .92; 
 }
 
 .titleLineNoWrap {
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .titleLeadNoWrap {
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .benefitsTitle .tMuted { 
@@ -538,6 +538,13 @@
 
 @media (max-width: 1024px) {
   .benefitsHead { grid-template-columns: 1fr; }
+  .benefitsTitle {
+    font-size: clamp(38px, 8vw, 70px);
+  }
+  .titleLineNoWrap,
+  .titleLeadNoWrap {
+    white-space: normal;
+  }
   .benefitsTitle, .benefitsLines, .benefitsRuleRow, .benefitsDesc { grid-column: 1; }
   .benefitsLines { display: none; }
   .benefitsRuleRow, .benefitsDesc { grid-row: auto; }
