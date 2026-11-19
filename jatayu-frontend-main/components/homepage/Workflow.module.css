@@ -85,10 +85,15 @@
   grid-column: 3 / 5;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   gap: 0;
   align-items: start;
+}
+
+.workflowShowcase > * {
+  min-width: 0;
 }
 
 .workflowShowcase>.carouselViewport:first-of-type {
@@ -147,8 +152,10 @@
 }
 
 .cutCardSmall {
-  width: 169px;
-  height: 204px;
+  width: 100%;
+  max-width: 169px;
+  height: auto;
+  aspect-ratio: 169 / 204;
   --slide-w: 169px;
 }
 
@@ -168,8 +175,10 @@
 }
 
 .cutCardLarge {
-  width: 340px;
-  height: 394px;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  aspect-ratio: 340 / 394;
   cursor: pointer;
 }
 

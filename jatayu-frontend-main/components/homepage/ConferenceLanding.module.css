@@ -9,6 +9,7 @@
   background: #000;
   overflow: clip;
   isolation: isolate;
+  contain: paint;
   padding-top: 100px;
 }
 
@@ -57,6 +58,7 @@
   justify-content: center;
   margin-top: 80px;
   transform-style: preserve-3d;
+  overflow: clip;
 }
 
 .rotationCircleWrap {
