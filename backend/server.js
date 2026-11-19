@@ -35,6 +35,18 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Configure reverse proxy trust for accurate client IP resolution behind Nginx/ALB/Cloudflare
+const trustProxyEnv = process.env.TRUST_PROXY;
+if (trustProxyEnv === 'true') {
+  app.set('trust proxy', true);
+} else if (trustProxyEnv && !Number.isNaN(Number(trustProxyEnv))) {
+  app.set('trust proxy', Number(trustProxyEnv));
+} else if (trustProxyEnv) {
+  app.set('trust proxy', trustProxyEnv);
+} else if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://127.0.0.1:3000')
   .split(',')
   .map((origin) => origin.trim())

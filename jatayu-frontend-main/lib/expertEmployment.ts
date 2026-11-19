@@ -312,30 +312,30 @@ export const MAX_EDUCATION_DEGREES = 4;
 export const MAX_ACHIEVEMENT_DESCRIPTION = 300;
 
 export const DEGREE_OPTIONS = [
-  "High School",
   "Associate Degree",
   "Bachelor's Degree",
+  "Diploma",
+  "High School",
   "Master's Degree",
   "MBA",
   "PhD / Doctorate",
-  "Diploma",
   "Professional Certification",
   "Other",
 ] as const;
 
 export const FIELD_OF_STUDY_OPTIONS = [
-  "Computer Science / IT",
-  "Engineering",
   "Business Administration",
-  "Finance / Accounting",
-  "Marketing / Communications",
-  "Economics",
-  "Law / Legal Studies",
-  "Medicine / Healthcare",
+  "Computer Science / IT",
   "Design / Arts / Architecture",
-  "Social Sciences / Psychology",
+  "Economics",
+  "Engineering",
+  "Finance / Accounting",
   "Humanities",
+  "Law / Legal Studies",
+  "Marketing / Communications",
+  "Medicine / Healthcare",
   "Sciences (Physics, Chemistry, Bio)",
+  "Social Sciences / Psychology",
   "Other",
 ] as const;
 

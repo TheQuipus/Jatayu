@@ -1,4 +1,4 @@
-import { getSeekerProfile, getSeekerMe, getToken } from "@/lib/api";
+import { getSeekerProfile, getSeekerMe, getSeekerToken } from "@/lib/api";
 import { SEEKER_PROFILE } from "@/lib/seekerDashboard";
 
 export type SeekerProfileData = {
@@ -270,7 +270,7 @@ export function deriveSeekerQuestionPrefill(
 export async function fetchSeekerProfileData(): Promise<SeekerProfileData> {
   let backendData: BackendSeekerProfile = {};
   let fromServer = false;
-  if (getToken()) {
+  if (getSeekerToken()) {
     try {
       backendData = (await getSeekerMe()) as BackendSeekerProfile;
       fromServer = true;

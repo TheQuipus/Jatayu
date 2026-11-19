@@ -65,9 +65,9 @@ import {
   setSeekerId,
   getSeekerId,
   removeSeekerId,
-  setToken,
-  getToken,
-  removeToken,
+  setSeekerToken,
+  getSeekerToken,
+  removeSeekerToken,
   getPublicExpert,
   updateSeekerOnboarding,
 } from "@/lib/api";
@@ -236,14 +236,14 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
     const stored = getStoredSeekerProfile();
     applyProfile(stored);
-    if (getToken() && getSeekerId()) {
+    if (getSeekerToken() && getSeekerId()) {
       setRegisterOtpVerified(true);
     }
 
     void fetchSeekerProfileData()
       .then((fetched) => {
         applyProfile(fetched);
-        if (getToken() && getSeekerId()) {
+        if (getSeekerToken() && getSeekerId()) {
           setRegisterOtpVerified(true);
         }
       })
@@ -266,7 +266,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   useEffect(() => {
     let active = true;
     const identifier = expert.id || expertSlug(expert.name);
-    const token = getToken();
+    const token = getSeekerToken();
 
     if (token) {
       void fetchBookingOptions(identifier)
@@ -502,7 +502,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         if (currentSeekerId) {
           verifySeekerOtp({ seekerId: currentSeekerId, code: next.join("") })
             .then((res) => {
-              if (res.token) setToken(res.token);
+              if (res.token) setSeekerToken(res.token);
             })
             .catch((err) => console.warn("OTP verification notice:", err));
         }
@@ -542,7 +542,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     if (next.every((digit) => digit !== "") && currentSeekerId) {
       verifySeekerOtp({ seekerId: currentSeekerId, code: next.join("") })
         .then((res) => {
-          if (res.token) setToken(res.token);
+          if (res.token) setSeekerToken(res.token);
         })
         .catch((err) => console.warn("OTP verification notice:", err));
     }
@@ -574,7 +574,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         setSeekerId(response.seekerId);
       }
       if ((response as any)?.token) {
-        setToken((response as any).token);
+        setSeekerToken((response as any).token);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed.";
@@ -630,7 +630,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         password: loginPassword.trim(),
       });
       if (authRes?.token) {
-        setToken(authRes.token);
+        setSeekerToken(authRes.token);
       }
       if (authRes?.user?.id) {
         setSeekerId(authRes.user.id);
@@ -698,7 +698,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   function handleContinue() {
     if (!stepCanContinue) return;
     if (currentStep === 3) {
-      const isSeeker = Boolean(getToken() && getSeekerId());
+      const isSeeker = Boolean(getSeekerToken() && getSeekerId());
       const isAuthenticated = Boolean(seeker || registerOtpVerified || isSeeker);
       if (isAuthenticated) {
         setCurrentStep(4);
@@ -744,7 +744,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setIsProcessingPayment(true);
     setBookingError("");
 
-    const hasSeekerSession = Boolean(getToken() && getSeekerId());
+    const hasSeekerSession = Boolean(getSeekerToken() && getSeekerId());
     if (!hasSeekerSession) {
       setIsProcessingPayment(false);
       setBookingError("Your seeker session expired or is invalid. Please log in or register to complete booking.");
@@ -841,7 +841,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       console.error("Failed to process Razorpay payment:", err);
       const errMsg = err instanceof Error ? err.message : "Unable to complete booking";
       if (errMsg.toLowerCase().includes("not authorized") || errMsg.toLowerCase().includes("sign in")) {
-        removeToken();
+        removeSeekerToken();
         removeSeekerId();
         setRegisterOtpVerified(false);
         setBookingError("Your seeker session expired or is invalid. Please log in or register to complete booking.");

@@ -4,6 +4,9 @@ import {
   setExpertId,
   removeToken,
   removeExpertId,
+  getExpertToken,
+  setExpertToken,
+  removeExpertToken,
   type AuthResponse,
   type AuthUser,
 } from "@/lib/api";
@@ -75,7 +78,7 @@ export function getCompletedOnboardingStepFlags(
 const EXPERT_USER_KEY = "jatayu_expert_user";
 
 export function persistAuthSession(response: AuthResponse): AuthUser {
-  setToken(response.token);
+  setExpertToken(response.token);
   setExpertId(response.user.id);
   if (typeof window !== "undefined" && response.user) {
     try {
@@ -101,10 +104,12 @@ export function getStoredAuthUser(): AuthUser | null {
 import { clearExpertApplicationDraft } from "@/lib/expertApplicationsStore";
 
 export function clearExpertAuthOnly(): void {
-  removeToken();
+  removeExpertToken();
   removeExpertId();
   if (typeof window !== "undefined") {
     localStorage.removeItem(EXPERT_USER_KEY);
+    localStorage.removeItem("jatayu_expert_token");
+    sessionStorage.removeItem("jatayu_expert_token");
   }
 }
 
@@ -187,7 +192,7 @@ export function clearPendingOtpSession(): void {
 }
 
 export function isAuthenticated(): boolean {
-  return Boolean(getToken());
+  return Boolean(getExpertToken());
 }
 
 export function resolveOnboardingStep(user: AuthUser): ExpertOnboardingStep {

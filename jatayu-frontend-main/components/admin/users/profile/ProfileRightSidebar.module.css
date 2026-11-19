@@ -16,11 +16,18 @@
 
 /* Wallet Card */
 .walletCard {
-  background: linear-gradient(135deg, var(--bunker) 0%, #171b26 100%);
-  border-radius: 16px;
+  background: var(--white);
+  border: 1px solid var(--mercury);
+  /* border-radius: 16px; */
   padding: 20px;
-  color: var(--white);
-  box-shadow: 0 8px 24px rgba(8, 10, 16, 0.2);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.walletCard:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 14px rgba(11, 13, 20, 0.05);
 }
 
 .walletHeader {
@@ -35,31 +42,34 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--white) 70%, transparent);
+  color: var(--dove-gray);
 }
 
 .walletIconBox {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--seashell);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--mercury);
 }
 
 .walletAmount {
   font-family: var(--font-display);
   font-size: 32px;
   font-weight: 700;
-  color: var(--white);
+  color: var(--ink);
   margin: 0;
+  line-height: 1.1;
 }
 
 .walletSub {
   font-size: 12px;
-  color: #4ade80;
+  font-weight: 500;
+  color: #16a34a;
   margin: 4px 0 16px;
 }
 
@@ -73,41 +83,44 @@
   flex: 1;
   padding: 9px 12px;
   border-radius: 10px;
-  background: var(--white);
-  color: var(--bunker);
-  border: none;
+  background: var(--bunker);
+  color: var(--white);
+  border: 1px solid var(--bunker);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
+  text-align: center;
 }
 
 .walletBtnAdd:hover {
-  background: var(--seashell);
+  background: #1c2230;
+  border-color: #1c2230;
 }
 
 .walletBtnHistory {
   flex: 1;
   padding: 9px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--white);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--mercury);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
+  text-align: center;
 }
 
 .walletBtnHistory:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--seashell);
 }
 
 /* Actions Card */
 .actionCard {
   background: var(--white);
   border: 1px solid var(--mercury);
-  border-radius: 16px;
+  /* border-radius: 16px; */
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }

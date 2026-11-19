@@ -1,11 +1,11 @@
 .timelineCard {
   display: flex;
   flex-direction: column;
-  background: var(--white, #ffffff);
-  border: 1px solid var(--mercury, #e2e8f0);
+  background: none;
+  border: none;
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
   width: 100%;
   box-sizing: border-box;
   margin-top: 0;
@@ -151,6 +151,30 @@
   background-color: #2563eb;
 }
 
+.bulletVerified {
+  background-color: #10b981;
+}
+
+.bulletSubmitted {
+  background-color: #0f172a;
+}
+
+.bulletSkipped {
+  background-color: #94a3b8;
+}
+
+.bulletDropout {
+  background-color: #ef4444;
+}
+
+.bulletFollowUp {
+  background-color: #4f46e5;
+}
+
+.bulletAppSubmitted {
+  background-color: #6366f1;
+}
+
 .bulletDefault {
   background-color: #0f172a;
 }
@@ -248,6 +272,42 @@
   background: #eff6ff;
   color: #1d4ed8;
   border: 1px solid #bfdbfe;
+}
+
+.badgeVerified {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.badgeSubmitted {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.badgeSkipped {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}
+
+.badgeDropout {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.badgeFollowUp {
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+}
+
+.badgeAppSubmitted {
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
 }
 
 .badgeDefault {

@@ -67,16 +67,97 @@ function removeDualStorageItem(key: string): void {
   localStorage.removeItem(key);
 }
 
+const EXPERT_TOKEN_KEY = "jatayu_expert_token";
+const SEEKER_TOKEN_KEY = "jatayu_seeker_token";
+const ADMIN_TOKEN_KEY = "jatayu_admin_token";
+const LEGACY_TOKEN_KEY = "jatayu_token";
+
+export function getExpertToken(): string | null {
+  const token = getDualStorageItem(EXPERT_TOKEN_KEY);
+  if (token) return token;
+  const legacy = getDualStorageItem(LEGACY_TOKEN_KEY);
+  if (legacy && getExpertId()) {
+    setDualStorageItem(EXPERT_TOKEN_KEY, legacy);
+    return legacy;
+  }
+  return null;
+}
+
+export function setExpertToken(token: string): void {
+  setDualStorageItem(EXPERT_TOKEN_KEY, token);
+  if (!getDualStorageItem(SEEKER_TOKEN_KEY)) {
+    setDualStorageItem(LEGACY_TOKEN_KEY, token);
+  }
+}
+
+export function removeExpertToken(): void {
+  removeDualStorageItem(EXPERT_TOKEN_KEY);
+  if (!getDualStorageItem(SEEKER_TOKEN_KEY)) {
+    removeDualStorageItem(LEGACY_TOKEN_KEY);
+  }
+}
+
+export function getSeekerToken(): string | null {
+  const token = getDualStorageItem(SEEKER_TOKEN_KEY);
+  if (token) return token;
+  const legacy = getDualStorageItem(LEGACY_TOKEN_KEY);
+  if (legacy && getSeekerId()) {
+    setDualStorageItem(SEEKER_TOKEN_KEY, legacy);
+    return legacy;
+  }
+  return null;
+}
+
+export function setSeekerToken(token: string): void {
+  setDualStorageItem(SEEKER_TOKEN_KEY, token);
+  if (!getDualStorageItem(EXPERT_TOKEN_KEY)) {
+    setDualStorageItem(LEGACY_TOKEN_KEY, token);
+  }
+}
+
+export function removeSeekerToken(): void {
+  removeDualStorageItem(SEEKER_TOKEN_KEY);
+  if (!getDualStorageItem(EXPERT_TOKEN_KEY)) {
+    removeDualStorageItem(LEGACY_TOKEN_KEY);
+  }
+}
+
 export function getToken(): string | null {
-  return getDualStorageItem("jatayu_token");
+  if (typeof window !== "undefined") {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith("/seeker") || pathname.startsWith("/checkout")) {
+      return getSeekerToken() || getExpertToken();
+    }
+    if (pathname.startsWith("/expert") || pathname.startsWith("/login")) {
+      return getExpertToken() || getSeekerToken();
+    }
+  }
+  return getExpertToken() || getSeekerToken() || getDualStorageItem(LEGACY_TOKEN_KEY);
 }
 
 export function setToken(token: string): void {
-  setDualStorageItem("jatayu_token", token);
+  if (typeof window !== "undefined") {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith("/seeker") || pathname.startsWith("/checkout")) {
+      setSeekerToken(token);
+      return;
+    }
+    if (pathname.startsWith("/expert") || pathname.startsWith("/login")) {
+      setExpertToken(token);
+      return;
+    }
+  }
+  if (getSeekerId() && !getExpertId()) {
+    setSeekerToken(token);
+  } else {
+    setExpertToken(token);
+  }
 }
 
 export function removeToken(): void {
-  removeDualStorageItem("jatayu_token");
+  removeExpertToken();
+  removeSeekerToken();
+  removeDualStorageItem(LEGACY_TOKEN_KEY);
 }
 
 export function getExpertId(): string | null {
@@ -104,20 +185,43 @@ export function removeSeekerId(): void {
 }
 
 export function getAdminToken(): string | null {
-  return getDualStorageItem("jatayu_admin_token");
+  return getDualStorageItem(ADMIN_TOKEN_KEY);
 }
 
 export function setAdminToken(token: string): void {
-  setDualStorageItem("jatayu_admin_token", token);
+  setDualStorageItem(ADMIN_TOKEN_KEY, token);
 }
 
 export function removeAdminToken(): void {
-  removeDualStorageItem("jatayu_admin_token");
+  removeDualStorageItem(ADMIN_TOKEN_KEY);
 }
 
 // ---------------------------------------------------------------------------
 // Internal fetch helper
 // ---------------------------------------------------------------------------
+
+function resolveAuthToken(path: string, explicitToken?: string | null): string | null {
+  if (explicitToken !== undefined) return explicitToken;
+  if (path.startsWith("/api/seeker/") || path.startsWith("/api/seeker-auth/")) {
+    return getSeekerToken();
+  }
+  if (path.startsWith("/api/expert/") || path.startsWith("/api/auth/")) {
+    return getExpertToken();
+  }
+  if (path.startsWith("/api/admin/")) {
+    return getAdminToken();
+  }
+  if (path.startsWith("/api/notifications")) {
+    if (typeof window !== "undefined") {
+      const pathname = window.location.pathname;
+      if (pathname.startsWith("/seeker")) return getSeekerToken();
+      if (pathname.startsWith("/expert")) return getExpertToken();
+      if (pathname.startsWith("/admin")) return getAdminToken();
+    }
+    return getExpertToken() || getSeekerToken() || getAdminToken();
+  }
+  return getToken();
+}
 
 async function apiFetch<T>(
   path: string,
@@ -128,8 +232,8 @@ async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  // Attach auth header if token is provided
-  const authToken = token ?? getToken();
+  // Attach auth header if token is provided or resolved from path
+  const authToken = resolveAuthToken(path, token);
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
@@ -160,6 +264,9 @@ async function apiFetch<T>(
     const code = (data as { code?: string }).code;
 
     if (typeof window !== "undefined") {
+      const isSeekerRoute = path.startsWith("/api/seeker/") || path.startsWith("/api/seeker-auth/");
+      const isExpertRoute = path.startsWith("/api/expert/") || path.startsWith("/api/auth/");
+
       if (
         response.status === 403 &&
         (code === "CREDENTIALS_BLACKLISTED" ||
@@ -167,28 +274,68 @@ async function apiFetch<T>(
           message.toLowerCase().includes("blacklisted") ||
           message.toLowerCase().includes("suspended"))
       ) {
-        removeToken();
-        removeExpertId();
-        try {
-          localStorage.removeItem("jatayu_expert_user");
-          sessionStorage.removeItem("jatayu_token");
-          sessionStorage.removeItem("jatayu_expert_id");
-        } catch {
-          // ignore
-        }
-        if (!window.location.pathname.startsWith("/login")) {
-          const fallbackMsg =
-            code === "ACCOUNT_SUSPENDED" || message.toLowerCase().includes("suspended")
-              ? "Your Profile has been suspended. Contact Us?"
-              : "Your profile is Marked as Blacklisted";
-          const msg = encodeURIComponent(message || fallbackMsg);
-          window.location.href = `/login?role=expert&blocked=1&reason=${msg}`;
+        if (isSeekerRoute) {
+          removeSeekerToken();
+          removeSeekerId();
+          try {
+            localStorage.removeItem("jatayu_seeker_user");
+            sessionStorage.removeItem(SEEKER_TOKEN_KEY);
+            sessionStorage.removeItem("jatayu_seeker_id");
+          } catch {
+            // ignore
+          }
+          if (!window.location.pathname.startsWith("/login")) {
+            const fallbackMsg = "Your Profile has been suspended. Contact Us?";
+            const msg = encodeURIComponent(message || fallbackMsg);
+            window.location.href = `/login?role=user&blocked=1&reason=${msg}`;
+          }
+        } else {
+          removeExpertToken();
+          removeExpertId();
+          try {
+            localStorage.removeItem("jatayu_expert_user");
+            sessionStorage.removeItem(EXPERT_TOKEN_KEY);
+            sessionStorage.removeItem("jatayu_expert_id");
+            sessionStorage.removeItem(LEGACY_TOKEN_KEY);
+          } catch {
+            // ignore
+          }
+          if (!window.location.pathname.startsWith("/login")) {
+            const fallbackMsg =
+              code === "ACCOUNT_SUSPENDED" || message.toLowerCase().includes("suspended")
+                ? "Your Profile has been suspended. Contact Us?"
+                : "Your profile is Marked as Blacklisted";
+            const msg = encodeURIComponent(message || fallbackMsg);
+            window.location.href = `/login?role=expert&blocked=1&reason=${msg}`;
+          }
         }
       } else if (response.status === 401 && message.toLowerCase().includes("revoked")) {
-        removeToken();
-        removeExpertId();
-        if (!window.location.pathname.startsWith("/login")) {
-          window.location.href = `/login?role=expert`;
+        if (isSeekerRoute) {
+          removeSeekerToken();
+          removeSeekerId();
+          try {
+            localStorage.removeItem("jatayu_seeker_user");
+            sessionStorage.removeItem(SEEKER_TOKEN_KEY);
+            sessionStorage.removeItem("jatayu_seeker_id");
+          } catch {
+            // ignore
+          }
+          if (!window.location.pathname.startsWith("/login")) {
+            window.location.href = `/login?role=seeker`;
+          }
+        } else {
+          removeExpertToken();
+          removeExpertId();
+          try {
+            localStorage.removeItem("jatayu_expert_user");
+            sessionStorage.removeItem(EXPERT_TOKEN_KEY);
+            sessionStorage.removeItem("jatayu_expert_id");
+          } catch {
+            // ignore
+          }
+          if (!window.location.pathname.startsWith("/login")) {
+            window.location.href = `/login?role=expert`;
+          }
         }
       }
     }
@@ -917,6 +1064,24 @@ export async function updateAdminApplicationSectionDecision(
       body: JSON.stringify(payload),
     },
   );
+}
+
+export async function sendAdminApplicationDropoutFollowUp(
+  appId: string,
+  force: boolean = false,
+): Promise<{
+  message: string;
+  lastFollowUpSentAt: string;
+  expert: BackendExpertApplicationRecord;
+}> {
+  return adminApiFetch<{
+    message: string;
+    lastFollowUpSentAt: string;
+    expert: BackendExpertApplicationRecord;
+  }>(`/api/admin/applications/${encodeURIComponent(appId)}/dropout-followup`, {
+    method: "POST",
+    body: JSON.stringify({ force }),
+  });
 }
 
 export async function getAdminApplicationStats(): Promise<Record<string, number>> {

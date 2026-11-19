@@ -18,6 +18,7 @@ import ProfileQuickActions from "./profile/ProfileQuickActions";
 import ProfileRecentBookings from "./profile/ProfileRecentBookings";
 import ProfileRightSidebar from "./profile/ProfileRightSidebar";
 import ProfileEngagement from "./profile/ProfileEngagement";
+import SeekerOnboardingStepper from "./profile/SeekerOnboardingStepper";
 
 import EditProfileView from "./editprofile/EditProfileView";
 import HelpSupportView from "./help/HelpSupportView";
@@ -271,6 +272,13 @@ export default function UserProfileDetail({ userId, userType }: UserProfileDetai
           <>
             {/* Center Column */}
             <main className={styles.mainContent}>
+              {!isExpert && seekerUser && (
+                <SeekerOnboardingStepper
+                  seeker={seekerUser}
+                  analytics={seekerDetail?.onboardingAnalytics}
+                />
+              )}
+
               <ProfileHeroCard
                 user={user}
                 isExpert={isExpert}

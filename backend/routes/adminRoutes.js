@@ -5,6 +5,7 @@ import {
   getApplication,
   updateApplicationStatus,
   updateApplicationSectionDecision,
+  sendDropoutFollowUp,
   getApplicationStats,
 } from '../controllers/adminApplicationController.js';
 import { adminLogin, getAdminMe } from '../controllers/adminAuthController.js';
@@ -46,5 +47,6 @@ router.get('/applications/:id/digilocker-documents/:documentId/file', protectAdm
 router.get('/applications/:id', protectAdmin, getApplication);
 router.patch('/applications/:id/status', protectAdmin, updateApplicationStatus);
 router.patch('/applications/:id/section-decision', protectAdmin, updateApplicationSectionDecision);
+router.post('/applications/:id/dropout-followup', protectAdmin, sendDropoutFollowUp);
 
 export default router;

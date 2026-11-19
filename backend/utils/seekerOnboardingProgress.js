@@ -8,18 +8,23 @@ export const SEEKER_ONBOARDING_STEPS = [
 ];
 
 export function hasCompletedSeekerStep(seeker, step) {
+  if (!seeker) return false;
   switch (step) {
     case 'category':
-      return Boolean(seeker.category?.trim());
+      return Boolean(seeker.category?.trim() || seeker.preferredCategory?.trim());
     case 'needs':
-      return Boolean(seeker.needsText?.trim()) || seeker.selectedNeedChips?.length > 0;
+      return Boolean(seeker.needsText?.trim() || seeker.profileBio?.trim())
+        || (Array.isArray(seeker.selectedNeedChips) && seeker.selectedNeedChips.length > 0)
+        || (Array.isArray(seeker.needChips) && seeker.needChips.length > 0);
     case 'format':
-      return seeker.selectedFormats?.length > 0;
+      return (Array.isArray(seeker.selectedFormats) && seeker.selectedFormats.length > 0)
+        || (Array.isArray(seeker.formats) && seeker.formats.length > 0);
     case 'budget':
-      return Boolean(seeker.selectedBudget?.trim());
+      return Boolean(seeker.selectedBudget?.trim() || seeker.budgetTier?.trim());
     case 'personalisation':
-      return seeker.selectedLanguages?.length > 0
-        || Boolean(seeker.location?.trim())
+      return (Array.isArray(seeker.selectedLanguages) && seeker.selectedLanguages.length > 0)
+        || (Array.isArray(seeker.languages) && seeker.languages.length > 0)
+        || Boolean(seeker.location?.trim() || seeker.city?.trim())
         || Boolean(seeker.additionalContext?.trim())
         || (Boolean(seeker.profilePhotoSrc?.trim())
           && !String(seeker.profilePhotoSrc).includes('manportrait'));
