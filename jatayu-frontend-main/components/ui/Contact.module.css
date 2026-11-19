@@ -6,7 +6,7 @@
 
 .contactInner {
   display: grid;
-  grid-template-columns: repeat(4, var(--grid-col));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   row-gap: 40px;
   align-items: start;
 }
@@ -83,7 +83,7 @@
 .contactTitle {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 100px;
+  font-size: clamp(48px, 6.95vw, 100px);
   line-height: 0.95;
   letter-spacing: -.05em;
   text-transform: uppercase;
@@ -251,11 +251,6 @@
   font-weight: 100;
 }
 
-@media (max-width: 1200px) {
-  .contactInner {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 
 @media (max-width: 1024px) {
   .contactInner {

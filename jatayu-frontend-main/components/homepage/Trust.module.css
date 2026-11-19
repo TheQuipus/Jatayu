@@ -18,7 +18,7 @@
 
 .trustTitle {
   margin-top: 22px;
-  font-size: 70px;
+  font-size: clamp(40px, 4.86vw, 70px);
   line-height: 0.92;
   letter-spacing: -0.04em;
   text-transform: uppercase;
@@ -26,14 +26,14 @@
 
 .trustCtaWrap {
   margin-top: 34px;
-  width: var(--grid-col);
-  max-width: 100%;
+  width: 100%;
+  max-width: 348px;
 }
 
 .trustJoinCta {
   margin-top: 20px;
-  width: var(--grid-col);
-  max-width: 100%;
+  width: 100%;
+  max-width: 348px;
 }
 
 
@@ -139,10 +139,6 @@
 }
 
 @media (max-width: 1200px) {
-  .trustTitle {
-    font-size: clamp(40px, 5vw, 66px);
-  }
-
   .cardTitle {
     font-size: 26px;
   }
