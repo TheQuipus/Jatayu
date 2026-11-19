@@ -1,11 +1,17 @@
 .problemWrapper {
-  background: var(--gallery);
+  position: relative;
+  z-index: 1;
+  background: var(--fold-background);
+  color: var(--fold-text);
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .problem {
   position: relative;
-  z-index: 3;
+  z-index: 1;
   padding: 60px 0 calc(120px + 95px);
+  background: var(--fold-background);
 }
 
 .problemInner {
@@ -34,11 +40,11 @@
   letter-spacing: -0.06em;
   text-transform: uppercase;
   margin: 22px 0 0 0px;
-  color: #000;
+  color: var(--fold-text);
 }
 
 .problemTitle :global(.problemTitleMuted) {
-  color: #5e5e5e;
+  color: var(--fold-muted);
 }
 
 .problemKicker {
@@ -49,7 +55,7 @@
   font-weight: 500;
   font-size: 14px;
   letter-spacing: -0.03em;
-  color: var(--bunker);
+  color: var(--fold-text);
   margin-top: 10px;
 }
 
@@ -67,7 +73,7 @@
   font-family: var(--font-body);
   font-size: 18px;
   line-height: 1.4;
-  color: var(--scorpion);
+  color: var(--fold-muted);
   max-width: 80%;
   min-height: calc(18px * 1.4 * 2);
   display: -webkit-box;
@@ -82,7 +88,7 @@
   margin-top: 32px;
   width: 100%;
   height: 1px;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--fold-line);
   position: relative;
 }
 
@@ -93,7 +99,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 24px;
-  color: rgba(0, 0, 0, 0.48);
+  color: var(--fold-line-mark);
 }
 
 .statCards {
@@ -108,7 +114,7 @@
 }
 
 .scardMini {
-  background: var(--white);
+  background: var(--fold-card);
   border-radius: 0;
   padding: 8px 24px 24px;
   display: flex;
@@ -116,7 +122,7 @@
   row-gap: 0px;
   min-height: 200px;
   width: 100%;
-  border: 1px solid var(--mercury);
+  border: 1px solid var(--fold-card-border);
   clip-path: polygon(10% 3.179%,
       12.647% 0%,
       91.177% 0%,
@@ -156,7 +162,7 @@
   letter-spacing: -.02em;
   padding: 0 12px 12px 12px;
   min-height: calc(14px * 1.2 * 2);
-  color: var(--dove-gray);
+  color: var(--fold-card-muted);
 }
 
 .scardMiniLabel .mark {
@@ -165,13 +171,13 @@
 }
 
 .scardMiniFeatured {
-  background: var(--bunker);
-  border-color: var(--bunker);
-  color: var(--white);
+  background: var(--fold-active-card);
+  border-color: var(--fold-active-card);
+  color: var(--fold-active-text);
 }
 
 .scardMiniFeatured .scardMiniLabel {
-  color: color-mix(in srgb, var(--white) 70%, transparent);
+  color: var(--fold-active-muted);
 }
 
 .scardMiniTitle {
@@ -190,7 +196,7 @@
   font-size: 16px;
   line-height: 1.05;
   letter-spacing: -0.03em;
-  color: var(--bunker);
+  color: var(--fold-card-text);
   white-space: normal;
   transition: color 0.3s;
   min-height: 40px;
@@ -198,7 +204,7 @@
 
 .scardMiniRule {
   height: 1px;
-  background: var(--mercury);
+  background: var(--fold-card-border);
   transition: background-color 0.3s;
   margin: 10px 0px;
 }
@@ -208,19 +214,19 @@
   font-family: var(--font-mono);
   font-size: 15px;
   line-height: 1.3;
-  color: var(--scorpion);
+  color: var(--fold-card-muted);
   transition: color 0.3s;
 }
 
 /* Active Highlight Style matching featured style */
 .scardMini.active {
-  background: var(--bunker);
-  border-color: var(--bunker);
-  color: var(--white);
+  background: var(--fold-active-card);
+  border-color: var(--fold-active-card);
+  color: var(--fold-active-text);
 }
 
 .scardMini.active .scardMiniLabel {
-  color: color-mix(in srgb, var(--white) 70%, transparent);
+  color: var(--fold-active-muted);
 }
 
 .scardMini.active .scardMiniQuote,
@@ -231,18 +237,20 @@
 
 .scardMini.active .scardMiniTitle {
   display: block;
-  color: var(--white);
+  color: var(--fold-active-text);
 }
 
 /* Responsive Storytelling styles */
 @media (min-width: 1025px) {
   .problemWrapper {
-    padding-top: 120px;
+    padding-top: var(--nav-height);
     padding-bottom: 120px;
+    height: 100svh;
+    min-height: 100svh;
   }
 
   .problem {
-    height: calc(100vh - var(--nav-height));
+    height: 100%;
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -252,7 +260,7 @@
   .problemInner {
     position: relative;
     width: 100%;
-    height: calc(100vh - var(--nav-height));
+    height: 100%;
     display: grid;
     align-content: start;
   }
@@ -270,58 +278,32 @@
   }
 
   .statCards {
-    grid-column: 1 / -1;
+    grid-column: 2 / 5;
     margin-left: 0;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: repeat(2, auto);
+    gap: 24px;
     z-index: 6;
-  }
-
-  .statCards> :nth-child(1) {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .statCards> :nth-child(2) {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .statCards> :nth-child(3) {
-    grid-column: 4;
-    grid-row: 1;
-  }
-
-  .statCards> :nth-child(4) {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .statCards> :nth-child(5) {
-    grid-column: 3;
-    grid-row: 2;
-  }
-
-  .statCards> :nth-child(6) {
-    grid-column: 4;
-    grid-row: 2;
   }
 
   .scardMini {
     width: 100%;
     max-width: none;
+    aspect-ratio: 1 / 1;
+    min-height: auto;
     z-index: 10;
   }
 
   .previewWrap {
     display: block;
     position: absolute;
-    grid-column: 3 / 5;
-    left: 0;
-    right: 35%;
-    height: 380px;
-    top: 48%;
-    transform: translateY(-65%);
+    left: 50%;
+    width: 300px;
+    max-width: 300px;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    top: 140px;
+    transform: none;
     opacity: 0;
     perspective: 1200px;
     transform-style: preserve-3d;
@@ -401,7 +383,7 @@
         10% 8.736%,
         10% 3.179%);
   }
-  
+
   .preview.active {
     opacity: 1;
   }
