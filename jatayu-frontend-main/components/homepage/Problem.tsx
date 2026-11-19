@@ -281,7 +281,7 @@ export default function Problem() {
       };
 
       // 6. Calculate final rows bottom orbit coordinates relative to innerRect (which is centered on screen)
-      const cardWidth = 232; // Target width in the bottom row
+      const cardWidth = Math.floor(innerRect.width / 6); // Fluid target width in the bottom row (232px at 1440px)
 
       // Settle cards near the bottom of the nav-offset viewport
       const finalY = innerRect.height - (window.innerHeight - 750) - 45;
