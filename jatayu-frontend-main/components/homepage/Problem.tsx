@@ -147,7 +147,6 @@ export default function Problem() {
       // 1. Capture coordinates relative to the centered container (innerRect) to prevent horizontal centering offsets
       const startRects = cards.map((card) => card.getBoundingClientRect());
       const innerRect = inner.getBoundingClientRect();
-      const titleRect = titleRef.current ? titleRef.current.getBoundingClientRect() : { bottom: 300 };
 
       const innerStyle = window.getComputedStyle(inner);
       const paddingLeft = parseFloat(innerStyle.paddingLeft) || 0;
@@ -314,7 +313,9 @@ export default function Problem() {
               ? previousWrap.getBoundingClientRect().bottom + window.scrollY
               : foldTop;
             const start = Math.round(Math.max(foldTop, servicesClear));
-            if (Math.abs(self.start - start) > 1) (self as any).setPositions(start, start + 5000, true);
+            if (Math.abs(self.start - start) > 1) {
+              (self as unknown as { setPositions: (s: number, e: number, r?: boolean) => void }).setPositions(start, start + 5000, true);
+            }
           },
           onToggle: (self) => {
             gsap.set(gridWrap ?? wrapper, { zIndex: self.isActive ? 20 : "" });
