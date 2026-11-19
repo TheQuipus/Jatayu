@@ -1,26 +1,31 @@
 import { useState, useRef } from "react";
 import { Target, Zap, Brain, Handshake, ShieldCheck, Lightbulb } from "lucide-react";
+import ContinueButton from "@/components/ui/ContinueButton";
 import ShinyText from "@/components/ui/ShinyText";
+import TonePillButton from "@/components/ui/TonePillButton";
 import {
   NEED_STEP_CHIPS,
   getSeekerOutcomeDescription,
 } from "@/components/seeker/onboarding/seekerOutcomeOptions";
 import {
   MAX_CONTEXT_LENGTH,
-  CONTEXT_IMPROVEMENT_STYLES,
   type ContextImprovementStyleId,
 } from "./checkoutTypes";
 import {
   getImprovedContextText,
-  getContextImprovementHint,
 } from "./checkoutUtils";
-import { generateAiSubject } from "@/lib/aiTextImprovement";
 import {
   callAiImproveNeeds,
   mapChipIdsToGoalNames,
 } from "@/lib/aiImprovementApi";
 import StepHeader from "./StepHeader";
 import styles from "./StepQuestionContext.module.css";
+
+const TONE_PILLS: Array<{ id: ContextImprovementStyleId; label: string }> = [
+  { id: "casual", label: "Casual" },
+  { id: "professional", label: "Professional" },
+  { id: "concise", label: "Concise" },
+];
 
 function ContextChipIcon({ chipId }: { chipId: string }) {
   const iconProps = { className: styles.contextChipIcon, size: 14, "aria-hidden": true as const };
@@ -68,11 +73,25 @@ export default function StepQuestionContext({
 }: StepQuestionContextProps) {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiOptionsMap, setAiOptionsMap] = useState<Record<string, string> | null>(null);
-  const [isImprovementApplied, setIsImprovementApplied] = useState(false);
   const [sourceTextForImprovement, setSourceTextForImprovement] = useState<string>("");
+  const aiRequestIdRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const canUseContextAiAssist = context.trim().length > 0;
+  const hasContentToReset =
+    subject.length > 0 || context.length > 0 || selectedContextChips.length > 0;
+
+  const handleReset = () => {
+    aiRequestIdRef.current += 1;
+    setIsAiLoading(false);
+    setAiOptionsMap(null);
+    setSourceTextForImprovement("");
+    onShowContextImprovementPanelChange(false);
+    onSelectedContextImproveStyleChange(null);
+    onSelectedContextChipsChange([]);
+    onSubjectChange("");
+    onContextChange("");
+  };
 
   const buildTextFromSelectedContextChips = (chipIds: string[]) =>
     chipIds
@@ -90,23 +109,27 @@ export default function StepQuestionContext({
   };
 
   const handleContextChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
-    setIsImprovementApplied(false);
+    aiRequestIdRef.current += 1;
+    setIsAiLoading(false);
+    setAiOptionsMap(null);
+    setSourceTextForImprovement("");
+    onShowContextImprovementPanelChange(false);
+    onSelectedContextImproveStyleChange(null);
+
     const isSelected = selectedContextChips.includes(chip.id);
     const nextSelected = isSelected
       ? selectedContextChips.filter((id) => id !== chip.id)
       : [...selectedContextChips, chip.id];
 
-    if (nextSelected.length === 0) {
-      onShowContextImprovementPanelChange(false);
-      onSelectedContextImproveStyleChange(null);
-    }
-
     onSelectedContextChipsChange(nextSelected);
 
-    const currentPrefix = getPrefixForChips(selectedContextChips);
+    const currentPrefixText = buildTextFromSelectedContextChips(selectedContextChips);
+    const currentPrefix = currentPrefixText ? currentPrefixText + "\n" : "";
     let userSuffix = context;
     if (currentPrefix && context.startsWith(currentPrefix)) {
       userSuffix = context.slice(currentPrefix.length);
+    } else if (currentPrefixText && context.startsWith(currentPrefixText)) {
+      userSuffix = context.slice(currentPrefixText.length).replace(/^\n/, "");
     }
 
     const newPrefix = getPrefixForChips(nextSelected);
@@ -121,19 +144,49 @@ export default function StepQuestionContext({
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setIsImprovementApplied(false);
+    aiRequestIdRef.current += 1;
+    setIsAiLoading(false);
+    setAiOptionsMap(null);
+    setSourceTextForImprovement("");
+    onShowContextImprovementPanelChange(false);
+    onSelectedContextImproveStyleChange(null);
     onContextChange(e.target.value.slice(0, MAX_CONTEXT_LENGTH));
   };
 
-  const handleContextAiAssist = async () => {
-    onShowContextImprovementPanelChange(true);
-    onSelectedContextImproveStyleChange("professional");
-    setIsImprovementApplied(false);
+  const applyImprovedText = (
+    tone: ContextImprovementStyleId,
+    optionsMap: Record<string, string> | null,
+    baseText: string,
+    prefix: string
+  ) => {
+    if (!baseText) return;
+    const improvedSuffix =
+      optionsMap && tone in optionsMap && optionsMap[tone]
+        ? optionsMap[tone]
+        : getImprovedContextText(tone, baseText);
+
+    const updatedText = prefix ? `${prefix}${improvedSuffix}` : improvedSuffix;
+    onContextChange(updatedText.slice(0, MAX_CONTEXT_LENGTH));
+  };
+
+  const handleContextAiAssist = async (overrideTone?: ContextImprovementStyleId) => {
     const prefix = getPrefixForChips(selectedContextChips);
     const userSuffix = prefix && context.startsWith(prefix) ? context.slice(prefix.length) : context;
-    const targetText = userSuffix.trim() || context.trim();
-    setSourceTextForImprovement(targetText);
+    const targetText = (sourceTextForImprovement || userSuffix.trim() || context.trim()).trim();
+    if (!targetText) return;
 
+    const tone: ContextImprovementStyleId =
+      overrideTone || selectedContextImproveStyle || "professional";
+    onSelectedContextImproveStyleChange(tone);
+
+    if (aiOptionsMap && sourceTextForImprovement) {
+      applyImprovedText(tone, aiOptionsMap, sourceTextForImprovement, prefix);
+      onShowContextImprovementPanelChange(true);
+      return;
+    }
+
+    const requestId = ++aiRequestIdRef.current;
+    setSourceTextForImprovement(targetText);
     setIsAiLoading(true);
     try {
       const goalNames = mapChipIdsToGoalNames(selectedContextChips);
@@ -147,62 +200,28 @@ export default function StepQuestionContext({
         false
       );
 
-      const opts = data.options || data.suggestions;
+      if (requestId !== aiRequestIdRef.current) return;
+
+      const opts = data.options || data.suggestions || null;
       if (opts) {
         setAiOptionsMap(opts);
       }
       if (data.subject && !subject.trim()) {
         onSubjectChange(data.subject);
       }
+
+      applyImprovedText(tone, opts, targetText, prefix);
+      onShowContextImprovementPanelChange(true);
     } catch (err) {
+      if (requestId !== aiRequestIdRef.current) return;
       console.error("AI Improvement API request error in Checkout:", err);
+      applyImprovedText(tone, null, targetText, prefix);
+      onShowContextImprovementPanelChange(true);
     } finally {
-      setIsAiLoading(false);
+      if (requestId === aiRequestIdRef.current) {
+        setIsAiLoading(false);
+      }
     }
-  };
-
-  const getHintText = (styleId: ContextImprovementStyleId | null) => {
-    if (isAiLoading) return "Generating AI improvement...";
-    if (!styleId) return "Select an AI style to preview and refine your question or goals.";
-
-    const targetText = sourceTextForImprovement || context.trim();
-    if (!targetText) return "Select an AI style to preview and refine your question or goals.";
-
-    if (aiOptionsMap && styleId in aiOptionsMap && aiOptionsMap[styleId]) {
-      return aiOptionsMap[styleId];
-    }
-    return getContextImprovementHint(styleId, targetText);
-  };
-
-  const handleApplyContextImprovement = () => {
-    if (!selectedContextImproveStyle || isImprovementApplied) return;
-
-    const prefix = getPrefixForChips(selectedContextChips);
-    const targetText =
-      sourceTextForImprovement ||
-      (prefix && context.startsWith(prefix) ? context.slice(prefix.length) : context).trim() ||
-      context.trim();
-
-    if (!targetText) return;
-
-    let improvedSuffix = "";
-    if (
-      aiOptionsMap &&
-      selectedContextImproveStyle in aiOptionsMap &&
-      aiOptionsMap[selectedContextImproveStyle]
-    ) {
-      improvedSuffix = aiOptionsMap[selectedContextImproveStyle];
-    } else {
-      improvedSuffix = getImprovedContextText(selectedContextImproveStyle, targetText);
-    }
-
-    const updatedText = prefix ? `${prefix}${improvedSuffix}` : improvedSuffix;
-    onContextChange(updatedText.slice(0, MAX_CONTEXT_LENGTH));
-
-    if (!subject.trim() && context.trim()) {
-      onSubjectChange(generateAiSubject(context, ""));
-    }
-    setIsImprovementApplied(true);
   };
 
   return (
@@ -217,6 +236,12 @@ export default function StepQuestionContext({
           <label htmlFor="booking-subject" className={styles.contextLabel}>
             Subject / Topic
           </label>
+          <ContinueButton
+            label="Reset"
+            showArrow={false}
+            disabled={!hasContentToReset}
+            onClick={handleReset}
+          />
         </div>
         <input
           id="booking-subject"
@@ -264,75 +289,49 @@ export default function StepQuestionContext({
               onChange={handleTextareaChange}
             />
           </div>
-          <span className={styles.charCounter}>
-            {context.length} / {MAX_CONTEXT_LENGTH}
-          </span>
-          {canUseContextAiAssist && !showContextImprovementPanel ? (
-            <button
-              type="button"
-              className={styles.aiAssistTextBtn}
-              onClick={handleContextAiAssist}
-              disabled={!canUseContextAiAssist || isAiLoading}
-            >
-              <ShinyText
-                text={isAiLoading ? "Improving..." : "Improve With Jatayu AI"}
-                icon="sparkles"
-                iconSize={14}
-                speed={2.5}
-                color="#E53B17"
-                shineColor="#ffffff"
+          <div className={styles.boxFooter}>
+            {showContextImprovementPanel && canUseContextAiAssist ? (
+              <div className={styles.pillsHeaderRow}>
+                {TONE_PILLS.map((pill) => (
+                  <TonePillButton
+                    key={pill.id}
+                    type="button"
+                    label={pill.label}
+                    selected={selectedContextImproveStyle === pill.id}
+                    disabled={isAiLoading}
+                    className={styles.tonePillButton}
+                    onClick={() => handleContextAiAssist(pill.id)}
+                  />
+                ))}
+              </div>
+            ) : canUseContextAiAssist ? (
+              <button
+                type="button"
+                className={styles.aiAssistTextBtn}
+                onClick={() => handleContextAiAssist()}
                 disabled={!canUseContextAiAssist || isAiLoading}
-                className={styles.aiAssistShinyText}
-              />
-            </button>
-          ) : null}
+              >
+                <ShinyText
+                  text={isAiLoading ? "Improving..." : "Improve with JATAYU AI"}
+                  icon="sparkles"
+                  iconSize={14}
+                  speed={2.5}
+                  color="#E53B17"
+                  shineColor="#ffffff"
+                  disabled={!canUseContextAiAssist || isAiLoading}
+                  className={styles.aiAssistShinyText}
+                />
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <span className={styles.charCounter}>
+              {context.length} / {MAX_CONTEXT_LENGTH}
+            </span>
+          </div>
         </div>
       </div>
-
-      {showContextImprovementPanel ? (
-        <div className={styles.aiImprovePanel}>
-          <div className={styles.improvementChipsWrap}>
-            {CONTEXT_IMPROVEMENT_STYLES.map((style) => {
-              const isSelected = selectedContextImproveStyle === style.id;
-
-              return (
-                <button
-                  key={style.id}
-                  type="button"
-                  className={`${styles.improvementChip} ${
-                    isSelected ? styles.improvementChipSelected : ""
-                  }`}
-                  onClick={() => {
-                    onSelectedContextImproveStyleChange(isSelected ? null : style.id);
-                    setIsImprovementApplied(false);
-                  }}
-                  aria-pressed={isSelected}
-                >
-                  {style.label}
-                </button>
-              );
-            })}
-          </div>
-          <p className={styles.aiImproveHint}>
-            {getHintText(selectedContextImproveStyle)}
-          </p>
-          <button
-            type="button"
-            className={styles.aiApplyBtn}
-            onClick={handleApplyContextImprovement}
-            disabled={!selectedContextImproveStyle || isImprovementApplied || isAiLoading}
-          >
-            <ShinyText
-              text={isImprovementApplied ? "Applied" : "Apply"}
-              speed={2.5}
-              color="#E53B17"
-              shineColor="#ffffff"
-              disabled={!selectedContextImproveStyle || isImprovementApplied || isAiLoading}
-              className={styles.aiApplyShinyText}
-            />
-          </button>
-        </div>
-      ) : null}
 
       <div className={styles.proTip}>
         <Lightbulb size={18} className={styles.proTipIcon} aria-hidden="true" />

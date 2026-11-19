@@ -73,10 +73,12 @@ import {
 } from "@/lib/api";
 import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
 import {
+  deriveSeekerQuestionPrefill,
   fetchSeekerProfileData,
   getStoredSeekerProfile,
   SEEKER_PROFILE_UPDATED_EVENT,
   saveStoredSeekerProfile,
+  type SeekerProfileData,
 } from "@/lib/seekerProfileApi";
 import { isValidSeekerPhone, normalizeSeekerPhone } from "@/lib/seekerPhone";
 import { isDuplicateRegistrationMessage } from "@/lib/expertOnboardingStatus";
@@ -175,13 +177,34 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const [selectedContextImproveStyle, setSelectedContextImproveStyle] =
     useState<ContextImprovementStyleId | null>(null);
   const [selectedContextChips, setSelectedContextChips] = useState<string[]>([]);
+  const userEditedQuestionRef = useRef({
+    subject: false,
+    context: false,
+    chips: false,
+  });
+
+  const handleSubjectChange = useCallback((value: string) => {
+    userEditedQuestionRef.current.subject = true;
+    setSubject(value);
+  }, []);
+
+  const handleContextChange = useCallback((value: string) => {
+    userEditedQuestionRef.current.context = true;
+    setContext(value);
+  }, []);
+
+  const handleSelectedContextChipsChange = useCallback((chips: string[]) => {
+    userEditedQuestionRef.current.chips = true;
+    setSelectedContextChips(chips);
+  }, []);
+
   const [registerFirstName, setRegisterFirstName] = useState("");
   const [registerLastName, setRegisterLastName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPhone, setRegisterPhone] = useState("");
 
   useEffect(() => {
-    const applyProfile = (data: { name?: string; email?: string; phone?: string }) => {
+    const applyProfile = (data: Partial<SeekerProfileData>) => {
       if (data.name) {
         const parts = data.name.trim().split(" ");
         setRegisterFirstName((prev) => prev || parts[0] || "Priya");
@@ -192,6 +215,22 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       }
       if (data.phone !== undefined) {
         setRegisterPhone(normalizeSeekerPhone(data.phone || ""));
+      }
+
+      const prefill = deriveSeekerQuestionPrefill(data);
+      if (!userEditedQuestionRef.current.subject && prefill.subject) {
+        setSubject((prev) => prev || prefill.subject);
+      }
+      if (!userEditedQuestionRef.current.context && prefill.context) {
+        setContext((prev) => prev || prefill.context);
+      }
+      if (
+        !userEditedQuestionRef.current.chips &&
+        prefill.selectedContextChips.length > 0
+      ) {
+        setSelectedContextChips((prev) =>
+          prev.length > 0 ? prev : prefill.selectedContextChips,
+        );
       }
     };
 
@@ -885,11 +924,11 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
               {currentStep === 2 && (
                 <StepQuestionContext
                   subject={subject}
-                  onSubjectChange={setSubject}
+                  onSubjectChange={handleSubjectChange}
                   context={context}
-                  onContextChange={setContext}
+                  onContextChange={handleContextChange}
                   selectedContextChips={selectedContextChips}
-                  onSelectedContextChipsChange={setSelectedContextChips}
+                  onSelectedContextChipsChange={handleSelectedContextChipsChange}
                   showContextImprovementPanel={showContextImprovementPanel}
                   onShowContextImprovementPanelChange={setShowContextImprovementPanel}
                   selectedContextImproveStyle={selectedContextImproveStyle}
