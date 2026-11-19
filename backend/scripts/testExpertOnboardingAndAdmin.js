@@ -1,3 +1,4 @@
+import { createInterface } from 'node:readline/promises';
 /**
  * End-to-end test: expert onboarding + admin applications from expert DB.
  * Run: node scripts/testExpertOnboardingAndAdmin.js
@@ -8,7 +9,6 @@ dotenv.config();
 const BASE = process.env.API_BASE || 'http://localhost:5000';
 const ADMIN_EMAIL = 'admin@thequipus.com';
 const ADMIN_PASSWORD = 'Admin@theQuipus';
-const ADMIN_OTP = '123456';
 
 const ts = Date.now();
 const TEST_EMAIL = `e2e.expert.${ts}@test.local`;
@@ -143,10 +143,15 @@ async function main() {
   }
 
   // --- Admin login ---
+  const challenge = await api('POST', '/api/admin/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  if (challenge.status !== 202) throw new Error(challenge.data.message || 'Admin OTP delivery failed');
+  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  const adminOtp = await prompt.question('Enter the admin login code delivered to email: ');
+  prompt.close();
   const adminLogin = await api('POST', '/api/admin/auth/login', {
     email: ADMIN_EMAIL,
     password: ADMIN_PASSWORD,
-    otp: ADMIN_OTP,
+    otp: adminOtp,
   });
   if (adminLogin.status !== 200 || !adminLogin.data.token) {
     fail('Admin login', `${adminLogin.status}: ${adminLogin.data.message}`);

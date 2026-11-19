@@ -101,6 +101,51 @@ function buildFullName(firstName: string, lastName: string) {
   return [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
 }
 
+function renderAuthErrorMessage(text: string | null) {
+  if (!text) return null;
+  const match = text.match(/^(.*?\b)(Contact Us\??)(.*)$/i);
+  if (match) {
+    const [, before, linkText, after] = match;
+    return (
+      <span style={{ pointerEvents: "auto", position: "relative", zIndex: 20 }}>
+        {before}
+        <a
+          href="/#contact"
+          onClick={(e) => {
+            e.preventDefault();
+            if (typeof window !== "undefined") {
+              if (window.location.pathname === "/") {
+                const el = document.getElementById("contact");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth" });
+                  window.history.pushState(null, "", "/#contact");
+                  return;
+                }
+              }
+              window.location.href = "/#contact";
+            }
+          }}
+          style={{
+            color: "inherit",
+            textDecoration: "underline",
+            textUnderlineOffset: "3px",
+            fontWeight: 600,
+            cursor: "pointer",
+            pointerEvents: "auto",
+            position: "relative",
+            zIndex: 30,
+            display: "inline",
+          }}
+        >
+          {linkText}
+        </a>
+        {after}
+      </span>
+    );
+  }
+  return text;
+}
+
 export default function RegisterStep({
   onContinue,
   onOAuthSuccess,
@@ -158,16 +203,22 @@ export default function RegisterStep({
         password,
         phone,
       });
-
+      // if (response.token && response.user) {
+      //   onOAuthSuccess({ token: response.token, user: response.user });
+      //   return;
+      // } 
       onContinue({
-        expertId: response.expertId,
-        phone,
+        expertId: response.expertId || "",
+        phone: response.phone || phone,
         fullName,
         email: normalizeEmail(email),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Registration failed.";
-      if (isDuplicateRegistrationMessage(message)) {
+      if (
+        (isDuplicateRegistrationMessage(message) || message.includes("incomplete application")) &&
+        !/log\s*in/i.test(message)
+      ) {
         setSubmitError(
           `${message} Please log in to continue your onboarding or check your application status.`,
         );
@@ -212,6 +263,7 @@ export default function RegisterStep({
                     onBlur={() => markTouched("firstName")}
                     autoComplete="given-name"
                     aria-invalid={Boolean(fieldError("firstName"))}
+                    suppressHydrationWarning
                   />
                 </div>
                 {fieldError("firstName") && (
@@ -236,6 +288,7 @@ export default function RegisterStep({
                     onBlur={() => markTouched("lastName")}
                     autoComplete="family-name"
                     aria-invalid={Boolean(fieldError("lastName"))}
+                    suppressHydrationWarning={true}
                   />
                 </div>
                 {fieldError("lastName") && (
@@ -262,6 +315,7 @@ export default function RegisterStep({
                   onBlur={() => markTouched("email")}
                   autoComplete="email"
                   aria-invalid={Boolean(fieldError("email"))}
+                  suppressHydrationWarning={true}
                 />
               </div>
               {fieldError("email") && (
@@ -286,6 +340,7 @@ export default function RegisterStep({
                 onBlur={() => markTouched("password")}
                 autoComplete="new-password"
                 aria-invalid={Boolean(fieldError("password"))}
+                suppressHydrationWarning={true}
               />
               <button
                 type="button"
@@ -365,21 +420,7 @@ export default function RegisterStep({
 
           {submitError ? (
             <div className={register.errorBannerBox} role="alert">
-              <p className={register.fieldErrorBelow}>{submitError}</p>
-              {isDuplicateRegistrationMessage(submitError) ? (
-                <p className={register.authToggle}>
-                  Already registered?{" "}
-                  {onSwitchToLogin ? (
-                    <button type="button" className={register.authToggleBtn} onClick={() => onSwitchToLogin(email)}>
-                      Log in to your account
-                    </button>
-                  ) : (
-                    <Link href={loginHref} className={register.authToggleBtn}>
-                      Log in to your account
-                    </Link>
-                  )}
-                </p>
-              ) : null}
+              <p className={register.fieldErrorBelow}>{renderAuthErrorMessage(submitError)}</p>
             </div>
           ) : null}
 
@@ -399,12 +440,26 @@ export default function RegisterStep({
           <p className={register.authToggle}>
             Already have an account?{" "}
             {onSwitchToLogin ? (
-              <button type="button" className={register.authToggleBtn} onClick={() => onSwitchToLogin(email)}>
-                Login
+              <button
+                type="button"
+                className={register.authToggleBtn}
+                onClick={() => onSwitchToLogin(email)}
+              >
+                <span className={register.authToggleLabelText}>
+                  <span className={register.authToggleLabelTrack}>
+                    <span className={register.authToggleLabelUp}>Login</span>
+                    <span className={register.authToggleLabelUp} aria-hidden="true">Login</span>
+                  </span>
+                </span>
               </button>
             ) : (
               <Link href={loginHref} className={register.authToggleBtn}>
-                Login
+                <span className={register.authToggleLabelText}>
+                  <span className={register.authToggleLabelTrack}>
+                    <span className={register.authToggleLabelUp}>Login</span>
+                    <span className={register.authToggleLabelUp} aria-hidden="true">Login</span>
+                  </span>
+                </span>
               </Link>
             )}
           </p>

@@ -4,6 +4,7 @@ import { useId, useMemo } from "react";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DesktopTimePicker } from "@mui/x-date-pickers/DesktopTimePicker";
+import type { PickerChangeHandlerContext } from "@mui/x-date-pickers/models";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -19,6 +20,7 @@ type TimePickerProps = {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  required?: boolean;
   minTime?: string;
   theme?: "dark" | "light";
   validateTime?: (value: string) => boolean;
@@ -30,6 +32,7 @@ export default function TimePicker({
   value,
   onChange,
   disabled = false,
+  required = false,
   minTime,
   theme = "dark",
   validateTime,
@@ -96,6 +99,7 @@ export default function TimePicker({
 
   // Perform validation matching existing criteria
   const hasError = useMemo(() => {
+    if (required && !disabled && !parsedValue) return true;
     if (!parsedValue) return false;
 
     // 1. Minimum time boundary check
@@ -112,9 +116,14 @@ export default function TimePicker({
     }
 
     return false;
-  }, [parsedValue, parsedMinTime, validateTime]);
+  }, [required, disabled, parsedValue, parsedMinTime, validateTime]);
 
-  const handleTimeChange = (newValue: dayjs.Dayjs | null, context?: any) => {
+  const missingRequiredValue = required && !disabled && !parsedValue;
+
+  const handleTimeChange = (
+    newValue: dayjs.Dayjs | null,
+    context?: PickerChangeHandlerContext<unknown>,
+  ) => {
     if (newValue === null) {
       onChange("");
     } else if (newValue.isValid()) {
@@ -166,13 +175,16 @@ export default function TimePicker({
                 size: "small",
                 error: hasError,
                 helperText: hasError
-                  ? parsedMinTime && parsedValue?.isBefore(parsedMinTime)
+                  ? missingRequiredValue
+                    ? `Select ${label?.toLowerCase() ?? "a time"}.`
+                    : parsedMinTime && parsedValue?.isBefore(parsedMinTime)
                     ? "Must be at least 30 mins after start"
                     : "Time conflict with another slot"
                   : undefined,
                 slotProps: {
                   htmlInput: {
                     "aria-label": ariaLabel,
+                    "aria-required": required || undefined,
                   },
                 },
                 sx: {
@@ -194,21 +206,25 @@ export default function TimePicker({
                         borderColor: `${isDark ? "var(--border-chip)" : "var(--mercury)"} !important`,
                       },
                     },
-                    "&.Mui-focused": {
+                    "&.Mui-focused, &:focus-within": {
                       backgroundColor: (isDark ? "rgba(255, 255, 255, 0.03)" : "var(--white)") + " !important",
-                      boxShadow: !isDark
-                        ? "0 0 0 3px color-mix(in srgb, var(--pomegranate) 10%, transparent)"
-                        : "none",
+                      boxShadow: "0 0 0 1px rgba(255, 59, 48, 0.4)",
                       "& .MuiPickersOutlinedInput-notchedOutline": {
-                        borderColor: `${isDark ? "rgba(255, 255, 255, 0.18)" : "var(--pomegranate)"} !important`,
+                        borderColor: "#FF3B30 !important",
                         borderWidth: "1px",
                       },
                     },
-                    "&.Mui-focused:hover .MuiPickersOutlinedInput-notchedOutline": {
-                      borderColor: `${isDark ? "rgba(255, 255, 255, 0.18)" : "var(--pomegranate)"} !important`,
+                    "&.Mui-focused:hover .MuiPickersOutlinedInput-notchedOutline, &:focus-within:hover .MuiPickersOutlinedInput-notchedOutline": {
+                      borderColor: "#FF3B30 !important",
                     },
                     "&.Mui-error .MuiPickersOutlinedInput-notchedOutline": {
                       borderColor: "#e53b17 !important",
+                    },
+                    "&.Mui-error.Mui-focused, &.Mui-error:focus-within": {
+                      boxShadow: "0 0 0 1px rgba(255, 59, 48, 0.4)",
+                      "& .MuiPickersOutlinedInput-notchedOutline": {
+                        borderColor: "#FF3B30 !important",
+                      },
                     },
                   },
                   "& .MuiPickersOutlinedInput-input": {

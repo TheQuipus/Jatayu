@@ -2,6 +2,7 @@ import { getSetting } from './settingsHelper.js';
 
 const TAGLINE_MAX = 160;
 const BIO_MAX = 160;
+const TITLE_MAX = 80;
 
 function hasPlaceholderCredential(value) {
   if (!value) return true;
@@ -426,13 +427,45 @@ function buildPrompt(context) {
   const languages = asStringList(context.languages);
   const employment = formatEmployment(context.employment);
   const education = formatEducation(context.education);
-  const tone = clip(context.tone, 40);
-  const field = context.field === 'bio' ? 'bio' : context.field === 'tagLine' ? 'tagLine' : '';
+  const tone = ['professional', 'casual', 'concise'].includes(String(context.tone || '').toLowerCase())
+    ? String(context.tone).toLowerCase()
+    : '';
+  const field = context.field === 'bio'
+    ? 'bio'
+    : context.field === 'tagLine'
+      ? 'tagLine'
+      : context.field === 'professionalTitle'
+        ? 'professionalTitle'
+        : '';
   const intent = context.intent === 'improve' || context.intent === 'regenerate'
     ? context.intent
     : 'suggest';
+  const toneInstructions = {
+    professional: 'Use polished, confident language appropriate for an expert profile. Avoid unnecessary jargon.',
+    casual: 'Use natural, friendly, conversational language. Be approachable without sounding robotic or overly informal.',
+    concise: 'Use short, direct, impactful language. Keep only the most useful detail.',
+  };
+  const variationDirections = [
+    'Emphasize a practical client outcome.',
+    'Lead with the expert’s strongest relevant specialty.',
+    'Focus on the kind of challenge the expert can help solve.',
+    'Highlight a clear, useful next step for a client.',
+    'Describe the expert’s approach without adding unsupported claims.',
+    'Choose a distinct angle from the current wording.',
+    'Focus on the value of the expert’s relevant experience.',
+    'Use a fresh sentence structure and emphasize a specific skill.',
+  ];
+  const variantIndex = Number.isFinite(context.variantIndex)
+    ? Math.abs(Math.trunc(context.variantIndex))
+    : 0;
 
-  const fieldLabel = field === 'bio' ? 'brief introduction' : field === 'tagLine' ? 'tag line' : 'tag line and brief introduction';
+  const fieldLabel = field === 'bio'
+    ? 'brief introduction'
+    : field === 'tagLine'
+      ? 'tag line'
+      : field === 'professionalTitle'
+        ? 'professional title'
+        : 'tag line and brief introduction';
   const intentInstructions = {
     suggest: `Write a fresh ${fieldLabel} from the context.`,
     regenerate:
@@ -445,16 +478,21 @@ function buildPrompt(context) {
     ? 'Return JSON with key bio only.'
     : field === 'tagLine'
       ? 'Return JSON with key tagLine only.'
-      : 'Return JSON with keys tagLine and bio only.';
+      : field === 'professionalTitle'
+        ? 'Return JSON with key professionalTitle only.'
+        : 'Return JSON with keys tagLine and bio only.';
 
   return [
     `Write an expert profile ${fieldLabel} for a consultation marketplace.`,
     jsonKeys,
-    field !== 'bio' ? `tagLine: one line, max ${TAGLINE_MAX} characters, no quotation marks around the whole line.` : '',
-    field !== 'tagLine' ? `bio: one short paragraph, max ${BIO_MAX} characters, first person, concrete, no hype.` : '',
+    field === 'tagLine' || field === '' ? `tagLine: one line, max ${TAGLINE_MAX} characters, no quotation marks around the whole line.` : '',
+    field === 'bio' || field === '' ? `bio: one short paragraph, max ${BIO_MAX} characters, first person, concrete, no hype.` : '',
+    field === 'professionalTitle' ? `professionalTitle: a concise title, max ${TITLE_MAX} characters, no quotes, no extra descriptors.` : '',
     'Do not invent employers, degrees, or skills that are not in the context.',
     'Do not include internal experience level labels like "emerging" or "established" in the text.',
-    field ? `Only generate the ${fieldLabel}. Do not change the other field.` : '',
+    field ? `Only generate the ${fieldLabel}. Do not change the other fields.` : '',
+    tone ? `Tone: ${tone}. ${toneInstructions[tone]}` : '',
+    tone ? `Variation direction: ${variationDirections[variantIndex % variationDirections.length]}` : '',
     intentInstructions[intent],
     '',
     'Context:',
@@ -470,6 +508,7 @@ function buildPrompt(context) {
     tone ? `- Tone: ${tone}` : '',
     context.currentTagLine ? `- Current tag line: ${clip(context.currentTagLine, TAGLINE_MAX)}` : '',
     context.currentBio ? `- Current introduction: ${clip(context.currentBio, BIO_MAX)}` : '',
+    context.currentProfessionalTitle ? `- Current professional title: ${clip(context.currentProfessionalTitle, TITLE_MAX)}` : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -598,7 +637,26 @@ function withFieldLock(pair, field, avoidTag, avoidBio) {
   return pair;
 }
 
-export function buildLocalIdentityCopy(context = {}) {
+export function buildLocalTitleSuggestion(context = {}) {
+  const category = clip(context.category, 60);
+  const currentTitle = clip(context.currentProfessionalTitle || context.professionalTitle || '', TITLE_MAX);
+  const skills = asStringList(context.skills, 3);
+  const skillPhrase = skills.length > 0 ? skills[0] : category || 'Consulting';
+  const role = currentTitle || (category ? `${category} Expert` : 'Consultant');
+  const variants = [
+    role,
+    `${skillPhrase} Specialist`,
+    `${category || 'Expert'} Consultant`,
+    `Senior ${role}`,
+    `${role} • ${skillPhrase}`,
+    `${skillPhrase} Expert`,
+  ];
+  const requested = Number.isFinite(context.variantIndex) ? Number(context.variantIndex) : 0;
+  const chosen = variants[Math.abs(Math.trunc(requested)) % variants.length] || role;
+  return clip(chosen, TITLE_MAX);
+}
+
+function buildLocalIdentityCopy(context = {}) {
   const templates = identityTemplates(context);
   const avoidTag = clip(context.currentTagLine, TAGLINE_MAX);
   const avoidBio = clip(context.currentBio, BIO_MAX);
@@ -647,7 +705,6 @@ export function buildLocalIdentityCopy(context = {}) {
     avoidBio,
   );
 }
-
 function buildMultiTonePrompt(context) {
   const skills = asStringList(context.skills);
   const languages = asStringList(context.languages);
@@ -679,6 +736,12 @@ function buildMultiTonePrompt(context) {
 }
 
 export async function suggestExpertIdentityCopy(context = {}) {
+  const requestedField = context.field === 'bio' || context.field === 'tagLine' || context.field === 'professionalTitle'
+    ? context.field
+    : '';
+  const requestedTone = ['professional', 'casual', 'concise'].includes(String(context.tone || '').toLowerCase())
+    ? String(context.tone).toLowerCase()
+    : 'professional';
   const localProf = buildLocalIdentityCopy({ ...context, variantIndex: 0 });
   const localCasual = buildLocalIdentityCopy({ ...context, variantIndex: 2 });
   const localConcise = buildLocalIdentityCopy({ ...context, variantIndex: 4 });
@@ -689,13 +752,25 @@ export async function suggestExpertIdentityCopy(context = {}) {
     concise: { tagLine: localConcise.tagLine, bio: localConcise.bio },
   };
 
-  const requestedTone = String(context.tone || '').toLowerCase();
+  const localRequested = requestedField
+    ? requestedField === 'professionalTitle'
+      ? buildLocalTitleSuggestion({ ...context, tone: requestedTone, variantIndex: Number.isFinite(context.variantIndex) ? Number(context.variantIndex) : 0 })
+      : buildLocalIdentityCopy({
+        ...context,
+        field: requestedField,
+        tone: requestedTone,
+        variantIndex: Number.isFinite(context.variantIndex)
+          ? Number(context.variantIndex) + { professional: 0, casual: 2, concise: 4 }[requestedTone]
+          : { professional: 0, casual: 2, concise: 4 }[requestedTone],
+      })
+    : null;
   const selectedFallback = fallbackAll[requestedTone] || fallbackAll.professional;
-
-  const settings = await readAiSettings();
-
-  if (!settings.configured) {
-    return {
+  const fallbackText = requestedField
+    ? (requestedField === 'professionalTitle' ? localRequested : localRequested[requestedField])
+    : undefined;
+  const fallbackResult = requestedField
+    ? { [requestedField]: fallbackText, source: 'fallback', notice: AI_FALLBACK_NOTICE }
+    : {
       tagLine: selectedFallback.tagLine,
       bio: selectedFallback.bio,
       options: fallbackAll,
@@ -703,14 +778,44 @@ export async function suggestExpertIdentityCopy(context = {}) {
       source: 'fallback',
       notice: AI_FALLBACK_NOTICE,
     };
+
+  const settings = await readAiSettings();
+
+  if (!settings.configured) {
+    return fallbackResult;
   }
 
   try {
     const raw = await completeChat({
       settings,
-      prompt: buildMultiTonePrompt(context),
+      prompt: requestedField
+        ? buildPrompt({ ...context, field: requestedField, tone: requestedTone })
+        : buildMultiTonePrompt(context),
     });
     const parsed = parseJsonObject(raw);
+
+    if (requestedField) {
+      const currentCopy = requestedField === 'tagLine'
+        ? context.currentTagLine
+        : requestedField === 'bio'
+          ? context.currentBio
+          : context.currentProfessionalTitle || context.professionalTitle;
+      const generated = clip(
+        parsed[requestedField] ||
+          (requestedField === 'bio' ? parsed.briefIntroduction : requestedField === 'professionalTitle' ? (parsed.title || parsed.professionalTitle) : parsed.tagline),
+        requestedField === 'tagLine' ? TAGLINE_MAX : requestedField === 'bio' ? BIO_MAX : TITLE_MAX,
+      );
+      if (!generated) {
+        throw new AiProviderError(`AI returned no ${requestedField} suggestion.`);
+      }
+      if (currentCopy && normalizeCopy(generated) === normalizeCopy(currentCopy)) {
+        return {
+          ...fallbackResult,
+          notice: 'The AI repeated your current text; showing an alternative profile-based suggestion.',
+        };
+      }
+      return { [requestedField]: generated, source: 'ai' };
+    }
 
     const profTag = clip(parsed.professional?.tagLine || parsed.professional?.tagline || localProf.tagLine, TAGLINE_MAX);
     const profBio = clip(parsed.professional?.bio || parsed.professional?.briefIntroduction || localProf.bio, BIO_MAX);
@@ -736,15 +841,8 @@ export async function suggestExpertIdentityCopy(context = {}) {
       suggestions: options,
       source: 'ai',
     };
-  } catch (error) {
-    return {
-      tagLine: selectedFallback.tagLine,
-      bio: selectedFallback.bio,
-      options: fallbackAll,
-      suggestions: fallbackAll,
-      source: 'fallback',
-      notice: AI_FALLBACK_NOTICE,
-    };
+  } catch {
+    return fallbackResult;
   }
 }
 
@@ -779,6 +877,68 @@ Return a JSON object strictly in this format:
     return { skills: cleanedSkills, source: 'ai' };
   } catch (error) {
     return { skills: [], source: 'ai' };
+  }
+}
+
+export async function recommendExpertMatches(context = {}) {
+  const candidates = Array.isArray(context.candidates) ? context.candidates : [];
+
+  let settings;
+  try {
+    settings = await readAiSettings();
+  } catch {
+    return { matches: [], source: 'fallback' };
+  }
+
+  if (!settings.configured || candidates.length === 0) {
+    return { matches: [], source: 'fallback' };
+  }
+
+  const seekerCategory = String(context.seeker?.category || '').trim();
+  const seekerTopics = Array.isArray(context.seeker?.topics) ? context.seeker.topics : [];
+  const seekerSummary = String(context.seeker?.needsText || context.seeker?.summary || '').trim();
+
+  const prompt = [
+    'You are ranking approved expert candidates for a seeker consultation marketplace.',
+    'Return valid JSON only.',
+    'Return a top-level object with a "matches" array.',
+    'Each match must include: expertId, relevanceReason, confidence.',
+    'confidence must be a number between 0 and 1.',
+    'Use only expert IDs that are present in the candidate list below.',
+    'Do not invent or guess IDs.',
+    'If no candidate is a plausible fit, return an empty matches array.',
+    '',
+    `Seeker primary skill/category: ${seekerCategory || 'Not specified'}`,
+    `Seeker topics: ${seekerTopics.join(', ') || 'Not specified'}`,
+    `Seeker summary: ${seekerSummary || 'Not specified'}`,
+    '',
+    'Candidate list:',
+    JSON.stringify(candidates.slice(0, 20), null, 2),
+    '',
+    'Return JSON in this exact shape:',
+    '{"matches":[{"expertId":"EXPERT_ID","relevanceReason":"short reason why this expert is relevant","confidence":0.82}]}'
+  ].join('\n');
+
+  try {
+    const raw = await completeChat({ settings, prompt });
+    const parsed = parseJsonObject(raw);
+    const candidateIds = new Set(candidates.map((candidate) => String(candidate.id || candidate.expertId || '').trim()).filter(Boolean));
+    const entries = Array.isArray(parsed.matches) ? parsed.matches : [];
+    const matches = entries
+      .map((entry) => ({
+        expertId: String(entry?.expertId || entry?.id || '').trim(),
+        relevanceReason: String(entry?.relevanceReason || entry?.reason || '').trim(),
+        confidence: Number(entry?.confidence ?? entry?.score ?? 0),
+      }))
+      .filter((entry) => candidateIds.has(entry.expertId))
+      .filter((entry) => Number.isFinite(entry.confidence) && entry.confidence > 0)
+      .filter((entry, index, all) => all.findIndex((other) => other.expertId === entry.expertId) === index)
+      .sort((left, right) => right.confidence - left.confidence)
+      .slice(0, 5);
+
+    return { matches, source: 'ai' };
+  } catch {
+    return { matches: [], source: 'fallback' };
   }
 }
 
@@ -996,5 +1156,3 @@ export async function improveSeekerNeedsCopy(context = {}) {
     };
   }
 }
-
-

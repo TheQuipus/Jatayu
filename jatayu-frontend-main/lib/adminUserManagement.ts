@@ -1,4 +1,4 @@
-export type UserStatus = "active" | "on_hold" | "suspended" | "pending" | "deleted" | "flagged";
+export type UserStatus = "active" | "on_hold" | "suspended" | "pending" | "deleted" | "flagged" | "blacklisted";
 
 export type ExpertUser = {
   id: string;
@@ -16,11 +16,18 @@ export type ExpertUser = {
   totalEarnings: number;
   hourlyRate: number;
   status: UserStatus;
+  isBlacklisted?: boolean;
+  blacklistedAt?: string | null;
   joinedDate: string;
   lastActive: string;
   city: string;
   location: string;
   bio: string;
+  closedSla?: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  closedAt?: string;
+  applicationNumber?: string;
 };
 
 export type SeekerUser = {

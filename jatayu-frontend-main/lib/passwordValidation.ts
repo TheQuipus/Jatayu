@@ -4,6 +4,8 @@ export type PasswordValidationContext = {
   names?: string[];
 };
 
+export type PasswordMessageStyle = "status" | "instruction";
+
 export type PasswordScoreRule = {
   id: string;
   label: string;
@@ -95,6 +97,17 @@ const PASSWORD_CHARACTER_CLASS_RULES = [
 
 /** Required before the meter can show Strong. */
 const PASSWORD_STRONG_RULES = ["length12", "noRepeats"] as const;
+
+const PASSWORD_INSTRUCTION_MESSAGES: Record<string, string> = {
+  length8: "Password must be at least 8 characters long.",
+  length12: "Use at least 12 characters for a stronger password.",
+  lowercase: "Password must contain at least one lowercase letter.",
+  uppercase: "Password must contain at least one uppercase letter.",
+  number: "Password must contain at least one number.",
+  symbol: "Password must contain at least one symbol.",
+  noRepeats: "Password must not contain four identical characters in a row.",
+  noPersonalInfo: "Password must not contain your username or email.",
+};
 
 function passwordContainsPersonalInfo(
   password: string,
@@ -274,11 +287,20 @@ export function isPasswordValid(
 export function getPasswordHint(
   password: string,
   context?: PasswordValidationContext,
+  messageStyle: PasswordMessageStyle = "status",
 ): string {
-  if (!password) return "At least 8 characters";
+  if (!password) {
+    return messageStyle === "instruction"
+      ? PASSWORD_INSTRUCTION_MESSAGES.length8
+      : "At least 8 characters";
+  }
   if (isPasswordValid(password, context)) return "";
 
-  if (password.length < 8) return "At least 8 characters";
+  if (password.length < 8) {
+    return messageStyle === "instruction"
+      ? PASSWORD_INSTRUCTION_MESSAGES.length8
+      : "At least 8 characters";
+  }
 
   const rules = getPasswordScoreRules(password, context);
   const priority = [
@@ -293,19 +315,33 @@ export function getPasswordHint(
     .map((id) => rules.find((rule) => rule.id === id))
     .find((rule) => rule && !rule.met);
 
-  if (unmet) return unmet.label;
-  if (hasWeakPasswordPattern(password)) return "Use a less predictable password";
+  if (unmet) {
+    return messageStyle === "instruction"
+      ? PASSWORD_INSTRUCTION_MESSAGES[unmet.id] || unmet.label
+      : unmet.label;
+  }
+  if (hasWeakPasswordPattern(password)) {
+    return messageStyle === "instruction"
+      ? "Choose a less predictable password."
+      : "Use a less predictable password";
+  }
 
-  return "Password is too weak";
+  return messageStyle === "instruction" ? "Choose a stronger password." : "Password is too weak";
 }
 
 export function getPasswordValidationError(
   password: string,
   context?: PasswordValidationContext,
+  messageStyle: PasswordMessageStyle = "status",
 ): string | null {
-  if (!password) return "At least 8 characters";
+  if (!password) {
+    return messageStyle === "instruction"
+      ? PASSWORD_INSTRUCTION_MESSAGES.length8
+      : "At least 8 characters";
+  }
   if (!isPasswordValid(password, context)) {
-    return getPasswordHint(password, context) || "Password is too weak";
+    return getPasswordHint(password, context, messageStyle)
+      || (messageStyle === "instruction" ? "Choose a stronger password." : "Password is too weak");
   }
   return null;
 }

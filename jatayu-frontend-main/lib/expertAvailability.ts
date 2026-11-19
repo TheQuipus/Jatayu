@@ -215,3 +215,9 @@ export function isAvailabilityValid(timezone: string, slots: TimeSlot[]) {
 
   return Boolean(timezone) && hasValidSlot && !hasConflict;
 }
+
+export function isAvailabilityStepEmpty(timezone: string, slots: readonly TimeSlot[]): boolean {
+  return !timezone.trim() && slots.every(
+    (slot) => slot.days.length === 0 && !slot.from.trim() && !slot.to.trim(),
+  );
+}

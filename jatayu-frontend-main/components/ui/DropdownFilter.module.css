@@ -1,0 +1,538 @@
+/* ==========================================================================
+   DropdownFilter — Jatayu Jet-Black / Industrial Chamfer & Light Admin Themes
+   Wired via react-select `unstyled` + `classNames`
+   ========================================================================== */
+
+.root {
+  position: relative;
+  width: 100%;
+  font-family: var(--font-body);
+}
+
+.label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.labelDark {
+  color: rgba(255, 255, 255, 0.56);
+}
+
+.labelLight {
+  color: var(--dove-gray);
+}
+
+.requiredMark {
+  color: var(--pomegranate);
+  margin-left: 3px;
+}
+
+/* ---------- Select Control (Trigger) ---------- */
+
+.control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px 0 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.controlCompact {
+  min-height: 36px;
+  padding: 0 8px 0 10px;
+  font-size: 13px;
+}
+
+/* Dark theme (Onboarding surfaces — matches ExperienceStep / screenshot) */
+.controlDark {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-chip);
+  border-radius: 0;
+  color: var(--white);
+}
+
+.controlDark:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.controlDarkFocused {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.controlDarkDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Light theme (Admin / Dashboard surfaces) */
+.controlLight {
+  background-color: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 4px;
+  color: var(--ink);
+}
+
+.controlLight:hover {
+  border-color: var(--silver-chalice);
+}
+
+.controlLightFocused {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px rgba(11, 13, 20, 0.08);
+}
+
+.controlLightDisabled {
+  background-color: var(--seashell);
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.controlError {
+  border-color: var(--pomegranate) !important;
+}
+
+/* ---------- Value, Placeholder & Search Input ---------- */
+
+.valueContainer {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  padding: 2px 0;
+  gap: 4px;
+}
+
+.placeholderDark {
+  color: rgba(255, 255, 255, 0.36);
+}
+
+.placeholderLight {
+  color: var(--gray);
+}
+
+.singleValueDark {
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.singleValueLight {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inputDark {
+  color: var(--white);
+  font-size: 14px;
+}
+
+.inputLight {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+@media (pointer: coarse) {
+  .inputDark,
+  .inputLight {
+    font-size: max(1rem, 1em);
+  }
+}
+
+/* ---------- Indicators (Clear & Chevron) ---------- */
+
+.indicatorsContainer {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.indicatorBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.18s ease;
+}
+
+.indicatorDark {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.indicatorDark:hover {
+  color: var(--white);
+}
+
+.indicatorLight {
+  color: var(--dove-gray);
+}
+
+.indicatorLight:hover {
+  color: var(--ink);
+}
+
+.indicatorOpen {
+  transform: rotate(180deg);
+}
+
+/* ---------- Dropdown Menu & Portal List ---------- */
+
+.menu {
+  margin-top: 4px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  font-family: var(--font-body);
+}
+
+.menuDark {
+  background-color: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+.menuLight {
+  background-color: var(--white);
+  border: 1px solid var(--mercury);
+  border-radius: 4px;
+  box-shadow: 0 12px 32px rgba(8, 10, 16, 0.12);
+}
+
+.menuList {
+  padding: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.menuListDark {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.menuListLight {
+  scrollbar-color: var(--silver) transparent;
+}
+
+/* ---------- Option Rows ---------- */
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color 0.14s ease, color 0.14s ease, outline-color 0.14s ease;
+  user-select: none;
+}
+
+.optionDark {
+  color: rgba(255, 255, 255, 0.78);
+  background-color: transparent;
+}
+
+.optionDarkFocused {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--white);
+  outline: 1px solid rgba(255, 255, 255, 0.22);
+  outline-offset: -1px;
+}
+
+.optionDarkSelected {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: var(--white);
+  font-weight: 500;
+}
+
+.optionLight {
+  color: var(--ink);
+  background-color: transparent;
+  border-radius: 3px;
+}
+
+.optionLightFocused {
+  background-color: var(--seashell);
+  color: var(--ink);
+}
+
+.optionLightSelected {
+  background-color: rgba(229, 59, 23, 0.1);
+  color: var(--pomegranate);
+  font-weight: 600;
+}
+
+.optionDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.optionJustCreated {
+  animation: optionCreatedFlash 1.2s ease;
+}
+
+@keyframes optionCreatedFlash {
+  0% {
+    background-color: rgba(229, 59, 23, 0.28);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.noOptionsMessage {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.noOptionsDark {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.noOptionsLight {
+  color: var(--dove-gray);
+}
+
+/* ---------- Inline "Other" Row & Editor ---------- */
+
+.otherSection {
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.otherSectionDark {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.otherSectionLight {
+  border-top: 1px solid var(--mercury);
+}
+
+.otherTriggerBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.otherTriggerDark {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.otherTriggerDark:hover,
+.otherTriggerDark:focus-visible {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  outline: 1px solid rgba(255, 255, 255, 0.24);
+  outline-offset: -1px;
+}
+
+.otherTriggerLight {
+  color: var(--ink);
+  border-radius: 3px;
+}
+
+.otherTriggerLight:hover,
+.otherTriggerLight:focus-visible {
+  background-color: var(--seashell);
+  color: var(--pomegranate);
+  outline: 1px solid rgba(229, 59, 23, 0.35);
+  outline-offset: -1px;
+}
+
+.otherTriggerHint {
+  font-size: 11px;
+  opacity: 0.55;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.otherEditorRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 10px;
+}
+
+.otherEditorRowDark {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.otherEditorRowLight {
+  background-color: var(--seashell);
+  border: 1px solid var(--silver-chalice);
+  border-radius: 3px;
+}
+
+.otherEditorRowError {
+  border-color: var(--pomegranate) !important;
+}
+
+.otherInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+}
+
+.otherInputDark {
+  color: var(--white);
+  caret-color: var(--pomegranate);
+}
+
+.otherInputDark::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.otherInputLight {
+  color: var(--ink);
+  caret-color: var(--pomegranate);
+}
+
+.otherInputLight::placeholder {
+  color: var(--gray);
+}
+
+@media (pointer: coarse) {
+  .otherInput {
+    font-size: max(1rem, 1em);
+    height: 36px;
+  }
+}
+
+.otherAddBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  cursor: pointer;
+  background-color: var(--pomegranate);
+  color: var(--white);
+  transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+
+.otherAddBtnLight {
+  border-radius: 3px;
+}
+
+.otherAddBtn:hover:not(:disabled) {
+  background-color: var(--thunderbird);
+}
+
+.otherAddBtn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.otherAddBtn:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 1px;
+}
+
+.otherAddBtnLight:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.otherAddBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .otherAddBtn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+.inlineFeedback {
+  padding: 5px 10px 2px;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.inlineFeedbackError {
+  color: var(--pomegranate);
+}
+
+.inlineFeedbackInfoDark {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.inlineFeedbackInfoLight {
+  color: var(--dove-gray);
+}
+
+.maxReachedCaption {
+  padding: 7px 12px;
+  font-size: 11.5px;
+  font-style: italic;
+}
+
+.maxReachedDark {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.maxReachedLight {
+  color: var(--dove-gray);
+}
+
+/* ---------- Field Error & Screen Reader Region ---------- */
+
+.fieldError {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--pomegranate);
+}
+
+.srOnly {
+  position: absolute;
+  clip-path: inset(50%);
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+

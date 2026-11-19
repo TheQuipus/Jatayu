@@ -4,9 +4,13 @@ import {
   setExpertId,
   removeToken,
   removeExpertId,
+  getExpertToken,
+  setExpertToken,
+  removeExpertToken,
   type AuthResponse,
   type AuthUser,
 } from "@/lib/api";
+import type { OtpFlow } from "@/lib/otpFlow";
 import { EXPERT_DASHBOARD_HREF } from "@/lib/expertDashboard";
 import { generateUUID } from "@/lib/uuid";
 
@@ -43,10 +47,38 @@ const ONBOARDING_STEPS: ExpertOnboardingStep[] = [
   "success",
 ];
 
+const PERSISTED_ONBOARDING_STEPS = [
+  "category",
+  "skills",
+  "experience",
+  "identity",
+  "credentials",
+  "preferences",
+  "audience",
+  "availability",
+  "review",
+  "success",
+] as const;
+
+export function getCompletedOnboardingStepFlags(
+  onboardingStep: string | undefined,
+): Record<number, boolean> {
+  const nextStepIndex = PERSISTED_ONBOARDING_STEPS.indexOf(
+    onboardingStep as (typeof PERSISTED_ONBOARDING_STEPS)[number],
+  );
+  if (nextStepIndex < 0) return {};
+
+  const completedSteps: Record<number, boolean> = {};
+  for (let step = 1; step <= Math.min(nextStepIndex, 9); step += 1) {
+    completedSteps[step] = true;
+  }
+  return completedSteps;
+}
+
 const EXPERT_USER_KEY = "jatayu_expert_user";
 
 export function persistAuthSession(response: AuthResponse): AuthUser {
-  setToken(response.token);
+  setExpertToken(response.token);
   setExpertId(response.user.id);
   if (typeof window !== "undefined" && response.user) {
     try {
@@ -72,10 +104,12 @@ export function getStoredAuthUser(): AuthUser | null {
 import { clearExpertApplicationDraft } from "@/lib/expertApplicationsStore";
 
 export function clearExpertAuthOnly(): void {
-  removeToken();
+  removeExpertToken();
   removeExpertId();
   if (typeof window !== "undefined") {
     localStorage.removeItem(EXPERT_USER_KEY);
+    localStorage.removeItem("jatayu_expert_token");
+    sessionStorage.removeItem("jatayu_expert_token");
   }
 }
 
@@ -92,17 +126,46 @@ export type PendingOtpSession = {
   email: string;
   phone: string;
   fullName?: string;
+  flow?: OtpFlow;
 };
+
+export function isSignupOtpSession(session: PendingOtpSession): boolean {
+  return session.flow !== "login";
+}
 
 export function savePendingOtpSession(session: PendingOtpSession): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(PENDING_OTP_SESSION_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify(session);
+  try {
+    sessionStorage.setItem(PENDING_OTP_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
+  try {
+    localStorage.setItem(PENDING_OTP_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
 }
 
 export function readPendingOtpSession(): PendingOtpSession | null {
   if (typeof window === "undefined") return null;
 
-  const raw = sessionStorage.getItem(PENDING_OTP_SESSION_KEY);
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    raw = null;
+  }
+
+  if (!raw) {
+    try {
+      raw = localStorage.getItem(PENDING_OTP_SESSION_KEY);
+    } catch {
+      raw = null;
+    }
+  }
+
   if (!raw) return null;
 
   try {
@@ -116,11 +179,20 @@ export function readPendingOtpSession(): PendingOtpSession | null {
 
 export function clearPendingOtpSession(): void {
   if (typeof window === "undefined") return;
-  sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  try {
+    sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    // Ignore
+  }
+  try {
+    localStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    // Ignore
+  }
 }
 
 export function isAuthenticated(): boolean {
-  return Boolean(getToken());
+  return Boolean(getExpertToken());
 }
 
 export function resolveOnboardingStep(user: AuthUser): ExpertOnboardingStep {
@@ -186,12 +258,12 @@ export function buildCredentialsPayload(
     .filter((position) => position.jobTitle.trim() || position.company.trim())
     .map((position) => ({
       type: "employment",
-      title: position.jobTitle.trim() || "Role",
-      institution: position.company.trim() || "Company",
-      startYear: Number.parseInt(position.startYear, 10) || new Date().getFullYear(),
+      title: position.jobTitle.trim(),
+      institution: position.company.trim(),
+      startYear: position.startYear.trim(),
       endYear: position.currentlyWorking
         ? null
-        : Number.parseInt(position.endYear, 10) || null,
+        : position.endYear.trim(),
       description: position.responsibilities.trim() || null,
     }));
 
@@ -248,7 +320,7 @@ export function parseCredentialsFromProfile(credentials?: unknown): {
         startYear: item.startYear ? String(item.startYear) : "",
         endMonth: "",
         endYear: item.endYear ? String(item.endYear) : "",
-        currentlyWorking: !item.endYear,
+        currentlyWorking: item.endYear === null || item.endYear === undefined,
         responsibilities: item.description || "",
       });
     } else if (type === "education" || type === "degree" || type === "academic") {

@@ -141,6 +141,25 @@
   color: var(--white);
 }
 
+/* .categoryItem:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.categoryItemSelected:hover:not(:disabled) {
+  background: rgba(229, 59, 23, 0.12);
+  border-color: var(--pomegranate);
+} */
+
+.categoryItem:hover:not(:disabled):not(.categoryItemSelected) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.categoryItem:active:not(:disabled) {
+  background: rgba(229, 59, 23, 0.12);
+}
+
 .categoryItemSelected .categoryLabelText {
   color: var(--white);
 }
@@ -167,6 +186,9 @@
   max-height: 36px;
   cursor: text;
   padding-right: 6px;
+  background: var(--background-chip, rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.15s ease;
 }
 
 .categoryInputForm {
@@ -176,18 +198,30 @@
   gap: 8px;
 }
 
+.categoryItemInput:focus-within {
+  background: var(--background-chip, rgba(255, 255, 255, 0.03)) !important;
+  border-color: #FF3B30 !important;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
+}
+
 .categoryInlineInput {
   flex: 1;
   min-width: 120px;
   background: transparent;
   border: none;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
   font-family: var(--font-body);
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
   color: var(--white);
   padding: 0;
+}
+
+.categoryInlineInput:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .categoryInlineInput::placeholder {
@@ -249,6 +283,11 @@
   cursor: pointer;
   outline: none;
   flex-shrink: 0;
+}
+
+.categoryRemoveBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white);
 }
 
 .categoryItemSelected .categoryRemoveBtn {

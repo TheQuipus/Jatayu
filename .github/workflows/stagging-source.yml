@@ -1,0 +1,27 @@
+name: Validate stagging source
+
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    branches: [stagging]
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+jobs:
+  source-check:
+    name: Only main into stagging
+    runs-on: ubuntu-latest
+    steps:
+      # Validate metadata only. Never check out or execute pull request code here.
+      - name: Validate source branch and repository
+        env:
+          HEAD_BRANCH: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event_name == 'push' && github.repository || github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_BRANCH" != "main" ] || [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "Only main from this repository can merge into stagging."
+            exit 1
+          fi

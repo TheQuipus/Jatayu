@@ -31,6 +31,16 @@ export const SESSION_LENGTHS = [
 
 export type ConsultationFormatId = (typeof CONSULTATION_FORMATS)[number]["id"];
 
+export function areRequiredSessionPreferencesValid(
+  selectedFormats: readonly string[],
+  formatPrices: Readonly<Record<string, string>>,
+): boolean {
+  return selectedFormats.length > 0 && selectedFormats.every((format) => {
+    const price = Number.parseInt(formatPrices[format] ?? "", 10);
+    return Number.isFinite(price) && price > 0;
+  });
+}
+
 export function getFormatTitle(id: string): string {
   return CONSULTATION_FORMATS.find((format) => format.id === id)?.title ?? id;
 }

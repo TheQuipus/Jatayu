@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
@@ -52,6 +52,51 @@ function isFormComplete(email: string, password: string): boolean {
   );
 }
 
+function renderAuthErrorMessage(text: string | null) {
+  if (!text) return null;
+  const match = text.match(/^(.*?\b)(Contact Us\??)(.*)$/i);
+  if (match) {
+    const [, before, linkText, after] = match;
+    return (
+      <span style={{ pointerEvents: "auto", position: "relative", zIndex: 20 }}>
+        {before}
+        <a
+          href="/#contact"
+          onClick={(e) => {
+            e.preventDefault();
+            if (typeof window !== "undefined") {
+              if (window.location.pathname === "/") {
+                const el = document.getElementById("contact");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth" });
+                  window.history.pushState(null, "", "/#contact");
+                  return;
+                }
+              }
+              window.location.href = "/#contact";
+            }
+          }}
+          style={{
+            color: "inherit",
+            textDecoration: "underline",
+            textUnderlineOffset: "3px",
+            fontWeight: 600,
+            cursor: "pointer",
+            pointerEvents: "auto",
+            position: "relative",
+            zIndex: 30,
+            display: "inline",
+          }}
+        >
+          {linkText}
+        </a>
+        {after}
+      </span>
+    );
+  }
+  return text;
+}
+
 export default function LoginStep({
   onContinue,
   onRequiresOtp,
@@ -66,6 +111,16 @@ export default function LoginStep({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("blocked") === "1") {
+        const reason = params.get("reason");
+        setSubmitError(reason || "Your profile is Marked as Blacklisted");
+      }
+    }
+  }, []);
 
   const values = { email, password };
   const canSubmit = isFormComplete(email, password);
@@ -106,6 +161,7 @@ export default function LoginStep({
           expertId: error.expertId,
           email: error.email,
           phone: error.phone,
+          flow: "login",
         });
         onRequiresOtp?.({
           expertId: error.expertId,
@@ -130,7 +186,6 @@ export default function LoginStep({
       <RegisterLeftPanel variant="login" />
 
       <div className={register.registerRight}>
-        <p className={styles.registerFormIntro}>Enter your details to login to your account</p>
 
         <form className={styles.registerForm} onSubmit={handleSubmit} noValidate>
           <div className={register.fieldGroup}>
@@ -189,15 +244,29 @@ export default function LoginStep({
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-            </div>
-            <div className={styles.forgotPasswordRow}>
-              {(fieldError("password") || submitError) ? (
-                <span className={styles.forgotPasswordError} role="alert">
-                  {fieldError("password") || submitError}
+              
+              {/* Error message placed in the exact same container location as Email */}
+              {(fieldError("password") || submitError) && (
+                <span
+                  className={register.fieldErrorBelow}
+                  role="alert"
+                  style={{ pointerEvents: "auto", zIndex: 10 }}
+                >
+                  {renderAuthErrorMessage(fieldError("password") || submitError)}
                 </span>
-              ) : <span />}
+              )}
+            </div>
+
+            <div className={styles.forgotPasswordRow}>
               <Link href="/forgot-password?role=expert" className={styles.forgotPasswordLink}>
-                Forgot Password?
+                <span className={styles.forgotPasswordText}>
+                  <span className={styles.forgotPasswordTrack}>
+                    <span className={styles.forgotPasswordUp}>Forgot Password?</span>
+                    <span className={styles.forgotPasswordUp} aria-hidden="true">
+                      Forgot Password?
+                    </span>
+                  </span>
+                </span>
               </Link>
             </div>
           </div>
@@ -219,12 +288,26 @@ export default function LoginStep({
           <p className={register.authToggle}>
             Don&apos;t have an account?{" "}
             {onSwitchToRegister ? (
-              <button type="button" className={register.authToggleBtn} onClick={onSwitchToRegister}>
-                Create one
+              <button
+                type="button"
+                className={register.authToggleBtn}
+                onClick={onSwitchToRegister}
+              >
+                <span className={register.authToggleLabelText}>
+                  <span className={register.authToggleLabelTrack}>
+                    <span className={register.authToggleLabelUp}>Create one</span>
+                    <span className={register.authToggleLabelUp} aria-hidden="true">Create one</span>
+                  </span>
+                </span>
               </button>
             ) : (
               <Link href={registerHref} className={register.authToggleBtn}>
-                Create one
+                <span className={register.authToggleLabelText}>
+                  <span className={register.authToggleLabelTrack}>
+                    <span className={register.authToggleLabelUp}>Create one</span>
+                    <span className={register.authToggleLabelUp} aria-hidden="true">Create one</span>
+                  </span>
+                </span>
               </Link>
             )}
           </p>

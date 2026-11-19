@@ -3,6 +3,9 @@ import { Expert, Credential, Availability, Admin, Booking, Seeker, sequelize } f
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { expertTimeOffSlots, validateTimeOff } from '../utils/expertTimeOff.js';
 import { normalizeExpertBookingPreferences } from '../config/expertBookingPreferences.js';
+import { isValidPortfolioUrl } from '../utils/portfolioUrl.js';
+import { validatePortfolioSamples } from '../utils/portfolioSamples.js';
+import { validateExpertCertificates } from '../utils/expertCertificates.js';
 import {
   AiNotConfiguredError,
   suggestExpertIdentityCopy,
@@ -10,13 +13,21 @@ import {
 } from '../utils/aiService.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { sendNotification } from '../services/notificationService.js';
+import { appendSectionAuditEvent } from '../utils/applicationAuditLog.js';
 
 function publicExpert(expert) {
   const data = expert?.toJSON ? expert.toJSON() : { ...expert };
   delete data.password;
-  if (data.onboardingMetadata && typeof data.onboardingMetadata === 'object') {
-    const { pendingOtp, ...safeMetadata } = data.onboardingMetadata;
-    data.onboardingMetadata = safeMetadata;
+  if (data.onboardingMetadata) {
+    if (typeof data.onboardingMetadata === 'string') {
+      try {
+        data.onboardingMetadata = JSON.parse(data.onboardingMetadata);
+      } catch {}
+    }
+    if (data.onboardingMetadata && typeof data.onboardingMetadata === 'object') {
+      const { pendingOtp, ...safeMetadata } = data.onboardingMetadata;
+      data.onboardingMetadata = safeMetadata;
+    }
   }
   return data;
 }
@@ -65,7 +76,7 @@ function parseJsonField(value) {
   return value;
 }
 
-const MAX_ONBOARDING_METADATA_BYTES = 64 * 1024;
+const MAX_ONBOARDING_METADATA_BYTES = 30 * 1024 * 1024;
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -97,7 +108,7 @@ function normalizeOnboardingMetadata(value) {
     throw new TypeError('onboardingMetadata must be a JSON object');
   }
   if (Buffer.byteLength(JSON.stringify(normalized), 'utf8') > MAX_ONBOARDING_METADATA_BYTES) {
-    throw new RangeError('onboardingMetadata must not exceed 64 KB');
+    throw new RangeError('onboardingMetadata must not exceed 30 MB');
   }
   return normalized;
 }
@@ -149,6 +160,19 @@ export const updateProfile = async (req, res) => {
   let onboardingMetadata;
   try {
     onboardingMetadata = normalizeOnboardingMetadata(body.onboardingMetadata);
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'portfolio')) {
+      const portfolio = onboardingMetadata.portfolio;
+      if (portfolio !== null && portfolio !== undefined && String(portfolio).trim() !== '' &&
+        (typeof portfolio !== 'string' || !isValidPortfolioUrl(portfolio))) {
+        throw new TypeError('Portfolio URL must be a valid absolute HTTP or HTTPS URL');
+      }
+    }
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'portfolioSamples')) {
+      onboardingMetadata.portfolioSamples = validatePortfolioSamples(onboardingMetadata.portfolioSamples);
+    }
+    if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'certificates')) {
+      onboardingMetadata.certificates = validateExpertCertificates(onboardingMetadata.certificates);
+    }
     if (onboardingMetadata && Object.hasOwn(onboardingMetadata, 'timeOff')) {
       onboardingMetadata.timeOff = validateTimeOff(onboardingMetadata.timeOff);
     }
@@ -188,29 +212,61 @@ export const updateProfile = async (req, res) => {
       const expert = await Expert.findByPk(expertId, { transaction, lock: transaction.LOCK.UPDATE });
       if (!expert) return false;
 
-      // Update fields based on which onboarding step/data is sent
-      if (fullName !== undefined) {
-        const normalizedName = String(fullName).trim();
-        if (!normalizedName) throw new TypeError('fullName cannot be empty');
-        expert.fullName = normalizedName;
+      // Check if any sections are approved and locked while application is on hold/unapproved
+      let currentMetadata = {};
+      try {
+        currentMetadata = normalizeOnboardingMetadata(expert.onboardingMetadata) || {};
+      } catch {
+        currentMetadata = {};
       }
-      if (category !== undefined) expert.category = category;
-      if (skills !== undefined) expert.skills = skills;
-      if (experienceLevel !== undefined) expert.experienceLevel = experienceLevel;
-      if (professionalTitle !== undefined) expert.professionalTitle = professionalTitle;
-      if (tagLine !== undefined) expert.tagLine = tagLine;
-      if (bio !== undefined) expert.bio = bio;
-      if (targetAudience !== undefined) {
-        expert.targetAudience = Array.isArray(targetAudience)
-          ? JSON.stringify(targetAudience)
-          : targetAudience;
-      }
-      if (focusAreas !== undefined) expert.focusAreas = focusAreas;
-      if (timezone !== undefined) expert.timezone = timezone;
 
-      if (selectedFormats !== undefined) expert.selectedFormats = selectedFormats;
-      if (selectedLengths !== undefined) expert.selectedLengths = selectedLengths;
-      if (formatPrices !== undefined) expert.formatPrices = formatPrices;
+      const clarifications = currentMetadata.sectionClarifications || {};
+      const sectionDecisions = currentMetadata.sectionDecisions || {};
+      const isUnapprovedOrOnHold = expert.status === 'on_hold' || expert.status === 'in_review' || expert.status === 'pending_review' || expert.status === 'pending';
+      const isSectionApproved = (secKey) => isUnapprovedOrOnHold && sectionDecisions[secKey]?.decision === 'approve';
+
+      // Update fields based on which onboarding step/data is sent (preserving locked approved sections)
+      if (!isSectionApproved('profile')) {
+        if (fullName !== undefined) {
+          const normalizedName = String(fullName).trim();
+          if (!normalizedName) throw new TypeError('fullName cannot be empty');
+          expert.fullName = normalizedName;
+        }
+        if (professionalTitle !== undefined) expert.professionalTitle = professionalTitle;
+        if (tagLine !== undefined) expert.tagLine = tagLine;
+        if (bio !== undefined) expert.bio = bio;
+        if (req.file) {
+          expert.profilePhotoSrc = `/uploads/${req.file.filename}`;
+        } else if (req.body.profilePhotoSrc !== undefined) {
+          expert.profilePhotoSrc = req.body.profilePhotoSrc;
+        }
+      }
+
+      if (!isSectionApproved('category')) {
+        if (category !== undefined) expert.category = category;
+        if (skills !== undefined) expert.skills = skills;
+        if (experienceLevel !== undefined) expert.experienceLevel = experienceLevel;
+      }
+
+      if (!isSectionApproved('audience')) {
+        if (targetAudience !== undefined) {
+          expert.targetAudience = Array.isArray(targetAudience)
+            ? JSON.stringify(targetAudience)
+            : targetAudience;
+        }
+        if (focusAreas !== undefined) expert.focusAreas = focusAreas;
+      }
+
+      if (!isSectionApproved('availability')) {
+        if (timezone !== undefined) expert.timezone = timezone;
+      }
+
+      if (!isSectionApproved('preferences')) {
+        if (selectedFormats !== undefined) expert.selectedFormats = selectedFormats;
+        if (selectedLengths !== undefined) expert.selectedLengths = selectedLengths;
+        if (formatPrices !== undefined) expert.formatPrices = formatPrices;
+      }
+
       if (onboardingMetadata !== undefined) {
         let storedMetadata = {};
         try {
@@ -218,22 +274,99 @@ export const updateProfile = async (req, res) => {
         } catch (error) {
           console.warn(`Resetting invalid onboardingMetadata for expert ${expertId}: ${error.message}`);
         }
+
+        // Filter metadata to prevent overwriting approved section metadata
+        const filteredIncomingMeta = { ...onboardingMetadata };
+        if (isSectionApproved('experience')) {
+          delete filteredIncomingMeta.portfolio;
+          delete filteredIncomingMeta.linkedin;
+        }
+        if (isSectionApproved('credentials')) {
+          delete filteredIncomingMeta.governmentId;
+          delete filteredIncomingMeta.kycPhotos;
+          delete filteredIncomingMeta.kycVideoUrl;
+          delete filteredIncomingMeta.certificates;
+          delete filteredIncomingMeta.portfolioSamples;
+        }
+        if (isSectionApproved('preferences')) {
+          delete filteredIncomingMeta.acceptCustomRequests;
+        }
+        if (isSectionApproved('audience')) {
+          delete filteredIncomingMeta.audiences;
+          delete filteredIncomingMeta.languages;
+        }
+
         expert.onboardingMetadata = {
           ...storedMetadata,
-          ...onboardingMetadata,
+          ...filteredIncomingMeta,
+          ...(storedMetadata.isBlacklisted !== undefined ? { isBlacklisted: storedMetadata.isBlacklisted } : {}),
+          ...(storedMetadata.blacklistedAt !== undefined ? { blacklistedAt: storedMetadata.blacklistedAt } : {}),
         };
       }
 
-      if (req.file) {
-        expert.profilePhotoSrc = `/uploads/${req.file.filename}`;
-      } else if (req.body.profilePhotoSrc !== undefined) {
-        expert.profilePhotoSrc = req.body.profilePhotoSrc;
+      // Check which unapproved sections were updated
+      let clarificationsUpdated = false;
+      const updatedSections = new Set();
+      if (!isSectionApproved('category') && (category !== undefined || skills !== undefined || experienceLevel !== undefined)) {
+        updatedSections.add('category');
+      }
+      if (!isSectionApproved('experience') && (credentials !== undefined || (onboardingMetadata && (onboardingMetadata.portfolio !== undefined || onboardingMetadata.linkedin !== undefined)))) {
+        updatedSections.add('experience');
+      }
+      if (!isSectionApproved('profile') && (fullName !== undefined || professionalTitle !== undefined || tagLine !== undefined || bio !== undefined || req.file)) {
+        updatedSections.add('profile');
+      }
+      if (!isSectionApproved('credentials') && onboardingMetadata && (onboardingMetadata.governmentId !== undefined || onboardingMetadata.kycVideoUrl !== undefined || onboardingMetadata.certificates !== undefined || onboardingMetadata.portfolioSamples !== undefined || onboardingMetadata.kycPhotos !== undefined)) {
+        updatedSections.add('credentials');
+      }
+      if (!isSectionApproved('preferences') && (selectedFormats !== undefined || selectedLengths !== undefined || formatPrices !== undefined || (onboardingMetadata && onboardingMetadata.acceptCustomRequests !== undefined))) {
+        updatedSections.add('preferences');
+      }
+      if (!isSectionApproved('audience') && (targetAudience !== undefined || focusAreas !== undefined || (onboardingMetadata && (onboardingMetadata.audiences !== undefined || onboardingMetadata.languages !== undefined)))) {
+        updatedSections.add('audience');
+      }
+      if (!isSectionApproved('availability') && (availabilitySlots !== undefined || timezone !== undefined)) {
+        updatedSections.add('availability');
+      }
+
+      // Check which unapproved sections were updated or submitted for review
+      let currentAuditLogs = currentMetadata.sectionAuditLogs || [];
+      const isReviewSubmit = Boolean(onboardingMetadata && onboardingMetadata.clarificationsAllSubmitted);
+      for (const [secKey, clar] of Object.entries(clarifications)) {
+        if (clar && clar.status === 'waiting') {
+          if (updatedSections.has(secKey) || isReviewSubmit) {
+            clar.status = 'received';
+            clar.receivedAt = new Date().toISOString();
+            clarificationsUpdated = true;
+            if (sectionDecisions[secKey]) {
+              sectionDecisions[secKey].clarificationStatus = 'received';
+              sectionDecisions[secKey].clarificationReceivedAt = new Date().toISOString();
+            }
+            currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+              sectionId: secKey,
+              action: 'clarification_response',
+              badgeLabel: 'RESPONSE RECEIVED',
+              note: 'Expert updated profile details in response to clarification request.',
+            }, { id: expert.id, fullName: expert.fullName, role: 'Expert' });
+          }
+        }
+      }
+
+      if (clarificationsUpdated) {
+        currentMetadata.sectionClarifications = clarifications;
+        currentMetadata.sectionDecisions = sectionDecisions;
+        currentMetadata.sectionAuditLogs = currentAuditLogs;
+        expert.onboardingMetadata = currentMetadata;
+      }
+
+      if (clarificationsUpdated || onboardingMetadata !== undefined) {
+        expert.changed('onboardingMetadata', true);
       }
 
       if (step) expert.onboardingStep = step;
       await expert.save({ transaction });
 
-      if (credentials !== undefined && Array.isArray(credentials)) {
+      if (!isSectionApproved('experience') && credentials !== undefined && Array.isArray(credentials)) {
         await Credential.destroy({ where: { expertId }, transaction });
         const credentialsToCreate = credentials.map(cred => ({
           expertId,
@@ -241,7 +374,7 @@ export const updateProfile = async (req, res) => {
           title: cred.title,
           institution: cred.institution,
           startYear: cred.startYear,
-          endYear: cred.endYear || null,
+          endYear: cred.endYear ?? null,
           description: cred.description || null
         }));
         if (credentialsToCreate.length > 0) {
@@ -249,7 +382,7 @@ export const updateProfile = async (req, res) => {
         }
       }
 
-      if (availabilitySlots !== undefined && Array.isArray(availabilitySlots)) {
+      if (!isSectionApproved('availability') && availabilitySlots !== undefined && Array.isArray(availabilitySlots)) {
         await Availability.destroy({ where: { expertId }, transaction });
         const slotsToCreate = availabilitySlots.map(slot => ({
           expertId,
@@ -288,6 +421,9 @@ export const updateProfile = async (req, res) => {
       message: error.message,
       code: error.parent?.code || error.code,
     });
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     const databaseUnavailable = error.name === 'SequelizeConnectionError'
       || error.name === 'SequelizeConnectionAcquireTimeoutError'
       || error.parent?.fatal === true
@@ -420,15 +556,19 @@ export const suggestOnboardingIdentity = async (req, res) => {
         : fromDb.education,
       currentTagLine: body.currentTagLine || body.tagLine,
       currentBio: body.currentBio || body.bio || body.briefIntroduction,
+      currentProfessionalTitle: body.currentProfessionalTitle || body.professionalTitle,
       tone: body.tone,
       intent: body.intent,
       variantIndex: body.variantIndex,
-      field: body.field === 'bio' || body.field === 'tagLine' ? body.field : undefined,
+      field: body.field === 'bio' || body.field === 'tagLine' || body.field === 'professionalTitle'
+        ? body.field
+        : undefined,
     });
 
     const responsePayload = {
       tagLine: suggestion.tagLine,
       bio: suggestion.bio,
+      professionalTitle: suggestion.professionalTitle,
       briefIntroduction: suggestion.bio,
       options: suggestion.options || suggestion.suggestions,
       suggestions: suggestion.suggestions || suggestion.options,

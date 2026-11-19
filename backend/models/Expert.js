@@ -48,7 +48,7 @@ const Expert = expertDb.define('Expert', {
   twoFactorEnabled: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
-    defaultValue: false
+    defaultValue: true
   },
   notificationPreferences: {
     type: DataTypes.JSON,
@@ -133,8 +133,25 @@ const Expert = expertDb.define('Expert', {
     type: DataTypes.DATE,
     allowNull: true
   },
+  approvedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  closedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   reviewerNote: {
     type: DataTypes.TEXT,
+    allowNull: true
+  },
+  isBlacklisted: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  blacklistedAt: {
+    type: DataTypes.DATE,
     allowNull: true
   }
 }, {

@@ -1,0 +1,48 @@
+.textBtn {
+  cursor: pointer;
+    font-family: var(--font-body);
+    color: #e53b17;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    outline: none;
+    padding: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 20px;
+    transition: color .2s, opacity .2s;
+}
+
+.textBtn:hover:not(:disabled) {
+  color: var(--color-orange-550, #e53b17);
+}
+
+.textBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.labelText {
+  display: block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.labelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.labelUp {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.textBtn:hover:not(:disabled) .labelTrack {
+  transform: translateY(-50%);
+}

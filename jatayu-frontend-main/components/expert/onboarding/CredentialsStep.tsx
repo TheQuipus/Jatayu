@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -14,21 +14,36 @@ import {
 import type { LucideIcon } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import KycVerificationPanel from "./KycVerificationPanel";
 import shared from "./onboarding.shared.module.css";
 import styles from "./CredentialsStep.module.css";
+import CertificateDocxViewer from "./CertificateDocxViewer";
+import DocumentThumbnail from "@/components/ui/DocumentThumbnail";
+import DocumentFilePreview from "@/components/ui/DocumentFilePreview";
 import type {
+  ExpertKycPhotos,
   ExpertCertificate,
   GovernmentIdData,
   GovernmentIdType,
 } from "@/lib/expertApplicationSubmission";
+import {
+  EXPERT_CERTIFICATE_MIME_TYPE,
+  EXPERT_LEGACY_CERTIFICATE_MIME_TYPE,
+  getExpertCertificateContentError,
+  getExpertCertificateFileError,
+} from "@/lib/expertCertificateValidation";
+import { areKycPhotosComplete } from "@/lib/expertKycPhotos";
 import { getDigilockerKycStatus, startDigilockerKyc } from "@/lib/api";
+import { resolveDigilockerKycState } from "@/lib/digilockerKycStatus";
 
 type CredentialsStepProps = {
   userName: string;
   kycVideoSrc: string;
   onKycVideoChange: (src: string) => void;
+  kycPhotos: ExpertKycPhotos;
+  onKycPhotosChange: (photos: ExpertKycPhotos) => void;
   governmentId: GovernmentIdData | null;
   onGovernmentIdChange: (data: GovernmentIdData | null) => void;
   certificates: ExpertCertificate[];
@@ -66,7 +81,6 @@ const ID_TYPES: { id: GovernmentIdType; label: string; icon: LucideIcon }[] = [
 ];
 
 const MAX_DOC_BYTES = 5 * 1024 * 1024;
-const MAX_CERT_BYTES = 2 * 1024 * 1024;
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
@@ -85,16 +99,6 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
-}
-
-function isImageFileUrl(url: string, fileName?: string): boolean {
-  if (url.startsWith("data:image/")) return true;
-  return Boolean(fileName && /\.(jpe?g|png|webp|gif)$/i.test(fileName));
-}
-
-function isPdfFileUrl(url: string, fileName?: string): boolean {
-  if (url.startsWith("data:application/pdf")) return true;
-  return Boolean(fileName && /\.pdf$/i.test(fileName));
 }
 
 import { generateUUID } from "@/lib/uuid";
@@ -130,6 +134,8 @@ export default function CredentialsStep({
   userName,
   kycVideoSrc,
   onKycVideoChange,
+  kycPhotos,
+  onKycPhotosChange,
   governmentId,
   onGovernmentIdChange,
   certificates,
@@ -143,6 +149,7 @@ export default function CredentialsStep({
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
   const certFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const digilockerStartInFlightRef = useRef(false);
 
   const [selectedIdType, setSelectedIdType] = useState<GovernmentIdType | "">(
     governmentId?.type ?? "",
@@ -157,24 +164,71 @@ export default function CredentialsStep({
     certificatesToEntries(certificates),
   );
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [digilockerConfigured, setDigilockerConfigured] = useState(false);
+  const [certificateUploadError, setCertificateUploadError] = useState<string | null>(null);
+  const [pendingCertificateUploads, setPendingCertificateUploads] = useState(0);
+  const [certificateToPreview, setCertificateToPreview] = useState<{
+    url: string;
+    fileName: string;
+  } | null>(null);
+  const [governmentIdToPreview, setGovernmentIdToPreview] = useState<{
+    url: string;
+    fileName: string;
+  } | null>(null);
   const [digilockerVerified, setDigilockerVerified] = useState(false);
   const [digilockerLoading, setDigilockerLoading] = useState(true);
   const [digilockerError, setDigilockerError] = useState<string | null>(null);
+  const [cameraVerificationCompleted, setCameraVerificationCompleted] = useState<boolean>(() =>
+    Boolean(kycVideoSrc),
+  );
   const hasKycVideo = Boolean(kycVideoSrc);
-  const hasGovernmentId = Boolean(selectedIdType) && Boolean(idFront);
-  const canContinue = hasGovernmentId || hasKycVideo || digilockerVerified;
+  const hasKycPhotos = areKycPhotosComplete(kycPhotos);
+  const hasSuccessfulVerification =
+    cameraVerificationCompleted || hasKycVideo || hasKycPhotos || digilockerVerified;
+  const hasGovernmentId = Boolean(selectedIdType && idFront);
+  const canContinue =
+    hasSuccessfulVerification && hasGovernmentId && pendingCertificateUploads === 0;
+
+  const handleKycVerificationComplete = useCallback(() => {
+    setCameraVerificationCompleted(true);
+  }, []);
+  const handleKycVideoChange = useCallback((src: string) => {
+    onKycVideoChange(src);
+    setCameraVerificationCompleted(Boolean(src));
+  }, [onKycVideoChange]);
 
   useEffect(() => {
     let active = true;
     getDigilockerKycStatus()
       .then((response) => {
         if (!active) return;
-        setDigilockerConfigured(response.configured);
-        setDigilockerVerified(response.kyc?.status === "verified");
+        const status = resolveDigilockerKycState(response.kyc);
+        setDigilockerVerified(status === "verified");
+        switch (status) {
+          case "authorization_pending":
+            setDigilockerError("DigiLocker authorization is pending. Complete it or try again.");
+            break;
+          case "cancelled":
+            setDigilockerError("DigiLocker authorization was cancelled. You can try again.");
+            break;
+          case "failed":
+            setDigilockerError("DigiLocker verification failed. Please try again.");
+            break;
+          case "expired":
+            setDigilockerError("DigiLocker authorization expired. Please start again.");
+            break;
+          case "unknown":
+            setDigilockerError("Could not determine DigiLocker verification status. Please try again.");
+            break;
+          default:
+            setDigilockerError(null);
+        }
       })
-      .catch(() => {
-        if (active) setDigilockerConfigured(false);
+      .catch((error) => {
+        if (!active) return;
+        setDigilockerVerified(false);
+        setDigilockerError(
+          error instanceof Error ? error.message : "Could not check DigiLocker verification.",
+        );
       })
       .finally(() => {
         if (active) setDigilockerLoading(false);
@@ -183,6 +237,8 @@ export default function CredentialsStep({
   }, []);
 
   const handleDigilockerVerification = async () => {
+    if (digilockerStartInFlightRef.current) return;
+    digilockerStartInFlightRef.current = true;
     setDigilockerLoading(true);
     setDigilockerError(null);
     try {
@@ -190,6 +246,8 @@ export default function CredentialsStep({
       window.location.assign(response.authorizationUrl);
     } catch (error) {
       setDigilockerError(error instanceof Error ? error.message : "Could not start DigiLocker verification.");
+    } finally {
+      digilockerStartInFlightRef.current = false;
       setDigilockerLoading(false);
     }
   };
@@ -268,38 +326,66 @@ export default function CredentialsStep({
   const renderDocPreview = (
     url: string,
     fileName: string,
-    alt: string,
     onRemove: () => void,
+    onPreview: () => void,
   ) => (
     <div className={styles.docPreview}>
-      {isImageFileUrl(url, fileName) ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={alt} className={styles.docPreviewImage} />
-      ) : isPdfFileUrl(url, fileName) ? (
-        <div className={styles.docPreviewClip}>
-          <iframe
-            src={`${url}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&view=FitH`}
-            title={alt}
-            className={styles.docPreviewFrame}
-            scrolling="no"
-            tabIndex={-1}
-          />
-        </div>
+      {url ? (
+        <button
+          type="button"
+          className={styles.idDocumentPreviewButton}
+          onClick={onPreview}
+          aria-label={`Preview ${fileName}`}
+        >
+          <DocumentThumbnail fileName={fileName} url={url} size="id" />
+          <span className={styles.idDocumentFileName} title={fileName}>{fileName}</span>
+        </button>
       ) : (
-        <div className={styles.docPreviewClip}>
-          <iframe
-            src={url}
-            title={alt}
-            className={styles.docPreviewFrame}
-            scrolling="no"
-            tabIndex={-1}
-          />
+        <div className={styles.idDocumentUnavailable} aria-label={`${fileName} preview unavailable`}>
+          <DocumentThumbnail fileName={fileName} size="id" />
+          <span className={styles.idDocumentFileName} title={fileName}>{fileName}</span>
         </div>
       )}
       <button
         type="button"
         className={styles.docPreviewRemoveBtn}
         aria-label={`Remove ${fileName || "file"}`}
+        onClick={onRemove}
+      >
+        <X size={14} aria-hidden="true" />
+      </button>
+    </div>
+  );
+
+  const renderCertificatePreview = (
+    url: string,
+    fileName: string,
+    fileSize: string | undefined,
+    onPreview: () => void,
+    onRemove: () => void,
+  ) => (
+    <div className={styles.certificateFilePreview}>
+      <button
+        type="button"
+        onClick={onPreview}
+        className={styles.certificatePreviewButton}
+        aria-label={`Preview ${fileName || "certificate.docx"}`}
+      >
+        <DocumentThumbnail
+          fileName={fileName || "certificate.docx"}
+          url={url}
+          fileType="DOCX"
+        />
+        <span className={styles.certificateFileName}>
+          {fileName || "Certificate DOCX"}
+        </span>
+        {fileSize ? <span className={styles.certificatePreviewLabel}>{fileSize}</span> : null}
+        <span className={styles.certificatePreviewLabel}>Click to preview</span>
+      </button>
+      <button
+        type="button"
+        className={styles.docPreviewRemoveBtn}
+        aria-label={`Remove ${fileName || "certificate.docx"}`}
         onClick={onRemove}
       >
         <X size={14} aria-hidden="true" />
@@ -314,17 +400,36 @@ export default function CredentialsStep({
   };
 
   const handleCertificateFile = async (entryId: string, file: File) => {
-    const isImage = file.type.startsWith("image/");
-    const isPdf = file.type === "application/pdf";
-    if (!isImage && !isPdf) return;
-    if (file.size > MAX_CERT_BYTES) return;
+    setCertificateUploadError(null);
+    const fileError = getExpertCertificateFileError(file);
+    if (fileError) {
+      setCertificateUploadError(fileError);
+      return;
+    }
 
-    const url = await readFileAsDataUrl(file);
-    updateCertificateEntry(entryId, {
-      fileName: file.name,
-      fileSize: formatFileSize(file.size),
-      fileUrl: url,
-    });
+    setPendingCertificateUploads((pending) => pending + 1);
+    try {
+      const contentError = await getExpertCertificateContentError(file);
+      if (contentError) {
+        setCertificateUploadError(contentError);
+        return;
+      }
+      const url = await readFileAsDataUrl(file);
+      updateCertificateEntry(entryId, {
+        fileName: file.name,
+        fileSize: formatFileSize(file.size),
+        fileUrl: url,
+      });
+      setCertificateUploadError(null);
+    } catch (error) {
+      setCertificateUploadError(
+        error instanceof Error
+          ? `Could not validate or read the certificate file: ${error.message}`
+          : "Could not validate or read the certificate file. Please try again.",
+      );
+    } finally {
+      setPendingCertificateUploads((pending) => Math.max(0, pending - 1));
+    }
   };
 
   const handleRemoveCertificateFile = (id: string) => {
@@ -351,21 +456,18 @@ export default function CredentialsStep({
   };
 
   const handleContinue = () => {
-    if (!canContinue) {
-      if (!selectedIdType) {
-        setValidationError("Please select a Government ID type (Aadhaar, PAN, Passport, etc.).");
-      } else if (!idFront) {
-        setValidationError("Please upload the front photo of your Government ID document.");
-      } else {
-        setValidationError("Please upload your Government ID front photo or complete video verification.");
-      }
+    if (pendingCertificateUploads > 0) {
+      setCertificateUploadError("Please wait for certificate uploads to finish before continuing.");
       return;
     }
-    setValidationError(null);
-    onContinue();
-  };
-
-  const handleSkip = () => {
+    if (!hasSuccessfulVerification) {
+      setValidationError("Please complete DigiLocker or automatic camera verification.");
+      return;
+    }
+    if (!hasGovernmentId) {
+      setValidationError("Please select a Government ID and upload its front side.");
+      return;
+    }
     setValidationError(null);
     onContinue();
   };
@@ -396,15 +498,26 @@ export default function CredentialsStep({
         <div className={styles.sectionsStack}>
           {/* 1. Identity Verification */}
           <article>
-            <KycVerificationPanel videoSrc={kycVideoSrc} onVideoChange={onKycVideoChange} />
+            <KycVerificationPanel
+              videoSrc={kycVideoSrc}
+              onVideoChange={handleKycVideoChange}
+              manualPhotos={kycPhotos}
+              onManualPhotosChange={onKycPhotosChange}
+              digilockerLoading={digilockerLoading}
+              digilockerVerified={digilockerVerified}
+              digilockerError={digilockerError}
+              onDigilockerVerification={() => void handleDigilockerVerification()}
+              onVerificationComplete={handleKycVerificationComplete}
+            />
           </article>
 
           {/* 2. Government ID */}
+          {hasSuccessfulVerification && (
           <article>
             <header className={styles.sectionCardHeader}>
               <div className={styles.sectionCardTitleWrap}>
                 <h2 className={styles.sectionCardTitle}>
-                  Government ID <span className={styles.requiredMark}></span>
+                  Government ID <span className={styles.requiredMark}>*</span>
                 </h2>
               </div>
             </header>
@@ -422,18 +535,7 @@ export default function CredentialsStep({
                   {label}
                 </button>
               ))}
-
-              <button
-                type="button"
-                className={`${styles.idTypeBtn} ${digilockerVerified ? styles.digilockerVerified : ""}`}
-                disabled={digilockerLoading}
-                onClick={() => void handleDigilockerVerification()}
-              >
-                <IdCard size={14} aria-hidden="true" />
-                {digilockerVerified ? "DigiLocker verified" : digilockerLoading ? "Opening DigiLocker…" : "Verify with DigiLocker"}
-              </button>
             </div>
-            {digilockerError ? <p className={styles.idPrivacyNote} style={{ marginTop: "8px" }}>{digilockerError}</p> : null}
 
             <AnimatePresence initial={false}>
               {selectedIdType && (
@@ -457,8 +559,11 @@ export default function CredentialsStep({
                           renderDocPreview(
                             idFront.url || "",
                             idFront.name,
-                            "Front side preview",
                             () => handleRemoveIdSide("front"),
+                            () => setGovernmentIdToPreview({
+                              url: idFront.url || "",
+                              fileName: idFront.name,
+                            }),
                           )
                         ) : (
                           <button
@@ -484,8 +589,11 @@ export default function CredentialsStep({
                           renderDocPreview(
                             idBack.url || "",
                             idBack.name,
-                            "Back side preview",
                             () => handleRemoveIdSide("back"),
+                            () => setGovernmentIdToPreview({
+                              url: idBack.url || "",
+                              fileName: idBack.name,
+                            }),
                           )
                         ) : (
                           <button
@@ -534,8 +642,10 @@ export default function CredentialsStep({
               )}
             </AnimatePresence>
           </article>
+          )}
 
           {/* 3. Professional Certificates */}
+          {hasSuccessfulVerification && (
           <article>
             <header className={styles.sectionCardHeader}>
               <div className={styles.sectionCardTitleWrap}>
@@ -569,7 +679,7 @@ export default function CredentialsStep({
                       id={`cert-name-${entry.id}`}
                       type="text"
                       className={styles.certificateField}
-                      placeholder="Certificate name"
+                      placeholder="Degree, diploma, licence"
                       value={entry.name}
                       onChange={(e) =>
                         updateCertificateEntry(entry.id, { name: e.target.value })
@@ -593,10 +703,14 @@ export default function CredentialsStep({
                         }`}
                     >
                       {entry.fileUrl ? (
-                        renderDocPreview(
+                        renderCertificatePreview(
                           entry.fileUrl,
                           entry.fileName || "",
-                          entry.fileName || "Certificate preview",
+                          entry.fileSize,
+                          () => setCertificateToPreview({
+                            url: entry.fileUrl ?? "",
+                            fileName: entry.fileName || "certificate.docx",
+                          }),
                           () => handleRemoveCertificateFile(entry.id),
                         )
                       ) : (
@@ -606,7 +720,7 @@ export default function CredentialsStep({
                           onClick={() => certFileInputRefs.current[entry.id]?.click()}
                         >
                           <span className={styles.certUploadTitle}>Upload</span>
-                          <span className={styles.certUploadHint}>PDF, PNG max 2 mb</span>
+                          <span className={styles.certUploadHint}>DOC or DOCX, max 2 MB</span>
                         </button>
                       )}
                     </div>
@@ -616,7 +730,7 @@ export default function CredentialsStep({
                         certFileInputRefs.current[entry.id] = el;
                       }}
                       type="file"
-                      accept="image/jpeg,image/png,application/pdf"
+                      accept={`.doc,.docx,${EXPERT_LEGACY_CERTIFICATE_MIME_TYPE},${EXPERT_CERTIFICATE_MIME_TYPE}`}
                       className={styles.hiddenFileInput}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -637,18 +751,34 @@ export default function CredentialsStep({
               </button>
             </div>
 
-            <p className={styles.idPrivacyNote}>
+            <p className={`${styles.idPrivacyNote} ${styles.certificateInfoNote}`}>
               Verified certificates unlock the &apos;Credentials Verified&apos; badge on your profile
               — seekers filter for this.
             </p>
           </article>
+          )}
         </div>
       </div>
 
-      {validationError && (
-        <p role="alert" style={{ color: "#ff6b6b", textAlign: "center", margin: "12px 24px 0 24px", fontSize: "14px", fontWeight: 500 }}>
-          {validationError}
+      {(certificateUploadError || validationError) && (
+        <p role="alert" style={{ color: "var(--pomegranate)", textAlign: "center", margin: "12px 24px 0 24px", fontSize: "14px", fontWeight: 500 }}>
+          {certificateUploadError || validationError}
         </p>
+      )}
+
+      {certificateToPreview && (
+        <CertificateDocxViewer
+          url={certificateToPreview.url}
+          fileName={certificateToPreview.fileName}
+          onClose={() => setCertificateToPreview(null)}
+        />
+      )}
+      {governmentIdToPreview && (
+        <DocumentFilePreview
+          fileName={governmentIdToPreview.fileName}
+          url={governmentIdToPreview.url}
+          onClose={() => setGovernmentIdToPreview(null)}
+        />
       )}
 
       <div className={shared.onboardingFooter}>
@@ -669,13 +799,11 @@ export default function CredentialsStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={handleSkip}>
-            Skip
-          </button>
-          <ContinueButton onClick={handleContinue} disabled={!canContinue} />
+          <TextButton label="Back" onClick={onBack} />
+          <ContinueButton
+            onClick={handleContinue}
+            disabled={!canContinue}
+          />
         </div>
       </div>
     </section>

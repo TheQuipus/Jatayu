@@ -1,3 +1,4 @@
+
 import {
   findExpertsForAdmin,
   findExpertForAdmin,
@@ -6,12 +7,26 @@ import {
   saveExpertForAdmin,
   Op,
 } from '../services/expertDataService.js';
+import { Expert, ExpertSession } from '../models/index.js';
+import { revokeAndExpelExpertSessions } from '../services/expertSessionService.js';
+import { expertDb } from '../config/db/index.js';
 import { generateApplicationNumber } from '../utils/applicationNumber.js';
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { getSetting } from '../utils/settingsHelper.js';
 import { sendNotification } from '../services/notificationService.js';
+import { sendGenericEmail } from '../utils/emailService.js';
+import {
+  appendSectionAuditEvent,
+  synthesizeLegacyAuditLogs,
+  cleanAndDeduplicateAuditLogs,
+} from '../utils/applicationAuditLog.js';
+import {
+  analyzeExpertSections,
+  synthesizeOnboardingMilestoneLogs,
+} from '../utils/expertDropoutAnalysis.js';
 
 const FRONTEND_TO_BACKEND_STATUS = {
+  not_submitted: 'draft',
   pending: 'pending_review',
   in_review: 'in_review',
   on_hold: 'on_hold',
@@ -20,7 +35,7 @@ const FRONTEND_TO_BACKEND_STATUS = {
 };
 
 const BACKEND_TO_FRONTEND_STATUS = {
-  draft: 'pending',
+  draft: 'not_submitted',
   pending_review: 'pending',
   in_review: 'in_review',
   on_hold: 'on_hold',
@@ -30,12 +45,37 @@ const BACKEND_TO_FRONTEND_STATUS = {
 
 const SIGNUP_COMPLETE_DRAFT_WHERE = {
   status: 'draft',
-  isEmailVerified: true,
-  isPhoneVerified: true,
 };
 
-// Keep the queue response lightweight. Full onboarding metadata (including
-// uploaded document data) is returned only by the application detail API.
+/**
+ * Safely parse onboardingMetadata whether stored as JSON string, object, or null
+ */
+export function safeParseOnboardingMetadata(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object' && !Array.isArray(raw)) return { ...raw };
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return { ...parsed };
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+/**
+ * Format a Date object or ISO string into MySQL DATETIME ('YYYY-MM-DD HH:MM:SS')
+ */
+export function formatMySqlDateTime(date = new Date()) {
+  if (!date) return null;
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+// Keep the queue response consistent and lightweight. Administrative flags
+// like isBlacklisted and blacklistedAt are queried directly from Experts columns.
 const APPLICATION_LIST_ATTRIBUTES = [
   'id',
   'applicationNumber',
@@ -58,12 +98,18 @@ const APPLICATION_LIST_ATTRIBUTES = [
   'onboardingStep',
   'status',
   'submittedAt',
+  'approvedAt',
+  'closedAt',
   'reviewerNote',
+  'isBlacklisted',
+  'blacklistedAt',
   'isEmailVerified',
   'isPhoneVerified',
   'createdAt',
   'updatedAt',
 ];
+
+const QUEUE_STATUSES = ['pending_review', 'in_review', 'on_hold', 'rejected'];
 
 function isSignupComplete(expert) {
   return expert.status !== 'draft' || (expert.isEmailVerified && expert.isPhoneVerified);
@@ -72,16 +118,25 @@ function isSignupComplete(expert) {
 function buildListWhere(statusFilter) {
   if (!statusFilter || statusFilter === 'all') {
     return {
-      [Op.or]: [{ status: { [Op.ne]: 'draft' } }, SIGNUP_COMPLETE_DRAFT_WHERE],
+      [Op.or]: [
+        { status: { [Op.in]: QUEUE_STATUSES } },
+        SIGNUP_COMPLETE_DRAFT_WHERE,
+      ],
     };
+  }
+
+  if (statusFilter === 'not_submitted') {
+    return SIGNUP_COMPLETE_DRAFT_WHERE;
   }
 
   const backendStatus = FRONTEND_TO_BACKEND_STATUS[statusFilter] || statusFilter;
 
   if (statusFilter === 'pending') {
-    return {
-      [Op.or]: [{ status: 'pending_review' }, SIGNUP_COMPLETE_DRAFT_WHERE],
-    };
+    return { status: 'pending_review' };
+  }
+
+  if (backendStatus === 'approved') {
+    return { id: null };
   }
 
   return { status: backendStatus };
@@ -119,8 +174,54 @@ function serializeExpert(expert) {
     }
   }
 
+  if (typeof metadata === 'string') {
+    try {
+      metadata = JSON.parse(metadata);
+    } catch {
+      // ignore
+    }
+  }
+
+  const onboardingAnalytics = analyzeExpertSections(expert);
+  const onboardingMilestones = synthesizeOnboardingMilestoneLogs(expert, onboardingAnalytics);
+
+  if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+    let combinedLogs = [];
+    if (Array.isArray(metadata.sectionAuditLogs) && metadata.sectionAuditLogs.length > 0) {
+      combinedLogs = [...metadata.sectionAuditLogs, ...onboardingMilestones];
+    } else {
+      const synthetic = synthesizeLegacyAuditLogs(metadata);
+      combinedLogs = [...synthetic, ...onboardingMilestones];
+    }
+    combinedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    metadata = { ...metadata, sectionAuditLogs: cleanAndDeduplicateAuditLogs(combinedLogs) };
+  } else {
+    metadata = {
+      sectionAuditLogs: cleanAndDeduplicateAuditLogs(onboardingMilestones),
+    };
+  }
+
+  const isBlacklisted = Boolean(
+    json.isBlacklisted ||
+    expert.isBlacklisted ||
+    (metadata && typeof metadata === 'object' && (metadata.isBlacklisted || metadata.isBlacklisted === 1))
+  );
+
+  const isTerminal = json.status === 'rejected' || isBlacklisted || json.status === 'approved';
+  const closedAt =
+    json.closedAt ||
+    expert.closedAt ||
+    (metadata && typeof metadata === 'object' && metadata.closedAt) ||
+    (json.status === 'approved' ? (json.approvedAt || expert.approvedAt) : null) ||
+    (isTerminal ? (metadata?.rejectedAt || json.blacklistedAt || json.updatedAt || json.submittedAt) : null) ||
+    null;
+
   return {
     ...json,
+    closedAt,
+    isBlacklisted,
+    blacklistedAt: json.blacklistedAt || (metadata && typeof metadata === 'object' && metadata.blacklistedAt) || null,
+    onboardingAnalytics,
     ...(json.onboardingMetadata !== undefined ? { onboardingMetadata: metadata } : {}),
     frontendStatus: BACKEND_TO_FRONTEND_STATUS[json.status] || 'pending',
   };
@@ -134,19 +235,15 @@ async function ensureReviewMetadata(expert) {
     changed = true;
   }
 
-  if (!expert.submittedAt && isSignupComplete(expert)) {
+  // Only assign submittedAt if the application has been submitted (not in draft)
+  // For 'draft' (Not Submitted), submittedAt must remain null so SLA timer does NOT start
+  if (!expert.submittedAt && expert.status !== 'draft' && isSignupComplete(expert)) {
     expert.submittedAt = expert.createdAt || expert.updatedAt || new Date();
     changed = true;
   }
 
   if (changed) {
     await saveExpertForAdmin(expert);
-
-    await sendNotification({ recipientType: 'expert', recipientId: expert.id,
-      eventType: `expert.application_${backendStatus}`, dedupeKey: `expert.application:${expert.id}:${backendStatus}`,
-      title: backendStatus === 'approved' ? 'Application approved' : backendStatus === 'rejected' ? 'Application rejected' : backendStatus === 'on_hold' ? 'Application on hold' : 'Application status updated',
-      body: reviewerNote || `Your expert application is now ${backendStatus.replace('_', ' ')}.`,
-      href: backendStatus === 'approved' ? '/expert/dashboard/' : '/expert/expert-onboarding/', data: { status: backendStatus } });
   }
 }
 
@@ -174,9 +271,7 @@ export const listApplications = async (req, res) => {
       countExpertsForAdmin(where),
     ]);
 
-    for (const expert of experts) {
-      await ensureReviewMetadata(expert);
-    }
+    await Promise.all(experts.map((expert) => ensureReviewMetadata(expert)));
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
     return res.status(200).json({
@@ -223,7 +318,7 @@ export const getApplication = async (req, res) => {
  */
 export const updateApplicationStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, reviewerNote } = req.body;
+  const { status, reviewerNote, isBlacklisted } = req.body;
 
   if (!status) {
     return res.status(400).json({ message: 'status is required' });
@@ -243,16 +338,292 @@ export const updateApplicationStatus = async (req, res) => {
       return res.status(404).json({ message: 'Application not found' });
     }
 
+    let metadata = safeParseOnboardingMetadata(expert.onboardingMetadata);
+    const isAlreadyBlacklisted = Boolean(
+      expert.isBlacklisted ||
+      (metadata && (metadata.isBlacklisted || metadata.isBlacklisted === 1))
+    );
+
     expert.status = backendStatus;
     if (reviewerNote !== undefined) {
       expert.reviewerNote = reviewerNote;
     }
 
-    if (backendStatus === 'approved') {
-      expert.onboardingStep = 'success';
+    const shouldBlacklist = isBlacklisted === true;
+    const shouldUnblacklist =
+      isBlacklisted === false ||
+      (backendStatus === 'approved' && isBlacklisted !== true);
+
+    if (shouldBlacklist) {
+      expert.isBlacklisted = true;
+      expert.blacklistedAt = expert.blacklistedAt || new Date();
+
+      metadata.isBlacklisted = true;
+      metadata.blacklistedAt = expert.blacklistedAt instanceof Date
+        ? expert.blacklistedAt.toISOString()
+        : new Date().toISOString();
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+      expert.changed('isBlacklisted', true);
+      expert.changed('blacklistedAt', true);
+
+      // Immediately revoke all active sessions and forcibly disconnect all open sockets
+      await revokeAndExpelExpertSessions(
+        expert.id,
+        'CREDENTIALS_BLACKLISTED',
+        'Your profile is Marked as Blacklisted',
+      );
+    } else if (shouldUnblacklist) {
+      expert.isBlacklisted = false;
+      expert.blacklistedAt = null;
+
+      metadata.isBlacklisted = false;
+      metadata.blacklistedAt = null;
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+      expert.changed('isBlacklisted', true);
+      expert.changed('blacklistedAt', true);
+    } else if (isAlreadyBlacklisted) {
+      // Preserve existing blacklist state across rejections and section updates
+      expert.isBlacklisted = true;
+      metadata.isBlacklisted = true;
+      expert.onboardingMetadata = { ...metadata };
+      expert.changed('onboardingMetadata', true);
+      expert.changed('isBlacklisted', true);
     }
 
+    if (backendStatus === 'approved') {
+      expert.onboardingStep = 'success';
+      if (!expert.approvedAt) {
+        expert.approvedAt = new Date();
+      }
+      if (!expert.closedAt) {
+        expert.closedAt = expert.approvedAt;
+      }
+      metadata.closedAt = expert.closedAt instanceof Date ? expert.closedAt.toISOString() : expert.closedAt;
+      expert.changed('closedAt', true);
+    } else if (backendStatus === 'rejected') {
+      expert.closedAt = expert.closedAt || new Date();
+      metadata.closedAt = expert.closedAt instanceof Date ? expert.closedAt.toISOString() : expert.closedAt;
+      metadata.rejectedAt = metadata.closedAt;
+      expert.changed('closedAt', true);
+    } else if (backendStatus === 'pending_review' || backendStatus === 'in_review') {
+      expert.closedAt = null;
+      delete metadata.closedAt;
+      delete metadata.rejectedAt;
+      expert.changed('closedAt', true);
+    }
+
+    let currentAuditLogs = metadata.sectionAuditLogs || [];
+    if (!Array.isArray(currentAuditLogs) || currentAuditLogs.length === 0) {
+      currentAuditLogs = synthesizeLegacyAuditLogs(metadata);
+    }
+
+    if (req.body.sectionDecisions && typeof req.body.sectionDecisions === 'object') {
+      const currentSectionDecisions = metadata.sectionDecisions || {};
+      const currentClarifications = metadata.sectionClarifications || {};
+
+      Object.entries(req.body.sectionDecisions).forEach(([secKey, secVal]) => {
+        if (!secVal) return;
+        const previousDecision = currentSectionDecisions[secKey]?.decision || null;
+        const previousNote = currentSectionDecisions[secKey]?.note ||
+          (currentSectionDecisions[secKey]?.notes && currentSectionDecisions[secKey]?.notes[currentSectionDecisions[secKey]?.notes.length - 1]?.text) || '';
+        const currentNote = secVal.note ||
+          (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '';
+
+        currentSectionDecisions[secKey] = {
+          decision: secVal.decision || null,
+          note: secVal.note || '',
+          notes: secVal.notes || [],
+          clarificationStatus: secVal.clarificationStatus || (secVal.decision === 'clarification' ? 'waiting' : undefined),
+          clarificationRequestedAt: secVal.decision === 'clarification' ? (secVal.clarificationRequestedAt || new Date().toISOString()) : undefined,
+          updatedAt: new Date().toISOString(),
+        };
+
+        const decisionChanged = Boolean(secVal.decision && secVal.decision !== previousDecision);
+        const noteChanged = Boolean(currentNote && currentNote !== previousNote);
+
+        if (decisionChanged || noteChanged) {
+          currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+            sectionId: secKey,
+            action: secVal.decision,
+            note: currentNote,
+            previousDecision,
+            newDecision: secVal.decision,
+          }, req.admin);
+        }
+
+        if (secVal.decision === 'clarification') {
+          const resolvedStatus = (backendStatus === 'on_hold' || secVal.clarificationStatus !== 'received') ? 'waiting' : 'received';
+          currentClarifications[secKey] = {
+            sectionId: secKey,
+            status: resolvedStatus,
+            requestedAt: secVal.clarificationRequestedAt || new Date().toISOString(),
+            note: secVal.note || (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '',
+            notes: secVal.notes || [],
+            receivedAt: resolvedStatus === 'received' ? (secVal.clarificationReceivedAt || new Date().toISOString()) : null,
+          };
+          delete metadata.clarificationsAllSubmitted;
+        } else if (secVal.decision === 'approve' || secVal.decision === 'reject') {
+          delete currentClarifications[secKey];
+        }
+      });
+
+      metadata.sectionDecisions = currentSectionDecisions;
+      metadata.sectionClarifications = currentClarifications;
+    }
+
+    if (backendStatus === 'on_hold') {
+      delete metadata.clarificationsAllSubmitted;
+      delete metadata.clarificationsSubmittedAt;
+      const currentSectionDecisions = metadata.sectionDecisions || {};
+      const currentClarifications = metadata.sectionClarifications || {};
+
+      // If reviewerNote contains compiled section issues (e.g. from HoldConfirmModal), parse them
+      if (reviewerNote && typeof reviewerNote === 'string') {
+        const regex = /\[(.*?)(?:\s*-\s*(?:Needs Clarification|Clarification|Rejected|REJECTED))?\]\s*:\s*([^;]+)/gi;
+        let match;
+        while ((match = regex.exec(reviewerNote)) !== null) {
+          const rawTitle = match[1].trim().toLowerCase();
+          const noteText = match[2].trim();
+          let secKey = null;
+          if (rawTitle.includes('category') || rawTitle.includes('skill')) secKey = 'category';
+          else if (rawTitle.includes('experience') || rawTitle.includes('portfolio') || rawTitle.includes('work')) secKey = 'experience';
+          else if (rawTitle.includes('profile') || rawTitle.includes('identity')) secKey = 'profile';
+          else if (rawTitle.includes('credential') || rawTitle.includes('kyc') || rawTitle.includes('education')) secKey = 'credentials';
+          else if (rawTitle.includes('preference') || rawTitle.includes('pricing') || rawTitle.includes('consultation')) secKey = 'preferences';
+          else if (rawTitle.includes('audience') || rawTitle.includes('language')) secKey = 'audience';
+          else if (rawTitle.includes('availab') || rawTitle.includes('schedule')) secKey = 'availability';
+
+          if (secKey) {
+            currentSectionDecisions[secKey] = {
+              ...(currentSectionDecisions[secKey] || {}),
+              decision: 'clarification',
+              note: noteText,
+              clarificationStatus: 'waiting',
+              clarificationRequestedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            currentClarifications[secKey] = {
+              ...(currentClarifications[secKey] || {}),
+              sectionId: secKey,
+              status: 'waiting',
+              note: noteText,
+              requestedAt: new Date().toISOString(),
+              receivedAt: null,
+            };
+          }
+        }
+      }
+
+      // Check sectionAuditLogs to recover any sections marked for clarification
+      if (Array.isArray(currentAuditLogs)) {
+        for (const entry of currentAuditLogs) {
+          const secKey = entry.sectionId;
+          if (secKey && secKey !== 'application' && entry.action === 'clarification') {
+            if (!currentSectionDecisions[secKey] || currentSectionDecisions[secKey].decision !== 'approve') {
+              currentSectionDecisions[secKey] = {
+                ...(currentSectionDecisions[secKey] || {}),
+                decision: 'clarification',
+                note: currentSectionDecisions[secKey]?.note || entry.note || '',
+                clarificationStatus: 'waiting',
+                clarificationRequestedAt: currentSectionDecisions[secKey]?.clarificationRequestedAt || entry.timestamp || new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+              currentClarifications[secKey] = {
+                ...(currentClarifications[secKey] || {}),
+                sectionId: secKey,
+                status: 'waiting',
+                note: currentClarifications[secKey]?.note || entry.note || '',
+                requestedAt: currentClarifications[secKey]?.requestedAt || entry.timestamp || new Date().toISOString(),
+                receivedAt: null,
+              };
+            }
+          }
+        }
+      }
+
+      Object.keys(currentSectionDecisions).forEach((secKey) => {
+        if (currentSectionDecisions[secKey]?.decision === 'clarification') {
+          currentSectionDecisions[secKey].clarificationStatus = 'waiting';
+          currentSectionDecisions[secKey].clarificationRequestedAt = currentSectionDecisions[secKey].clarificationRequestedAt || new Date().toISOString();
+        }
+      });
+      Object.keys(currentClarifications).forEach((secKey) => {
+        currentClarifications[secKey].status = 'waiting';
+        currentClarifications[secKey].requestedAt = currentClarifications[secKey].requestedAt || new Date().toISOString();
+        currentClarifications[secKey].receivedAt = null;
+      });
+      metadata.sectionDecisions = currentSectionDecisions;
+      metadata.sectionClarifications = currentClarifications;
+    }
+
+    // Record application status change in audit log
+    const statusActionMap = {
+      approved: 'approved',
+      on_hold: 'on_hold',
+      rejected: 'rejected',
+    };
+    if (statusActionMap[backendStatus] || (backendStatus === 'in_review' && reviewerNote && reviewerNote.trim())) {
+      currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+        sectionId: 'application',
+        sectionTitle: 'Application Overall',
+        action: statusActionMap[backendStatus] || 'in_review',
+        note: reviewerNote || (backendStatus === 'approved' ? 'Application officially approved' : ''),
+        newDecision: backendStatus,
+      }, req.admin);
+    }
+
+    metadata.sectionAuditLogs = cleanAndDeduplicateAuditLogs(currentAuditLogs);
+    expert.onboardingMetadata = { ...metadata };
+    expert.changed('onboardingMetadata', true);
+
     await saveExpertForAdmin(expert);
+
+    if (shouldBlacklist || shouldUnblacklist || isAlreadyBlacklisted || isBlacklisted !== undefined) {
+      const isBlkVal = expert.isBlacklisted ? 1 : 0;
+      const blkAtVal = expert.isBlacklisted
+        ? formatMySqlDateTime(expert.blacklistedAt || new Date())
+        : null;
+      const idVal = expert.id;
+      const appNumVal = expert.applicationNumber || id;
+      try {
+        await expertDb.query(
+          'UPDATE `Experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+          { replacements: [isBlkVal, blkAtVal, idVal, appNumVal] }
+        );
+      } catch (sqlErr) {
+        try {
+          await expertDb.query(
+            'UPDATE `experts` SET `isBlacklisted` = ?, `blacklistedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+            { replacements: [isBlkVal, blkAtVal, idVal, appNumVal] }
+          );
+        } catch (sqlErr2) {
+          console.warn('[Direct SQL Sync Warning]:', sqlErr2.message);
+        }
+      }
+    }
+
+    if (expert.closedAt !== undefined) {
+      const closedAtVal = expert.closedAt ? formatMySqlDateTime(expert.closedAt) : null;
+      const idVal = expert.id;
+      const appNumVal = expert.applicationNumber || id;
+      try {
+        await expertDb.query(
+          'UPDATE `Experts` SET `closedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+          { replacements: [closedAtVal, idVal, appNumVal] }
+        );
+      } catch (sqlErr) {
+        try {
+          await expertDb.query(
+            'UPDATE `experts` SET `closedAt` = ? WHERE `id` = ? OR `applicationNumber` = ?',
+            { replacements: [closedAtVal, idVal, appNumVal] }
+          );
+        } catch {
+          // ignore
+        }
+      }
+    }
 
     const updated = await findExpertByIdForAdmin(expert.id);
     const frontendUrl = (await getSetting('FRONTEND_URL', 'http://localhost:3000')).replace(/\/$/, '');
@@ -296,23 +667,34 @@ export const updateApplicationStatus = async (req, res) => {
 export const getApplicationStats = async (req, res) => {
   try {
     const experts = await findExpertsForAdmin(
-      { [Op.or]: [{ status: { [Op.ne]: 'draft' } }, SIGNUP_COMPLETE_DRAFT_WHERE] },
-      { attributes: ['status'] },
+      { [Op.or]: [{ status: { [Op.in]: QUEUE_STATUSES } }, SIGNUP_COMPLETE_DRAFT_WHERE] },
+      { attributes: ['status', 'submittedAt', 'createdAt', 'isBlacklisted', 'closedAt'], include: [] },
     );
 
     const counts = {
       all: experts.length,
+      not_submitted: 0,
       pending: 0,
       in_review: 0,
       on_hold: 0,
       approved: 0,
       rejected: 0,
+      overdue: 0,
     };
+
+    const now = Date.now();
+    const SLA_MS = 48 * 60 * 60 * 1000;
 
     for (const expert of experts) {
       const frontendStatus = BACKEND_TO_FRONTEND_STATUS[expert.status] || 'pending';
       if (frontendStatus in counts) {
         counts[frontendStatus] += 1;
+      }
+      const isTerminal = frontendStatus === 'rejected' || Boolean(expert.isBlacklisted) || frontendStatus === 'approved' || Boolean(expert.closedAt);
+      const isDraft = frontendStatus === 'not_submitted' || expert.status === 'draft';
+      // The SLA Timer should not start for the "Not Submitted" Expert applications
+      if (!isTerminal && !isDraft && expert.submittedAt && (now - new Date(expert.submittedAt).getTime() >= SLA_MS)) {
+        counts.overdue += 1;
       }
     }
 
@@ -322,3 +704,304 @@ export const getApplicationStats = async (req, res) => {
     return res.status(500).json({ message: 'Server error retrieving application stats', error: error.message });
   }
 };
+
+/**
+ * Update section review decision and clarifications on an expert application
+ */
+export const updateApplicationSectionDecision = async (req, res) => {
+  const { id } = req.params;
+  const { sectionId, decision, note, notes, clarificationStatus, sectionDecisions } = req.body;
+
+  try {
+    const expert = await findExpertForAdmin(buildDetailWhere(id));
+    if (!expert) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    let metadata = safeParseOnboardingMetadata(expert.onboardingMetadata);
+
+    const currentSectionDecisions = metadata.sectionDecisions || {};
+    const currentClarifications = metadata.sectionClarifications || {};
+    let currentAuditLogs = metadata.sectionAuditLogs || [];
+    if (!Array.isArray(currentAuditLogs) || currentAuditLogs.length === 0) {
+      currentAuditLogs = synthesizeLegacyAuditLogs(metadata);
+    }
+
+    if (sectionDecisions && typeof sectionDecisions === 'object') {
+      // Bulk update
+      Object.entries(sectionDecisions).forEach(([secKey, secVal]) => {
+        if (!secVal) return;
+        const previousDecision = currentSectionDecisions[secKey]?.decision || null;
+        const previousNote = currentSectionDecisions[secKey]?.note ||
+          (currentSectionDecisions[secKey]?.notes && currentSectionDecisions[secKey]?.notes[currentSectionDecisions[secKey]?.notes.length - 1]?.text) || '';
+        const currentNote = secVal.note ||
+          (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '';
+
+        currentSectionDecisions[secKey] = {
+          decision: secVal.decision || null,
+          note: secVal.note || '',
+          notes: secVal.notes || [],
+          clarificationStatus: secVal.clarificationStatus || (secVal.decision === 'clarification' ? 'waiting' : undefined),
+          clarificationRequestedAt: secVal.decision === 'clarification' ? (secVal.clarificationRequestedAt || new Date().toISOString()) : undefined,
+          updatedAt: new Date().toISOString(),
+        };
+
+        const decisionChanged = Boolean(secVal.decision && secVal.decision !== previousDecision);
+        const noteChanged = Boolean(currentNote && currentNote !== previousNote);
+
+        if (decisionChanged || noteChanged) {
+          currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+            sectionId: secKey,
+            action: secVal.decision,
+            note: currentNote,
+            previousDecision,
+            newDecision: secVal.decision,
+          }, req.admin);
+        }
+
+        if (secVal.decision === 'clarification') {
+          const resolvedStatus = secVal.clarificationStatus === 'received' ? 'received' : 'waiting';
+          currentClarifications[secKey] = {
+            sectionId: secKey,
+            status: resolvedStatus,
+            requestedAt: secVal.clarificationRequestedAt || new Date().toISOString(),
+            note: secVal.note || (secVal.notes && secVal.notes[secVal.notes.length - 1]?.text) || '',
+            notes: secVal.notes || [],
+            receivedAt: resolvedStatus === 'received' ? (secVal.clarificationReceivedAt || new Date().toISOString()) : null,
+          };
+          delete metadata.clarificationsAllSubmitted;
+        } else if (secVal.decision === 'approve' || secVal.decision === 'reject') {
+          delete currentClarifications[secKey];
+        }
+      });
+    } else if (sectionId) {
+      // Single section update
+      const previousDecision = currentSectionDecisions[sectionId]?.decision || null;
+      const previousNote = currentSectionDecisions[sectionId]?.note ||
+        (currentSectionDecisions[sectionId]?.notes && currentSectionDecisions[sectionId]?.notes[currentSectionDecisions[sectionId]?.notes.length - 1]?.text) || '';
+
+      const isClarification = decision === 'clarification';
+      const resolvedStatus = isClarification
+        ? (clarificationStatus === 'received' ? 'received' : 'waiting')
+        : undefined;
+
+      currentSectionDecisions[sectionId] = {
+        decision: decision || null,
+        note: note || '',
+        notes: notes || [],
+        clarificationStatus: resolvedStatus,
+        clarificationRequestedAt: isClarification ? new Date().toISOString() : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const effectiveNote = note || (notes && notes[notes.length - 1]?.text) || '';
+      const decisionChanged = (decision || null) !== previousDecision;
+      const noteChanged = Boolean(effectiveNote && effectiveNote !== previousNote);
+
+      if (decisionChanged || noteChanged || (previousDecision && !decision && !effectiveNote)) {
+        currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+          sectionId,
+          action: decision || (effectiveNote ? 'note_added' : 'cleared'),
+          note: effectiveNote,
+          previousDecision,
+          newDecision: decision || null,
+        }, req.admin);
+      }
+
+      if (isClarification) {
+        currentClarifications[sectionId] = {
+          sectionId,
+          status: resolvedStatus,
+          requestedAt: new Date().toISOString(),
+          note: note || (notes && notes[notes.length - 1]?.text) || '',
+          notes: notes || [],
+          receivedAt: resolvedStatus === 'received' ? new Date().toISOString() : null,
+        };
+        delete metadata.clarificationsAllSubmitted;
+      } else if (decision === 'approve' || decision === 'reject') {
+        delete currentClarifications[sectionId];
+      }
+    }
+
+    metadata.sectionDecisions = currentSectionDecisions;
+    metadata.sectionClarifications = currentClarifications;
+    metadata.sectionAuditLogs = cleanAndDeduplicateAuditLogs(currentAuditLogs);
+
+    // If application was pending_review and there is at least one section decision,
+    // transition status to in_review. If all section decisions are cleared, revert to pending_review.
+    const hasAnySectionDecision = Object.values(currentSectionDecisions).some(
+      (d) => d && d.decision
+    );
+    if (hasAnySectionDecision && expert.status === 'pending_review') {
+      expert.status = 'in_review';
+      expert.changed('status', true);
+    } else if (!hasAnySectionDecision && expert.status === 'in_review') {
+      expert.status = 'pending_review';
+      expert.changed('status', true);
+    }
+
+    expert.onboardingMetadata = { ...metadata };
+    expert.changed('onboardingMetadata', true);
+    await saveExpertForAdmin(expert);
+
+    const updated = await findExpertByIdForAdmin(expert.id);
+    return res.status(200).json({
+      message: 'Section decision updated successfully',
+      expert: serializeExpert(updated),
+    });
+  } catch (error) {
+    console.error('Update Section Decision Error:', error);
+    return res.status(500).json({ message: 'Server error updating section decision', error: error.message });
+  }
+};
+
+/**
+ * Send onboarding dropout follow-up email to applicant
+ */
+export const sendDropoutFollowUp = async (req, res) => {
+  const { id } = req.params;
+  const { force } = req.body || {};
+
+  try {
+    const expert = await findExpertForAdmin(buildDetailWhere(id));
+    if (!expert) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    if (expert.status !== 'draft') {
+      return res.status(400).json({
+        message: 'Cannot send dropout follow-up for an application that has already been submitted or completed.',
+      });
+    }
+
+    const email = expert.email;
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ message: 'Expert does not have a valid email address on file.' });
+    }
+
+    let metadata = safeParseOnboardingMetadata(expert.onboardingMetadata);
+
+    // Cooldown check: 5 minutes to prevent spam / rapid double clicks
+    const lastSentStr = metadata.lastFollowUpSentAt;
+    if (lastSentStr && !force) {
+      const lastSentTime = new Date(lastSentStr).getTime();
+      const diffMs = Date.now() - lastSentTime;
+      const cooldownMs = 5 * 60 * 1000;
+      if (diffMs < cooldownMs) {
+        const remainingMinutes = Math.ceil((cooldownMs - diffMs) / (60 * 1000));
+        return res.status(429).json({
+          message: `A follow-up email was already sent recently. Please wait ${remainingMinutes} minute(s) before sending another.`,
+          lastFollowUpSentAt: lastSentStr,
+        });
+      }
+    }
+
+    const analysis = analyzeExpertSections(expert);
+    const dropoutTitle = analysis.dropoutStepTitle || 'Incomplete Profile';
+    const skippedSteps = analysis.steps.filter((s) => s.status === 'skipped').map((s) => s.title);
+    const pendingSteps = analysis.steps.filter((s) => s.status === 'pending').map((s) => s.title);
+
+    const frontendUrl = (await getSetting('FRONTEND_URL', 'http://localhost:3000')).replace(/\/$/, '');
+    const resumeLink = `${frontendUrl}/onboarding`;
+    const recipientName = expert.fullName || 'Expert';
+
+    // Build Email Subject and HTML/Text Content
+    const subject = `Complete your Jatayu Expert Application – Finish ${dropoutTitle}`;
+
+    let missingSectionsHtml = `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 24px 0;">
+        <h3 style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; font-weight: 700;">Missing Application Sections:</h3>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8; color: #1e293b;">
+          <li><strong style="color: #dc2626;">Where you left off:</strong> ${dropoutTitle}</li>`;
+
+    if (skippedSteps.length > 0) {
+      missingSectionsHtml += `
+          <li><strong style="color: #64748b;">Skipped sections:</strong> ${skippedSteps.join(', ')}</li>`;
+    }
+    if (pendingSteps.length > 0) {
+      missingSectionsHtml += `
+          <li><strong style="color: #ea580c;">Remaining sections:</strong> ${pendingSteps.join(', ')}</li>`;
+    }
+
+    missingSectionsHtml += `
+        </ul>
+      </div>`;
+
+    const bodyHtml = `
+      <p style="margin-top: 0; font-size: 15px;">Hello <strong>${recipientName}</strong>,</p>
+      <p style="font-size: 15px; color: #334155;">We noticed that you started your application to become a verified Expert on Jatayu Connect, but left off before submitting it.</p>
+      <p style="font-size: 15px; color: #334155;">Your expertise is highly valued by seekers on our platform. Completing your profile takes only a few minutes and will allow our review team to approve your expert account.</p>
+      ${missingSectionsHtml}
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${resumeLink}" style="background-color: #111827; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">Resume Application &rarr;</a>
+      </div>
+      <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">If you encountered any technical issues or have questions, feel free to contact our support team at <a href="mailto:support@jatayu.app" style="color: #4f46e5; text-decoration: underline;">support@jatayu.app</a>.</p>
+    `;
+
+    const htmlContent = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; max-width: 580px; margin: 0 auto; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        <div style="background: #111827; padding: 24px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">Jatayu Connect</h1>
+        </div>
+        <div style="padding: 32px 24px;">
+          <h2 style="margin-top: 0; color: #0f172a; font-size: 20px; font-weight: 700;">Complete Your Expert Application</h2>
+          ${bodyHtml}
+        </div>
+        <div style="background-color: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 12px; color: #64748b;">
+          <p style="margin: 0;">&copy; ${new Date().getFullYear()} Jatayu Connect. All rights reserved.</p>
+          <p style="margin: 4px 0 0 0;">This is an automated notification. Please do not reply directly to this email.</p>
+        </div>
+      </div>
+    `;
+
+    const textContent = `Hello ${recipientName},\n\nWe noticed you left off your Jatayu Expert application at: ${dropoutTitle}.\n\nPlease resume your application here: ${resumeLink}\n\nJatayu Connect Team`;
+
+    // Send the email
+    await sendGenericEmail({
+      recipientEmail: email,
+      recipientName,
+      subject,
+      htmlContent,
+      textContent,
+    });
+
+    // Record in audit timeline
+    const nowIso = new Date().toISOString();
+    let currentAuditLogs = Array.isArray(metadata.sectionAuditLogs) ? metadata.sectionAuditLogs : [];
+    const missingSummary = [
+      `dropout: ${dropoutTitle}`,
+      skippedSteps.length ? `skipped: ${skippedSteps.join(', ')}` : null,
+      pendingSteps.length ? `pending: ${pendingSteps.join(', ')}` : null,
+    ].filter(Boolean).join(' | ');
+
+    currentAuditLogs = appendSectionAuditEvent(currentAuditLogs, {
+      sectionId: analysis.dropoutStep || 'application',
+      action: 'dropout_followup_sent',
+      badgeLabel: 'FOLLOW-UP SENT',
+      note: `Sent onboarding follow-up email to ${email} (${missingSummary}).`,
+      timestamp: nowIso,
+    }, req.admin);
+
+    metadata.sectionAuditLogs = cleanAndDeduplicateAuditLogs(currentAuditLogs);
+    metadata.lastFollowUpSentAt = nowIso;
+    metadata.followUpCount = (metadata.followUpCount || 0) + 1;
+
+    expert.onboardingMetadata = { ...metadata };
+    expert.changed('onboardingMetadata', true);
+    await saveExpertForAdmin(expert);
+
+    const updated = await findExpertByIdForAdmin(expert.id);
+    return res.status(200).json({
+      message: `Follow-up email sent successfully to ${email}`,
+      lastFollowUpSentAt: nowIso,
+      expert: serializeExpert(updated),
+    });
+  } catch (error) {
+    console.error('Send Dropout Follow-Up Error:', error);
+    return res.status(500).json({
+      message: 'Failed to send follow-up email',
+      error: error.message,
+    });
+  }
+};
+

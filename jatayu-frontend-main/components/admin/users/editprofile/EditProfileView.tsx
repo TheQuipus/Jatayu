@@ -26,7 +26,15 @@ export default function EditProfileView({ user, isExpert }: EditProfileViewProps
   const avatar = user?.avatar || "/assets/img/manportrait.png";
   const email = user.email;
   const phone = user.phone || "Not provided";
-  const joinedDate = user.joinedDate ? new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(new Date(user.joinedDate)) : "Not available";
+  const joinedDateRaw = isExpert ? (expertUser?.approvedAt || user.joinedDate) : user.joinedDate;
+  const joinedDate = (() => {
+    if (!joinedDateRaw) return "Not available";
+    const date = new Date(joinedDateRaw);
+    if (!Number.isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(date);
+    }
+    return joinedDateRaw;
+  })();
 
   if (!isExpert && seekerUser) {
     const category = seekerUser.category || seekerUser.preferredCategory || "Not selected";

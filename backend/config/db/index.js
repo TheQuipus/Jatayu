@@ -1,6 +1,7 @@
 import expertDb from './expert.js';
 import seekerDb from './seeker.js';
 import adminDb from './admin.js';
+import { ensureExpertColumns } from '../../scripts/migrateExpertColumns.js';
 
 export { expertDb, seekerDb, adminDb };
 
@@ -23,6 +24,7 @@ export async function connectAllDatabases() {
 
 export async function syncAllDatabases(syncOptions = {}) {
   await expertDb.sync(syncOptions);
+  await ensureExpertColumns(expertDb);
   console.log('Expert database tables synchronized.');
 
   await seekerDb.sync(syncOptions);

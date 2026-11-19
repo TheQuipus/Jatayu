@@ -12,9 +12,11 @@ import {
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ExperienceAccordionItem from "./ExperienceAccordionItem";
 import ExperienceSelect from "./ExperienceSelect";
+import DropdownFilter, { type DropdownFilterOption } from "@/components/ui/DropdownFilter";
 import PortfolioSamplesSection from "./PortfolioSamplesSection";
 import {
   createEmptyEducationDegree,
@@ -23,6 +25,8 @@ import {
   FIELD_OF_STUDY_OPTIONS,
   getCurrentMonthYear,
   getYearOptions,
+  getEmploymentDateFieldError,
+  isEmploymentPositionStarted,
   isEducationDegreeStarted,
   isEducationDegreeValid,
   isEmploymentPositionValid,
@@ -35,6 +39,7 @@ import {
   type EmploymentPosition,
 } from "@/lib/expertEmployment";
 import type { PortfolioSampleFile } from "@/lib/expertApplicationSubmission";
+import { isValidPortfolioUrl } from "@/lib/portfolioUrl";
 import { useLinkedinProfileSync } from "@/hooks/useLinkedinProfileSync";
 import type { LinkedinConnectResponse } from "@/lib/api";
 import shared from "./onboarding.shared.module.css";
@@ -82,20 +87,8 @@ export default function ExperienceStep({
   onJumpToStep,
 }: ExperienceStepProps) {
   const isStepComplete = useMemo(() => {
-    const isPositionStarted = (pos: EmploymentPosition) =>
-      Boolean(
-        pos.jobTitle.trim() ||
-        pos.company.trim() ||
-        pos.startMonth ||
-        pos.startYear ||
-        pos.endMonth ||
-        pos.endYear ||
-        pos.responsibilities.trim() ||
-        pos.currentlyWorking
-      );
-
     const allPositionsValid = employmentPositions.every(
-      (pos) => !isPositionStarted(pos) || isEmploymentPositionValid(pos)
+      (pos) => !isEmploymentPositionStarted(pos) || isEmploymentPositionValid(pos)
     );
 
     const allDegreesValid = educationDegrees.every(
@@ -105,7 +98,7 @@ export default function ExperienceStep({
     const hasAtLeastOneFilled =
       employmentPositions.some(isEmploymentPositionValid) ||
       educationDegrees.some((deg) => isEducationDegreeStarted(deg) && isEducationDegreeValid(deg)) ||
-      Boolean(linkedin.trim() || portfolio.trim() || portfolioSamples.length > 0);
+      Boolean(linkedin.trim() || (portfolio.trim() && isValidPortfolioUrl(portfolio)) || portfolioSamples.length > 0);
 
     return allPositionsValid && allDegreesValid && hasAtLeastOneFilled;
   }, [employmentPositions, educationDegrees, linkedin, portfolio, portfolioSamples]);
@@ -120,6 +113,12 @@ export default function ExperienceStep({
   const [syncedThisSession, setSyncedThisSession] = useState(false);
   const isSynced = linkedinConnected || syncedThisSession;
   const [linkedinError, setLinkedinError] = useState("");
+  const portfolioInvalid = Boolean(portfolio.trim()) && !isValidPortfolioUrl(portfolio);
+
+  const handleContinue = () => {
+    if (portfolioInvalid) return;
+    onContinue();
+  };
 
   const handleLinkedinSuccess = useCallback((response: LinkedinConnectResponse) => {
     setLinkedinError("");
@@ -138,31 +137,40 @@ export default function ExperienceStep({
   });
   const yearOptions = useMemo(() => getYearOptions(), []);
 
-  const monthOptions = useMemo(
-    () => [{ value: "", label: "Month" }, ...MONTH_OPTIONS.map((month) => ({ value: month.value, label: month.label }))],
-    [],
-  );
+  const [customDegreeOptions, setCustomDegreeOptions] = useState<DropdownFilterOption[]>([]);
+  const [customFieldOfStudyOptions, setCustomFieldOfStudyOptions] = useState<DropdownFilterOption[]>([]);
 
-  const yearSelectOptions = useMemo(
-    () => [{ value: "", label: "Year" }, ...yearOptions.map((year) => ({ value: year, label: year }))],
-    [yearOptions],
-  );
-
-  const degreeOptions = useMemo(
+  const degreeOptions = useMemo<DropdownFilterOption[]>(
     () => [
-      { value: "", label: "Select degree..." },
       ...DEGREE_OPTIONS.map((option) => ({ value: option, label: option })),
+      ...customDegreeOptions,
     ],
-    [],
+    [customDegreeOptions],
   );
 
-  const fieldOfStudyOptions = useMemo(
+  const fieldOfStudyOptions = useMemo<DropdownFilterOption[]>(
     () => [
-      { value: "", label: "Select field of study..." },
       ...FIELD_OF_STUDY_OPTIONS.map((option) => ({ value: option, label: option })),
+      ...customFieldOfStudyOptions,
     ],
-    [],
+    [customFieldOfStudyOptions],
   );
+
+  const handleCreateDegreeOption = useCallback((option: DropdownFilterOption) => {
+    setCustomDegreeOptions((prev) =>
+      prev.some((item) => item.value.toLowerCase() === option.value.toLowerCase())
+        ? prev
+        : [...prev, option],
+    );
+  }, []);
+
+  const handleCreateFieldOfStudyOption = useCallback((option: DropdownFilterOption) => {
+    setCustomFieldOfStudyOptions((prev) =>
+      prev.some((item) => item.value.toLowerCase() === option.value.toLowerCase())
+        ? prev
+        : [...prev, option],
+    );
+  }, []);
 
   const updatePosition = (index: number, patch: Partial<EmploymentPosition>) => {
     onEmploymentPositionsChange(
@@ -315,6 +323,7 @@ export default function ExperienceStep({
               {employmentPositions.map((position, index) => {
                 const { month: curMonthStr, year: curYearStr } = getCurrentMonthYear();
                 const curMonthNum = Number.parseInt(curMonthStr, 10);
+                const positionStarted = isEmploymentPositionStarted(position);
 
                 const isSameYear = Boolean(
                   !position.currentlyWorking &&
@@ -330,10 +339,10 @@ export default function ExperienceStep({
                   ? yearOptions.filter((y) => Number.parseInt(y, 10) <= Number.parseInt(position.endYear, 10))
                   : yearOptions;
 
-                const posStartYearOptions = [
-                  { value: "", label: "Year" },
-                  ...filteredStartYears.map((year) => ({ value: year, label: year })),
-                ];
+                const posStartYearOptions = filteredStartYears.map((year) => ({
+                  value: year,
+                  label: year,
+                }));
 
                 const maxStartMonth = Math.min(
                   isStartCurrentYear ? curMonthNum : 12,
@@ -344,19 +353,19 @@ export default function ExperienceStep({
                   (m) => Number.parseInt(m.value, 10) <= maxStartMonth
                 );
 
-                const posStartMonthOptions = [
-                  { value: "", label: "Month" },
-                  ...filteredStartMonths.map((m) => ({ value: m.value, label: m.label })),
-                ];
+                const posStartMonthOptions = filteredStartMonths.map((m) => ({
+                  value: m.value,
+                  label: m.label,
+                }));
 
                 const filteredEndYears = position.startYear
                   ? yearOptions.filter((y) => Number.parseInt(y, 10) >= Number.parseInt(position.startYear, 10))
                   : yearOptions;
 
-                const posEndYearOptions = [
-                  { value: "", label: "Year" },
-                  ...filteredEndYears.map((year) => ({ value: year, label: year })),
-                ];
+                const posEndYearOptions = filteredEndYears.map((year) => ({
+                  value: year,
+                  label: year,
+                }));
 
                 const minEndMonth = isSameYear && position.startMonth ? Number.parseInt(position.startMonth, 10) : 1;
                 const maxEndMonth = isEndCurrentYear ? curMonthNum : 12;
@@ -366,10 +375,10 @@ export default function ExperienceStep({
                   return val >= minEndMonth && val <= maxEndMonth;
                 });
 
-                const posEndMonthOptions = [
-                  { value: "", label: "Month" },
-                  ...filteredEndMonths.map((m) => ({ value: m.value, label: m.label })),
-                ];
+                const posEndMonthOptions = filteredEndMonths.map((m) => ({
+                  value: m.value,
+                  label: m.label,
+                }));
 
                 return (
                   <div key={position.id} className={styles.entryBlock}>
@@ -427,15 +436,25 @@ export default function ExperienceStep({
                             <span className={styles.fieldLabel}>Start Date *</span>
                             <div className={styles.dateRow}>
                               <ExperienceSelect
+                                id={`start-month-${position.id}`}
                                 value={position.startMonth ?? ""}
                                 options={posStartMonthOptions}
+                                placeholder="Month"
+                                aria-label="Start Date Month"
+                                required={positionStarted}
+                                error={positionStarted ? getEmploymentDateFieldError(position, "startMonth") : undefined}
                                 onChange={(nextValue) =>
                                   updatePosition(index, { startMonth: nextValue })
                                 }
                               />
                               <ExperienceSelect
+                                id={`start-year-${position.id}`}
                                 value={position.startYear ?? ""}
                                 options={posStartYearOptions}
+                                placeholder="Year"
+                                aria-label="Start Date Year"
+                                required={positionStarted}
+                                error={positionStarted ? getEmploymentDateFieldError(position, "startYear") : undefined}
                                 onChange={(nextValue) =>
                                   updatePosition(index, { startYear: nextValue })
                                 }
@@ -447,17 +466,27 @@ export default function ExperienceStep({
                             <span className={styles.fieldLabel}>End Date *</span>
                             <div className={styles.dateRow}>
                               <ExperienceSelect
+                                id={`end-month-${position.id}`}
                                 value={position.endMonth ?? ""}
                                 options={posEndMonthOptions}
                                 disabled={Boolean(position.currentlyWorking)}
+                                placeholder="Month"
+                                aria-label="End Date Month"
+                                required={positionStarted && !position.currentlyWorking}
+                                error={positionStarted ? getEmploymentDateFieldError(position, "endMonth") : undefined}
                                 onChange={(nextValue) =>
                                   updatePosition(index, { endMonth: nextValue })
                                 }
                               />
                               <ExperienceSelect
+                                id={`end-year-${position.id}`}
                                 value={position.endYear ?? ""}
                                 options={posEndYearOptions}
                                 disabled={Boolean(position.currentlyWorking)}
+                                placeholder="Year"
+                                aria-label="End Date Year"
+                                required={positionStarted && !position.currentlyWorking}
+                                error={positionStarted ? getEmploymentDateFieldError(position, "endYear") : undefined}
                                 onChange={(nextValue) =>
                                   updatePosition(index, { endYear: nextValue })
                                 }
@@ -467,10 +496,11 @@ export default function ExperienceStep({
                         </div>
 
                         {!employmentPositions.some((p, pIdx) => pIdx !== index && p.currentlyWorking) && (
-                          <label className={styles.checkboxRow}>
+                          <div className={styles.checkboxRow}>
                             <input
                               type="checkbox"
                               className={styles.checkboxInput}
+                              aria-label="Currently working here"
                               checked={Boolean(position.currentlyWorking)}
                               onChange={(event) => {
                                 const checked = event.target.checked;
@@ -487,7 +517,7 @@ export default function ExperienceStep({
                               }}
                             />
                             <span className={styles.checkboxLabel}>Currently working here</span>
-                          </label>
+                          </div>
                         )}
 
                         <div className={styles.fieldGroup}>
@@ -555,11 +585,19 @@ export default function ExperienceStep({
                           <label htmlFor={`degree-${degree.id}`} className={styles.fieldLabel}>
                             Degree / Qualification
                           </label>
-                          <ExperienceSelect
+                          <DropdownFilter
                             id={`degree-${degree.id}`}
-                            value={degree.degree ?? ""}
+                            variant="dark"
+                            value={degree.degree || null}
                             options={degreeOptions}
-                            onChange={(nextValue) => updateDegree(index, { degree: nextValue })}
+                            placeholder="Select degree..."
+                            customInputPlaceholder="Enter degree / qualification..."
+                            isSearchable
+                            isClearable
+                            allowCustomOption
+                            selectOnCreate
+                            onCreateOption={handleCreateDegreeOption}
+                            onChange={(nextValue) => updateDegree(index, { degree: nextValue ?? "" })}
                           />
                         </div>
 
@@ -567,11 +605,19 @@ export default function ExperienceStep({
                           <label htmlFor={`field-${degree.id}`} className={styles.fieldLabel}>
                             Field of Study
                           </label>
-                          <ExperienceSelect
+                          <DropdownFilter
                             id={`field-${degree.id}`}
-                            value={degree.fieldOfStudy ?? ""}
+                            variant="dark"
+                            value={degree.fieldOfStudy || null}
                             options={fieldOfStudyOptions}
-                            onChange={(nextValue) => updateDegree(index, { fieldOfStudy: nextValue })}
+                            placeholder="Select field of study..."
+                            customInputPlaceholder="Enter field of study..."
+                            isSearchable
+                            isClearable
+                            allowCustomOption
+                            selectOnCreate
+                            onCreateOption={handleCreateFieldOfStudyOption}
+                            onChange={(nextValue) => updateDegree(index, { fieldOfStudy: nextValue ?? "" })}
                           />
                         </div>
                       </div>
@@ -701,13 +747,20 @@ export default function ExperienceStep({
                     <input
                       id="experience-portfolio-input"
                       type="text"
-                      className={styles.textFieldWithIcon}
+                      className={`${styles.textFieldWithIcon} ${portfolioInvalid ? styles.textFieldError : ""}`}
                       placeholder="yourwebsite.com"
                       value={portfolio ?? ""}
                       onChange={(event) => onPortfolioChange(event.target.value)}
                       autoComplete="url"
+                      aria-invalid={portfolioInvalid}
+                      aria-describedby={portfolioInvalid ? "experience-portfolio-error" : undefined}
                     />
                   </div>
+                  {portfolioInvalid ? (
+                    <span id="experience-portfolio-error" className={styles.fieldErrorText} role="alert">
+                      Enter a valid URL, including https:// (for example, https://example.com).
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
@@ -738,13 +791,9 @@ export default function ExperienceStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
-          <ContinueButton onClick={onContinue} disabled={!isStepComplete} />
+          <TextButton label="Back" onClick={onBack} />
+          <TextButton label="Skip" onClick={onContinue} />
+          <ContinueButton onClick={handleContinue} disabled={!isStepComplete || portfolioInvalid} />
         </div>
       </div>
     </section>

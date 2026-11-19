@@ -1,4 +1,7 @@
+import { Op } from 'sequelize';
 import { Seeker, SeekerCreditTransaction, seekerDb } from '../../models/index.js';
+import { isValidSeekerRegistrationPhone } from '../../utils/seekerRegistrationValidation.js';
+import { isValidSeekerFullName } from '../../utils/seekerNameValidation.js';
 import {
   AiNotConfiguredError,
   improveSeekerNeedsCopy,
@@ -23,12 +26,14 @@ const ONBOARDING_STEPS = new Set([
 
 const ARRAY_FIELDS = ['topics', 'selectedNeedChips', 'selectedFormats', 'selectedLanguages'];
 const STRING_FIELDS = [
+  'fullName',
   'category',
   'needsText',
   'selectedBudget',
   'location',
   'additionalContext',
   'profilePhotoSrc',
+  'phone',
 ];
 
 const NEXT_STEP_TO_COMPLETED_STEP = {
@@ -122,17 +127,37 @@ function validatePayloadTypes(payload) {
   }
 
   if (payload.needsText?.length > 1000) errors.push('needsText must not exceed 1000 characters');
+  if (payload.fullName !== undefined && !isValidSeekerFullName(payload.fullName)) {
+    errors.push('fullName must be a valid name');
+  }
   if (payload.additionalContext?.length > 5000) {
     errors.push('additionalContext must not exceed 5000 characters');
   }
   if (payload.topics?.length > 5) errors.push('topics must not contain more than 5 items');
+  if (payload.phone !== undefined && payload.phone !== null && payload.phone !== '') {
+    if (!isValidSeekerRegistrationPhone(payload.phone)) {
+      errors.push('Phone number must contain exactly 10 digits');
+    }
+  }
 
   return errors;
 }
 
 function applyOnboardingPayload(seeker, payload, profilePhotoPath) {
   for (const field of [...STRING_FIELDS, ...ARRAY_FIELDS]) {
-    if (payload[field] !== undefined) seeker[field] = payload[field];
+    if (field !== 'phone' && payload[field] !== undefined) seeker[field] = payload[field];
+  }
+
+  if (payload.phone !== undefined) {
+    if (payload.phone) {
+      if (seeker.phone !== payload.phone) {
+        seeker.phone = payload.phone;
+        seeker.isPhoneVerified = false;
+      }
+    } else {
+      seeker.phone = null;
+      seeker.isPhoneVerified = false;
+    }
   }
 
   if (payload.onboardingMetadata !== undefined) {
@@ -191,6 +216,12 @@ function serializeSeeker(seeker) {
   };
 }
 
+function isPhoneUniqueConstraintError(error) {
+  return error?.name === 'SequelizeUniqueConstraintError'
+    && (error.fields?.phone !== undefined
+      || error.errors?.some((item) => item.path === 'phone'));
+}
+
 export const getProfile = async (req, res) => {
   const seekerId = req.user.id;
 
@@ -225,6 +256,22 @@ export const updateProfile = async (req, res) => {
       });
       if (!seeker) return null;
 
+      if (payload.phone) {
+        const existing = await Seeker.findOne({
+          where: {
+            phone: payload.phone,
+            id: { [Op.ne]: seekerId },
+          },
+          transaction,
+        });
+        if (existing) {
+          const err = new Error('An account with this phone number already exists.');
+          err.code = 'PHONE_EXISTS';
+          err.status = 409;
+          throw err;
+        }
+      }
+
       applyOnboardingPayload(
         seeker,
         payload,
@@ -247,6 +294,13 @@ export const updateProfile = async (req, res) => {
       creditAward: result.creditAward,
     });
   } catch (error) {
+    if (
+      error?.code === 'PHONE_EXISTS'
+      || error?.status === 409
+      || isPhoneUniqueConstraintError(error)
+    ) {
+      return res.status(409).json({ message: error.message, code: 'PHONE_EXISTS' });
+    }
     console.error('Update Seeker Profile Error:', error);
     return res.status(500).json({ message: 'Server error updating profile', error: error.message });
   }
@@ -268,6 +322,22 @@ export const submitOnboarding = async (req, res) => {
         lock: transaction.LOCK.UPDATE,
       });
       if (!seeker) return null;
+
+      if (payload.phone) {
+        const existing = await Seeker.findOne({
+          where: {
+            phone: payload.phone,
+            id: { [Op.ne]: seekerId },
+          },
+          transaction,
+        });
+        if (existing) {
+          const err = new Error('An account with this phone number already exists.');
+          err.code = 'PHONE_EXISTS';
+          err.status = 409;
+          throw err;
+        }
+      }
 
       applyOnboardingPayload(
         seeker,
@@ -312,6 +382,13 @@ export const submitOnboarding = async (req, res) => {
       creditAward: result.creditAward,
     });
   } catch (error) {
+    if (
+      error?.code === 'PHONE_EXISTS'
+      || error?.status === 409
+      || isPhoneUniqueConstraintError(error)
+    ) {
+      return res.status(409).json({ message: error.message, code: 'PHONE_EXISTS' });
+    }
     console.error('Seeker Submit Onboarding Error:', error);
     return res.status(500).json({ message: 'Server error during submission', error: error.message });
   }

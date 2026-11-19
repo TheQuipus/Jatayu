@@ -100,7 +100,19 @@
   line-height: 1;
   color: #FF3B30;
   pointer-events: none;
-  z-index: 1;
+  z-index: 5;
+}
+
+.fieldErrorBelow:has(a),
+.fieldErrorBelow:has(button) {
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.fieldErrorBelow a,
+.fieldErrorBelow button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
 }
 
 .inputWithIconWrap {
@@ -114,11 +126,17 @@
   border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 0 16px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.inputWithIconWrap:hover:not(:focus-within):not(.inputWithIconWrapError) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .inputWithIconWrap:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .inputWithIconWrapError {
@@ -127,6 +145,7 @@
 
 .inputWithIconWrapError:focus-within {
   border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .fieldErrorInline {
@@ -160,6 +179,10 @@
   outline: none;
 }
 
+.inputWithIconWrap:focus-within .textFieldWithIcon:focus-visible {
+  outline: none;
+}
+
 .textFieldWithIcon::placeholder {
   color: rgba(255, 255, 255, 0.3);
 }
@@ -190,7 +213,8 @@
 }
 
 .textareaWrap:focus-within {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .textareaWrapLarge {
@@ -241,17 +265,23 @@
   align-items: center;
   gap: 10px;
   height: 48px;
-  background: var(--background-chip);
+  background: var(--background-chip, rgba(255, 255, 255, 0.03));
   border: 1px solid var(--border-chip);
   border-radius: 0;
   padding: 0 52px 0 16px;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   box-sizing: border-box;
   color-scheme: dark;
 }
 
+.inputWithActionWrap:hover:not(:focus-within) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
 .inputWithActionWrap:focus-within {
-  border-color: var(--border-chip);
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .inputActionBtn {
@@ -279,7 +309,6 @@
 }
 
 .inputActionBtn:focus-visible {
-  border-color: rgba(255, 255, 255, 0.15);
   color: var(--white);
 }
 
@@ -311,6 +340,9 @@
 }
 
 .authToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: baseline;
   background: none;
   border: none;
   padding: 0;
@@ -341,4 +373,29 @@
   margin-top: 0;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.authToggleLabelText {
+  display: block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.authToggleLabelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.authToggleLabelUp {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.authToggleBtn:hover .authToggleLabelTrack {
+  transform: translateY(-50%);
 }

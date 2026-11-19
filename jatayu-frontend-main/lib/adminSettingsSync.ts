@@ -122,6 +122,7 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
       senderId: readString(map, "SMS_SENDER_ID", DEFAULT_ADMIN_SETTINGS.sms.senderId),
     },
     smtp: {
+      fromEmail: readString(map, "FROM_EMAIL", readString(map, "EMAIL_FROM_EMAIL")),
       host: readString(map, "SMTP_HOST", DEFAULT_ADMIN_SETTINGS.smtp.host),
       port: readString(map, "SMTP_PORT", DEFAULT_ADMIN_SETTINGS.smtp.port),
       username: readString(map, "SMTP_USER"),
@@ -191,6 +192,7 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     SMTP_HOST: settings.smtp.host,
     SMTP_PORT: settings.smtp.port,
     SMTP_USER: settings.smtp.username,
+    FROM_EMAIL: settings.smtp.fromEmail.trim(),
     SMTP_PASS: settings.smtp.password,
     SMTP_SECURE: settings.smtp.encryption === "ssl" ? "true" : "false",
     GOOGLE_CLIENT_ID: settings.auth.google.clientId,

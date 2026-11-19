@@ -9,7 +9,7 @@ import {
   improveSeekerNeeds,
 } from '../../controllers/seeker/seekerController.js';
 import { protectSeeker, optionalProtectSeeker } from '../../middleware/seeker/seekerAuthMiddleware.js';
-import { getFeaturedMatches } from '../../controllers/seeker/seekerMatchController.js';
+import { getFeaturedMatches, getSeekerDiscover } from '../../controllers/seeker/seekerMatchController.js';
 
 const router = express.Router();
 
@@ -45,6 +45,7 @@ const upload = multer({
 
 router.get('/me', protectSeeker, getProfile);
 router.get('/featured-matches', protectSeeker, getFeaturedMatches);
+router.get('/discover', protectSeeker, getSeekerDiscover);
 router.put('/profile', protectSeeker, upload.single('profilePhoto'), updateProfile);
 router.post('/submit', protectSeeker, upload.single('profilePhoto'), submitOnboarding);
 router.post('/ai-improve-needs', optionalProtectSeeker, improveSeekerNeeds);

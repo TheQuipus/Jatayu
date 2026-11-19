@@ -2,19 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Ban,
   CheckCircle2,
   Clock,
   Eye,
+  FileEdit,
   Hand,
   Layers,
   Search,
   X,
   AlertTriangle,
 } from "lucide-react";
-import problemStyles from "@/components/homepage/Problem.module.css";
 import { getSlaAlert } from "@/lib/adminApplicationMappers";
 import {
   getAdminReviewHref,
@@ -22,6 +22,7 @@ import {
 } from "@/lib/adminNavigation";
 import type { ApplicationStatus } from "@/lib/expertApplicationSubmission";
 import { useExpertApplications, type ExpertApplicationListItem } from "@/hooks/useExpertApplications";
+import ChamferCardBorder from "@/components/ui/ChamferCardBorder";
 import styles from "./ExpertApplications.module.css";
 
 type ColumnFilters = {
@@ -56,18 +57,25 @@ const SLA_FILTER_OPTIONS = [
   { value: "breached", label: "≥ 48 hrs" },
   { value: "at_risk", label: "40–48 hrs" },
   { value: "on_track", label: "< 40 hrs" },
+  { value: "closed", label: "Closed" },
 ] as const;
 
 const KPI_ICONS = {
+  total: Layers,
   all: Layers,
+  not_submitted: FileEdit,
   pending: Clock,
   review: Search,
+  in_review: Search,
   hold: Hand,
+  on_hold: Hand,
+  overdue: AlertTriangle,
   approved: CheckCircle2,
   rejected: Ban,
 } as const;
 
 const STATUS_BADGE_CLASS: Record<ApplicationStatus, string> = {
+  not_submitted: styles.statusNotSubmitted,
   pending: styles.statusPending,
   in_review: styles.statusInReview,
   on_hold: styles.statusOnHold,
@@ -76,6 +84,7 @@ const STATUS_BADGE_CLASS: Record<ApplicationStatus, string> = {
 };
 
 const STATUS_LABEL: Record<ApplicationStatus, string> = {
+  not_submitted: "Not Submitted",
   pending: "Pending",
   in_review: "In Review",
   on_hold: "On Hold",
@@ -93,9 +102,15 @@ const ONBOARDING_STEP_LABEL: Record<string, string> = {
   success: "Submitted",
 };
 
-const STATUS_FILTER_OPTIONS = (
-  Object.entries(STATUS_LABEL) as [ApplicationStatus, string][]
-).map(([value, label]) => ({ value, label }));
+const ORDERED_CARD_IDS = [
+  "total",
+  "not_submitted",
+  "pending",
+  "in_review",
+  "on_hold",
+  "overdue",
+  "rejected",
+] as const;
 
 function completenessColor(pct: number): string {
   if (pct >= 90) return "var(--green)";
@@ -106,6 +121,7 @@ function completenessColor(pct: number): string {
 function slaClass(status: ExpertApplicationListItem["slaStatus"]): string {
   if (status === "breached") return styles.slaBreached;
   if (status === "at_risk") return styles.slaAtRisk;
+  if (status === "closed") return styles.slaClosed;
   return styles.slaOnTrack;
 }
 
@@ -161,6 +177,7 @@ function filterApplications(
       app.city.toLowerCase().includes(q) ||
       app.appId.toLowerCase().includes(q) ||
       app.category.toLowerCase().includes(q) ||
+      (app.isBlacklisted && "blacklisted".includes(q)) ||
       app.languages.some((l) => l.toLowerCase().includes(q)),
   );
 }
@@ -201,20 +218,80 @@ export default function ExpertApplications() {
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>(DEFAULT_COLUMN_FILTERS);
+  const [activeCard, setActiveCard] = useState<string>("total");
   const [showAlert, setShowAlert] = useState(true);
   const { ready, applications, listItems, kpis, pagination } =
     useExpertApplications({ page, limit: 20, status: columnFilters.status });
   const slaAlert = useMemo(() => getSlaAlert(applications), [applications]);
-  const slaReviewHref = useMemo(() => {
-    if (slaAlert.oldestAppId) {
-      return getAdminReviewHref(slaAlert.oldestAppId);
+
+  const handleCardClick = (cardId: string) => {
+    setPage(1);
+
+    if (activeCard === cardId) {
+      if (cardId !== "total") {
+        setActiveCard("total");
+        setColumnFilters((prev) => ({ ...prev, status: "all", sla: "all" }));
+      }
+      return;
     }
-    const appId = getFirstReviewAppId(applications);
-    return appId ? getAdminReviewHref(appId) : "/admin/applications";
-  }, [slaAlert.oldestAppId, applications]);
+
+    setActiveCard(cardId);
+
+    if (cardId === "total") {
+      setColumnFilters((prev) => ({ ...prev, status: "all", sla: "all" }));
+    } else if (cardId === "not_submitted") {
+      setColumnFilters((prev) => ({ ...prev, status: "not_submitted", sla: "all" }));
+    } else if (cardId === "pending") {
+      setColumnFilters((prev) => ({ ...prev, status: "pending", sla: "all" }));
+    } else if (cardId === "in_review") {
+      setColumnFilters((prev) => ({ ...prev, status: "in_review", sla: "all" }));
+    } else if (cardId === "on_hold") {
+      setColumnFilters((prev) => ({ ...prev, status: "on_hold", sla: "all" }));
+    } else if (cardId === "overdue") {
+      setColumnFilters((prev) => ({ ...prev, status: "all", sla: "breached" }));
+    } else if (cardId === "rejected") {
+      setColumnFilters((prev) => ({ ...prev, status: "rejected", sla: "all" }));
+    }
+  };
+
+  const handleReviewOverdue = () => {
+    handleCardClick("overdue");
+    const overdueCard = document.getElementById("kpi-card-overdue");
+    if (overdueCard) {
+      overdueCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      overdueCard.focus();
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const filter = params.get("filter");
+    const hash = window.location.hash;
+
+    if (filter === "overdue" || hash === "#kpi-card-overdue") {
+      handleCardClick("overdue");
+      const overdueCard = document.getElementById("kpi-card-overdue");
+      if (overdueCard) {
+        overdueCard.scrollIntoView({ behavior: "smooth", block: "center" });
+        overdueCard.focus();
+      }
+    }
+  }, []);
+
   const setColumnFilter = (key: keyof ColumnFilters, value: string) => {
     setPage(1);
-    setColumnFilters((prev) => ({ ...prev, [key]: value }));
+    setColumnFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "sla") {
+        if (value === "breached") {
+          setActiveCard("overdue");
+        } else if (activeCard === "overdue") {
+          setActiveCard("total");
+        }
+      }
+      return next;
+    });
   };
 
   const filterOptions = useMemo(() => {
@@ -246,10 +323,6 @@ export default function ExpertApplications() {
     [listItems, query, columnFilters],
   );
 
-  if (!ready) {
-    return null;
-  }
-
   return (
     <section className={styles.dashboard}>
       <div className={`container ${styles.dashboardInner}`}>
@@ -266,27 +339,34 @@ export default function ExpertApplications() {
 
         <div className={styles.kpiRow} role="group" aria-label="Filter by status">
           {kpis
-            .filter((kpi) => ["pending", "in_review", "on_hold"].includes(kpi.id))
+            .filter((kpi) => ORDERED_CARD_IDS.includes(kpi.id as any))
+            .sort((a, b) => ORDERED_CARD_IDS.indexOf(a.id as any) - ORDERED_CARD_IDS.indexOf(b.id as any))
             .map((kpi) => {
-              const Icon = KPI_ICONS[kpi.variant];
-              const isActive = columnFilters.status === kpi.id;
+              const Icon = KPI_ICONS[kpi.variant as keyof typeof KPI_ICONS] || Layers;
+              const isActive = activeCard === kpi.id;
 
               return (
                 <button
                   key={kpi.id}
+                  id={`kpi-card-${kpi.id}`}
                   type="button"
-                  className={`${problemStyles.scardMini} ${styles.kpiCard} ${isActive ? problemStyles.active : ""} ${isActive ? styles.kpiCardActive : ""}`}
-                  onClick={() => setColumnFilter("status", isActive ? "all" : kpi.id)}
+                  className={`${styles.kpiCard} ${isActive ? styles.kpiCardActive : ""}`}
+                  onClick={() => handleCardClick(kpi.id)}
                   aria-pressed={isActive}
                 >
+                  <ChamferCardBorder />
                   <div className={styles.kpiHeader}>
                     <span className={styles.kpiLabel}>{kpi.label}</span>
                     <span className={styles.kpiIconBox}>
-                      <Icon size={24} aria-hidden="true" />
+                      <Icon size={20} aria-hidden="true" />
                     </span>
                   </div>
                   <p className={styles.kpiValue}>
-                    {String(kpi.value).padStart(2, "0")}
+                    {!ready && (kpi.value === "0" || kpi.value === "00") ? (
+                      <span className={styles.skeletonBox} style={{ display: "inline-block", width: 38, height: 30, borderRadius: 4 }} />
+                    ) : (
+                      String(kpi.value).padStart(2, "0")
+                    )}
                   </p>
                 </button>
               );
@@ -307,7 +387,7 @@ export default function ExpertApplications() {
           </div>
         </div>
 
-        {showAlert && slaAlert.count > 0 && (
+        {ready && showAlert && slaAlert.count > 0 && (
           <div className={styles.slaAlert} role="alert">
             <div className={styles.slaAlertContent}>
               <AlertTriangle className={styles.slaAlertIcon} size={20} />
@@ -318,9 +398,13 @@ export default function ExpertApplications() {
               </p>
             </div>
             <div className={styles.slaAlertActions}>
-              <Link href={slaReviewHref} className={styles.slaAlertBtn}>
+              <button
+                type="button"
+                className={styles.slaAlertBtn}
+                onClick={handleReviewOverdue}
+              >
                 Review Overdue
-              </Link>
+              </button>
               <button
                 type="button"
                 className={styles.dismissBtn}
@@ -396,15 +480,7 @@ export default function ExpertApplications() {
                       ariaLabel="Filter by SLA"
                     />
                   </th>
-                  <th>
-                    <TableHeaderFilter
-                      label="Status"
-                      value={columnFilters.status}
-                      onChange={(value) => setColumnFilter("status", value)}
-                      options={STATUS_FILTER_OPTIONS}
-                      ariaLabel="Filter by status"
-                    />
-                  </th>
+                  <th className={styles.colStatus}>Status</th>
                   <th>
                     <TableHeaderFilter
                       label="Reviewer"
@@ -421,7 +497,48 @@ export default function ExpertApplications() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {!ready ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={`skeleton-${i}`} className={styles.skeletonRow}>
+                      <td className={styles.rowNum}>
+                        <div className={styles.skeletonBox} style={{ width: 16, height: 16 }} />
+                      </td>
+                      <td>
+                        <div className={styles.applicantCell}>
+                          <div className={`${styles.skeletonBox} ${styles.skeletonAvatar}`} />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <div className={styles.skeletonBox} style={{ width: 130, height: 14 }} />
+                            <div className={styles.skeletonBox} style={{ width: 85, height: 11 }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 88, height: 22, borderRadius: 12 }} />
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 72, height: 22, borderRadius: 12 }} />
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div className={styles.skeletonBox} style={{ width: 76, height: 13 }} />
+                          <div className={styles.skeletonBox} style={{ width: 52, height: 10 }} />
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 68, height: 20, borderRadius: 12 }} />
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 78, height: 22, borderRadius: 12 }} />
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 50, height: 14 }} />
+                      </td>
+                      <td>
+                        <div className={styles.skeletonBox} style={{ width: 70, height: 28, borderRadius: 6 }} />
+                      </td>
+                    </tr>
+                  ))
+                ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan={9}>
                       <div className={styles.emptyState}>No applications match your filters.</div>
@@ -479,8 +596,12 @@ export default function ExpertApplications() {
                         </span>
                       </td>
                       <td>
-                        <span className={`${styles.statusBadge} ${STATUS_BADGE_CLASS[app.status]}`}>
-                          {STATUS_LABEL[app.status]}
+                        <span
+                          className={`${styles.statusBadge} ${
+                            app.isBlacklisted ? styles.statusBlacklisted : STATUS_BADGE_CLASS[app.status]
+                          }`}
+                        >
+                          {app.isBlacklisted ? "Blacklisted" : STATUS_LABEL[app.status]}
                         </span>
                       </td>
                       <td>
@@ -502,9 +623,11 @@ export default function ExpertApplications() {
           </div>
           <div className={styles.pagination}>
             <span className={styles.paginationSummary}>
-              {pagination.total === 0
-                ? "No applications"
-                : `Showing ${(pagination.page - 1) * pagination.limit + 1}–${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total}`}
+              {!ready
+                ? "Loading applications..."
+                : pagination.total === 0
+                  ? "No applications"
+                  : `Showing ${(pagination.page - 1) * pagination.limit + 1}–${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total}`}
             </span>
             <div className={styles.paginationActions}>
               <button

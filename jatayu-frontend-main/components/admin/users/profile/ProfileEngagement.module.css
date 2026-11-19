@@ -10,7 +10,7 @@
 .section {
   background: var(--white);
   border: 1px solid var(--mercury);
-  border-radius: 14px;
+  /* border-radius: 14px; */
   padding: 20px 24px;
 }
 

@@ -3,7 +3,10 @@ import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
 import { Expert, ExpertSession, ExpertSecurityChallenge } from '../models/index.js';
 import { deliverOtpChannels } from '../utils/otpDelivery.js';
+import { constantTimeCodeEqual, MAX_OTP_ATTEMPTS, withOtpVerificationLock } from '../utils/otpPersistence.js';
 import { DEFAULT_EXPERT_NOTIFICATION_PREFERENCES, normalizeExpertNotificationPreferences } from '../config/expertNotificationPreferences.js';
+
+const contactChallengeAttempts = new Map();
 
 const maskPhone = (phone) => phone ? `${String(phone).slice(0, -5)}•••••` : null;
 const hashCode = (code) => crypto.createHash('sha256').update(code).digest('hex');
@@ -31,6 +34,7 @@ export async function getSecurity(req, res) {
 export async function updateTwoFactor(req, res) {
   if (typeof req.body.enabled !== 'boolean') return res.status(422).json({ message: 'enabled must be a boolean' });
   const expert = await Expert.findByPk(req.user.id);
+  if (!expert) return res.status(404).json({ message: 'Expert not found' });
   if (req.body.enabled && !expert.isEmailVerified && !expert.isPhoneVerified) {
     return res.status(409).json({ message: 'Verify an email address or phone number before enabling two-factor authentication' });
   }
@@ -45,6 +49,7 @@ export async function updatePassword(req, res) {
     return res.status(422).json({ message: 'New password must be at least 8 characters and include a letter, number, and symbol' });
   }
   const expert = await Expert.findByPk(req.user.id);
+  if (!expert) return res.status(404).json({ message: 'Expert not found' });
   if (expert.password && (!currentPassword || !(await bcrypt.compare(currentPassword, expert.password)))) {
     return res.status(401).json({ message: 'Current password is incorrect' });
   }
@@ -75,7 +80,8 @@ export async function requestContactVerification(req, res) {
   const duplicate = await Expert.findOne({ where: { [type]: value, id: { [Op.ne]: req.user.id } } });
   if (duplicate) return res.status(409).json({ message: `That ${type} is already registered` });
   const expert = await Expert.findByPk(req.user.id);
-  const code = process.env.NODE_ENV === 'production' ? String(crypto.randomInt(100000, 1000000)) : '123456';
+  if (!expert) return res.status(404).json({ message: 'Expert not found' });
+  const code = String(crypto.randomInt(100000, 1000000));
   await ExpertSecurityChallenge.update({ usedAt: new Date() }, { where: { expertId: expert.id, type, usedAt: null } });
   const challenge = await ExpertSecurityChallenge.create({ expertId: expert.id, type, value, codeHash: hashCode(code), expiresAt: new Date(Date.now() + 10 * 60000) });
   await deliverOtpChannels({ email: type === 'email' ? value : null, phone: type === 'phone' ? value : null, fullName: expert.fullName, otpCode: code, logPrefix: 'Security OTP' });
@@ -83,16 +89,53 @@ export async function requestContactVerification(req, res) {
 }
 
 export async function verifyContact(req, res) {
-  const challenge = await ExpertSecurityChallenge.findOne({ where: { id: req.body.challengeId, expertId: req.user.id, usedAt: null } });
-  if (!challenge || new Date(challenge.expiresAt) <= new Date() || hashCode(String(req.body.code || '')) !== challenge.codeHash) {
+  const challengeId = req.body?.challengeId;
+  if (!challengeId) {
     return res.status(400).json({ message: 'Invalid or expired verification code' });
   }
-  const expert = await Expert.findByPk(req.user.id);
-  expert[challenge.type] = challenge.value;
-  expert[challenge.type === 'email' ? 'isEmailVerified' : 'isPhoneVerified'] = true;
-  challenge.usedAt = new Date();
-  await Promise.all([expert.save(), challenge.save()]);
-  return res.json({ message: `${challenge.type} updated and verified` });
+
+  return withOtpVerificationLock(`contact:${req.user.id}:${challengeId}`, async () => {
+    const challenge = await ExpertSecurityChallenge.findOne({
+      where: { id: challengeId, expertId: req.user.id, usedAt: null },
+    });
+    if (!challenge || new Date(challenge.expiresAt) <= new Date()) {
+      contactChallengeAttempts.delete(challengeId);
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    const submittedHash = hashCode(String(req.body.code || ''));
+    if (!constantTimeCodeEqual(challenge.codeHash, submittedHash)) {
+      const nextAttempts = (contactChallengeAttempts.get(challenge.id) || 0) + 1;
+      if (nextAttempts >= MAX_OTP_ATTEMPTS) {
+        contactChallengeAttempts.delete(challenge.id);
+        challenge.usedAt = new Date();
+        await challenge.save();
+        return res.status(429).json({
+          message: 'Too many invalid verification attempts. Please request a new verification code.',
+          code: 'OTP_ATTEMPTS_EXCEEDED',
+        });
+      }
+      contactChallengeAttempts.set(challenge.id, nextAttempts);
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    const duplicate = await Expert.findOne({
+      where: { [challenge.type]: challenge.value, id: { [Op.ne]: req.user.id } },
+    });
+    if (duplicate) {
+      return res.status(409).json({ message: `That ${challenge.type} is already registered` });
+    }
+
+    const expert = await Expert.findByPk(req.user.id);
+    if (!expert) return res.status(404).json({ message: 'Expert not found' });
+
+    expert[challenge.type] = challenge.value;
+    expert[challenge.type === 'email' ? 'isEmailVerified' : 'isPhoneVerified'] = true;
+    challenge.usedAt = new Date();
+    contactChallengeAttempts.delete(challenge.id);
+    await Promise.all([expert.save(), challenge.save()]);
+    return res.json({ message: `${challenge.type} updated and verified` });
+  });
 }
 
 export async function getNotificationPreferences(req, res) {

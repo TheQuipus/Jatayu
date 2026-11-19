@@ -78,6 +78,7 @@ export type QuickAction = {
 export const EXPERT_DASHBOARD_HREF = "/expert/dashboard/";
 export const EXPERT_ONBOARDING_HREF = "/expert/expert-onboarding/";
 export const EXPERT_PROFILE_HREF = "/expert/profile/";
+export const EXPERT_PROFILE_EDIT_HREF = `${EXPERT_PROFILE_HREF}?mode=edit`;
 
 import { DEFAULT_EXPERT_PROFILE } from "@/lib/expertProfile";
 
@@ -357,7 +358,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "profile",
     label: "Edit Profile",
-    href: EXPERT_PROFILE_HREF,
+    href: EXPERT_PROFILE_EDIT_HREF,
     icon: "pencil",
   },
   {
@@ -394,3 +395,12 @@ export const SETTINGS_NAV: ExpertNavItem = {
 export function formatExpertCurrency(amount: number): string {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
+
+export const UNAPPROVED_ALLOWED_NAV_IDS = new Set(["dashboard", "profile"]);
+export const UNAPPROVED_RESTRICTION_TOOLTIP = "You may access these after approval of your profile";
+
+export function isNavRestrictedForExpert(navId: string, isApproved: boolean): boolean {
+  if (isApproved) return false;
+  return !UNAPPROVED_ALLOWED_NAV_IDS.has(navId);
+}
+

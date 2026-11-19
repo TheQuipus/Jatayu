@@ -21,6 +21,14 @@
   box-shadow: none;
 }
 
+.smartSelectContainerError .smartInputWrapper {
+  border-color: #e53b17;
+}
+
+.smartSelectContainerError .smartInputWrapper:focus-within {
+  border-color: #e53b17;
+}
+
 .smartSearchIconLeft {
   position: absolute;
   left: 14px;
@@ -46,6 +54,11 @@
   box-shadow: none;
 }
 
+.smartInput:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .smartInput::placeholder {
   color: var(--silver-chalice);
 }
@@ -61,6 +74,11 @@
   justify-content: center;
   color: var(--dove-gray);
   cursor: pointer;
+}
+
+.smartChevronBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .smartDropdownMenu {
@@ -130,6 +148,18 @@
 .smartOptionItemActive:hover {
   background: color-mix(in srgb, var(--pomegranate) 18%, var(--white));
   color: var(--pomegranate);
+}
+
+.smartOptionItemFocused {
+  outline: 2px solid color-mix(in srgb, var(--pomegranate) 45%, transparent);
+  outline-offset: -2px;
+}
+
+.smartSelectError {
+  margin: 6px 0 0;
+  color: var(--pomegranate);
+  font-family: var(--font-body);
+  font-size: 12px;
 }
 
 .smartAddBtnContainer {

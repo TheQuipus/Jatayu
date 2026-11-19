@@ -98,7 +98,7 @@ export const SEEKER_PROFILE = {
   isPro: true,
   greeting: "Good morning",
   email: "ananya@email.com",
-  phone: "9898675444",
+  phone: "",
 };
 
 export const WALLET_BALANCE = 2450;
@@ -635,9 +635,9 @@ export async function getSeekerBookingsAsync(params?: { status?: string; page?: 
     return await fetchSeekerBookings(params);
   } catch {
     const status = params?.status || "all";
-    let filtered = status === "all" ? UPCOMING_BOOKINGS : UPCOMING_BOOKINGS.filter((b) => b.status === status);
+    const filtered = status === "all" ? UPCOMING_BOOKINGS : UPCOMING_BOOKINGS.filter((b) => b.status === status);
     return {
-      bookings: filtered as any[],
+      bookings: filtered,
       pagination: {
         page: params?.page || 1,
         limit: params?.limit || 20,

@@ -2,9 +2,13 @@ import { getDigilockerKycStatus, getProfile, updateProfile } from "@/lib/api";
 import type { ExperienceLevel, ExpertProfileData } from "@/lib/expertProfile";
 import type { TimeSlot } from "@/lib/expertAvailability";
 import { saveExpertProfile } from "@/lib/expertStore";
+import { areRequiredSessionPreferencesValid } from "@/components/expert/onboarding/preferencesData";
+import { hasValidSavedEmploymentPosition } from "@/lib/expertEmployment";
+import { getPreferredExpertSelectionValues } from "@/lib/expertAudience";
 
 export type BackendExpertProfile = {
   applicationNumber?: string | null;
+  email?: string | null;
   fullName?: string;
   professionalTitle?: string;
   profilePhotoSrc?: string;
@@ -81,6 +85,43 @@ export type ExpertDashboardProfile = {
   };
 };
 
+export function buildExpertProfileCompletion(
+  expert: BackendExpertProfile,
+  profile: ExpertProfileData,
+  hasKyc: boolean,
+): ExpertDashboardProfile["completion"] {
+  const credentials = expert.credentials || [];
+  const formats = expert.selectedFormats || [];
+  const prices = expert.formatPrices || {};
+  const submitted = Boolean(expert.submittedAt)
+    || ["pending_review", "in_review", "on_hold", "approved", "rejected"].includes(expert.status || "")
+    || expert.onboardingStep === "success";
+  const checklist: ExpertDashboardProfile["completion"]["checklist"] = [
+    { id: "category", label: "Expert category", status: profile.category ? "done" : "pending" },
+    { id: "skills", label: "Skills & expertise", status: profile.skills.length ? "done" : "pending" },
+    {
+      id: "experience",
+      label: "Work experience",
+      status: hasValidSavedEmploymentPosition(credentials) ? "done" : "pending",
+    },
+    { id: "identity", label: "Profile identity", status: profile.name && profile.role && profile.tagLine && profile.bio ? "done" : "pending" },
+    { id: "credentials", label: "Credentials & KYC", status: credentials.length > 0 && hasKyc ? "done" : "pending" },
+    {
+      id: "preferences",
+      label: "Consultation preferences",
+      status: areRequiredSessionPreferencesValid(formats, prices) ? "done" : "pending",
+    },
+    { id: "audience", label: "Target audience", status: asStringArray(expert.targetAudience).length ? "done" : "pending" },
+    { id: "availability", label: "Availability schedule", status: expert.timezone && expert.availabilities?.length ? "done" : "pending" },
+    { id: "review", label: "Review & submit", status: submitted ? "done" : "pending" },
+  ];
+  const completedCount = checklist.filter((item) => item.status === "done").length;
+  return {
+    percentage: Math.round((completedCount / checklist.length) * 100),
+    checklist,
+  };
+}
+
 function asStringArray(value: unknown): string[] {
   let normalized = value;
   if (typeof normalized === "string") {
@@ -114,9 +155,21 @@ function asRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
-function normalizeBackendProfile(expert: BackendExpertProfile): BackendExpertProfile {
+export function normalizeBackendProfile(expert: BackendExpertProfile): BackendExpertProfile {
   const raw = expert as BackendExpertProfile & Record<string, unknown>;
   const availabilities = Array.isArray(raw.availabilities) ? raw.availabilities : [];
+  const meta = asRecord(raw.onboardingMetadata);
+  if (typeof meta.sectionClarifications === "string") {
+    meta.sectionClarifications = asRecord(meta.sectionClarifications);
+  }
+  if (typeof meta.sectionDecisions === "string") {
+    meta.sectionDecisions = asRecord(meta.sectionDecisions);
+  }
+  if (typeof meta.sectionAuditLogs === "string") {
+    try {
+      meta.sectionAuditLogs = JSON.parse(meta.sectionAuditLogs as string);
+    } catch {}
+  }
   return {
     ...expert,
     skills: asStringArray(raw.skills),
@@ -125,7 +178,7 @@ function normalizeBackendProfile(expert: BackendExpertProfile): BackendExpertPro
     selectedLengths: asStringArray(raw.selectedLengths),
     targetAudience: asStringArray(raw.targetAudience),
     formatPrices: asRecord(raw.formatPrices) as Record<string, string>,
-    onboardingMetadata: asRecord(raw.onboardingMetadata),
+    onboardingMetadata: meta,
     credentials: Array.isArray(raw.credentials) ? raw.credentials : [],
     availabilities: availabilities.map((slot) => ({
       ...slot,
@@ -139,17 +192,11 @@ export function mapBackendProfileToExpertData(
 ): ExpertProfileData {
   const normalizedExpert = normalizeBackendProfile(expert);
   const metadata = normalizedExpert.onboardingMetadata ?? {};
-  const languages =
-    asStringArray(metadata.languages).length > 0
-      ? asStringArray(metadata.languages)
-      : asStringArray(normalizedExpert.focusAreas);
-  const storedLocation = typeof metadata.location === "string"
-    ? metadata.location.trim()
-    : "";
-  // These exact values were previously inserted by frontend fallbacks. `Kolkata`
-  // was derived from the availability timezone `Asia/Kolkata`, not user input.
-  const legacyLocations = new Set(["Bengaluru, India", "Kolkata", "India"]);
-  const location = legacyLocations.has(storedLocation) ? "" : storedLocation;
+  const languages = getPreferredExpertSelectionValues(
+    metadata.languages,
+    normalizedExpert.focusAreas,
+  );
+  const location = getExpertProfileLocation(metadata);
 
   return {
     name: normalizedExpert.fullName || "",
@@ -163,6 +210,19 @@ export function mapBackendProfileToExpertData(
     languages,
     location,
   };
+}
+
+export function getBackendExpertEmail(expert: BackendExpertProfile): string {
+  return typeof expert.email === "string" ? expert.email.trim() : "";
+}
+
+export function getExpertProfileLocation(metadataValue: unknown): string {
+  const metadata = asRecord(metadataValue);
+  const storedLocation = typeof metadata.location === "string"
+    ? metadata.location.trim()
+    : "";
+  const legacyLocations = new Set(["Bengaluru, India", "Kolkata", "India"]);
+  return legacyLocations.has(storedLocation) ? "" : storedLocation;
 }
 
 export function mapBackendAvailability(expert: BackendExpertProfile): {
@@ -203,41 +263,17 @@ export async function fetchExpertDashboardProfile(): Promise<ExpertDashboardProf
   const expert = normalizeBackendProfile(profileResponse as BackendExpertProfile);
   const profile = mapBackendProfileToExpertData(expert);
   const metadata = expert.onboardingMetadata || {};
-  const credentials = expert.credentials || [];
-  const hasWorkExperience = credentials.some((item) =>
-    item && typeof item === "object" && (item as { type?: string }).type === "experience"
-  );
   const hasKyc = digilocker?.kyc?.status === "verified"
     || Boolean(metadata.governmentId)
     || Boolean(metadata.kycVideoUrl);
-  const formats = expert.selectedFormats || [];
-  const lengths = expert.selectedLengths || [];
-  const prices = expert.formatPrices || {};
-  const submitted = Boolean(expert.submittedAt)
-    || ["pending_review", "in_review", "on_hold", "approved", "rejected"].includes(expert.status || "")
-    || expert.onboardingStep === "success";
-  const checklist: ExpertDashboardProfile["completion"]["checklist"] = [
-    { id: "category", label: "Expert category", status: profile.category ? "done" : "pending" },
-    { id: "skills", label: "Skills & expertise", status: profile.skills.length ? "done" : "pending" },
-    { id: "experience", label: "Work experience", status: hasWorkExperience ? "done" : "pending" },
-    { id: "identity", label: "Profile identity", status: profile.name && profile.role && profile.tagLine && profile.bio ? "done" : "pending" },
-    { id: "credentials", label: "Credentials & KYC", status: credentials.length > 0 && hasKyc ? "done" : "pending" },
-    { id: "preferences", label: "Consultation preferences", status: formats.length > 0 && lengths.length > 0 && formats.every((format) => Number(prices[format]) > 0) ? "done" : "pending" },
-    { id: "audience", label: "Target audience", status: asStringArray(expert.targetAudience).length ? "done" : "pending" },
-    { id: "availability", label: "Availability schedule", status: expert.timezone && expert.availabilities?.length ? "done" : "pending" },
-    { id: "review", label: "Review & submit", status: submitted ? "done" : "pending" },
-  ];
-  const completedCount = checklist.filter((item) => item.status === "done").length;
+  const completion = buildExpertProfileCompletion(expert, profile, hasKyc);
   saveExpertProfile(profile);
   return {
     profile,
     reviewStatus: expert.status || "draft",
     reviewerNote: expert.reviewerNote || null,
     submittedAt: expert.submittedAt || null,
-    completion: {
-      percentage: Math.round((completedCount / checklist.length) * 100),
-      checklist,
-    },
+    completion,
   };
 }
 

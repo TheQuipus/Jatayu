@@ -13,7 +13,7 @@
 .stickyTopSection {
   position: sticky;
   top: var(--admin-sticky-top, 56px);
-  z-index: 25;
+  z-index: 70;
   background: var(--seashell);
   padding: 12px 0 16px 0;
   margin-top: 0;
@@ -68,10 +68,91 @@
 
 .metaTagsRow {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
   margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.followUpCtaWrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.followUpPrimaryBtn {
+  padding: 6px 12px 6px 20px;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  background: var(--bunker);
+  color: var(--white);
+  border: 1px solid var(--bunker);
+  box-shadow: 0 2px 8px rgba(8, 10, 16, 0.12);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.followUpPrimaryBtn:hover:not(:disabled) {
+  background: #14171d;
+  border-color: #14171d;
+  box-shadow: 0 6px 16px rgba(8, 10, 16, 0.18);
+}
+
+.followUpPrimaryBtn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.followUpPrimaryBtn:focus-visible {
+  outline: 2px solid var(--pomegranate);
+  outline-offset: 2px;
+}
+
+.followUpPrimaryBtn:disabled {
+  opacity: 0.45 !important;
+  box-shadow: none;
+}
+
+.followUpSuccessBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.bannerContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bannerIcon {
+  color: #059669;
+  flex-shrink: 0;
+}
+
+.bannerDismissBtn {
+  background: transparent;
+  border: none;
+  color: #065f46;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease;
+}
+
+.bannerDismissBtn:hover {
+  background: rgba(6, 95, 70, 0.1);
 }
 
 .pageTitle {
@@ -103,9 +184,15 @@
 }
 
 .statusInReview {
-  background: color-mix(in srgb, #3b82f6 12%, var(--white));
-  border: 1px solid #2563eb;
-  color: #2563eb;
+  background: color-mix(in srgb, #fb923c 16%, var(--white));
+  border: 1px solid #fdba74;
+  color: #ea580c;
+}
+
+.statusNotSubmitted {
+  background: color-mix(in srgb, #64748b 14%, var(--white));
+  border: 1px solid #94a3b8;
+  color: #475569;
 }
 
 .statusPending {
@@ -130,6 +217,13 @@
   background: color-mix(in srgb, var(--pomegranate) 10%, var(--white));
   border: 1px solid var(--pomegranate);
   color: var(--pomegranate);
+}
+
+.statusBlacklisted {
+  background: #18181b;
+  border: 1px solid #7f1d1d;
+  color: #fca5a5;
+  font-weight: 600;
 }
 
 .pageSubtitle {
@@ -181,47 +275,79 @@
   flex-wrap: wrap;
 }
 
-.radioLabel {
+.radioOptionBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 4px;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
   color: var(--scorpion);
   cursor: pointer;
-  padding: 0;
-  border: none;
-  background: none;
   transition: color 0.15s ease;
   user-select: none;
 }
 
-.radioLabel:hover {
+.radioOptionBtn:hover {
   color: var(--ink);
+  background: transparent;
 }
 
-.radioLabel input[type="radio"] {
-  accent-color: var(--pomegranate);
-  cursor: pointer;
-  width: 15px;
-  height: 15px;
+.radioCircle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dove-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  transition: border-color 0.15s ease;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-.radioLabelActiveApprove {
-  color: var(--ink);
-  font-weight: 600;
+.radioOptionBtn:hover .radioCircle {
+  border-color: var(--ink);
 }
 
-.radioLabelActiveReject {
-  color: var(--ink);
-  font-weight: 600;
+.radioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: block;
+  background-color: var(--pomegranate, #E53B17);
+  transition: transform 0.15s ease;
 }
 
-.radioLabelActiveClarification {
-  color: var(--ink);
+/* Original unified radio style: red border and red dot for all selected options */
+.radioOptionActive,
+.radioOptionApprove,
+.radioOptionClarification,
+.radioOptionReject {
+  color: var(--ink) !important;
   font-weight: 600;
+  background: transparent !important;
+  border: none !important;
+}
+
+.radioCircleActive,
+.radioOptionActive .radioCircle,
+.radioOptionApprove .radioCircle,
+.radioOptionClarification .radioCircle,
+.radioOptionReject .radioCircle {
+  border-color: var(--pomegranate, #E53B17) !important;
+}
+
+.radioOptionActive .radioDot,
+.radioOptionApprove .radioDot,
+.radioOptionClarification .radioDot,
+.radioOptionReject .radioDot {
+  background-color: var(--pomegranate, #E53B17) !important;
 }
 
 .sectionNoteBoxContent {
@@ -339,7 +465,7 @@
 /* Cards */
 .card {
   border: 1px solid var(--mercury);
-  border-radius: 12px;
+  /* border-radius: 12px; */
   overflow: hidden;
   margin-top: 0 !important;
   margin-bottom: 16px !important;
@@ -354,6 +480,31 @@
   margin-top: 0 !important;
   margin-bottom: 16px !important;
   scroll-margin-top: calc(var(--admin-sticky-top, 56px) + 145px);
+}
+
+.unfilledSectionHighlight {
+  border-color: #dc2626 !important;
+  outline: 2px solid #dc2626 !important;
+  outline-offset: -1px;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.16), 0 8px 24px rgba(220, 38, 38, 0.12) !important;
+  transition: border-color 0.25s ease, outline-color 0.25s ease, box-shadow 0.25s ease;
+  animation: unfilledAttentionPulse 1.2s ease-in-out;
+}
+
+.unfilledSectionHighlight .cardHeader {
+  border-bottom-color: rgba(220, 38, 38, 0.25) !important;
+}
+
+@keyframes unfilledAttentionPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5), 0 8px 24px rgba(220, 38, 38, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0.22), 0 8px 24px rgba(220, 38, 38, 0.16);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.16), 0 8px 24px rgba(220, 38, 38, 0.12);
+  }
 }
 
 .reviewSection .cardBody {
@@ -3182,9 +3333,18 @@
   transition: all 0.2s ease;
 }
 
-.holdBtn:hover {
+.holdBtn:hover:not(:disabled) {
   background: rgba(245, 158, 11, 0.05);
   border-color: #d97706;
+}
+
+.holdBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--seashell, #f9fafb);
+  border-color: var(--mercury, #e5e7eb);
+  color: var(--dusty-gray, #9ca3af);
+  box-shadow: none;
 }
 
 .rejectBtn {
@@ -3204,9 +3364,18 @@
   transition: all 0.2s ease;
 }
 
-.rejectBtn:hover {
+.rejectBtn:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.05);
   border-color: #dc2626;
+}
+
+.rejectBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--seashell, #f9fafb);
+  border-color: var(--mercury, #e5e7eb);
+  color: var(--dusty-gray, #9ca3af);
+  box-shadow: none;
 }
 
 /* ── Section Status Badges ── */
@@ -3325,6 +3494,58 @@
   cursor: pointer;
 }
 
+/* Modal Blacklist Option */
+.modalBlacklistOption {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.modalBlacklistOption:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.modalBlacklistLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.modalBlacklistCheckbox {
+  margin-top: 3px;
+  accent-color: #ef4444;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modalBlacklistContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modalBlacklistTitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.modalBlacklistSubtext {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--scorpion);
+  line-height: 1.35;
+}
+
 .modalConfirmBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -3347,15 +3568,8 @@
 
 .chipsScrollWrapper {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 2px 4px;
-  scrollbar-width: none;
-}
-
-.chipsScrollWrapper::-webkit-scrollbar {
-  display: none;
+  flex-direction: column;
+  overflow: visible !important;
 }
 
 .actionError {
@@ -3396,21 +3610,26 @@
   position: sticky;
   top: calc(var(--admin-sticky-top, 56px) + 145px);
   align-self: start;
-  z-index: 10;
+  z-index: 40;
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .chipsScrollWrapper {
   display: flex;
   flex-direction: column;
-  background: var(--white);
-  border: 1px solid var(--mercury);
+  background: none;
+  border: none;
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
   width: 100%;
   box-sizing: border-box;
+  overflow: visible !important;
+  position: relative;
 }
 
 .chipsNavHeader {
@@ -3422,6 +3641,12 @@
   border-bottom: 1px solid var(--mercury);
 }
 
+.chipsNavTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .chipsNavTitle {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -3431,14 +3656,98 @@
   color: var(--ink);
 }
 
+.navProgressPill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ink);
+}
+
+.navDropoutTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 2px 7px;
+  border-radius: 9999px;
+}
+
+.navInProgressTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #ea580c;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  padding: 2px 7px;
+  border-radius: 9999px;
+}
+
+.navPulseDotRed {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: beaconPulse 1.5s infinite;
+}
+
+.navPulseDotAmber {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f97316;
+  animation: beaconPulse 1.5s infinite;
+}
+
 .chipsNavList {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   box-sizing: border-box;
 }
 
+/* Continuous vertical connecting trail running behind checkpoints */
+.stepperRailLine {
+  position: absolute;
+  left: 24px;
+  top: 22px;
+  bottom: 22px;
+  width: 2px;
+  background: #e5e7eb;
+  z-index: 1;
+  border-radius: 1px;
+}
+
+.stepperRailLineFilled {
+  position: absolute;
+  left: 24px;
+  top: 22px;
+  width: 2px;
+  background: var(--ink, #111827);
+  z-index: 2;
+  border-radius: 1px;
+  transition: height 0.3s ease;
+  max-height: calc(100% - 44px);
+}
+
 .chipButton {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -3451,23 +3760,272 @@
   text-align: left;
   cursor: pointer;
   white-space: normal;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 500;
   color: var(--scorpion);
 }
 
-.chipButton:hover {
+.chipButton:hover,
+.chipButton:focus-visible {
   background: var(--seashell);
   color: var(--ink);
   border-color: var(--mercury);
+  z-index: 200;
+}
+
+.chipButtonDropout {
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(254, 242, 242, 0.4);
 }
 
 .chipActive {
   background: var(--ink) !important;
   color: var(--white) !important;
   border-color: var(--ink) !important;
+}
+
+/* Checkpoint squircle wrapper and states */
+.checkpointBadgeWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 3;
+}
+
+.checkpointBadge {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.checkpointSubmitted {
+  background: var(--ink, #111827);
+  color: #ffffff;
+  border: 1px solid var(--ink, #111827);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.chipActive .checkpointSubmitted {
+  background: #ffffff;
+  color: var(--ink, #111827);
+  border-color: #ffffff;
+}
+
+.checkpointSkipped {
+  background: var(--gallery, #f9fafb);
+  color: #9ca3af;
+  border: 1.5px dashed #cbd5e1;
+}
+
+.chipActive .checkpointSkipped {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.checkpointDropout {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1.5px solid #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
+}
+
+.chipActive .checkpointDropout {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #fca5a5;
+}
+
+.checkpointInProgress {
+  background: #fff7ed;
+  color: #ea580c;
+  border: 1.5px solid #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+}
+
+.chipActive .checkpointInProgress {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #fdba74;
+}
+
+.checkpointPending {
+  background: var(--seashell, #f3f4f6);
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.chipActive .checkpointPending {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pulseBeaconRed {
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.25);
+  animation: beaconPulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.pulseBeaconAmber {
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  background: rgba(249, 115, 22, 0.25);
+  animation: beaconPulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes beaconPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* Hover Tooltip Popover */
+.checkpointTooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: #09090b;
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 99999;
+  min-width: 175px;
+  max-width: 250px;
+  box-sizing: border-box;
+}
+
+.checkpointTooltip::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 5px 5px 5px 0;
+  border-style: solid;
+  border-color: transparent #09090b transparent transparent;
+}
+
+.chipButton:hover .checkpointTooltip,
+.chipButton:focus-visible .checkpointTooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
+
+.checkpointTooltipHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tooltipStatusBadge {
+  display: inline-block;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  line-height: 1.3;
+}
+
+.tooltipStatusSubmitted {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.tooltipStatusSkipped {
+  background: rgba(156, 163, 175, 0.2);
+  color: #d1d5db;
+}
+
+.tooltipStatusDropout {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.tooltipStatusInProgress {
+  background: rgba(249, 115, 22, 0.25);
+  color: #fb923c;
+}
+
+.tooltipStatusPending {
+  background: rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+}
+
+.checkpointIdleTag {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.tooltipSummaryText {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: #e2e8f0;
+  word-break: break-word;
+}
+
+@media (max-width: 1024px) {
+  .checkpointTooltip {
+    left: auto;
+    right: 0;
+    top: calc(100% + 6px);
+    transform: none;
+  }
+  .checkpointTooltip::before {
+    left: 20px;
+    top: -5px;
+    border-width: 0 5px 5px 5px;
+    border-style: solid;
+    border-color: transparent transparent #09090b transparent;
+  }
+  .chipButton:hover .checkpointTooltip,
+  .chipButton:focus-visible .checkpointTooltip {
+    transform: none;
+  }
 }
 
 .chipNum {
@@ -3482,6 +4040,7 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .chipActive .chipNum {
@@ -3503,6 +4062,8 @@
   flex-direction: column;
   gap: 0;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 /* Left-aligned Decision Box in Section */
@@ -3568,11 +4129,11 @@
 }
 
 .formaSummaryCard {
-  background: var(--white);
-  border: 1px solid var(--mercury);
+  background: none;
+  border: none;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .formaSummaryTitleBar {
@@ -3862,4 +4423,120 @@
   max-height: 180px;
   opacity: 1;
   margin-top: 10px;
+}
+
+/* ── Sections Nav Exclamation Badge & Clarification Tooltip ────── */
+.navExclamationBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: auto;
+  cursor: pointer;
+  background: #fff7ed;
+  border: 1.5px solid #f97316;
+  color: #ea580c;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.navExclamationBadge:hover {
+  transform: scale(1.12);
+}
+
+.chipActive .navExclamationBadge {
+  background: #ea580c;
+  border-color: #f97316;
+  color: #ffffff;
+}
+
+/* ── Sections Nav Approved Badge ────── */
+.navApprovedBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: auto;
+  cursor: pointer;
+  background: #ecfdf5;
+  border: 1.5px solid #10b981;
+  color: #059669;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.navApprovedBadge:hover {
+  transform: scale(1.12);
+}
+
+.chipActive .navApprovedBadge {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.navApprovedIcon {
+  display: inline-block;
+  user-select: none;
+}
+
+.navExclamationIcon {
+  display: inline-block;
+  user-select: none;
+  font-weight: 800;
+  transform: translateY(-0.5px);
+}
+
+.navClarificationTooltip {
+  visibility: hidden;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: -4px;
+  background: #18181b;
+  color: #ffffff;
+  font-family: var(--font-body, sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.navClarificationTooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 9px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #18181b transparent transparent transparent;
+}
+
+.navExclamationBadge:hover .navClarificationTooltip,
+.navApprovedBadge:hover .navClarificationTooltip,
+.chipButton:hover .navClarificationTooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
 }

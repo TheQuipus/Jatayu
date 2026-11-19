@@ -9,6 +9,7 @@ import OnboardingStepTitle from "./OnboardingStepTitle";
 import MatchingProgress from "./MatchingProgress";
 import type { ProgressCompletion, ProgressStepKey } from "./MatchingProgress";
 import RegisterLeftPanel from "./RegisterLeftPanel";
+import TextButton from "@/components/ui/TextButton"; // or your relative path
 import ContinueButton from "@/components/ui/ContinueButton";
 import shared from "./onboarding.shared.module.css";
 import register from "./register.shared.module.css";
@@ -531,7 +532,7 @@ export default function CategoryStep({
           </h1>
 
           <p className={shared.questionSubtitle}>
-            Select the area where you&apos;re looking for expert guidance.
+            Select 1 primary domain to continue.
           </p>
 
           <CategoryFields
@@ -580,7 +581,7 @@ export default function CategoryStep({
         </h1>
 
         <p className={shared.questionSubtitle}>
-          Select the area where you&apos;re looking for expert guidance.
+          Select 1 primary domain to continue.
         </p>
 
         <CategoryFields
@@ -616,19 +617,21 @@ export default function CategoryStep({
               </>
             ) : (
               <>
-                <strong>Select a domain</strong>
-                <small>This narrows down the ideal pool of matches.</small>
+                <strong>Choose one domain</strong>
+                <small>Choose one domain to narrow your expert matches.</small>
               </>
             )}
           </div>
         </div>
 
         <div className={shared.footerActions}>
-          {onBack && (
-            <button type="button" className={shared.textBtn} onClick={onBack}>
-              Back
-            </button>
-          )}
+          {/* {onBack && (
+            <TextButton
+              label="Back"
+              onClick={onBack}
+              className={shared.textBtn} // if you want to keep your shared class styling
+            />
+          )} */}
           <ContinueButton onClick={handleContinue} disabled={!canContinue} />
         </div>
       </div>

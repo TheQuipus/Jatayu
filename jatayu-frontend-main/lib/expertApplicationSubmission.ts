@@ -2,9 +2,9 @@ import type { EducationDegree, EmploymentPosition } from "./expertEmployment";
 import type { ExperienceLevel } from "./expertProfile";
 import type { TimeSlot } from "./expertAvailability";
 
-export type ApplicationStatus = "pending" | "in_review" | "on_hold" | "approved" | "rejected";
+export type ApplicationStatus = "not_submitted" | "pending" | "in_review" | "on_hold" | "approved" | "rejected";
 
-export type SlaStatus = "on_track" | "at_risk" | "breached";
+export type SlaStatus = "on_track" | "at_risk" | "breached" | "closed";
 
 export type ExpertCertificate = {
   id: string;
@@ -28,6 +28,8 @@ export type GovernmentIdData = {
   front: GovernmentIdUpload;
   back?: GovernmentIdUpload;
 };
+
+export type { ExpertKycPhotos } from "./expertKycPhotos";
 
 export type PortfolioSampleFile = {
   id: string;
@@ -68,11 +70,7 @@ export type ExpertApplicationSubmission = {
   portfolioLinks: PortfolioLink[];
   governmentId?: GovernmentIdData;
   kycVideoUrl?: string;
-  kycPhotos?: {
-    left?: string;
-    centre?: string;
-    right?: string;
-  };
+  kycPhotos?: import("./expertKycPhotos").ExpertKycPhotos;
   certificates: ExpertCertificate[];
   formats: string[];
   lengths: string[];
@@ -86,7 +84,15 @@ export type ExpertApplicationSubmission = {
   acceptCustomRequests: boolean;
   termsAcceptedAt: string;
   reviewerNote?: string;
+  isBlacklisted?: boolean;
+  blacklistedAt?: string;
+  approvedAt?: string;
+  closedAt?: string;
+  rejectedAt?: string;
+  updatedAt?: string;
   onboardingStep?: string;
+  onboardingMetadata?: Record<string, unknown>;
+  onboardingAnalytics?: import("./expertDropoutTracker").ExpertOnboardingAnalytics;
 };
 
 export type ExpertApplicationDraft = Partial<

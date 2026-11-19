@@ -16,6 +16,7 @@ export type StepBookingSummaryProps = {
   registerLastName: string;
   registerEmail: string;
   registerPhone: string;
+  onRegisterPhoneChange: (phone: string) => void;
   invoiceId: string;
   breakdown: {
     consultationFee: number;
@@ -39,15 +40,11 @@ export default function StepBookingSummary({
   registerLastName,
   registerEmail,
   registerPhone,
+  onRegisterPhoneChange,
   invoiceId,
   breakdown,
 }: StepBookingSummaryProps) {
   const fullName = [registerFirstName, registerLastName].filter(Boolean).join(" ") || "Priya Sharma";
-  const userPhone = registerPhone
-    ? registerPhone.trim().startsWith("+91")
-      ? registerPhone.trim()
-      : `+91 ${registerPhone.trim()}`
-    : "+91 9898675444";
   const userEmail = registerEmail || MOCK_SEEKER_EMAIL;
 
   return (
@@ -98,7 +95,17 @@ export default function StepBookingSummary({
 
               <div className={styles.sessionInset}>
                 <span className={styles.sessionLabel}>Phone Number</span>
-                <span className={styles.sessionValue}>{userPhone}</span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  aria-label="Phone Number"
+                  className={styles.phoneField}
+                  value={registerPhone}
+                  onChange={(event) => onRegisterPhoneChange(event.target.value)}
+                  placeholder="10-digit number"
+                  maxLength={12}
+                />
               </div>
             </div>
           </div>

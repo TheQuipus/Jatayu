@@ -16,6 +16,7 @@
     "migrate:notifications": "node scripts/migrateNotifications.js",
     "migrate:booking-messages": "node scripts/migrateBookingMessages.js",
     "migrate:expert-security": "node scripts/migrateExpertSecurity.js",
+    "migrate:expert-columns": "node scripts/migrateExpertColumns.js",
     "migrate:calendar-sync": "node scripts/migrateCalendarSync.js"
   },
   "dependencies": {

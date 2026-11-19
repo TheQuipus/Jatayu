@@ -137,16 +137,39 @@
   color: var(--white);
 }
 
+.skillPill:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.skillPillSelected:hover:not(:disabled) {
+  background-color: var(--bunker);
+  border-color: var(--pomegranate);
+}
+
+.skillPill:active:not(:disabled) {
+  background-color: rgba(229, 59, 23, 0.12);
+}
+
 .skillPillRemovable {
   padding-right: 6px;
   max-height: 36px;
 }
 
 .skillPillInput {
-  width: 250px;
+ width: 250px;
   max-height: 36px;
   cursor: text;
   padding-right: 6px;
+  background: var(--background-chip, rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.15s ease;
+}
+
+.skillPillInput:focus-within {
+  background: var(--background-chip, rgba(255, 255, 255, 0.03)) !important;
+  border-color: #FF3B30 !important;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .skillInputForm {
@@ -161,7 +184,8 @@
   min-width: 120px;
   background: transparent;
   border: none;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
   font-family: var(--font-body);
   font-size: inherit;
   font-weight: inherit;

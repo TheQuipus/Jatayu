@@ -1,10 +1,10 @@
+import { randomInt } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Seeker } from '../../models/index.js';
 import dotenv from 'dotenv';
-import { isSmsProviderConfigured, TEMP_SMS_OTP } from '../../utils/smsService.js';
 import { deliverOtpChannels, handleOtpDeliveryError } from '../../utils/otpDelivery.js';
-import { getSettingBool } from '../../utils/settingsHelper.js';
+import { getSettingBool, getDatabaseSettingBool } from '../../utils/settingsHelper.js';
 import {
   getGoogleAuthConfig,
   isDefaultProfilePhoto,
@@ -12,30 +12,78 @@ import {
 } from '../../utils/googleAuth.js';
 import { getLinkedinAuthConfig, verifyLinkedinLogin } from '../../utils/linkedinAuth.js';
 import { getSeekerOnboardingProgress } from '../../utils/seekerOnboardingProgress.js';
+import { isValidSeekerFullName } from '../../utils/seekerNameValidation.js';
+import {
+  isValidSeekerRegistrationEmail,
+  isValidSeekerRegistrationPhone,
+} from '../../utils/seekerRegistrationValidation.js';
 import {
   storeOtpOnModel,
   readOtpFromModel,
   clearPendingOtpMetadata,
+  hasActivePendingOtp,
   isStoredOtpValid,
+  recordOtpFailure,
+  withOtpVerificationLock,
 } from '../../utils/otpPersistence.js';
+import {
+  classifyRegistrationConflict,
+  createOtpCooldownTracker,
+  mapRegistrationUniqueError,
+} from '../../utils/authRegistrationGuard.js';
+import {
+  buildPasswordLoginLockedResponse,
+  buildPasswordLoginRateLimitResponse,
+  clearPasswordLoginFailures,
+  clearPasswordLoginIpFailures,
+  getClientIpAddress,
+  getPasswordLoginIpLockout,
+  getPasswordLoginLockout,
+  recordFailedPasswordLogin,
+} from '../../utils/accountLoginLockout.js';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
 
 const seekerTempOtps = new Map();
+const seekerOtpCooldown = createOtpCooldownTracker(30_000);
 
-function generateOtpCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+function canIssueSeekerOtpNow(seekerId) {
+  return seekerOtpCooldown.canIssueNow(seekerId);
 }
 
-async function createOtpCode() {
-  const smsConfigured = await isSmsProviderConfigured();
-  if (!smsConfigured) {
-    console.log('[Seeker OTP] SMS provider not configured — using temporary OTP 123456');
-    return TEMP_SMS_OTP;
+function markSeekerOtpIssued(seekerId) {
+  seekerOtpCooldown.markIssued(seekerId);
+}
+
+export function isSeekerSuspended(seeker) {
+  if (!seeker) return false;
+  const status = seeker.status || seeker.dataValues?.status;
+  if (status === 'suspended') return true;
+
+  const rawMetadata = seeker.onboardingMetadata || seeker.dataValues?.onboardingMetadata;
+  if (rawMetadata) {
+    if (typeof rawMetadata === 'string') {
+      if (/"status"\s*:\s*"suspended"/i.test(rawMetadata)) return true;
+      try {
+        const parsed = JSON.parse(rawMetadata);
+        if (parsed && typeof parsed === 'object' && parsed.status === 'suspended') {
+          return true;
+        }
+      } catch {
+        // ignore
+      }
+    } else if (typeof rawMetadata === 'object') {
+      if (rawMetadata.status === 'suspended') return true;
+    }
   }
-  return generateOtpCode();
+
+  return false;
+}
+
+function generateOtpCode() {
+  return String(randomInt(100000, 1000000));
 }
 
 async function storeOtp(seeker, code) {
@@ -55,18 +103,9 @@ async function deliverOtp(seeker, otp) {
 }
 
 async function issueOtp(seeker) {
-  const otp = await createOtpCode();
+  const otp = generateOtpCode();
   await storeOtp(seeker, otp);
   await deliverOtp(seeker, otp);
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`\n======================================================`);
-    console.log(`[OTP Dev] Seeker: ${seeker.fullName}`);
-    console.log(`Email: ${seeker.email}`);
-    console.log(`Phone: ${seeker.phone || '(none)'}`);
-    console.log(`Verification Code: ${otp}`);
-    console.log(`======================================================\n`);
-  }
 
   return otp;
 }
@@ -108,67 +147,58 @@ export const register = async (req, res) => {
   if (!fullName || !email || !password || !phone) {
     return res.status(400).json({ message: 'All fields (fullName, email, password, phone) are required' });
   }
+  if (!isValidSeekerFullName(fullName)) {
+    return res.status(400).json({ message: 'Name must contain letters and may only include numbers, spaces, hyphens, commas, and apostrophes.' });
+  }
 
   try {
-    const existingEmail = await Seeker.findOne({ where: { email } });
-    if (existingEmail) {
-      const hasPassword = Boolean(existingEmail.password);
-      const passwordMatches = hasPassword && (await bcrypt.compare(password, existingEmail.password));
-
-      if (!passwordMatches) {
-        return res.status(409).json({
-          message: 'An account with this email already exists. Please log in to continue.',
-          code: 'EMAIL_EXISTS',
-        });
-      }
-
-      const otp = await issueOtp(existingEmail);
-
-      console.log(`\n======================================================`);
-      console.log(`[Seeker OTP Resent] Existing seeker re-submitted registration: ${existingEmail.fullName}`);
-      console.log(`Email: ${existingEmail.email}`);
-      if (otp === TEMP_SMS_OTP) {
-        console.log(`Temporary OTP (until SMS configured): ${TEMP_SMS_OTP}`);
-      }
-      console.log(`======================================================\n`);
-
-      return res.status(200).json({
-        message: 'Welcome back! Verification code sent to your email and phone.',
-        seekerId: existingEmail.id,
-        email: existingEmail.email,
-        phone: existingEmail.phone,
-      });
+    if (!await isValidSeekerRegistrationEmail(email)) {
+      return res.status(400).json({ message: 'Enter a valid email address' });
+    }
+    if (!isValidSeekerRegistrationPhone(phone)) {
+      return res.status(400).json({ message: 'Phone number must contain exactly 10 digits' });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingEmail = await Seeker.findOne({ where: { email: normalizedEmail } });
     const existingPhone = await Seeker.findOne({ where: { phone } });
-    if (existingPhone) {
-      return res.status(409).json({
-        message: 'An account with this phone number already exists. Please log in to continue.',
-        code: 'PHONE_EXISTS',
+
+    const conflict = classifyRegistrationConflict({
+      existingEmail,
+      existingPhone,
+      accountLabel: 'account',
+    });
+
+    if (conflict.action === 'CONFLICT') {
+      return res.status(conflict.status).json({
+        message: conflict.message,
+        code: conflict.code,
       });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Create seeker in draft state immediately in DB
     const seeker = await Seeker.create({
-      fullName,
-      email,
+      fullName: fullName.trim(),
+      email: normalizedEmail,
       password: hashedPassword,
       phone,
       onboardingStep: 'otp',
       status: 'draft',
+      isEmailVerified: false,
+      isPhoneVerified: false,
     });
 
-    const otp = await issueOtp(seeker);
+    await issueOtp(seeker);
+    markSeekerOtpIssued(seeker.id);
 
     console.log(`\n======================================================`);
-    console.log(`[Seeker OTP Sent] Registered: ${fullName}`);
-    console.log(`Email: ${email}`);
-    console.log(`Phone: ${phone}`);
-    if (otp === TEMP_SMS_OTP) {
-      console.log(`Temporary OTP (until SMS configured): ${TEMP_SMS_OTP}`);
-    }
+    console.log(`[Seeker OTP Sent] Registered: ${seeker.fullName}`);
+    console.log(`Email: ${seeker.email}`);
+    console.log(`Phone: ${seeker.phone}`);
+    console.log(`SeekerId: ${seeker.id}`);
     console.log(`======================================================\n`);
 
     return res.status(201).json({
@@ -178,6 +208,13 @@ export const register = async (req, res) => {
       phone: seeker.phone,
     });
   } catch (error) {
+    const uniqueConflict = mapRegistrationUniqueError(error, 'account');
+    if (uniqueConflict) {
+      return res.status(uniqueConflict.status).json({
+        message: uniqueConflict.message,
+        code: uniqueConflict.code,
+      });
+    }
     const deliveryResponse = handleOtpDeliveryError(error, res, 'Seeker registration');
     if (deliveryResponse) return deliveryResponse;
     console.error('Seeker Registration Error:', error);
@@ -193,38 +230,53 @@ export const verifyOtp = async (req, res) => {
   }
 
   try {
-    const seeker = await Seeker.findByPk(seekerId);
-    if (!seeker) {
-      return res.status(404).json({ message: 'Seeker not found' });
-    }
+    return await withOtpVerificationLock(`seeker:${seekerId}`, async () => {
+      const seeker = await Seeker.findByPk(seekerId);
+      if (!seeker) {
+        return res.status(404).json({ message: 'Verification session not found or expired. Please register again.' });
+      }
 
-    let storedOtp = seekerTempOtps.get(seekerId);
-    if (!isStoredOtpValid(storedOtp, code)) {
-      storedOtp = readOtpFromModel(seeker);
-    }
+      if (isSeekerSuspended(seeker)) {
+        return res.status(403).json({
+          message: 'Your Profile has been suspended. Contact Us?',
+          code: 'ACCOUNT_SUSPENDED',
+        });
+      }
 
-    const smsConfigured = await isSmsProviderConfigured();
-    const isTempOtpValid = !smsConfigured && code === TEMP_SMS_OTP;
-    const isCodeValid = isTempOtpValid || isStoredOtpValid(storedOtp, code);
+      let storedOtp = seekerTempOtps.get(seekerId);
+      if (!isStoredOtpValid(storedOtp, code)) {
+        storedOtp = readOtpFromModel(seeker);
+      }
 
-    if (!isCodeValid) {
-      return res.status(400).json({ message: 'Invalid or expired verification code' });
-    }
+      const isCodeValid = isStoredOtpValid(storedOtp, code);
 
-    seeker.isPhoneVerified = true;
-    seeker.isEmailVerified = true;
-    if (seeker.onboardingStep === 'otp') {
-      seeker.onboardingStep = 'category';
-    }
-    seeker.onboardingMetadata = clearPendingOtpMetadata(seeker.onboardingMetadata);
-    await seeker.save();
+      if (!isCodeValid) {
+        const failure = await recordOtpFailure(seeker, seekerTempOtps, seekerId);
+        if (failure.exhausted) {
+          return res.status(429).json({
+            message: 'Too many invalid verification attempts. Please request a new verification code.',
+            code: 'OTP_ATTEMPTS_EXCEEDED',
+          });
+        }
+        return res.status(400).json({ message: 'Invalid or expired verification code' });
+      }
 
-    seekerTempOtps.delete(seekerId);
+      seeker.isPhoneVerified = true;
+      seeker.isEmailVerified = true;
+      if (seeker.onboardingStep === 'otp') {
+        seeker.onboardingStep = 'category';
+      }
+      seeker.onboardingMetadata = clearPendingOtpMetadata(seeker.onboardingMetadata);
+      await seeker.save();
 
-    return res.status(200).json({
-      message: 'Account verified successfully',
-      token: buildSeekerToken(seeker),
-      user: buildSeekerUser(seeker),
+      seekerTempOtps.delete(seekerId);
+      seekerOtpCooldown.clear(seekerId);
+
+      return res.status(200).json({
+        message: 'Account verified successfully',
+        token: buildSeekerToken(seeker),
+        user: buildSeekerUser(seeker),
+      });
     });
   } catch (error) {
     console.error('Seeker OTP Verification Error:', error);
@@ -242,12 +294,24 @@ export const resendOtp = async (req, res) => {
   try {
     const seeker = await Seeker.findByPk(seekerId);
     if (!seeker) {
-      return res.status(404).json({ message: 'Seeker not found' });
+      return res.status(404).json({ message: 'Registration session expired. Please register again.' });
     }
 
-    const otp = await issueOtp(seeker);
+    if (isSeekerSuspended(seeker)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
 
-    console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: ${otp === TEMP_SMS_OTP ? TEMP_SMS_OTP : '(sent via provider)'}`);
+    if (!canIssueSeekerOtpNow(seeker.id)) {
+      return res.status(429).json({ message: 'Please wait before requesting another OTP.' });
+    }
+
+    await issueOtp(seeker);
+    markSeekerOtpIssued(seeker.id);
+
+    console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: (sent via provider)`);
 
     return res.status(200).json({
       message: 'Verification code resent to your email and phone.',
@@ -264,37 +328,67 @@ export const resendOtp = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  const sourceIp = getClientIpAddress(req);
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
 
   try {
-    const seeker = await Seeker.findOne({ where: { email } });
+    const activeIpLockout = await getPasswordLoginIpLockout(sourceIp);
+    if (activeIpLockout) {
+      return res.status(429).json(buildPasswordLoginRateLimitResponse(activeIpLockout.lockedUntil));
+    }
+
+    const seeker = await Seeker.findOne({
+      where: { email: String(email).trim().toLowerCase() },
+    });
     if (!seeker) {
+      const lockout = await recordFailedPasswordLogin('seeker', null, sourceIp);
+      if (lockout.ipLockedUntil) {
+        return res.status(429).json(buildPasswordLoginRateLimitResponse(lockout.ipLockedUntil));
+      }
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    if (!seeker.password) {
-      return res.status(400).json({
-        message: 'This account was created using social sign-in. Please log in with Google or LinkedIn.',
+    if (isSeekerSuspended(seeker)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
       });
+    }
+
+    if (!seeker.password) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const activeLockout = await getPasswordLoginLockout('seeker', seeker.id, sourceIp);
+    if (activeLockout) {
+      return res.status(429).json(buildPasswordLoginLockedResponse(activeLockout.lockedUntil));
     }
 
     const isMatch = await bcrypt.compare(password, seeker.password);
     if (!isMatch) {
+      const lockout = await recordFailedPasswordLogin('seeker', seeker, sourceIp);
+      if (lockout.ipLockedUntil) {
+        return res.status(429).json(buildPasswordLoginRateLimitResponse(lockout.ipLockedUntil));
+      }
+      if (lockout.lockedUntil) {
+        return res.status(429).json(buildPasswordLoginLockedResponse(lockout.lockedUntil));
+      }
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    if (seeker.onboardingStep === 'otp') {
-      try {
-        await issueOtp(seeker);
-      } catch (deliveryError) {
-        const deliveryResponse = handleOtpDeliveryError(deliveryError, res, 'Seeker login');
-        if (deliveryResponse) return deliveryResponse;
-        throw deliveryError;
-      }
+    const clearedLockout = await clearPasswordLoginFailures('seeker', seeker.id, sourceIp);
+    await clearPasswordLoginIpFailures(sourceIp);
+    if (clearedLockout.lockedUntil) {
+      return res.status(429).json(buildPasswordLoginLockedResponse(clearedLockout.lockedUntil));
+    }
 
+    // Password validation starts a fresh OTP challenge on every login.
+    // Only verifyOtp may issue the authenticated session for this flow.
+    const existingPendingOtp = seekerTempOtps.get(seeker.id) || readOtpFromModel(seeker);
+    if (!canIssueSeekerOtpNow(seeker.id) && hasActivePendingOtp(existingPendingOtp)) {
       return res.status(403).json({
         message: 'Please verify your account with the OTP sent to your email and phone.',
         requiresOtp: true,
@@ -304,11 +398,19 @@ export const login = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      token: buildSeekerToken(seeker),
-      user: buildSeekerUser(seeker),
+    await issueOtp(seeker);
+    markSeekerOtpIssued(seeker.id);
+
+    return res.status(403).json({
+      message: 'Please verify your account with the OTP sent to your email and phone.',
+      requiresOtp: true,
+      seekerId: seeker.id,
+      email: seeker.email,
+      phone: seeker.phone,
     });
   } catch (error) {
+    const deliveryResponse = handleOtpDeliveryError(error, res, 'Seeker login');
+    if (deliveryResponse) return deliveryResponse;
     console.error('Seeker Login Error:', error);
     return res.status(500).json({ message: 'Server error during login', error: error.message });
   }
@@ -324,6 +426,13 @@ export const googleLogin = async (req, res) => {
     let seeker = await Seeker.findOne({ where: { googleId } });
     if (!seeker) {
       seeker = await Seeker.findOne({ where: { email } });
+    }
+
+    if (seeker && isSeekerSuspended(seeker)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
     }
 
     if (!seeker) {
@@ -367,7 +476,23 @@ export const linkedinLogin = async (req, res) => {
     const { linkedinId, email, fullName, picture, emailVerified } =
       await verifyLinkedinLogin({ authCode, redirectUri });
     let seeker = await Seeker.findOne({ where: { linkedinId } });
-    if (!seeker) seeker = await Seeker.findOne({ where: { email } });
+    if (!seeker) {
+      const emailMatch = await Seeker.findOne({ where: { email } });
+      if (emailMatch && !emailVerified) {
+        return res.status(403).json({
+          message: 'Please verify your LinkedIn email address or sign in with your password to link this account.',
+          code: 'LINKEDIN_EMAIL_UNVERIFIED',
+        });
+      }
+      seeker = emailMatch;
+    }
+
+    if (seeker && isSeekerSuspended(seeker)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
 
     if (!seeker) {
       seeker = await Seeker.create({
@@ -402,7 +527,7 @@ export const linkedinLogin = async (req, res) => {
 
 export const getPublicConfig = async (req, res) => {
   try {
-    const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
+    const emailEnabled = await getDatabaseSettingBool('EMAIL_ENABLED', true);
     const smsEnabled = await getSettingBool('SMS_ENABLED', true);
     const linkedin = await getLinkedinAuthConfig();
     const google = await getGoogleAuthConfig();

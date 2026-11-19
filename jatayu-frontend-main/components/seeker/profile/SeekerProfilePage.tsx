@@ -10,6 +10,10 @@ import {
   saveStoredSeekerProfile,
   type SeekerProfileData,
 } from "@/lib/seekerProfileApi";
+import { updateSeekerOnboarding } from "@/lib/api";
+import { isValidSeekerPhone, normalizeSeekerPhone } from "@/lib/seekerPhone";
+import { getNameValidationError } from "@/lib/nameValidation";
+import { mapBackendSeekerToProfile } from "@/lib/seekerProfileApi";
 import { clearSeekerAuthSession } from "@/lib/seekerAuth";
 import styles from "./SeekerProfilePage.module.css";
 
@@ -26,6 +30,9 @@ export default function SeekerProfilePage() {
   });
   const [photoError, setPhotoError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
 
   useEffect(() => {
     const stored = getStoredSeekerProfile();
@@ -53,8 +60,8 @@ export default function SeekerProfilePage() {
 
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      setPhotoError("Please upload an image file.");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setPhotoError("Please upload a JPEG, PNG, or WebP image.");
       return;
     }
 
@@ -64,6 +71,7 @@ export default function SeekerProfilePage() {
     }
 
     setPhotoError("");
+    setProfilePhotoFile(file);
     if (profile.avatar.startsWith("blob:")) {
       URL.revokeObjectURL(profile.avatar);
     }
@@ -72,9 +80,39 @@ export default function SeekerProfilePage() {
     setProfile((prev) => ({ ...prev, avatar: newAvatar }));
   };
 
-  const handleSave = () => {
-    saveStoredSeekerProfile(profile);
-    setSaved(true);
+  const handleSave = async () => {
+    setProfileError("");
+    const nameError = getNameValidationError(profile.name);
+    if (nameError) {
+      setProfileError(`Enter a valid name. ${nameError}.`);
+      return;
+    }
+    const phone = normalizeSeekerPhone(profile.phone || "");
+    if (phone && !isValidSeekerPhone(phone)) {
+      setProfileError("Enter a valid 10-digit phone number.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await updateSeekerOnboarding({
+        fullName: profile.name.trim(),
+        category: profile.category?.trim() || "",
+        phone,
+      }, profilePhotoFile || undefined);
+      const savedProfile = mapBackendSeekerToProfile(
+        response.seeker as Parameters<typeof mapBackendSeekerToProfile>[0],
+      );
+      saveStoredSeekerProfile(savedProfile);
+      setProfile(savedProfile);
+      setProfilePhotoFile(null);
+      setSaved(true);
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Unable to save your profile.");
+      setSaved(false);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = () => {
@@ -132,7 +170,7 @@ export default function SeekerProfilePage() {
               ref={fileInputRef}
               id="seeker-photo-upload"
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
+              accept="image/jpeg,image/png,image/webp"
               className={styles.hiddenFileInput}
               onChange={handlePhotoChange}
             />
@@ -187,13 +225,13 @@ export default function SeekerProfilePage() {
                 id="seeker-email"
                 type="email"
                 value={profile.email || ""}
-                onChange={(e) => {
-                  setSaved(false);
-                  setProfile((prev) => ({ ...prev, email: e.target.value }));
-                }}
+                readOnly
+                aria-describedby="seeker-email-help"
                 className={styles.textField}
-                placeholder="e.g. name@example.com"
               />
+              <span id="seeker-email-help" className={styles.photoUploadDesc}>
+                Contact support to change your email address.
+              </span>
             </div>
 
             <div className={styles.fieldGroup}>
@@ -206,6 +244,7 @@ export default function SeekerProfilePage() {
                 value={profile.phone || ""}
                 onChange={(e) => {
                   setSaved(false);
+                  setProfileError("");
                   setProfile((prev) => ({ ...prev, phone: e.target.value }));
                 }}
                 className={styles.textField}
@@ -222,14 +261,18 @@ export default function SeekerProfilePage() {
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
                     <Check size={16} /> Profile Saved
                   </span>
+                ) : isSaving ? (
+                  "Saving..."
                 ) : (
                   "Save Changes"
                 )
               }
               variant={saved ? "light" : "orange"}
               staticLabel={true}
-              onClick={handleSave}
+              onClick={() => void handleSave()}
+              disabled={isSaving}
             />
+            {profileError ? <p className={styles.photoUploadDescError} role="alert">{profileError}</p> : null}
             {saved ? <p className={styles.savedNote}>Your profile updates have been saved.</p> : null}
           </div>
         </div>

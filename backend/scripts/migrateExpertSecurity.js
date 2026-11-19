@@ -8,7 +8,10 @@ async function migrate() {
   const query = expertDb.getQueryInterface();
   const expertColumns = await query.describeTable('Experts');
   if (!expertColumns.twoFactorEnabled) {
-    await query.addColumn('Experts', 'twoFactorEnabled', { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false });
+    await query.addColumn('Experts', 'twoFactorEnabled', { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true });
+  } else {
+    // Update the default for future accounts, preserving existing 2FA choices.
+    await query.changeColumn('Experts', 'twoFactorEnabled', { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true });
   }
   if (!expertColumns.notificationPreferences) {
     await query.addColumn('Experts', 'notificationPreferences', {

@@ -77,8 +77,9 @@
   color: rgba(255, 255, 255, 0.3);
 }
 
-.customInput:focus {
-  border-color: rgba(255, 255, 255, 0.15);
+.customInputWrapper:focus-within .customInput {
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .customInputBtn {
@@ -102,7 +103,6 @@
 
 .customInputBtn:focus-visible {
   color: var(--white);
-  border-color: rgba(255, 255, 255, 0.2);
 }
 
 @media (max-width: 768px) {

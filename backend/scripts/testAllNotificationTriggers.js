@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { sequelize } from '../models/index.js';
 import { triggerNotification, DEFAULT_TEMPLATES } from '../utils/templateNotificationService.js';
 
@@ -15,7 +16,7 @@ async function testTriggers() {
       phone: '+919876543210',
       name: 'Test User',
       data: {
-        otp: '123456',
+        otp: String(randomInt(100000, 1000000)),
         application_number: 'APP-9999',
         dashboard_link: 'http://localhost:3000/expert/dashboard',
         resume_link: 'http://localhost:3000/onboarding',

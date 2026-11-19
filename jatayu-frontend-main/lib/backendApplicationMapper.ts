@@ -34,9 +34,14 @@ export type BackendExpertApplication = {
   status?: string | null;
   frontendStatus?: ApplicationStatus;
   onboardingStep?: string | null;
+  onboardingAnalytics?: import("./expertDropoutTracker").ExpertOnboardingAnalytics;
   submittedAt?: string | null;
+  approvedAt?: string | null;
+  closedAt?: string | null;
   updatedAt?: string | null;
   reviewerNote?: string | null;
+  isBlacklisted?: boolean | null;
+  blacklistedAt?: string | null;
   credentials?: Array<{
     id: string;
     type: string;
@@ -58,6 +63,8 @@ function mapBackendStatus(expert: BackendExpertApplication): ApplicationStatus {
   if (expert.frontendStatus) return expert.frontendStatus;
 
   switch (expert.status) {
+    case "draft":
+      return "not_submitted";
     case "pending_review":
       return "pending";
     case "in_review":
@@ -195,6 +202,9 @@ export function mapBackendExpertToApplication(
     portfolioLinks: [],
     governmentId: metadata.governmentId as GovernmentIdData | undefined,
     kycVideoUrl: typeof metadata.kycVideoUrl === "string" ? metadata.kycVideoUrl : undefined,
+    kycPhotos: metadata.kycPhotos && typeof metadata.kycPhotos === "object"
+      ? metadata.kycPhotos as ExpertApplicationSubmission["kycPhotos"]
+      : undefined,
     certificates: Array.isArray(metadata.certificates)
       ? (metadata.certificates as ExpertCertificate[])
       : [],
@@ -239,7 +249,15 @@ export function mapBackendExpertToApplication(
         ? metadata.termsAcceptedAt
         : expert.submittedAt || expert.updatedAt || new Date().toISOString(),
     reviewerNote: expert.reviewerNote || undefined,
+    isBlacklisted: Boolean(expert.isBlacklisted || (metadata as Record<string, unknown>)?.isBlacklisted),
+    blacklistedAt: expert.blacklistedAt || ((metadata as Record<string, unknown>)?.blacklistedAt as string) || undefined,
+    approvedAt: expert.approvedAt || ((metadata as Record<string, unknown>)?.approvedAt as string) || undefined,
+    closedAt: expert.closedAt || ((metadata as Record<string, unknown>)?.closedAt as string) || undefined,
+    rejectedAt: ((metadata as Record<string, unknown>)?.rejectedAt as string) || (expert.status === "rejected" ? (expert.updatedAt || expert.submittedAt || undefined) : undefined),
+    updatedAt: expert.updatedAt || undefined,
     onboardingStep: expert.onboardingStep || undefined,
+    onboardingMetadata: metadata,
+    onboardingAnalytics: expert.onboardingAnalytics || undefined,
   };
 }
 

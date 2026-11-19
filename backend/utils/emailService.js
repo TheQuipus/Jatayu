@@ -1,6 +1,7 @@
 import dns from 'dns';
 import nodemailer from 'nodemailer';
-import { getSetting, getSettingBool } from './settingsHelper.js';
+// Email configuration is owned by admin settings, including credentials and provider selection.
+import { getDatabaseSetting as getSetting, getDatabaseSettingBool as getSettingBool } from './settingsHelper.js';
 
 function ipv4Lookup(hostname, options, callback) {
   dns.lookup(hostname, { family: 4, all: false }, callback);
@@ -155,13 +156,12 @@ async function sendViaSmtp({ recipientEmail, recipientName, otpCode, fromEmail, 
 export async function sendGenericEmail({ recipientEmail, recipientName, subject, htmlContent, textContent }) {
   const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
   const emailProvider = await getSetting('EMAIL_PROVIDER', 'smtp');
-  const fromEmail = await getSetting('FROM_EMAIL', 'noreply@jatayu.com');
+  const fromEmail = await getSetting('FROM_EMAIL') || await getSetting('SMTP_USER');
   const fromName = await getSetting('EMAIL_FROM_NAME', 'Jatayu');
   const brevoApiKey = await getSetting('BREVO_API_KEY');
 
   if (!emailEnabled) {
-    console.log(`[Email Dev Log] Email disabled. To: ${recipientEmail} | Subject: ${subject}`);
-    return;
+    throw new Error('Email delivery is disabled in admin settings.');
   }
 
   // --- Brevo API path ---
@@ -201,14 +201,6 @@ export async function sendGenericEmail({ recipientEmail, recipientName, subject,
   const smtpConfigured = await isSmtpConfigured();
 
   if (!smtpConfigured) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`\n======================================================`);
-      console.log(`[Email Dev Log] To: ${recipientEmail}`);
-      console.log(`Subject: ${subject}`);
-      console.log(`HTML Body Preview:\n${htmlContent}`);
-      console.log(`======================================================\n`);
-      return;
-    }
     throw new Error('Email is not configured. Set SMTP credentials or configure Brevo API key in admin settings.');
   }
 
@@ -265,5 +257,17 @@ export async function sendOtpEmail({ recipientEmail, recipientName, otpCode }) {
     subject: 'Your Jatayu verification code',
     htmlContent: buildOtpHtml(recipientName, otpCode),
     textContent: `Your Jatayu verification code is ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+  });
+}
+
+export async function sendAccountLockedEmail({ recipientEmail, lockoutMinutes }) {
+  const subject = 'Your Jatayu account has been temporarily locked';
+  const message = `Your Jatayu account has been locked for ${lockoutMinutes} minutes because of multiple unsuccessful password login attempts. If this was not you, please change your password immediately.`;
+
+  return sendGenericEmail({
+    recipientEmail,
+    subject,
+    htmlContent: `<p>${message}</p>`,
+    textContent: message,
   });
 }

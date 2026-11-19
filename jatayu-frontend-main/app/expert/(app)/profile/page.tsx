@@ -3,7 +3,7 @@ import ExpertProfilePage from "@/components/expert/profile/ExpertProfilePage";
 
 export const metadata: Metadata = {
   title: "Profile — Jatayu Expert",
-  description: "Edit your expert profile and preview how it appears to seekers.",
+  description: "View and manage your Jatayu expert profile.",
 };
 
 export default function ExpertProfileRoute() {

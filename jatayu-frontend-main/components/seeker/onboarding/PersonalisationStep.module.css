@@ -366,6 +366,12 @@
   padding-right: 6px;
 }
 
+.profileLanguagePillInput:focus-within {
+  background: var(--background-chip, rgba(255, 255, 255, 0.03)) !important;
+  border-color: #E53B17 !important; /* Solid pomegranate accent border */
+  box-shadow: none !important;
+}
+
 .profileLanguageInputForm {
   width: 100%;
   display: flex;
@@ -385,6 +391,12 @@
   line-height: inherit;
   color: var(--white);
   padding: 0;
+}
+
+.profileLanguageInlineInput:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .profileLanguageInlineInput::placeholder {
@@ -466,4 +478,36 @@
     align-items: flex-end;
     gap: 8px;
   }
+}
+
+/* --- Experience & Style Pills Hover Match --- */
+
+.experiencePill:hover:not(.experiencePillSelected) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--white);
+}
+
+/* .experiencePill:hover:not(.experiencePillSelected) .experiencePillTitle {
+  color: var(--white);
+} */
+
+.stylePill:hover:not(.stylePillSelected) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  /* color: var(--white); */
+}
+
+/* --- Profile Language Pills Hover Match --- */
+
+.profileLanguagePill:hover:not(.profileLanguagePillSelected):not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  /* color: var(--white); */
+}
+
+.profileLanguagePillSelected:hover {
+  background: var(--bunker);
+  border-color: var(--pomegranate);
+  /* color: var(--white); */
 }

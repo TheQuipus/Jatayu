@@ -40,10 +40,17 @@ export type ExpertApplicationListItem = {
   status: ApplicationStatus;
   reviewer: { name: string; avatar: string } | null;
   onboardingStep?: string;
+  isBlacklisted?: boolean;
+  blacklistedAt?: string;
 };
 
 function toListItem(application: ExpertApplicationSubmission): ExpertApplicationListItem {
-  const sla = getSlaStatus(application.submittedAt);
+  const isNotSubmitted = application.status === "not_submitted" || !application.submittedAt;
+  const isClosed = application.status === "rejected" || Boolean(application.isBlacklisted) || application.status === "approved";
+  const closedAt = application.closedAt || (isClosed ? (application.rejectedAt || application.blacklistedAt || application.approvedAt || application.updatedAt) : null);
+  const sla = isNotSubmitted
+    ? { slaStatus: "closed" as const, slaLabel: "—", slaLimit: "", hoursElapsed: 0 }
+    : getSlaStatus(application.submittedAt, isClosed ? (closedAt || application.submittedAt) : null);
   const city = application.location.split(",")[0]?.trim() || application.location;
 
   return {
@@ -64,6 +71,8 @@ function toListItem(application: ExpertApplicationSubmission): ExpertApplication
     status: application.status,
     reviewer: null,
     onboardingStep: application.onboardingStep,
+    isBlacklisted: application.isBlacklisted,
+    blacklistedAt: application.blacklistedAt,
   };
 }
 
@@ -159,30 +168,53 @@ export function useExpertApplications({
     [applications],
   );
 
+  const breachedApplications = useMemo(
+    () =>
+      applications.filter((application) => {
+        if (application.status === "not_submitted" || !application.submittedAt) return false;
+        const isClosed = application.status === "rejected" || Boolean(application.isBlacklisted) || application.status === "approved";
+        if (isClosed) return false;
+        return getSlaStatus(application.submittedAt).slaStatus === "breached";
+      }),
+    [applications],
+  );
+
   const statusCounts = useMemo(() => {
     const counts = {
       all: serverCounts.all ?? applications.length,
+      not_submitted: 0,
       pending: 0,
       in_review: 0,
       on_hold: 0,
       approved: 0,
       rejected: 0,
+      overdue: serverCounts.overdue ?? breachedApplications.length,
     };
 
-    for (const key of ["pending", "in_review", "on_hold", "approved", "rejected"] as const) {
+    for (const key of ["not_submitted", "pending", "in_review", "on_hold", "approved", "rejected"] as const) {
       counts[key] = serverCounts[key] ?? 0;
     }
 
+    if (serverCounts.overdue !== undefined) {
+      counts.overdue = serverCounts.overdue;
+    }
+
     return counts;
-  }, [applications, serverCounts]);
+  }, [applications, serverCounts, breachedApplications]);
 
   const kpis = useMemo(
     () => [
       {
-        id: "all",
-        label: "All",
+        id: "total",
+        label: "Total",
         value: String(statusCounts.all).padStart(2, "0"),
-        variant: "all" as const,
+        variant: "total" as const,
+      },
+      {
+        id: "not_submitted",
+        label: "Not Submitted",
+        value: String(statusCounts.not_submitted).padStart(2, "0"),
+        variant: "not_submitted" as const,
       },
       {
         id: "pending",
@@ -203,27 +235,19 @@ export function useExpertApplications({
         variant: "hold" as const,
       },
       {
-        id: "approved",
-        label: "Approved MTD",
-        value: String(statusCounts.approved).padStart(2, "0"),
-        variant: "approved" as const,
+        id: "overdue",
+        label: "Overdue",
+        value: String(statusCounts.overdue).padStart(2, "0"),
+        variant: "overdue" as const,
       },
       {
         id: "rejected",
-        label: "Rejected MTD",
+        label: "Rejected",
         value: String(statusCounts.rejected).padStart(2, "0"),
         variant: "rejected" as const,
       },
     ],
     [statusCounts],
-  );
-
-  const breachedApplications = useMemo(
-    () =>
-      applications.filter(
-        (application) => getSlaStatus(application.submittedAt).slaStatus === "breached",
-      ),
-    [applications],
   );
 
   return {

@@ -4,9 +4,13 @@ import {
   setSeekerId,
   removeToken,
   removeSeekerId,
+  getSeekerToken,
+  setSeekerToken,
+  removeSeekerToken,
   type AuthResponse,
   type AuthUser,
 } from "@/lib/api";
+import type { OtpFlow } from "@/lib/otpFlow";
 
 const PENDING_OTP_SESSION_KEY = "jatayu_pending_seeker_otp";
 
@@ -15,12 +19,13 @@ export type PendingSeekerOtpSession = {
   email: string;
   phone: string;
   fullName?: string;
+  flow?: OtpFlow;
 };
 
 const SEEKER_USER_KEY = "jatayu_seeker_user";
 
 export function persistSeekerAuthSession(response: AuthResponse): AuthUser {
-  setToken(response.token);
+  setSeekerToken(response.token);
   setSeekerId(response.user.id);
   if (typeof window !== "undefined" && response.user) {
     try {
@@ -44,14 +49,14 @@ export function getStoredSeekerUser(): AuthUser | null {
 }
 
 export function clearSeekerAuthOnly(): void {
-  removeToken();
+  removeSeekerToken();
   removeSeekerId();
   if (typeof window !== "undefined") {
     localStorage.removeItem(SEEKER_USER_KEY);
-    localStorage.removeItem("jatayu_token");
+    localStorage.removeItem("jatayu_seeker_token");
     localStorage.removeItem("jatayu_seeker_id");
     localStorage.removeItem("jatayu_seeker_profile");
-    sessionStorage.removeItem("jatayu_token");
+    sessionStorage.removeItem("jatayu_seeker_token");
     sessionStorage.removeItem("jatayu_seeker_id");
     sessionStorage.removeItem("jatayu_seeker_profile");
     sessionStorage.removeItem("jatayu_seeker_category");
@@ -65,13 +70,37 @@ export function clearSeekerAuthSession(): void {
 
 export function savePendingSeekerOtpSession(session: PendingSeekerOtpSession): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(PENDING_OTP_SESSION_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify(session);
+  try {
+    sessionStorage.setItem(PENDING_OTP_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
+  try {
+    localStorage.setItem(PENDING_OTP_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
 }
 
 export function readPendingSeekerOtpSession(): PendingSeekerOtpSession | null {
   if (typeof window === "undefined") return null;
 
-  const raw = sessionStorage.getItem(PENDING_OTP_SESSION_KEY);
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    raw = null;
+  }
+
+  if (!raw) {
+    try {
+      raw = localStorage.getItem(PENDING_OTP_SESSION_KEY);
+    } catch {
+      raw = null;
+    }
+  }
+
   if (!raw) return null;
 
   try {
@@ -85,10 +114,20 @@ export function readPendingSeekerOtpSession(): PendingSeekerOtpSession | null {
 
 export function clearPendingSeekerOtpSession(): void {
   if (typeof window === "undefined") return;
-  sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  try {
+    sessionStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    // Ignore
+  }
+  try {
+    localStorage.removeItem(PENDING_OTP_SESSION_KEY);
+  } catch {
+    // Ignore
+  }
 }
 
 export type SeekerOnboardingStep =
+  | "phone"
   | "category"
   | "needs"
   | "format"
@@ -114,6 +153,8 @@ export function resolveSeekerOnboardingStep(user: AuthUser): SeekerOnboardingSte
 }
 
 export function getSeekerPostAuthDestination(user: AuthUser): string | SeekerOnboardingStep {
+  if (!user.phone) return "phone";
+
   if (
     user.status === "active" ||
     user.onboardingComplete === true ||
@@ -132,5 +173,7 @@ export function getSeekerPostAuthDestination(user: AuthUser): string | SeekerOnb
 }
 
 export function isSeekerAuthenticated(): boolean {
-  return Boolean(getToken());
+  return Boolean(getSeekerToken());
 }
+
+export const SEEKER_SIGNUP_HREF = "/seeker/seeker-onboarding/?flow=signup";

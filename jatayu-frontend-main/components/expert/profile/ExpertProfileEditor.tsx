@@ -22,23 +22,42 @@ import {
   CheckCircle2,
   Calendar,
   Layers,
+  Languages,
   Users,
   Building,
   DollarSign,
   AlertCircle,
+  ChevronDown,
+  Lock,
+  AlertTriangle,
+  Pencil,
 } from "lucide-react";
+import WeeklySchedulePanel from "@/components/expert/availability/WeeklySchedulePanel";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import ShinyText from "@/components/ui/ShinyText";
+import SmartSearchSelect, { type SmartOption } from "@/components/admin/settings/SmartSearchSelect";
 import {
   EXPERIENCE_LABELS,
+  getSecondarySkills,
   isExpertProfileValid,
   type ExpertProfileData,
   type ExperienceLevel,
 } from "@/lib/expertProfile";
+import {
+  addExpertSecondarySkill,
+  cleanExpertCategorySkills,
+  EXPERT_SKILL_CATEGORIES,
+  MAX_EXPERT_SECONDARY_SKILLS,
+  removeExpertSecondarySkill,
+  selectExpertPrimarySkill,
+  skillsForExpertCategory,
+  toggleExpertSecondarySkill,
+} from "@/lib/expertSkillCatalog";
 import { saveExpertProfile } from "@/lib/expertStore";
 import {
   fetchExpertProfileRecord,
+  getBackendExpertEmail,
   mapBackendAvailability,
   mapBackendProfileToExpertData,
   saveExpertProfileData,
@@ -65,13 +84,15 @@ import type {
   GovernmentIdData,
   PortfolioSampleFile,
 } from "@/lib/expertApplicationSubmission";
+import { normalizeKycPhotos, type ExpertKycPhotos } from "@/lib/expertKycPhotos";
 import type { TimeSlot } from "@/lib/expertAvailability";
 import { buildCredentialsPayload, parseCredentialsFromProfile } from "@/lib/expertAuth";
-import { skillsForExpertCategory } from "@/lib/expertSkillCatalog";
+import { EXPERT_PROFILE_EDIT_HREF } from "@/lib/expertDashboard";
 import { useLinkedinProfileSync } from "@/hooks/useLinkedinProfileSync";
 import styles from "./ExpertProfileEditor.module.css";
 import {
   getDigilockerKycStatus,
+  recommendSkillsForCategory,
   suggestOnboardingIdentityCopy,
   updateProfile as updateExpertProfile,
   type DigilockerKycStatusResponse,
@@ -79,20 +100,7 @@ import {
 } from "@/lib/api";
 
 const MAX_CHARS = 160;
-const MAX_SKILLS = 8;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
-
-const CATEGORIES_LIST = [
-  "Software Engineering",
-  "Product Design",
-  "Business Strategy",
-  "Marketing & Growth",
-  "Finance & VC",
-  "Health & Wellness",
-  "Legal & Compliance",
-  "Product Management",
-  "Data Science",
-];
 
 const AUDIENCE_OPTIONS = [
   { id: "startup", label: "Startup Founders", desc: "Early-stage & venture-backed leaders" },
@@ -101,14 +109,128 @@ const AUDIENCE_OPTIONS = [
   { id: "smb", label: "Small Business Owners", desc: "Operators, founders & SME managers" },
 ];
 
+const SPOKEN_LANGUAGE_OPTIONS: SmartOption[] = [
+  "English",
+  "Hindi",
+  "Bengali",
+  "Marathi",
+  "Telugu",
+  "Tamil",
+  "Gujarati",
+  "Kannada",
+  "Malayalam",
+  "Odia",
+  "Punjabi",
+  "Arabic",
+  "French",
+  "German",
+  "Mandarin",
+  "Portuguese",
+  "Spanish",
+].map((language) => ({ value: language, label: language }));
+
+function parseHoldReviewerNote(reviewerNote?: string | null): Record<string, string> {
+  if (!reviewerNote || typeof reviewerNote !== "string") return {};
+  const result: Record<string, string> = {};
+  const regex = /\[(.*?)(?:\s*-\s*(?:Needs Clarification|Clarification|Rejected|REJECTED))?\]\s*:\s*([^;]+)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(reviewerNote)) !== null) {
+    const rawTitle = match[1].trim().toLowerCase();
+    const noteText = match[2].trim();
+
+    if (rawTitle.includes("category") || rawTitle.includes("skill")) {
+      result["category"] = noteText;
+    } else if (rawTitle.includes("experience") || rawTitle.includes("portfolio") || rawTitle.includes("work")) {
+      result["experience"] = noteText;
+    } else if (rawTitle.includes("profile") || rawTitle.includes("identity")) {
+      result["profile"] = noteText;
+    } else if (rawTitle.includes("credential") || rawTitle.includes("kyc") || rawTitle.includes("education")) {
+      result["credentials"] = noteText;
+    } else if (rawTitle.includes("preference") || rawTitle.includes("pricing") || rawTitle.includes("consultation")) {
+      result["preferences"] = noteText;
+    } else if (rawTitle.includes("audience") || rawTitle.includes("language")) {
+      result["audience"] = noteText;
+    } else if (rawTitle.includes("availab") || rawTitle.includes("schedule")) {
+      result["availability"] = noteText;
+    }
+  }
+  return result;
+}
+
+function parseSectionAuditLogs(rawLogs: unknown): Record<string, { status: "waiting" | "received"; note: string }> {
+  let logs: Array<Record<string, unknown>> = [];
+  if (Array.isArray(rawLogs)) {
+    logs = rawLogs;
+  } else if (typeof rawLogs === "string") {
+    try {
+      const parsed = JSON.parse(rawLogs);
+      if (Array.isArray(parsed)) logs = parsed;
+    } catch {}
+  }
+  if (!logs.length) return {};
+
+  const result: Record<string, { status: "waiting" | "received"; note: string }> = {};
+  const sorted = [...logs].sort((a, b) => {
+    const ta = new Date(String(a.timestamp || 0)).getTime();
+    const tb = new Date(String(b.timestamp || 0)).getTime();
+    return tb - ta;
+  });
+
+  for (const entry of sorted) {
+    const secId = String(entry.sectionId || "");
+    if (!secId || secId === "application" || result[secId]) continue;
+    const action = String(entry.action || "");
+    if (action === "clarification") {
+      result[secId] = {
+        status: "waiting",
+        note: String(entry.note || "").trim(),
+      };
+    } else if (action === "clarification_response" || action === "response_received") {
+      result[secId] = {
+        status: "received",
+        note: String(entry.note || "").trim(),
+      };
+    } else if (action === "approve") {
+      result[secId] = {
+        status: "received",
+        note: "",
+      };
+    }
+  }
+  return result;
+}
+
+function safeParseJsonRecord(value: unknown): Record<string, any> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, any>;
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch {}
+  }
+  return {};
+}
+
 export default function ExpertProfileEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile Identity & Basic state
   const [profile, setProfile] = useState<ExpertProfileData>(() => mapBackendProfileToExpertData({}));
+  const [registeredEmail, setRegisteredEmail] = useState("");
   const [reviewStatus, setReviewStatus] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [skillInput, setSkillInput] = useState("");
+  const [primarySkillInput, setPrimarySkillInput] = useState("");
+  const [customPrimarySkill, setCustomPrimarySkill] = useState("");
+  const [customSkillRecommendations, setCustomSkillRecommendations] = useState<Record<string, string[]>>({});
+  const [isAddingCustomPrimarySkill, setIsAddingCustomPrimarySkill] = useState(false);
+  const [loadingSkillCategory, setLoadingSkillCategory] = useState("");
+  const [skillRecommendationError, setSkillRecommendationError] = useState("");
+  const [skillSelectionNotice, setSkillSelectionNotice] = useState("");
   const [isGeneratingBio, setIsGeneratingBio] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -126,6 +248,7 @@ export default function ExpertProfileEditor() {
   const [acceptCustomRequests, setAcceptCustomRequests] = useState(false);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
   const [governmentId, setGovernmentId] = useState<GovernmentIdData | undefined>(undefined);
+  const [kycPhotos, setKycPhotos] = useState<ExpertKycPhotos>({});
   const [kycVideoUrl, setKycVideoUrl] = useState("");
   const [certificates, setCertificates] = useState<ExpertCertificate[]>([]);
   const [portfolioSamples, setPortfolioSamples] = useState<PortfolioSampleFile[]>([]);
@@ -142,6 +265,36 @@ export default function ExpertProfileEditor() {
   const [linkedinError, setLinkedinError] = useState("");
   const [positionToDelete, setPositionToDelete] = useState<EmploymentPosition | null>(null);
   const [degreeToDelete, setDegreeToDelete] = useState<EducationDegree | null>(null);
+  const [pendingClarifications, setPendingClarifications] = useState<
+    Record<string, { status: string; note?: string }>
+  >({});
+  const [sectionDecisions, setSectionDecisions] = useState<
+    Record<string, { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }>
+  >({});
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set(["category", "experience", "profile", "credentials", "preferences", "audience", "availability"])
+  );
+  const [editingSections, setEditingSections] = useState<Set<string>>(new Set());
+  const [resolvedClarifications, setResolvedClarifications] = useState<Set<string>>(new Set());
+  const [openClarificationId, setOpenClarificationId] = useState<string | null>(null);
+  const [isSubmittedForReview, setIsSubmittedForReview] = useState<boolean>(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
+
+  const [savedSectionId, setSavedSectionId] = useState<string | null>(null);
+  const [activeSavingSectionId, setActiveSavingSectionId] = useState<string | null>(null);
+  const categoryRecommendationRequests = useRef(new Set<string>());
+  const spokenLanguageOptions = useMemo(() => {
+    const options = new Map(SPOKEN_LANGUAGE_OPTIONS.map((option) => [option.value.toLowerCase(), option]));
+    const selectedLanguages = new Set(profile.languages.map((language) => language.toLowerCase()));
+    profile.languages.forEach((language) => {
+      if (!options.has(language.toLowerCase())) {
+        options.set(language.toLowerCase(), { value: language, label: language });
+      }
+    });
+    return Array.from(options.values()).filter(
+      (option) => !selectedLanguages.has(option.value.toLowerCase()),
+    );
+  }, [profile.languages]);
 
   const handleLinkedinProfileFetched = useCallback((response: LinkedinConnectResponse) => {
     const record = response.expert;
@@ -170,7 +323,7 @@ export default function ExpertProfileEditor() {
   const { start: handleLinkedinSync, isLoading: isLinkedinSyncing } = useLinkedinProfileSync({
     onSuccess: handleLinkedinProfileFetched,
     onError: handleLinkedinError,
-    returnPath: "/expert/profile/",
+    returnPath: EXPERT_PROFILE_EDIT_HREF,
   });
 
   useEffect(() => {
@@ -185,7 +338,21 @@ export default function ExpertProfileEditor() {
   useEffect(() => {
     void fetchExpertProfileRecord()
       .then((record) => {
-        setProfile(mapBackendProfileToExpertData(record));
+        const mappedProfile = mapBackendProfileToExpertData(record);
+        setProfile({
+          ...mappedProfile,
+          skills: getSecondarySkills(mappedProfile.category, mappedProfile.skills),
+        });
+        if (
+          mappedProfile.category &&
+          !EXPERT_SKILL_CATEGORIES.some((category) =>
+            category.id === mappedProfile.category.trim().toLowerCase()
+            || category.label.toLowerCase() === mappedProfile.category.trim().toLowerCase(),
+          )
+        ) {
+          setCustomPrimarySkill(mappedProfile.category);
+        }
+        setRegisteredEmail(getBackendExpertEmail(record));
         setAppId(record.applicationNumber || "");
         setReviewStatus(record.status || "draft");
         setSelectedFormats(record.selectedFormats || []);
@@ -213,6 +380,133 @@ export default function ExpertProfileEditor() {
         setAvailabilitySlots(availability.slots);
 
         const metadata = record.onboardingMetadata || {};
+        const appNum = record.applicationNumber || "";
+        const initialResolved = new Set<string>();
+
+        const clarMap = safeParseJsonRecord(metadata.sectionClarifications);
+        const decMap = safeParseJsonRecord(metadata.sectionDecisions);
+        const auditLogMap = parseSectionAuditLogs(metadata.sectionAuditLogs);
+        const noteMap = parseHoldReviewerNote(record.reviewerNote);
+
+        const allSectionsList = ["category", "experience", "profile", "credentials", "preferences", "audience", "availability"];
+        const isOnHold = record.status === "on_hold";
+
+        // Merge all sources of truth (strictly from server metadata)
+        const combinedDecisions: Record<string, { decision: "approve" | "clarification" | "reject" | null; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>; clarificationStatus?: "waiting" | "received" }> = {};
+        const combinedClarifications: Record<string, { status: string; note?: string; notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }> }> = {};
+
+        for (const secKey of allSectionsList) {
+          const dec = decMap[secKey];
+          const clar = clarMap[secKey];
+          const audit = auditLogMap[secKey];
+          const noteText = noteMap[secKey] || "";
+
+          let effectiveDecision: "approve" | "clarification" | "reject" | null = dec?.decision || null;
+          let effectiveNote = dec?.note || clar?.note || noteText || "";
+          let effectiveNotes = dec?.notes || clar?.notes || [];
+          let effectiveStatus: "waiting" | "received" | undefined = clar?.status || dec?.clarificationStatus;
+
+          if (audit && isOnHold) {
+            if (audit.status === "waiting") {
+              effectiveDecision = effectiveDecision || "clarification";
+              effectiveStatus = "waiting";
+              if (!effectiveNote && audit.note) effectiveNote = audit.note;
+            }
+          }
+
+          if (noteText && isOnHold) {
+            effectiveDecision = effectiveDecision || "clarification";
+            effectiveStatus = "waiting";
+            effectiveNote = noteText;
+          }
+
+          if (effectiveDecision === "clarification" && isOnHold) {
+            effectiveStatus = "waiting";
+          }
+
+          if (effectiveDecision) {
+            combinedDecisions[secKey] = {
+              decision: effectiveDecision,
+              note: effectiveNote,
+              notes: effectiveNotes,
+              clarificationStatus: effectiveStatus,
+            };
+          }
+
+          if (isOnHold && (effectiveDecision === "clarification" || effectiveStatus === "waiting")) {
+            combinedClarifications[secKey] = {
+              status: effectiveStatus || "waiting",
+              note: effectiveNote,
+              notes: effectiveNotes,
+            };
+          }
+        }
+
+        // Helper to check if a section is actively waiting for clarification
+        const isSectionWaitingClarification = (secKey: string) => {
+          if (!isOnHold) return false;
+          const clar = combinedClarifications[secKey];
+          const dec = combinedDecisions[secKey];
+          if (dec?.decision === "clarification") {
+            return dec.clarificationStatus !== "received" || clar?.status !== "received";
+          }
+          if (clar) {
+            return clar.status === "waiting";
+          }
+          return false;
+        };
+
+        // Invalidate stale local storage keys for any section actively waiting clarification
+        if (typeof window !== "undefined" && appNum) {
+          if (isOnHold) {
+            localStorage.removeItem(`jatayu_clarifications_submitted_${appNum}`);
+            allSectionsList.forEach((sec) => {
+              if (isSectionWaitingClarification(sec)) {
+                localStorage.removeItem(`jatayu_clarification_resolved_${appNum}_${sec}`);
+              } else if (localStorage.getItem(`jatayu_clarification_resolved_${appNum}_${sec}`) === "true") {
+                initialResolved.add(sec);
+              }
+            });
+          } else {
+            // Clean up any stale clarification keys if application is not on hold
+            localStorage.removeItem(`jatayu_clarifications_submitted_${appNum}`);
+            allSectionsList.forEach((sec) => {
+              localStorage.removeItem(`jatayu_clarification_resolved_${appNum}_${sec}`);
+            });
+          }
+        }
+
+        // Add backend-confirmed received clarifications (only if not waiting)
+        if (!isOnHold) {
+          Object.keys(combinedClarifications).forEach((key) => {
+            if (combinedClarifications[key]?.status === "received" && !isSectionWaitingClarification(key)) {
+              initialResolved.add(key);
+            }
+          });
+          Object.keys(combinedDecisions).forEach((key) => {
+            if (combinedDecisions[key]?.clarificationStatus === "received" && !isSectionWaitingClarification(key)) {
+              initialResolved.add(key);
+            }
+          });
+        }
+
+        setResolvedClarifications(initialResolved);
+
+        const hasWaiting = allSectionsList.some((sec) => isSectionWaitingClarification(sec));
+
+        const cachedSubmitted = typeof window !== "undefined" && appNum
+          ? localStorage.getItem(`jatayu_clarifications_submitted_${appNum}`) === "true"
+          : false;
+
+        if (isOnHold || hasWaiting) {
+          setIsSubmittedForReview(false);
+          if (typeof window !== "undefined" && appNum) {
+            localStorage.removeItem(`jatayu_clarifications_submitted_${appNum}`);
+          }
+        } else if (metadata.clarificationsAllSubmitted || cachedSubmitted) {
+          setIsSubmittedForReview(true);
+        }
+
         setLinkedinConnected(Boolean(metadata.linkedinConnectedAt));
         if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
         if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
@@ -222,6 +516,7 @@ export default function ExpertProfileEditor() {
         setGovernmentId(metadata.governmentId && typeof metadata.governmentId === "object"
           ? metadata.governmentId as GovernmentIdData
           : undefined);
+        setKycPhotos(normalizeKycPhotos(metadata.kycPhotos));
         setKycVideoUrl(typeof metadata.kycVideoUrl === "string" ? metadata.kycVideoUrl : "");
         setCertificates(Array.isArray(metadata.certificates)
           ? metadata.certificates as ExpertCertificate[]
@@ -229,6 +524,9 @@ export default function ExpertProfileEditor() {
         setPortfolioSamples(Array.isArray(metadata.portfolioSamples)
           ? metadata.portfolioSamples as PortfolioSampleFile[]
           : []);
+
+        setPendingClarifications(combinedClarifications);
+        setSectionDecisions(combinedDecisions);
       })
       .catch(() => {
         setCredentialsError("Unable to load saved credentials. Please reload to retry.");
@@ -237,10 +535,66 @@ export default function ExpertProfileEditor() {
 
   const isUploadedPhoto =
     profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:");
-  const suggestedSkills = useMemo(
-    () => skillsForExpertCategory(profile.category),
-    [profile.category],
+  const secondarySkills = getSecondarySkills(profile.category, profile.skills);
+  const matchedPrimaryCategory = EXPERT_SKILL_CATEGORIES.find((category) =>
+    category.id === profile.category.trim().toLowerCase()
+    || category.label.toLowerCase() === profile.category.trim().toLowerCase(),
   );
+  const primarySkill = matchedPrimaryCategory?.label || profile.category.trim();
+  const primaryCategoryIsCustom = Boolean(primarySkill)
+    && !matchedPrimaryCategory;
+  const categoryRecommendations = customSkillRecommendations[primarySkill.toLowerCase()] || [];
+  const isRecommendingPrimarySkill = isAddingCustomPrimarySkill
+    || loadingSkillCategory === primarySkill.toLowerCase();
+  const suggestedSkills = matchedPrimaryCategory
+    ? skillsForExpertCategory(matchedPrimaryCategory.id)
+    : categoryRecommendations;
+  const suggestedSecondarySkills = suggestedSkills.filter(
+    (skill) => skill.trim().toLowerCase() !== primarySkill.toLowerCase(),
+  );
+
+  useEffect(() => {
+    if (!primaryCategoryIsCustom) return;
+    const categoryKey = primarySkill.toLowerCase();
+    if (
+      Object.hasOwn(customSkillRecommendations, categoryKey)
+      || categoryRecommendationRequests.current.has(categoryKey)
+    ) return;
+
+    let active = true;
+    categoryRecommendationRequests.current.add(categoryKey);
+    setLoadingSkillCategory(categoryKey);
+    setSkillRecommendationError("");
+    void recommendSkillsForCategory(primarySkill)
+      .then((result) => {
+        const isValid = result.valid !== false
+          && (result.skills.length > 0 || result.valid === true);
+        if (!isValid) {
+          throw new Error(result.message || "No suggested skills were returned for this category.");
+        }
+        if (active) {
+          setCustomSkillRecommendations((current) => ({
+            ...current,
+            [categoryKey]: cleanExpertCategorySkills(primarySkill, result.skills),
+          }));
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setSkillRecommendationError(
+            error instanceof Error ? error.message : "Unable to load skills for this category.",
+          );
+        }
+      })
+      .finally(() => {
+        categoryRecommendationRequests.current.delete(categoryKey);
+        setLoadingSkillCategory((current) => current === categoryKey ? "" : current);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [customSkillRecommendations, primaryCategoryIsCustom, primarySkill]);
 
   useEffect(() => {
     return () => {
@@ -299,32 +653,112 @@ export default function ExpertProfileEditor() {
 
   const handleAddSkill = () => {
     const trimmed = skillInput.trim();
-    if (!trimmed || profile.skills.length >= MAX_SKILLS) return;
-    if (profile.skills.some((skill) => skill.toLowerCase() === trimmed.toLowerCase())) {
-      setSkillInput("");
-      return;
-    }
-    updateProfile("skills", [...profile.skills, trimmed]);
+    if (!trimmed || !primarySkill || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS) return;
+    const matchingSuggestion = suggestedSecondarySkills.find(
+      (skill) => skill.toLowerCase() === trimmed.toLowerCase(),
+    );
+    setProfile((current) => ({
+      ...current,
+      skills: addExpertSecondarySkill(
+        getSecondarySkills(current.category, current.skills),
+        matchingSuggestion || trimmed,
+      ),
+    }));
+    setSaved(false);
     setSkillInput("");
   };
 
   const handleRemoveSkill = (skill: string) => {
-    updateProfile(
-      "skills",
-      profile.skills.filter((item) => item !== skill),
-    );
+    setProfile((current) => ({
+      ...current,
+      skills: removeExpertSecondarySkill(
+        getSecondarySkills(current.category, current.skills),
+        skill,
+      ),
+    }));
+    setSaved(false);
   };
 
   const handleToggleSkill = (skill: string) => {
-    const selectedSkill = profile.skills.find(
-      (item) => item.toLowerCase() === skill.toLowerCase(),
+    setProfile((current) => ({
+      ...current,
+      skills: toggleExpertSecondarySkill(
+        getSecondarySkills(current.category, current.skills),
+        skill,
+      ),
+    }));
+    setSaved(false);
+  };
+
+  const handleSelectPrimarySkill = (category: string) => {
+    const selection = selectExpertPrimarySkill(profile.category, category, profile.skills);
+    if (profile.category !== selection.category) {
+      setSaved(false);
+      setSkillSelectionNotice(
+        profile.skills.length > 0
+          ? "Changing the Primary Skill cleared the selected Core Skills, following onboarding."
+          : "",
+      );
+      setProfile((current) => ({
+        ...current,
+        category: selection.category,
+        skills: selection.skills,
+      }));
+    }
+    setSkillRecommendationError("");
+  };
+
+  const handleAddCustomPrimarySkill = async () => {
+    const trimmed = primarySkillInput.trim();
+    if (!trimmed || isRecommendingPrimarySkill) return;
+
+    const matchingCategory = EXPERT_SKILL_CATEGORIES.find(
+      (category) => category.label.toLowerCase() === trimmed.toLowerCase(),
     );
-    if (selectedSkill) {
-      handleRemoveSkill(selectedSkill);
+    if (matchingCategory) {
+      handleSelectPrimarySkill(matchingCategory.label);
+      setPrimarySkillInput("");
       return;
     }
-    if (profile.skills.length < MAX_SKILLS) {
-      updateProfile("skills", [...profile.skills, skill]);
+
+    if (customPrimarySkill && customPrimarySkill.toLowerCase() !== trimmed.toLowerCase()) {
+      setSkillRecommendationError("Onboarding allows one custom Primary Skill. Select the saved custom skill or a listed category.");
+      return;
+    }
+
+    setIsAddingCustomPrimarySkill(true);
+    setSkillRecommendationError("");
+    const categoryKey = trimmed.toLowerCase();
+    try {
+      const result = await recommendSkillsForCategory(trimmed);
+      const isValid = result.valid !== false
+        && (result.skills.length > 0 || result.valid === true);
+      if (!isValid) {
+        setSkillRecommendationError(result.message || "Please enter a valid professional category name.");
+        return;
+      }
+      setCustomSkillRecommendations((current) => ({
+        ...current,
+        [categoryKey]: cleanExpertCategorySkills(trimmed, result.skills),
+      }));
+      setCustomPrimarySkill(trimmed);
+      handleSelectPrimarySkill(trimmed);
+      setPrimarySkillInput("");
+    } catch (error) {
+      setCustomSkillRecommendations((current) => ({
+        ...current,
+        [categoryKey]: [],
+      }));
+      setCustomPrimarySkill(trimmed);
+      handleSelectPrimarySkill(trimmed);
+      setPrimarySkillInput("");
+      setSkillRecommendationError(
+        error instanceof Error
+          ? `Category selected, but skill suggestions could not be loaded: ${error.message}`
+          : "Category selected, but skill suggestions could not be loaded.",
+      );
+    } finally {
+      setIsAddingCustomPrimarySkill(false);
     }
   };
 
@@ -425,9 +859,15 @@ export default function ExpertProfileEditor() {
   };
 
   // Save full profile + onboarding data
-  const handleSaveAll = async () => {
+  const handleSaveAll = async (triggerSecId?: string | unknown) => {
+    const activeSecId = typeof triggerSecId === "string" ? triggerSecId : undefined;
     if (credentialsLoading || credentialsError) return;
+    if (!profile.name.trim()) {
+      setSaveError("Please provide your Full Name before saving profile updates.");
+      return;
+    }
     setIsSaving(true);
+    setActiveSavingSectionId(activeSecId || "all");
     setSaveError(null);
     try {
       await saveExpertProfileData(profile, photoFile, {
@@ -448,7 +888,9 @@ export default function ExpertProfileEditor() {
           portfolio,
           acceptCustomRequests,
           audiences: selectedAudiences,
+          languages: profile.languages,
           governmentId,
+          kycPhotos,
           kycVideoUrl,
           certificates,
           portfolioSamples,
@@ -485,11 +927,199 @@ export default function ExpertProfileEditor() {
       });
 
       setSaved(true);
+      setSavedSectionId(activeSecId || null);
+      window.setTimeout(() => {
+        setSaved(false);
+        setSavedSectionId(null);
+      }, 2500);
+
+      setResolvedClarifications((prev) => {
+        const next = new Set(prev);
+        if (activeSecId) next.add(activeSecId);
+        return next;
+      });
+      if (typeof window !== "undefined" && appId && activeSecId) {
+        try {
+          localStorage.setItem(`jatayu_clarification_resolved_${appId}_${activeSecId}`, "true");
+        } catch {
+          // ignore
+        }
+      }
+
+      setPendingClarifications((prev) => {
+        const next = { ...prev };
+        if (activeSecId) {
+          if (next[activeSecId]) {
+            next[activeSecId] = { ...next[activeSecId], status: "received" };
+          }
+        } else {
+          Object.keys(next).forEach((key) => {
+            if (next[key]?.status === "waiting") {
+              next[key] = { ...next[key], status: "received" };
+            }
+          });
+        }
+        return next;
+      });
+
+      setSectionDecisions((prev) => {
+        const next = { ...prev };
+        if (activeSecId && next[activeSecId]) {
+          next[activeSecId] = {
+            ...next[activeSecId],
+            clarificationStatus: "received",
+          };
+        }
+        return next;
+      });
+
+      // Automatically find the next section requiring clarification or changes and scroll down to it
+      if (activeSecId) {
+        const ALL_PROFILE_SECTIONS = [
+          { id: "category", num: "01", title: "Category & Skills" },
+          { id: "experience", num: "02", title: "Work Experience & Portfolio" },
+          { id: "profile", num: "03", title: "Profile Details" },
+          { id: "credentials", num: "04", title: "Credentials & KYC" },
+          { id: "preferences", num: "05", title: "Consultation Preferences & Pricing" },
+          { id: "audience", num: "06", title: "Target Audience & Languages" },
+          { id: "availability", num: "07", title: "Availability & Schedule" },
+        ] as const;
+
+        const currentIndex = ALL_PROFILE_SECTIONS.findIndex((s) => s.id === activeSecId);
+        const candidates = [
+          ...ALL_PROFILE_SECTIONS.slice(currentIndex + 1),
+          ...ALL_PROFILE_SECTIONS.slice(0, Math.max(0, currentIndex)),
+        ];
+
+        const nextSection = candidates.find((s) => {
+          if (s.id === activeSecId) return false;
+          const clar = pendingClarifications[s.id];
+          const dec = sectionDecisions[s.id];
+          const isClar = (clar?.status === "waiting" || dec?.decision === "clarification") && clar?.status !== "received";
+          const isRej = dec?.decision === "reject";
+          return isClar || isRej;
+        });
+
+        if (nextSection) {
+          setOpenSections((prev) => new Set(prev).add(nextSection.id));
+          window.setTimeout(() => {
+            const targetEl = document.getElementById(`${nextSection.id}-section`);
+            if (targetEl) {
+              targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }, 200);
+        }
+      }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Could not save profile.");
     } finally {
       setIsSaving(false);
+      setActiveSavingSectionId(null);
     }
+  };
+
+  const isSectionLocked = useCallback(
+    (secId: string): boolean => {
+      const isProfileUnapproved = ["on_hold", "in_review", "pending_review", "pending", "draft"].includes(reviewStatus);
+      const decision = sectionDecisions[secId]?.decision;
+      return isProfileUnapproved && decision === "approve";
+    },
+    [reviewStatus, sectionDecisions]
+  );
+
+  const getSectionClarification = useCallback(
+    (secId: string): string => {
+      const decision = sectionDecisions[secId];
+      const clar = pendingClarifications[secId];
+      if (decision?.decision === "clarification" && decision.note) return decision.note;
+      if (clar?.status === "waiting" && clar.note) return clar.note;
+      if (clar?.note) return clar.note;
+      if (decision?.notes && decision.notes.length > 0) {
+        return decision.notes[decision.notes.length - 1].text;
+      }
+      return "";
+    },
+    [sectionDecisions, pendingClarifications]
+  );
+
+  const getSectionRejection = useCallback(
+    (secId: string): string => {
+      const decision = sectionDecisions[secId];
+      if (decision?.decision === "reject" && decision.note) return decision.note;
+      if (decision?.decision === "reject" && decision.notes && decision.notes.length > 0) {
+        return decision.notes[decision.notes.length - 1].text;
+      }
+      return "";
+    },
+    [sectionDecisions]
+  );
+
+  const toggleSection = (secId: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(secId)) next.delete(secId);
+      else next.add(secId);
+      return next;
+    });
+  };
+
+  const toggleAllSections = () => {
+    if (openSections.size >= 7) {
+      setOpenSections(new Set());
+    } else {
+      setOpenSections(new Set(["category", "experience", "profile", "credentials", "preferences", "audience", "availability"]));
+    }
+  };
+
+  const handleToggleEditSection = (secId: string) => {
+    if (isSectionLocked(secId)) return;
+    setOpenSections((prev) => new Set(prev).add(secId));
+    setEditingSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(secId)) next.delete(secId);
+      else next.add(secId);
+      return next;
+    });
+  };
+
+  const renderStatusBadge = (secId: string) => {
+    const locked = isSectionLocked(secId);
+    if (locked) {
+      return (
+        <span className={styles.sectionBadgeApproved}>
+          <Lock size={11} /> Approved
+        </span>
+      );
+    }
+    const clar = getSectionClarification(secId);
+    if (clar) {
+      return (
+        <span className={styles.sectionBadgeClarification}>
+          <AlertCircle size={11} /> Clarification
+        </span>
+      );
+    }
+    const rej = getSectionRejection(secId);
+    if (rej) {
+      return (
+        <span className={styles.sectionBadgeRejected}>
+          <AlertTriangle size={11} /> Changes Required
+        </span>
+      );
+    }
+    const decision = sectionDecisions[secId]?.decision;
+    if (decision === "approve") {
+      return (
+        <span className={styles.sectionBadgeApproved}>
+          <CheckCircle2 size={11} /> Approved
+        </span>
+      );
+    }
+    return (
+      <span className={styles.sectionBadgePending}>
+        Pending Review
+      </span>
+    );
   };
 
   const publicProfileSlug = expertSlug(profile.name);
@@ -497,335 +1127,224 @@ export default function ExpertProfileEditor() {
 
   const yearOptions = useMemo(() => getYearOptions(35), []);
 
-  if (credentialsLoading) return <div className={styles.editor} role="status">Loading your profile…</div>;
-  if (credentialsError) return <div className={styles.editor} role="alert">{credentialsError}</div>;
 
-  return (
-    <div className={styles.editor}>
-      {/* ----------------------------------------------------
-          TOP ACTION BAR & PUBLIC PROFILE SHORTCUT
-      ---------------------------------------------------- */}
-      <div className={styles.topActionBar}>
-        <div className={styles.topActionMeta}>
-          <span className={styles.statusBadge}>
-            <ShieldCheck size={14} /> {reviewStatus === "approved" ? "Approved Expert" : `Review status: ${reviewStatus.replaceAll("_", " ")}`}
-          </span>
-          <span className={styles.appIdBadge}>
-            <Award size={13} /> {appId || "Not submitted"}
-          </span>
-        </div>
+  const ALL_PROFILE_SECTIONS = useMemo(() => [
+    {
+      id: "category",
+      num: "01",
+      numPill: "001",
+      title: "Category & Skills",
+      displayName: "Category & Skills",
+      subtitle: "Add your core competencies and tags so seekers find you for specific problems.",
+      icon: Layers,
+    },
+    {
+      id: "experience",
+      num: "02",
+      numPill: "002",
+      title: "Work Experience & Portfolio",
+      displayName: "Work Experience & Portfolio",
+      subtitle: "Highlight your track record and professional achievements.",
+      icon: Briefcase,
+    },
+    {
+      id: "profile",
+      num: "03",
+      numPill: "003",
+      title: "Profile Identity & Public Presence",
+      displayName: "Profile Details",
+      subtitle: "Your core name, avatar, bio, and social presence visible to seekers.",
+      icon: User,
+    },
+    {
+      id: "credentials",
+      num: "04",
+      numPill: "004",
+      title: "Education & Certifications",
+      displayName: "Credentials & KYC",
+      subtitle: "Add your academic degrees, certifications, and verification files.",
+      icon: Award,
+    },
+    {
+      id: "preferences",
+      num: "05",
+      numPill: "005",
+      title: "Consultation Preferences & Pricing",
+      displayName: "Consultation Preferences & Pricing",
+      subtitle: "Set up your session pricing, consultation formats, and communication channels.",
+      icon: DollarSign,
+    },
+    {
+      id: "audience",
+      num: "06",
+      numPill: "006",
+      title: "Target Audience & Languages",
+      displayName: "Target Audience & Languages",
+      subtitle: "Specify the types of clients you advise and languages you speak fluently.",
+      icon: Users,
+    },
+    {
+      id: "availability",
+      num: "07",
+      numPill: "007",
+      title: "Availability & Schedule",
+      displayName: "Availability & Schedule",
+      subtitle: "Set up your weekly recurring time slots for bookings.",
+      icon: Calendar,
+    },
+  ], []);
 
-        <div className={styles.topButtonsGroup}>
-          <div className={styles.saveBtnWrapper}>
-            <PrimaryButton
-              type="button"
-              label={
-                saved ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                    <Check size={16} /> Changes Saved
-                  </span>
-                ) : (
-                  "Save Changes"
-                )
-              }
-              variant={saved ? "light" : "orange"}
-              disabled={!isExpertProfileValid(profile) || isSaving}
-              staticLabel={true}
-              onClick={handleSaveAll}
-            />
-          </div>
-        </div>
-      </div>
+  const clarificationSections = useMemo(() => {
+    // Clarifications are strictly active only when the application is placed on hold
+    if (reviewStatus !== "on_hold") {
+      return [];
+    }
 
-      {saveError && (
-        <div className={styles.errorNote}>
-          <AlertCircle size={15} /> {saveError}
-        </div>
-      )}
+    const list = ALL_PROFILE_SECTIONS.filter((s) => {
+      const clarNote = getSectionClarification(s.id);
+      const rejNote = getSectionRejection(s.id);
+      const dec = sectionDecisions[s.id];
+      const clar = pendingClarifications[s.id];
+      if (dec?.decision === "approve") return false;
+      return (
+        dec?.decision === "clarification" ||
+        dec?.decision === "reject" ||
+        clar?.status === "waiting" ||
+        Boolean(clar) ||
+        Boolean(clarNote) ||
+        Boolean(rejNote)
+      );
+    });
 
-      {/* ----------------------------------------------------
-          STEP 1 & 4: PROFESSIONAL IDENTITY & BASIC INFO
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="identity-section">
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionHeaderLeft}>
-            <div className={styles.sectionIconBox}>
-              <User size={18} />
-            </div>
-            <div>
-              <h2 className={styles.sectionTitle}>Profile Identity & Public Presence</h2>
-              <p className={styles.sectionSubtitle}>
-                Your core name, avatar, bio, and social presence visible to seekers.
-              </p>
-            </div>
-          </div>
-        </div>
+    // Fallback: If application is on hold, but no specific sections matched (e.g. general hold note),
+    // ensure all unapproved sections can be edited in clarification accordions
+    const effectiveSections = (list.length === 0 && reviewStatus === "on_hold")
+      ? ALL_PROFILE_SECTIONS.filter((s) => sectionDecisions[s.id]?.decision !== "approve")
+      : list;
 
-        {/* Profile Photo */}
-        <div className={styles.photoUploadContainer}>
-          <label
-            htmlFor="profile-photo-upload"
-            className={styles.photoAvatarWrap}
-            aria-label="Upload profile photo"
-          >
-            <span className={styles.photoAvatarInner}>
-              {!profile.avatar ? <User size={40} aria-label="No profile photo uploaded" /> : isUploadedPhoto ? (
-                <img src={profile.avatar} alt="" className={styles.photoAvatar} />
-              ) : (
-                <Image
-                  src={profile.avatar}
-                  alt=""
-                  width={80}
-                  height={80}
-                  className={styles.photoAvatar}
-                />
-              )}
-            </span>
-            <span className={styles.photoPlusBtn} aria-hidden="true">
-              <Plus size={14} />
-            </span>
-          </label>
-          <input
-            ref={fileInputRef}
-            id="profile-photo-upload"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className={styles.hiddenFileInput}
-            onChange={handlePhotoChange}
-          />
-          <div className={styles.photoUploadInfo}>
-            <h3 className={styles.photoUploadTitle}>Headshot & Profile Picture</h3>
-            <p className={`${styles.photoUploadDesc} ${photoError ? styles.photoUploadDescError : ""}`}>
-              {photoError || "Professional headshot recommended. JPG, PNG or WEBP up to 5MB."}
-            </p>
-          </div>
-        </div>
+    return effectiveSections.map((s, idx) => {
+      const clarNote = getSectionClarification(s.id) || getSectionRejection(s.id);
+      return {
+        ...s,
+        numPill: `00${idx + 1}`.slice(-3),
+        note: clarNote || "Please review and update requested information",
+      };
+    });
+  }, [ALL_PROFILE_SECTIONS, sectionDecisions, pendingClarifications, reviewStatus, getSectionClarification, getSectionRejection]);
 
-        {/* Name & Title */}
-        <div className={styles.fieldRow}>
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-name" className={styles.fieldLabel}>
-              Full Name
-            </label>
-            <input
-              id="profile-name"
-              type="text"
-              value={profile.name}
-              onChange={(e) => updateProfile("name", e.target.value)}
-              className={styles.textField}
-              placeholder="e.g. Aditya Dhar"
-            />
-          </div>
+  const approvedSections = useMemo(() => {
+    const clarIds = new Set(clarificationSections.map((s) => s.id));
+    return ALL_PROFILE_SECTIONS.filter((s) => !clarIds.has(s.id));
+  }, [ALL_PROFILE_SECTIONS, clarificationSections]);
 
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-title" className={styles.fieldLabel}>
-              Professional Title
-            </label>
-            <input
-              id="profile-title"
-              type="text"
-              value={profile.role}
-              onChange={(e) => updateProfile("role", e.target.value)}
-              className={styles.textField}
-              placeholder="e.g. Principal UX Strategy Lead"
-            />
-          </div>
-        </div>
+  const allClarificationsResolved =
+    clarificationSections.length > 0 &&
+    clarificationSections.every((s) => resolvedClarifications.has(s.id));
 
-        {/* Category & Experience Level */}
-        <div className={styles.fieldRow}>
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-category" className={styles.fieldLabel}>
-              Primary Domain / Category
-            </label>
-            <select
-              id="profile-category"
-              value={profile.category}
-              onChange={(e) => updateProfile("category", e.target.value)}
-              className={styles.selectField}
-            >
-              <option value="">Select category</option>
-              {profile.category && !CATEGORIES_LIST.includes(profile.category) && <option value={profile.category}>{profile.category}</option>}
-              {CATEGORIES_LIST.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
+  const isClarificationActive =
+    reviewStatus === "on_hold" && !isSubmittedForReview && clarificationSections.length > 0;
 
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-experience" className={styles.fieldLabel}>
-              Experience Level
-            </label>
-            <select
-              id="profile-experience"
-              value={profile.experienceLevel}
-              onChange={(e) =>
-                updateProfile("experienceLevel", e.target.value as ExperienceLevel)
-              }
-              className={styles.selectField}
-            >
-              <option value="">Select experience level</option>
-              {(Object.keys(EXPERIENCE_LABELS) as ExperienceLevel[]).map((level) => (
-                <option key={level} value={level}>
-                  {EXPERIENCE_LABELS[level]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+  const toggleClarificationSection = (secId: string) => {
+    setOpenClarificationId((prev) => (prev === secId ? null : secId));
+  };
 
-        {/* Tagline */}
-        <div className={styles.fieldGroup}>
-          <div className={styles.fieldLabelRow}>
-            <label htmlFor="profile-tagline" className={styles.fieldLabel}>
-              Public Tagline / Hook
-            </label>
-            <span className={styles.charCounter}>
-              {profile.tagLine.length}/{MAX_CHARS}
-            </span>
-          </div>
-          <div className={styles.textareaWrapper}>
-            <textarea
-              id="profile-tagline"
-              value={profile.tagLine}
-              onChange={(e) =>
-                updateProfile("tagLine", e.target.value.slice(0, MAX_CHARS))
-              }
-              className={`${styles.textareaField} ${styles.textareaWithInlineCounter}`}
-              rows={2}
-              placeholder="A short, catchy hook that appears on expert cards and search results."
-            />
-            <span className={styles.textareaCounterInline}>
-              {profile.tagLine.length}/{MAX_CHARS}
-            </span>
-          </div>
-        </div>
+  const hasAutoOpenedClarification = useRef(false);
+  useEffect(() => {
+    if (!hasAutoOpenedClarification.current && isClarificationActive && clarificationSections.length > 0) {
+      hasAutoOpenedClarification.current = true;
+      const firstUnresolved = clarificationSections.find((s) => !resolvedClarifications.has(s.id));
+      if (firstUnresolved) {
+        setOpenClarificationId(firstUnresolved.id);
+      } else {
+        setOpenClarificationId(clarificationSections[0].id);
+      }
+    }
+  }, [isClarificationActive, clarificationSections, resolvedClarifications]);
 
-        {/* Brief Introduction / Bio */}
-        <div className={styles.fieldGroup}>
-          <div className={styles.fieldLabelRow}>
-            <label htmlFor="profile-bio" className={styles.fieldLabel}>
-              Brief Introduction & Bio
-            </label>
-            <span className={styles.charCounter}>
-              {profile.bio.length}/{MAX_CHARS}
-            </span>
-          </div>
-          <textarea
-            id="profile-bio"
-            value={profile.bio}
-            onChange={(e) => updateProfile("bio", e.target.value.slice(0, MAX_CHARS))}
-            className={styles.textareaField}
-            rows={4}
-            placeholder="Tell clients about your background, notable achievements, and how you help them win."
-          />
-          <button
-            type="button"
-            className={styles.aiBioBtn}
-            onClick={handleAiBioAssist}
-            disabled={isGeneratingBio || !profile.role.trim()}
-          >
-            {isGeneratingBio ? (
-              <span className={styles.aiBioLoadingText}>Writing with AI...</span>
-            ) : (
-              <ShinyText
-                text="AI Assisted Bio Writing"
-                icon="sparkles"
-                iconSize={14}
-                speed={2.5}
-                color="#E53B17"
-                shineColor="#ffffff"
-                disabled={!profile.role.trim()}
-                className={styles.aiBioShinyText}
-              />
-            )}
-          </button>
-        </div>
+  const handleSaveClarificationSection = async (secId: string) => {
+    await handleSaveAll(secId);
+    setResolvedClarifications((prev) => {
+      const next = new Set(prev);
+      next.add(secId);
+      return next;
+    });
+    if (typeof window !== "undefined" && appId) {
+      try {
+        localStorage.setItem(`jatayu_clarification_resolved_${appId}_${secId}`, "true");
+      } catch {
+        // ignore
+      }
+    }
 
-        {/* Location & Languages */}
-        <div className={styles.fieldRow}>
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-location" className={styles.fieldLabel}>
-              Location / City
-            </label>
-            <input
-              id="profile-location"
-              type="text"
-              value={profile.location}
-              onChange={(e) => updateProfile("location", e.target.value)}
-              className={styles.textField}
-              placeholder="Enter your city and country"
-            />
-          </div>
+    const remaining = clarificationSections.filter(
+      (s) => s.id !== secId && !resolvedClarifications.has(s.id)
+    );
+    if (remaining.length > 0) {
+      const nextSec = remaining[0];
+      setOpenClarificationId(nextSec.id);
+      window.setTimeout(() => {
+        const targetEl = document.getElementById(`clarification-${nextSec.id}`);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 200);
+    }
+  };
 
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-languages" className={styles.fieldLabel}>
-              Languages Spoken
-            </label>
-            <input
-              id="profile-languages"
-              type="text"
-              value={profile.languages.join(", ")}
-              onChange={(e) =>
-                updateProfile(
-                  "languages",
-                  e.target.value
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean),
-                )
-              }
-              className={styles.textField}
-              placeholder="English, Hindi, Marathi"
-            />
-          </div>
-        </div>
+  const handleUpdateForReview = async () => {
+    if (!allClarificationsResolved || isSubmittingReview) return;
+    setIsSubmittingReview(true);
+    try {
+      await saveExpertProfileData(profile, photoFile, {
+        selectedFormats,
+        selectedLengths,
+        formatPrices,
+        targetAudience: selectedAudiences,
+        credentials: buildCredentialsPayload(employmentPositions, educationDegrees),
+        timezone,
+        availabilitySlots: availabilitySlots.map((slot) => ({
+          days: slot.days,
+          from: slot.from,
+          to: slot.to,
+        })),
+        onboardingMetadata: {
+          linkedin,
+          portfolio,
+          acceptCustomRequests,
+          audiences: selectedAudiences,
+          languages: profile.languages,
+          governmentId,
+          kycPhotos,
+          kycVideoUrl,
+          certificates,
+          portfolioSamples,
+          clarificationsAllSubmitted: true,
+          clarificationsSubmittedAt: new Date().toISOString(),
+        },
+      });
 
-        {/* Social & Portfolio Links */}
-        <div className={styles.fieldRow}>
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-linkedin" className={styles.fieldLabel}>
-              LinkedIn Profile
-            </label>
-            <input
-              id="profile-linkedin"
-              type="text"
-              value={linkedin}
-              onChange={(e) => {
-                setLinkedin(e.target.value);
-                setSaved(false);
-              }}
-              className={styles.textField}
-              placeholder="linkedin.com/in/username"
-            />
-          </div>
+      setIsSubmittedForReview(true);
+      if (typeof window !== "undefined" && appId) {
+        try {
+          localStorage.setItem(`jatayu_clarifications_submitted_${appId}`, "true");
+          window.dispatchEvent(new Event("expert-applications-updated"));
+        } catch {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.error("Error submitting for review:", err);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
-          <div className={styles.fieldGroup}>
-            <label htmlFor="profile-portfolio" className={styles.fieldLabel}>
-              Portfolio / Website URL
-            </label>
-            <input
-              id="profile-portfolio"
-              type="text"
-              value={portfolio}
-              onChange={(e) => {
-                setPortfolio(e.target.value);
-                setSaved(false);
-              }}
-              className={styles.textField}
-              placeholder="https://yourportfolio.com"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------
-          STEP 2: SKILLS & EXPERTISE
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="skills-section">
-        <div className={styles.sectionHeader}>
+  const renderSectionContent = (secId: string, isFrozen: boolean) => {
+    switch (secId) {
+      case "category":
+        return (
+          <>
+              <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
               <Layers size={18} />
@@ -840,14 +1359,93 @@ export default function ExpertProfileEditor() {
         </div>
 
         <div className={styles.fieldGroup}>
+          <div className={styles.fieldLabel}>Primary Skill</div>
+          <p className={styles.skillsHint}>
+            Choose one primary area, as in onboarding. Changing it clears selected Core Skills.
+          </p>
+          <div className={styles.chipsGrid} aria-label="Primary skill categories">
+            {EXPERT_SKILL_CATEGORIES.map((category) => {
+              const isSelected = matchedPrimaryCategory?.id === category.id;
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
+                  onClick={() => handleSelectPrimarySkill(isSelected ? "" : category.label)}
+                  aria-pressed={isSelected}
+                >
+                  {isSelected && <Check size={13} />}
+                  {category.label}
+                </button>
+              );
+            })}
+            {customPrimarySkill && (
+              <button
+                type="button"
+                className={`${styles.selectableChip} ${primaryCategoryIsCustom ? styles.selectableChipActive : ""}`}
+                onClick={() => handleSelectPrimarySkill(primaryCategoryIsCustom ? "" : customPrimarySkill)}
+                aria-pressed={primaryCategoryIsCustom}
+              >
+                {primaryCategoryIsCustom && <Check size={13} />}
+                {customPrimarySkill}
+              </button>
+            )}
+          </div>
+          <div className={styles.skillInputRow}>
+            <input
+              type="text"
+              value={primarySkillInput}
+              onChange={(event) => {
+                setPrimarySkillInput(event.target.value);
+                setSkillRecommendationError("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleAddCustomPrimarySkill();
+                }
+              }}
+              className={styles.textField}
+              placeholder="Add custom Primary Skill"
+              aria-label="Add custom Primary Skill"
+              disabled={isRecommendingPrimarySkill || Boolean(customPrimarySkill)}
+            />
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={() => void handleAddCustomPrimarySkill()}
+              disabled={!primarySkillInput.trim() || isRecommendingPrimarySkill || Boolean(customPrimarySkill)}
+            >
+              {isRecommendingPrimarySkill ? "Checking..." : <><Plus size={14} /> Add</>}
+            </button>
+          </div>
+          {customPrimarySkill && (
+            <button
+              type="button"
+              className={styles.removeCustomPrimarySkillBtn}
+              onClick={() => {
+                if (primaryCategoryIsCustom) handleSelectPrimarySkill("");
+                setCustomPrimarySkill("");
+              }}
+            >
+              <X size={13} /> Remove custom Primary Skill
+            </button>
+          )}
+          {skillRecommendationError && (
+            <p className={styles.skillSelectionError} role="alert">{skillRecommendationError}</p>
+          )}
+          {skillSelectionNotice && (
+            <p className={styles.skillsHint} role="status">{skillSelectionNotice}</p>
+          )}
+
           <div className={styles.fieldLabel}>
-            Core Skills ({profile.skills.length}/{MAX_SKILLS})
+            Core Skills ({secondarySkills.length}/{MAX_EXPERT_SECONDARY_SKILLS})
           </div>
 
-          {suggestedSkills.length > 0 ? (
+          {suggestedSecondarySkills.length > 0 ? (
             <div className={styles.chipsGrid} aria-label="Available skills">
-              {suggestedSkills.map((skill) => {
-                const isSelected = profile.skills.some(
+              {suggestedSecondarySkills.map((skill) => {
+                const isSelected = secondarySkills.some(
                   (item) => item.toLowerCase() === skill.toLowerCase(),
                 );
                 return (
@@ -856,7 +1454,7 @@ export default function ExpertProfileEditor() {
                     type="button"
                     className={`${styles.selectableChip} ${isSelected ? styles.selectableChipActive : ""}`}
                     onClick={() => handleToggleSkill(skill)}
-                    disabled={!isSelected && profile.skills.length >= MAX_SKILLS}
+                    disabled={!isSelected && secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS}
                     aria-pressed={isSelected}
                   >
                     {isSelected && <Check size={13} />}
@@ -867,9 +1465,11 @@ export default function ExpertProfileEditor() {
             </div>
           ) : (
             <p className={styles.skillsHint}>
-              {profile.category
-                ? "No predefined skills are available for this category. Add your own below."
-                : "Choose a category above to see relevant skills."}
+              {isRecommendingPrimarySkill
+                ? "Loading suggested skills for this Primary Skill..."
+                : primarySkill
+                  ? "No predefined skills are available for this category. Add your own below."
+                  : "Choose a Primary Skill above to see relevant skills."}
             </p>
           )}
           <label htmlFor="profile-skills" className={styles.fieldLabel}>
@@ -887,22 +1487,29 @@ export default function ExpertProfileEditor() {
                   handleAddSkill();
                 }
               }}
+              onBlur={() => {
+                if (skillInput.trim()) handleAddSkill();
+              }}
               className={styles.textField}
               placeholder="Type a skill and press Enter"
-              disabled={profile.skills.length >= MAX_SKILLS}
+              disabled={!primarySkill || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS}
             />
             <button
               type="button"
               className={styles.addBtn}
               onClick={handleAddSkill}
-              disabled={!skillInput.trim() || profile.skills.length >= MAX_SKILLS}
+              disabled={
+                !skillInput.trim()
+                || !primarySkill
+                || secondarySkills.length >= MAX_EXPERT_SECONDARY_SKILLS
+              }
             >
               <Plus size={14} /> Add
             </button>
           </div>
 
           <ul className={styles.skillList}>
-            {profile.skills.map((skill) => (
+            {secondarySkills.map((skill) => (
               <li key={skill} className={styles.skillPill}>
                 <span>{skill}</span>
                 <button
@@ -916,13 +1523,13 @@ export default function ExpertProfileEditor() {
             ))}
           </ul>
         </div>
-      </section>
 
-      {/* ----------------------------------------------------
-          STEP 3: WORK EXPERIENCE & EDUCATION
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="experience-section">
-        <div className={styles.sectionHeader}>
+          </>
+        );
+      case "experience":
+        return (
+          <>
+              <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
               <Briefcase size={18} />
@@ -1155,43 +1762,423 @@ export default function ExpertProfileEditor() {
             <Plus size={13} /> Add Degree
           </button>
         </div>
-      </section>
 
-      <ConfirmModal
-        isOpen={Boolean(positionToDelete)}
-        onClose={() => setPositionToDelete(null)}
-        onConfirm={confirmRemovePosition}
-        title="Delete work experience?"
-        message={
-          positionToDelete
-            ? `Remove ${positionToDelete.jobTitle || "this position"}${positionToDelete.company ? ` at ${positionToDelete.company}` : ""} from your profile?`
-            : "Remove this position from your profile?"
-        }
-        confirmText="Delete"
-        cancelText="Keep"
-        variant="danger"
-      />
+          </>
+        );
+      case "profile":
+        return (
+          <>
+              <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeaderLeft}>
+            <div className={styles.sectionIconBox}>
+              <User size={18} />
+            </div>
+            <div>
+              <h2 className={styles.sectionTitle}>Profile Identity & Public Presence</h2>
+              <p className={styles.sectionSubtitle}>
+                Your core name, avatar, bio, and social presence visible to seekers.
+              </p>
+            </div>
+          </div>
+        </div>
 
-      <ConfirmModal
-        isOpen={Boolean(degreeToDelete)}
-        onClose={() => setDegreeToDelete(null)}
-        onConfirm={confirmRemoveDegree}
-        title="Delete education record?"
-        message={
-          degreeToDelete
-            ? `Remove ${degreeToDelete.degree || "this education record"}${degreeToDelete.institution ? ` from ${degreeToDelete.institution}` : ""} from your profile?`
-            : "Remove this education record from your profile?"
-        }
-        confirmText="Delete"
-        cancelText="Keep"
-        variant="danger"
-      />
+        {/* Profile Photo */}
+        <div className={styles.photoUploadContainer}>
+          <label
+            htmlFor="profile-photo-upload"
+            className={styles.photoAvatarWrap}
+            aria-label="Upload profile photo"
+          >
+            <span className={styles.photoAvatarInner}>
+              {!profile.avatar ? <User size={40} aria-label="No profile photo uploaded" /> : isUploadedPhoto ? (
+                <img src={profile.avatar} alt="" className={styles.photoAvatar} />
+              ) : (
+                <Image
+                  src={profile.avatar}
+                  alt=""
+                  width={80}
+                  height={80}
+                  className={styles.photoAvatar}
+                />
+              )}
+            </span>
+            <span className={styles.photoPlusBtn} aria-hidden="true">
+              <Plus size={14} />
+            </span>
+          </label>
+          <input
+            ref={fileInputRef}
+            id="profile-photo-upload"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className={styles.hiddenFileInput}
+            onChange={handlePhotoChange}
+          />
+          <div className={styles.photoUploadInfo}>
+            <h3 className={styles.photoUploadTitle}>Headshot & Profile Picture</h3>
+            <p className={`${styles.photoUploadDesc} ${photoError ? styles.photoUploadDescError : ""}`}>
+              {photoError || "Professional headshot recommended. JPG, PNG or WEBP up to 5MB."}
+            </p>
+          </div>
+        </div>
 
-      {/* ----------------------------------------------------
-          STEP 6: CONSULTATION PREFERENCES & PRICING
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="pricing-section">
-        <div className={styles.sectionHeader}>
+        {/* Name & Title */}
+        <div className={styles.fieldRow}>
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-name" className={styles.fieldLabel}>
+              Full Name
+            </label>
+            <input
+              id="profile-name"
+              type="text"
+              value={profile.name}
+              onChange={(e) => updateProfile("name", e.target.value)}
+              className={styles.textField}
+              placeholder="e.g. Aditya Dhar"
+            />
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-title" className={styles.fieldLabel}>
+              Professional Title
+            </label>
+            <input
+              id="profile-title"
+              type="text"
+              value={profile.role}
+              onChange={(e) => updateProfile("role", e.target.value)}
+              className={styles.textField}
+              placeholder="e.g. Principal UX Strategy Lead"
+            />
+          </div>
+        </div>
+
+        <div className={styles.fieldRow}>
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-email" className={styles.fieldLabel}>
+              Email Address
+            </label>
+            <input
+              id="profile-email"
+              type="email"
+              value={registeredEmail}
+              className={styles.textField}
+              autoComplete="email"
+              readOnly
+            />
+          </div>
+        </div>
+
+        {/* Experience Level */}
+        <div className={styles.fieldRow}>
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-experience" className={styles.fieldLabel}>
+              Experience Level
+            </label>
+            <select
+              id="profile-experience"
+              value={profile.experienceLevel}
+              onChange={(e) =>
+                updateProfile("experienceLevel", e.target.value as ExperienceLevel)
+              }
+              className={styles.selectField}
+            >
+              <option value="">Select experience level</option>
+              {(Object.keys(EXPERIENCE_LABELS) as ExperienceLevel[]).map((level) => (
+                <option key={level} value={level}>
+                  {EXPERIENCE_LABELS[level]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Tagline */}
+        <div className={styles.fieldGroup}>
+          <div className={styles.fieldLabelRow}>
+            <label htmlFor="profile-tagline" className={styles.fieldLabel}>
+              Public Tagline / Hook
+            </label>
+            <span className={styles.charCounter}>
+              {profile.tagLine.length}/{MAX_CHARS}
+            </span>
+          </div>
+          <div className={styles.textareaWrapper}>
+            <textarea
+              id="profile-tagline"
+              value={profile.tagLine}
+              onChange={(e) =>
+                updateProfile("tagLine", e.target.value.slice(0, MAX_CHARS))
+              }
+              className={`${styles.textareaField} ${styles.textareaWithInlineCounter}`}
+              rows={2}
+              placeholder="A short, catchy hook that appears on expert cards and search results."
+            />
+            <span className={styles.textareaCounterInline}>
+              {profile.tagLine.length}/{MAX_CHARS}
+            </span>
+          </div>
+        </div>
+
+        {/* Brief Introduction / Bio */}
+        <div className={styles.fieldGroup}>
+          <div className={styles.fieldLabelRow}>
+            <label htmlFor="profile-bio" className={styles.fieldLabel}>
+              Brief Introduction & Bio
+            </label>
+            <span className={styles.charCounter}>
+              {profile.bio.length}/{MAX_CHARS}
+            </span>
+          </div>
+          <textarea
+            id="profile-bio"
+            value={profile.bio}
+            onChange={(e) => updateProfile("bio", e.target.value.slice(0, MAX_CHARS))}
+            className={styles.textareaField}
+            rows={4}
+            placeholder="Tell clients about your background, notable achievements, and how you help them win."
+          />
+          <button
+            type="button"
+            className={styles.aiBioBtn}
+            onClick={handleAiBioAssist}
+            disabled={isGeneratingBio || !profile.role.trim()}
+          >
+            {isGeneratingBio ? (
+              <span className={styles.aiBioLoadingText}>Writing with AI...</span>
+            ) : (
+              <ShinyText
+                text="AI Assisted Bio Writing"
+                icon="sparkles"
+                iconSize={14}
+                speed={2.5}
+                color="#E53B17"
+                shineColor="#ffffff"
+                disabled={!profile.role.trim()}
+                className={styles.aiBioShinyText}
+              />
+            )}
+          </button>
+        </div>
+
+        {/* Location & Languages */}
+        <div className={styles.fieldRow}>
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-location" className={styles.fieldLabel}>
+              Location / City
+            </label>
+            <input
+              id="profile-location"
+              type="text"
+              value={profile.location}
+              onChange={(e) => updateProfile("location", e.target.value)}
+              className={styles.textField}
+              placeholder="Enter your city and country"
+            />
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-languages" className={styles.fieldLabel}>
+              Languages Spoken
+            </label>
+            <SmartSearchSelect
+              id="profile-languages"
+              value=""
+              options={spokenLanguageOptions}
+              onChange={(language) => {
+                if (!profile.languages.some((item) => item.toLowerCase() === language.toLowerCase())) {
+                  updateProfile("languages", [...profile.languages, language]);
+                }
+              }}
+              customValueTransform={(language) => language}
+              placeholder="Select or search spoken languages..."
+              aria-label="Languages Spoken"
+            />
+            {profile.languages.length > 0 ? (
+              <div className={styles.chipsGrid} aria-label="Selected spoken languages">
+                {profile.languages.map((language) => (
+                  <button
+                    key={language}
+                    type="button"
+                    className={styles.selectableChip}
+                    aria-label={`Remove ${language}`}
+                    onClick={() =>
+                      updateProfile(
+                        "languages",
+                        profile.languages.filter((item) => item !== language),
+                      )
+                    }
+                  >
+                    <span>{language}</span>
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Social & Portfolio Links */}
+        <div className={styles.fieldRow}>
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-linkedin" className={styles.fieldLabel}>
+              LinkedIn Profile
+            </label>
+            <input
+              id="profile-linkedin"
+              type="text"
+              value={linkedin}
+              onChange={(e) => {
+                setLinkedin(e.target.value);
+                setSaved(false);
+              }}
+              className={styles.textField}
+              placeholder="linkedin.com/in/username"
+            />
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label htmlFor="profile-portfolio" className={styles.fieldLabel}>
+              Portfolio / Website URL
+            </label>
+            <input
+              id="profile-portfolio"
+              type="text"
+              value={portfolio}
+              onChange={(e) => {
+                setPortfolio(e.target.value);
+                setSaved(false);
+              }}
+              className={styles.textField}
+              placeholder="https://yourportfolio.com"
+            />
+          </div>
+        </div>
+
+          </>
+        );
+      case "credentials":
+        return (
+          <>
+              <div className={styles.sectionHeader}>
+          <div className={styles.sectionHeaderLeft}>
+            <div className={styles.sectionIconBox}>
+              <ShieldCheck size={18} />
+            </div>
+            <div>
+              <h2 className={styles.sectionTitle}>Credentials & KYC Verification</h2>
+              <p className={styles.sectionSubtitle}>
+                Identity verification documents, KYC video verification, and professional certifications.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {credentialsError && <p role="alert">{credentialsError}</p>}
+        {kycError && <p role="alert">{kycError}</p>}
+        {credentialsLoading && <p role="status">Loading credentials…</p>}
+        {!credentialsLoading && !credentialsError && <div className={styles.kycGrid}>
+          {/* Government ID */}
+          <div className={styles.kycCard}>
+            <div className={styles.kycCardHeader}>
+              <span className={styles.kycTitle}>Government ID</span>
+              <span className={kycStatus?.kyc?.status === "verified" ? styles.kycBadgeVerified : styles.kycDetailText}>
+                {kycLoading ? "Loading verification…" : kycError ? "Verification unavailable" : kycStatus?.kyc?.status === "verified" ? "DigiLocker verified" : governmentId?.front ? "Uploaded" : "Not uploaded"}
+              </span>
+            </div>
+            <p className={styles.kycDetailText}>
+              <strong>Document:</strong> {String(kycStatus?.governmentId?.name || kycStatus?.governmentId?.type || governmentId?.type?.toUpperCase() || "No identity document available")}
+            </p>
+            {typeof kycStatus?.governmentId?.uri === "string" && (
+              <p className={styles.kycDetailText}>
+                <a href={kycStatus.governmentId.uri} target="_blank" rel="noreferrer">Open DigiLocker identity document</a>
+              </p>
+            )}
+            <p className={styles.kycDetailText}>
+              <strong>Files:</strong> {[governmentId?.front?.name, governmentId?.back?.name].filter(Boolean).join(" & ") || "No manually uploaded files"}
+            </p>
+            {[governmentId?.front, governmentId?.back].flatMap((document) => document ? [document] : []).map((document) => (
+              <p key={document.name} className={styles.kycDetailText}>
+                {document.name}{document.size ? ` (${document.size})` : ""}
+                {document.url && <> · <a href={document.url} target="_blank" rel="noreferrer">Open document</a></>}
+              </p>
+            ))}
+            {!kycLoading && !kycError && <p className={styles.kycDetailText}>
+              <strong>DigiLocker status:</strong> {String(kycStatus?.kyc?.status || "Not started").replaceAll("_", " ")}
+              {kycStatus?.sandbox ? " (Sandbox)" : ""}
+            </p>}
+            {Array.isArray(kycStatus?.kyc?.issuedDocuments) && kycStatus.kyc.issuedDocuments.map((document, index) => (
+              <p key={index} className={styles.kycDetailText}>
+                {String(document?.name || document?.description || document?.doctype || "Issued document")}
+                {typeof document?.uri === "string" && <> · <a href={document.uri} target="_blank" rel="noreferrer">Open document</a></>}
+              </p>
+            ))}
+            <div className={styles.kycPhotoList}>
+              {([
+                { pose: "left", photo: kycPhotos.left },
+                { pose: "centre", photo: kycPhotos.centre },
+                { pose: "right", photo: kycPhotos.right },
+              ] as const).flatMap((entry) => typeof entry.photo === "string"
+                ? [{ pose: entry.pose, photo: entry.photo }]
+                : [])
+                .map(({ pose, photo }) => (
+                  <figure className={styles.kycPhotoItem} key={pose}>
+                    <Image src={photo} alt={`KYC ${pose} photo`} width={160} height={120} unoptimized />
+                    <figcaption>{pose === "centre" ? "Center" : pose}</figcaption>
+                  </figure>
+                ))}
+            </div>
+            {!kycPhotos.left && !kycPhotos.centre && !kycPhotos.right && (
+              <p className={styles.kycDetailText}>No manual KYC photos saved.</p>
+            )}
+            {kycVideoUrl && (
+              <p className={styles.kycDetailText}>
+                <a href={kycVideoUrl} target="_blank" rel="noreferrer">Open KYC verification video</a>
+              </p>
+            )}
+          </div>
+
+          {/* Certificates */}
+          <div className={styles.kycCard}>
+            <div className={styles.kycCardHeader}>
+              <span className={styles.kycTitle}>Certifications & Licenses</span>
+              <span className={styles.kycBadgeVerified}>
+                <Award size={12} /> {certificates.length} Submitted
+              </span>
+            </div>
+            {certificates.map((cert) => (
+              <p key={cert.id} className={styles.kycDetailText}>
+                • <strong>{cert.name || cert.fileName}</strong> {cert.issuer ? `(${cert.issuer})` : ""}
+                {cert.url && <> · <a href={cert.url} download={cert.fileName} target="_blank" rel="noreferrer">View file</a></>}
+              </p>
+            ))}
+            {certificates.length === 0 && <p className={styles.kycDetailText}>No certifications added.</p>}
+          </div>
+
+          {/* Portfolio Samples */}
+          <div className={styles.kycCard}>
+            <div className={styles.kycCardHeader}>
+              <span className={styles.kycTitle}>Work Samples & Artifacts</span>
+              <span className={styles.kycBadgeVerified}>
+                <FileText size={12} /> {portfolioSamples.length} Files
+              </span>
+            </div>
+            {portfolioSamples.map((ps) => (
+              <p key={ps.id} className={styles.kycDetailText}>
+                • {ps.fileName} ({ps.fileSize})
+                {ps.url && <> · <a href={ps.url} download={ps.fileName} target="_blank" rel="noreferrer">View file</a></>}
+              </p>
+            ))}
+            {portfolioSamples.length === 0 && <p className={styles.kycDetailText}>No work samples uploaded.</p>}
+          </div>
+        </div>}
+
+          </>
+        );
+      case "preferences":
+        return (
+          <>
+              <div className={styles.sectionHeader}>
           <div className={styles.sectionHeaderLeft}>
             <div className={styles.sectionIconBox}>
               <DollarSign size={18} />
@@ -1266,151 +2253,393 @@ export default function ExpertProfileEditor() {
           </div>
         </div>
 
-      </section>
+          </>
+        );
+      case "audience":
+        return (
+          <>
+           {/* Languages Consulted In */}
+           <div className={styles.fieldGroup} style={{ marginTop: "24px" }}>
+              <div className={styles.sectionHeader} style={{ marginTop: 0, paddingBottom: "8px" }}>
+                <div className={styles.sectionHeaderLeft}>
+                  <div className={styles.sectionIconBox}>
+                    <Languages size={18} />
+                  </div>
+                  <div>
+                    <h2 className={styles.sectionTitle} style={{ fontSize: "16px" }}>Languages Consulted In</h2>
+                    <p className={styles.sectionSubtitle}>
+                      Select the languages you are fluent in and comfortable consulting in.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-      {/* ----------------------------------------------------
-          STEP 7: TARGET AUDIENCE
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="audience-section">
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionHeaderLeft}>
-            <div className={styles.sectionIconBox}>
-              <Users size={18} />
+              <label htmlFor="audience-languages-select" className={styles.fieldLabel}>
+                Add Language
+              </label>
+              <SmartSearchSelect
+                id="audience-languages-select"
+                value=""
+                options={spokenLanguageOptions}
+                onChange={(language) => {
+                  if (!profile.languages.some((item) => item.toLowerCase() === language.toLowerCase())) {
+                    updateProfile("languages", [...profile.languages, language]);
+                  }
+                }}
+                customValueTransform={(language) => language}
+                placeholder="Select or search languages..."
+                aria-label="Languages Consulted In"
+              />
+
+              {profile.languages.length > 0 && (
+                <div className={styles.chipsGrid} style={{ marginTop: "10px" }} aria-label="Selected languages consulted in">
+                  {profile.languages.map((language) => (
+                    <button
+                      key={language}
+                      type="button"
+                      className={styles.selectableChip}
+                      aria-label={`Remove ${language}`}
+                      onClick={() =>
+                        updateProfile(
+                          "languages",
+                          profile.languages.filter((item) => item !== language),
+                        )
+                      }
+                    >
+                      <span>{language}</span>
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div>
-              <h2 className={styles.sectionTitle}>Target Client Audience</h2>
-              <p className={styles.sectionSubtitle}>
-                Select the types of clients and organizational tiers you specialize in advising.
-              </p>
+
+            <div className={styles.sectionHeader}>
+              <div className={styles.sectionHeaderLeft}>
+                <div className={styles.sectionIconBox}>
+                  <Users size={18} />
+                </div>
+                <div>
+                  <h2 className={styles.sectionTitle}>Target Client Audience</h2>
+                  <p className={styles.sectionSubtitle}>
+                    Select the types of clients and organizational tiers you specialize in advising.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.chipsGrid}>
+              {AUDIENCE_OPTIONS.map((aud) => {
+                const active = selectedAudiences.includes(aud.id);
+                return (
+                  <button
+                    key={aud.id}
+                    type="button"
+                    onClick={() => handleToggleAudience(aud.id)}
+                    className={`${styles.selectableChip} ${active ? styles.selectableChipActive : ""}`}
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>
+                      <strong>{aud.label}</strong> — {aud.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+           
+           
+          </>
+        );
+      case "availability":
+        return (
+          <WeeklySchedulePanel
+            bare
+            disabled={isFrozen}
+            initialTimezone={timezone}
+            initialSlots={availabilitySlots}
+            onScheduleChange={(schedule) => {
+              setTimezone(schedule.timezone);
+              setAvailabilitySlots(schedule.slots);
+              setSaved(false);
+            }}
+            onSaved={() => {
+              handleSaveClarificationSection("availability");
+            }}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderClarificationAccordion = (
+    item: (typeof clarificationSections)[number],
+    index: number
+  ) => {
+    const isOpen = openClarificationId === item.id;
+
+    return (
+      <div
+        key={item.id}
+        id={`clarification-${item.id}`}
+        className={`${styles.clarificationCard} ${isOpen ? styles.clarificationCardOpen : ""}`}
+      >
+        <div
+          className={styles.clarificationHeader}
+          onClick={() => toggleClarificationSection(item.id)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleClarificationSection(item.id);
+            }
+          }}
+          aria-expanded={isOpen}
+        >
+          <div className={styles.clarificationHeaderLeft}>
+            <div className={styles.clarificationIndexPill}>
+              <span className={styles.markDot} />
+              <span>{item.numPill}</span>
+            </div>
+            <div className={styles.clarificationDashedRule} />
+            <div className={styles.clarificationHeaderTitle} title={`${item.displayName}: ${item.note}`}>
+              <strong>{item.displayName}:</strong> {item.note}
+            </div>
+          </div>
+          <div className={styles.clarificationHeaderRight}>
+            <div
+              className={`${styles.clarificationToggleBtn} ${
+                isOpen ? styles.clarificationToggleBtnOpen : ""
+              }`}
+              aria-hidden="true"
+            >
+              <Plus size={16} />
             </div>
           </div>
         </div>
 
-        <div className={styles.chipsGrid}>
-          {AUDIENCE_OPTIONS.map((aud) => {
-            const active = selectedAudiences.includes(aud.id);
-            return (
+        <div className={`${styles.clarificationCollapse} ${isOpen ? styles.clarificationCollapseOpen : ""}`}>
+          <div className={styles.clarificationCollapseInner}>
+            <div className={styles.clarificationBody}>
+              {renderSectionContent(item.id, false)}
+              <div className={styles.sectionFooterSave}>
+                {saveError && activeSavingSectionId === item.id && (
+                  <div className={styles.sectionErrorNote}>
+                    <AlertCircle size={14} /> {saveError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={`${styles.sectionSaveBtn} ${
+                    savedSectionId === item.id || (saved && !savedSectionId)
+                      ? styles.sectionSaveBtnSaved
+                      : ""
+                  }`}
+                  onClick={() => handleSaveClarificationSection(item.id)}
+                  disabled={isSaving || !isExpertProfileValid(profile)}
+                >
+                  {savedSectionId === item.id || (saved && !savedSectionId) ? (
+                    <>
+                      <Check size={14} /> <span>Saved</span>
+                    </>
+                  ) : activeSavingSectionId === item.id && isSaving ? (
+                    <span>Saving…</span>
+                  ) : (
+                    <>
+                      <Check size={14} /> <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFrozenCard = (item: (typeof ALL_PROFILE_SECTIONS)[number]) => {
+    const Icon = item.icon;
+    return (
+      <div key={item.id} id={`${item.id}-section`} className={styles.frozenSectionCard}>
+        <div className={styles.frozenHeader}>
+          <div className={styles.frozenHeaderLeft}>
+            <div className={styles.frozenIconBox}>
+              <Icon size={18} />
+            </div>
+            <div>
+              <h3 className={styles.frozenTitle}>{item.title}</h3>
+              <p className={styles.frozenSubtitle}>{item.subtitle}</p>
+            </div>
+          </div>
+        </div>
+        <fieldset disabled className={styles.frozenFieldset}>
+          {renderSectionContent(item.id, true)}
+        </fieldset>
+      </div>
+    );
+  };
+
+  if (credentialsLoading) return <div className={styles.editor} role="status">Loading your profile…</div>;
+  if (credentialsError) return <div className={styles.editor} role="alert">{credentialsError}</div>;
+
+  return (
+    <div className={styles.editor}>
+      {/* ----------------------------------------------------
+          TOP ACTION BAR & REVIEW SHORTCUT
+      ---------------------------------------------------- */}
+      <div className={styles.topActionBar}>
+        <div className={styles.topActionMeta}>
+          <span className={styles.statusBadge}>
+            <ShieldCheck size={14} /> {reviewStatus === "approved" ? "Approved Expert" : `Review status: ${reviewStatus.replaceAll("_", " ")}`}
+          </span>
+          <span className={styles.appIdBadge}>
+            <Award size={13} /> {appId || "Not submitted"}
+          </span>
+        </div>
+
+        <div className={styles.topButtonsGroup}>
+          <span className={styles.lockedPill}>
+            <Lock size={13} />
+            <span>
+              {reviewStatus === "approved"
+                ? "Profile Active"
+                : isClarificationActive
+                ? "Clarification Required"
+                : reviewStatus === "rejected"
+                ? "Application Rejected"
+                : "Profile Locked (In Review)"}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {saveError && (
+        <div className={styles.errorNote}>
+          <AlertCircle size={15} /> {saveError}
+        </div>
+      )}
+
+      {/* ----------------------------------------------------
+          CLARIFICATION ALERT BANNER (IMAGE 1) OR SUCCESS BANNER
+      ---------------------------------------------------- */}
+      {isClarificationActive ? (
+        <div className={styles.clarificationAlertContainer}>
+          <div className={styles.clarificationAlertHeader}>
+            <div className={styles.clarificationAlertHeaderLeft}>
+              <AlertCircle size={22} className={styles.clarificationAlertIcon} />
+              <div className={styles.clarificationAlertContent}>
+                <h3 className={styles.clarificationAlertTitle}>Action Required: Review Team Requested Clarification</h3>
+                <p className={styles.clarificationAlertDesc}>
+                  Please review and update the information for the sections below. Once you click &quot;Save Changes&quot;, the review team will be notified with your updates.
+                </p>
+              </div>
+            </div>
+
+            <div className={styles.updateForReviewWrapper}>
               <button
-                key={aud.id}
                 type="button"
-                onClick={() => handleToggleAudience(aud.id)}
-                className={`${styles.selectableChip} ${active ? styles.selectableChipActive : ""}`}
+                className={styles.updateForReviewBtn}
+                disabled={!allClarificationsResolved || isSubmittingReview}
+                onClick={handleUpdateForReview}
+                title={!allClarificationsResolved ? "Save all clarification sections to submit for review" : "Submit all updates to review team"}
               >
-                <CheckCircle2 size={14} />
-                <span>
-                  <strong>{aud.label}</strong> — {aud.desc}
-                </span>
+                <Sparkles size={16} />
+                <span>{isSubmittingReview ? "Submitting…" : "Update for Review"}</span>
               </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------
-          STEP 5: CREDENTIALS & KYC VERIFICATION
-      ---------------------------------------------------- */}
-      <section className={styles.sectionCard} id="kyc-section">
-        <div className={styles.sectionHeader}>
-          <div className={styles.sectionHeaderLeft}>
-            <div className={styles.sectionIconBox}>
-              <ShieldCheck size={18} />
+              {!allClarificationsResolved && (
+                <span className={styles.updateForReviewHint}>
+                  Save all clarification sections to submit
+                </span>
+              )}
             </div>
-            <div>
-              <h2 className={styles.sectionTitle}>Credentials & KYC Verification</h2>
-              <p className={styles.sectionSubtitle}>
-                Identity verification documents, KYC video verification, and professional certifications.
-              </p>
-            </div>
+          </div>
+          <div className={styles.clarificationAccordionsList}>
+            {clarificationSections.map((item, index) => renderClarificationAccordion(item, index))}
           </div>
         </div>
+      ) : isSubmittedForReview ? (
+        <div className={styles.submittedSuccessBanner}>
+          <CheckCircle2 size={18} />
+          <span>Your updates have been submitted to the review team. Your profile is currently under review and locked from editing.</span>
+        </div>
+      ) : null}
 
-        {credentialsError && <p role="alert">{credentialsError}</p>}
-        {kycError && <p role="alert">{kycError}</p>}
-        {credentialsLoading && <p role="status">Loading credentials…</p>}
-        {!credentialsLoading && !credentialsError && <div className={styles.kycGrid}>
-          {/* Government ID */}
-          <div className={styles.kycCard}>
-            <div className={styles.kycCardHeader}>
-              <span className={styles.kycTitle}>Government ID</span>
-              <span className={kycStatus?.kyc?.status === "verified" ? styles.kycBadgeVerified : styles.kycDetailText}>
-                {kycLoading ? "Loading verification…" : kycError ? "Verification unavailable" : kycStatus?.kyc?.status === "verified" ? "DigiLocker verified" : governmentId?.front ? "Uploaded" : "Not uploaded"}
-              </span>
-            </div>
-            <p className={styles.kycDetailText}>
-              <strong>Document:</strong> {String(kycStatus?.governmentId?.name || kycStatus?.governmentId?.type || governmentId?.type?.toUpperCase() || "No identity document available")}
-            </p>
-            <p className={styles.kycDetailText}>
-              <strong>Files:</strong> {[governmentId?.front?.name, governmentId?.back?.name].filter(Boolean).join(" & ") || "No manually uploaded files"}
-            </p>
-            {!kycLoading && !kycError && <p className={styles.kycDetailText}>
-              <strong>DigiLocker status:</strong> {String(kycStatus?.kyc?.status || "Not started").replaceAll("_", " ")}
-              {kycStatus?.sandbox ? " (Sandbox)" : ""}
-            </p>}
-            {Array.isArray(kycStatus?.kyc?.issuedDocuments) && kycStatus.kyc.issuedDocuments.map((document, index) => (
-              <p key={index} className={styles.kycDetailText}>
-                {String(document?.name || document?.description || document?.doctype || "Issued document")}
-              </p>
-            ))}
-          </div>
+      <div className={styles.accordionContainer}>
+        {isClarificationActive ? (
+          /* Render approved sections below the alert box as frozen cards without edit access (Image 2) */
+          approvedSections.map((item) => renderFrozenCard(item))
+        ) : (
+          /* When there are no sections for clarification, the entire profile page is frozen without edit access */
+          ALL_PROFILE_SECTIONS.map((item) => renderFrozenCard(item))
+        )}
 
-          {/* Certificates */}
-          <div className={styles.kycCard}>
-            <div className={styles.kycCardHeader}>
-              <span className={styles.kycTitle}>Certifications & Licenses</span>
-              <span className={styles.kycBadgeVerified}>
-                <Award size={12} /> {certificates.length} Submitted
-              </span>
-            </div>
-            {certificates.map((cert) => (
-              <p key={cert.id} className={styles.kycDetailText}>
-                • <strong>{cert.name || cert.fileName}</strong> {cert.issuer ? `(${cert.issuer})` : ""}
-              </p>
-            ))}
-            {certificates.length === 0 && <p className={styles.kycDetailText}>No certifications added.</p>}
-          </div>
+        <ConfirmModal
+        isOpen={Boolean(positionToDelete)}
+        onClose={() => setPositionToDelete(null)}
+        onConfirm={confirmRemovePosition}
+        title="Delete work experience?"
+        message={
+          positionToDelete
+            ? `Remove ${positionToDelete.jobTitle || "this position"}${positionToDelete.company ? ` at ${positionToDelete.company}` : ""} from your profile?`
+            : "Remove this position from your profile?"
+        }
+        confirmText="Delete"
+        cancelText="Keep"
+        variant="danger"
+      />
 
-          {/* Portfolio Samples */}
-          <div className={styles.kycCard}>
-            <div className={styles.kycCardHeader}>
-              <span className={styles.kycTitle}>Work Samples & Artifacts</span>
-              <span className={styles.kycBadgeVerified}>
-                <FileText size={12} /> {portfolioSamples.length} Files
-              </span>
-            </div>
-            {portfolioSamples.map((ps) => (
-              <p key={ps.id} className={styles.kycDetailText}>
-                • {ps.fileName} ({ps.fileSize})
-              </p>
-            ))}
-            {portfolioSamples.length === 0 && <p className={styles.kycDetailText}>No work samples uploaded.</p>}
-          </div>
-        </div>}
-      </section>
+      <ConfirmModal
+        isOpen={Boolean(degreeToDelete)}
+        onClose={() => setDegreeToDelete(null)}
+        onConfirm={confirmRemoveDegree}
+        title="Delete education record?"
+        message={
+          degreeToDelete
+            ? `Remove ${degreeToDelete.degree || "this education record"}${degreeToDelete.institution ? ` from ${degreeToDelete.institution}` : ""} from your profile?`
+            : "Remove this education record from your profile?"
+        }
+        confirmText="Delete"
+        cancelText="Keep"
+        variant="danger"
+      />
+
+
+      </div>
 
       {/* ----------------------------------------------------
           BOTTOM ACTIONS
       ---------------------------------------------------- */}
       <div className={styles.actions}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <PrimaryButton
-            type="button"
-            label={
-              saved ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                  <Check size={16} /> Changes Saved
-                </span>
-              ) : (
-                "Save Profile Updates"
-              )
-            }
-            variant={saved ? "light" : "orange"}
-            disabled={!isExpertProfileValid(profile) || isSaving}
-            staticLabel={true}
-            onClick={handleSaveAll}
-          />
+          {isClarificationActive && (
+            <PrimaryButton
+              type="button"
+              label={
+                saved ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                    <Check size={16} /> Changes Saved
+                  </span>
+                ) : (
+                  "Save Profile Updates"
+                )
+              }
+              variant={saved ? "light" : "orange"}
+              disabled={!isExpertProfileValid(profile) || isSaving}
+              staticLabel={true}
+              onClick={() => handleSaveAll()}
+            />
+          )}
           {saved && (
             <span className={styles.savedNote}>
               <CheckCircle2 size={16} /> All profile and onboarding changes are published.
+            </span>
+          )}
+          {!isClarificationActive && (
+            <span className={styles.savedNote}>
+              <CheckCircle2 size={16} /> Profile information is verified and frozen without edit access.
             </span>
           )}
         </div>

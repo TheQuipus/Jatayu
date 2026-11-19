@@ -9,8 +9,30 @@ import type { ClientRequest, RequestStatus } from "@/lib/expertRequests";
 import type { IdentityToneOptions } from "@/lib/expertIdentitySuggest";
 import { publicApiBase } from "@/lib/publicApiBase";
 import { parseUtcDate, formatUtcToLocalDate, formatUtcToLocalTime, formatUtcRelativeTime } from "@/lib/dateTimeUtils";
+import type { ApplicationStatus } from "./expertApplicationSubmission";
 
 const BASE_URL = publicApiBase();
+
+export type PasswordRecoveryRole = "admin" | "expert" | "user";
+
+export function requestPasswordReset(payload: { role: PasswordRecoveryRole; email: string }) {
+  return apiFetch<{ message: string }>("/api/password-recovery/request", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function resetPassword(payload: {
+  role: PasswordRecoveryRole;
+  userId: string;
+  token: string;
+  password: string;
+}) {
+  return apiFetch<{ message: string }>("/api/password-recovery/reset", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
 
 export class ApiError extends Error {
   status: number;
@@ -45,16 +67,97 @@ function removeDualStorageItem(key: string): void {
   localStorage.removeItem(key);
 }
 
+const EXPERT_TOKEN_KEY = "jatayu_expert_token";
+const SEEKER_TOKEN_KEY = "jatayu_seeker_token";
+const ADMIN_TOKEN_KEY = "jatayu_admin_token";
+const LEGACY_TOKEN_KEY = "jatayu_token";
+
+export function getExpertToken(): string | null {
+  const token = getDualStorageItem(EXPERT_TOKEN_KEY);
+  if (token) return token;
+  const legacy = getDualStorageItem(LEGACY_TOKEN_KEY);
+  if (legacy && getExpertId()) {
+    setDualStorageItem(EXPERT_TOKEN_KEY, legacy);
+    return legacy;
+  }
+  return null;
+}
+
+export function setExpertToken(token: string): void {
+  setDualStorageItem(EXPERT_TOKEN_KEY, token);
+  if (!getDualStorageItem(SEEKER_TOKEN_KEY)) {
+    setDualStorageItem(LEGACY_TOKEN_KEY, token);
+  }
+}
+
+export function removeExpertToken(): void {
+  removeDualStorageItem(EXPERT_TOKEN_KEY);
+  if (!getDualStorageItem(SEEKER_TOKEN_KEY)) {
+    removeDualStorageItem(LEGACY_TOKEN_KEY);
+  }
+}
+
+export function getSeekerToken(): string | null {
+  const token = getDualStorageItem(SEEKER_TOKEN_KEY);
+  if (token) return token;
+  const legacy = getDualStorageItem(LEGACY_TOKEN_KEY);
+  if (legacy && getSeekerId()) {
+    setDualStorageItem(SEEKER_TOKEN_KEY, legacy);
+    return legacy;
+  }
+  return null;
+}
+
+export function setSeekerToken(token: string): void {
+  setDualStorageItem(SEEKER_TOKEN_KEY, token);
+  if (!getDualStorageItem(EXPERT_TOKEN_KEY)) {
+    setDualStorageItem(LEGACY_TOKEN_KEY, token);
+  }
+}
+
+export function removeSeekerToken(): void {
+  removeDualStorageItem(SEEKER_TOKEN_KEY);
+  if (!getDualStorageItem(EXPERT_TOKEN_KEY)) {
+    removeDualStorageItem(LEGACY_TOKEN_KEY);
+  }
+}
+
 export function getToken(): string | null {
-  return getDualStorageItem("jatayu_token");
+  if (typeof window !== "undefined") {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith("/seeker") || pathname.startsWith("/checkout")) {
+      return getSeekerToken() || getExpertToken();
+    }
+    if (pathname.startsWith("/expert") || pathname.startsWith("/login")) {
+      return getExpertToken() || getSeekerToken();
+    }
+  }
+  return getExpertToken() || getSeekerToken() || getDualStorageItem(LEGACY_TOKEN_KEY);
 }
 
 export function setToken(token: string): void {
-  setDualStorageItem("jatayu_token", token);
+  if (typeof window !== "undefined") {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith("/seeker") || pathname.startsWith("/checkout")) {
+      setSeekerToken(token);
+      return;
+    }
+    if (pathname.startsWith("/expert") || pathname.startsWith("/login")) {
+      setExpertToken(token);
+      return;
+    }
+  }
+  if (getSeekerId() && !getExpertId()) {
+    setSeekerToken(token);
+  } else {
+    setExpertToken(token);
+  }
 }
 
 export function removeToken(): void {
-  removeDualStorageItem("jatayu_token");
+  removeExpertToken();
+  removeSeekerToken();
+  removeDualStorageItem(LEGACY_TOKEN_KEY);
 }
 
 export function getExpertId(): string | null {
@@ -82,20 +185,43 @@ export function removeSeekerId(): void {
 }
 
 export function getAdminToken(): string | null {
-  return getDualStorageItem("jatayu_admin_token");
+  return getDualStorageItem(ADMIN_TOKEN_KEY);
 }
 
 export function setAdminToken(token: string): void {
-  setDualStorageItem("jatayu_admin_token", token);
+  setDualStorageItem(ADMIN_TOKEN_KEY, token);
 }
 
 export function removeAdminToken(): void {
-  removeDualStorageItem("jatayu_admin_token");
+  removeDualStorageItem(ADMIN_TOKEN_KEY);
 }
 
 // ---------------------------------------------------------------------------
 // Internal fetch helper
 // ---------------------------------------------------------------------------
+
+function resolveAuthToken(path: string, explicitToken?: string | null): string | null {
+  if (explicitToken !== undefined) return explicitToken;
+  if (path.startsWith("/api/seeker/") || path.startsWith("/api/seeker-auth/")) {
+    return getSeekerToken();
+  }
+  if (path.startsWith("/api/expert/") || path.startsWith("/api/auth/")) {
+    return getExpertToken();
+  }
+  if (path.startsWith("/api/admin/")) {
+    return getAdminToken();
+  }
+  if (path.startsWith("/api/notifications")) {
+    if (typeof window !== "undefined") {
+      const pathname = window.location.pathname;
+      if (pathname.startsWith("/seeker")) return getSeekerToken();
+      if (pathname.startsWith("/expert")) return getExpertToken();
+      if (pathname.startsWith("/admin")) return getAdminToken();
+    }
+    return getExpertToken() || getSeekerToken() || getAdminToken();
+  }
+  return getToken();
+}
 
 async function apiFetch<T>(
   path: string,
@@ -106,8 +232,8 @@ async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  // Attach auth header if token is provided
-  const authToken = token ?? getToken();
+  // Attach auth header if token is provided or resolved from path
+  const authToken = resolveAuthToken(path, token);
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
@@ -136,6 +262,84 @@ async function apiFetch<T>(
       (data as { message?: string }).message ||
       `Request failed with status ${response.status}`;
     const code = (data as { code?: string }).code;
+
+    if (typeof window !== "undefined") {
+      const isSeekerRoute = path.startsWith("/api/seeker/") || path.startsWith("/api/seeker-auth/");
+      const isExpertRoute = path.startsWith("/api/expert/") || path.startsWith("/api/auth/");
+
+      if (
+        response.status === 403 &&
+        (code === "CREDENTIALS_BLACKLISTED" ||
+          code === "ACCOUNT_SUSPENDED" ||
+          message.toLowerCase().includes("blacklisted") ||
+          message.toLowerCase().includes("suspended"))
+      ) {
+        if (isSeekerRoute) {
+          removeSeekerToken();
+          removeSeekerId();
+          try {
+            localStorage.removeItem("jatayu_seeker_user");
+            sessionStorage.removeItem(SEEKER_TOKEN_KEY);
+            sessionStorage.removeItem("jatayu_seeker_id");
+          } catch {
+            // ignore
+          }
+          if (!window.location.pathname.startsWith("/login")) {
+            const fallbackMsg = "Your Profile has been suspended. Contact Us?";
+            const msg = encodeURIComponent(message || fallbackMsg);
+            window.location.href = `/login?role=user&blocked=1&reason=${msg}`;
+          }
+        } else {
+          removeExpertToken();
+          removeExpertId();
+          try {
+            localStorage.removeItem("jatayu_expert_user");
+            sessionStorage.removeItem(EXPERT_TOKEN_KEY);
+            sessionStorage.removeItem("jatayu_expert_id");
+            sessionStorage.removeItem(LEGACY_TOKEN_KEY);
+          } catch {
+            // ignore
+          }
+          if (!window.location.pathname.startsWith("/login")) {
+            const fallbackMsg =
+              code === "ACCOUNT_SUSPENDED" || message.toLowerCase().includes("suspended")
+                ? "Your Profile has been suspended. Contact Us?"
+                : "Your profile is Marked as Blacklisted";
+            const msg = encodeURIComponent(message || fallbackMsg);
+            window.location.href = `/login?role=expert&blocked=1&reason=${msg}`;
+          }
+        }
+      } else if (response.status === 401 && message.toLowerCase().includes("revoked")) {
+        if (isSeekerRoute) {
+          removeSeekerToken();
+          removeSeekerId();
+          try {
+            localStorage.removeItem("jatayu_seeker_user");
+            sessionStorage.removeItem(SEEKER_TOKEN_KEY);
+            sessionStorage.removeItem("jatayu_seeker_id");
+          } catch {
+            // ignore
+          }
+          if (!window.location.pathname.startsWith("/login")) {
+            window.location.href = `/login?role=seeker`;
+          }
+        } else {
+          removeExpertToken();
+          removeExpertId();
+          try {
+            localStorage.removeItem("jatayu_expert_user");
+            sessionStorage.removeItem(EXPERT_TOKEN_KEY);
+            sessionStorage.removeItem("jatayu_expert_id");
+          } catch {
+            // ignore
+          }
+          if (!window.location.pathname.startsWith("/login")) {
+            window.location.href = `/login?role=expert`;
+          }
+        }
+      }
+    }
+
     throw new ApiError(message, response.status, code);
   }
 
@@ -162,9 +366,12 @@ export interface RegisterPayload {
 
 export interface RegisterResponse {
   message: string;
-  expertId: string;
-  email: string;
-  phone: string;
+  expertId?: string;
+  email?: string;
+  phone?: string;
+  token?: string;
+  user?: AuthUser;
+  code?: string;
   /** Returned in development mode for easy testing */
   otp?: string;
 }
@@ -347,8 +554,8 @@ export interface UpdateProfilePayload {
     type: string;
     title: string;
     institution: string;
-    startYear: number;
-    endYear?: number | null;
+    startYear: number | string;
+    endYear?: number | string | null;
     description?: string | null;
   }>;
   selectedFormats?: string[];
@@ -360,6 +567,7 @@ export interface UpdateProfilePayload {
   availabilitySlots?: Array<{ days: string[]; from: string; to: string }>;
   profilePhotoSrc?: string;
   onboardingMetadata?: Record<string, unknown>;
+  phone?: string;
 }
 
 export interface UpdateProfileResponse {
@@ -540,15 +748,17 @@ export type OnboardingAiSuggestPayload = {
   }>;
   currentTagLine?: string;
   currentBio?: string;
+  currentProfessionalTitle?: string;
   tone?: string;
   intent?: "suggest" | "regenerate" | "improve";
   variantIndex?: number;
-  field?: "tagLine" | "bio";
+  field?: "tagLine" | "bio" | "professionalTitle";
 };
 
 export type OnboardingAiSuggestResponse = {
   tagLine?: string;
   bio?: string;
+  professionalTitle?: string;
   briefIntroduction?: string;
   source?: "ai" | "fallback";
   notice?: string;
@@ -649,9 +859,11 @@ export interface AdminAuthResponse {
   user: AdminAuthUser;
 }
 
-export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthResponse> {
+export type AdminOtpRequiredResponse = { requiresOtp: true; message: string };
+
+export async function adminLogin(payload: AdminLoginPayload): Promise<AdminAuthResponse | AdminOtpRequiredResponse> {
   try {
-    return await apiFetch<AdminAuthResponse>("/api/admin/auth/login", {
+    return await apiFetch<AdminAuthResponse | AdminOtpRequiredResponse>("/api/admin/auth/login", {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -816,8 +1028,9 @@ export async function getAdminDigilockerDocumentBlobUrl(
 }
 
 export interface UpdateApplicationStatusPayload {
-  status: "pending" | "in_review" | "on_hold" | "approved" | "rejected";
+  status: ApplicationStatus;
   reviewerNote?: string;
+  isBlacklisted?: boolean;
 }
 
 export async function updateAdminApplicationStatus(
@@ -831,6 +1044,44 @@ export async function updateAdminApplicationStatus(
       body: JSON.stringify(payload),
     },
   );
+}
+
+export async function updateAdminApplicationSectionDecision(
+  appId: string,
+  payload: {
+    sectionId?: string;
+    decision?: string | null;
+    note?: string;
+    notes?: Array<{ id: string; author: string; avatar: string; timestamp: string; text: string }>;
+    clarificationStatus?: "waiting" | "received";
+    sectionDecisions?: Record<string, unknown>;
+  },
+): Promise<{ message: string; expert: BackendExpertApplicationRecord }> {
+  return adminApiFetch<{ message: string; expert: BackendExpertApplicationRecord }>(
+    `/api/admin/applications/${encodeURIComponent(appId)}/section-decision`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function sendAdminApplicationDropoutFollowUp(
+  appId: string,
+  force: boolean = false,
+): Promise<{
+  message: string;
+  lastFollowUpSentAt: string;
+  expert: BackendExpertApplicationRecord;
+}> {
+  return adminApiFetch<{
+    message: string;
+    lastFollowUpSentAt: string;
+    expert: BackendExpertApplicationRecord;
+  }>(`/api/admin/applications/${encodeURIComponent(appId)}/dropout-followup`, {
+    method: "POST",
+    body: JSON.stringify({ force }),
+  });
 }
 
 export async function getAdminApplicationStats(): Promise<Record<string, number>> {
@@ -954,6 +1205,7 @@ export interface SeekerOnboardingPayload {
   additionalContext: string;
   profilePhotoSrc?: string;
   onboardingMetadata?: Record<string, unknown>;
+  phone?: string;
 }
 
 export type SeekerOnboardingStep =
@@ -965,7 +1217,9 @@ export type SeekerOnboardingStep =
   | "review";
 
 export type UpdateSeekerOnboardingPayload = Partial<SeekerOnboardingPayload> & {
-  step: SeekerOnboardingStep;
+  fullName?: string;
+  category?: string;
+  step?: SeekerOnboardingStep | string;
 };
 
 export interface UpdateSeekerOnboardingResponse {
@@ -975,10 +1229,27 @@ export interface UpdateSeekerOnboardingResponse {
 
 export async function updateSeekerOnboarding(
   payload: UpdateSeekerOnboardingPayload,
+  profilePhoto?: File,
 ): Promise<UpdateSeekerOnboardingResponse> {
+  let body: BodyInit;
+  if (profilePhoto) {
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(payload)) {
+      if (value === undefined) continue;
+      formData.append(
+        key,
+        typeof value === "string" ? value : JSON.stringify(value),
+      );
+    }
+    formData.append("profilePhoto", profilePhoto);
+    body = formData;
+  } else {
+    body = JSON.stringify(payload);
+  }
+
   return apiFetch<UpdateSeekerOnboardingResponse>("/api/seeker/profile", {
     method: "PUT",
-    body: JSON.stringify(payload),
+    body,
   });
 }
 
@@ -1006,6 +1277,10 @@ export async function getSeekerProfile(): Promise<Record<string, unknown>> {
     }
   }
   return {};
+}
+
+export function getSeekerMe(): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>("/api/seeker/me");
 }
 
 // ---------------------------------------------------------------------------
@@ -1180,9 +1455,88 @@ export interface PublicExpertsQueryParams {
 
 export interface PublicExpertsResponse {
   experts: Expert[];
+  suggestions?: Expert[];
   rawExperts?: PublicExpertApiItem[];
   pagination: PaginationInfo;
   filters: FilterOptions;
+}
+
+export async function getSeekerDiscoverExperts(
+  params: PublicExpertsQueryParams = {}
+): Promise<PublicExpertsResponse> {
+  const urlParams = new URLSearchParams();
+  urlParams.set("page", String(params.page || 1));
+  urlParams.set("limit", String(params.limit || 12));
+
+  if (params.category) urlParams.set("category", params.category);
+  if (params.search) urlParams.set("search", params.search);
+  if (params.topic) urlParams.set("topic", params.topic);
+  if (params.topics && params.topics.length > 0) urlParams.set("topics", params.topics.join(","));
+  if (params.language) urlParams.set("language", params.language);
+  if (params.languages && params.languages.length > 0) urlParams.set("languages", params.languages.join(","));
+  if (params.rating) urlParams.set("rating", params.rating);
+  if (params.ratings && params.ratings.length > 0) urlParams.set("ratings", params.ratings.join(","));
+  if (params.minPrice !== undefined) urlParams.set("minPrice", String(params.minPrice));
+  if (params.maxPrice !== undefined) urlParams.set("maxPrice", String(params.maxPrice));
+  if (params.availability) urlParams.set("availability", String(params.availability));
+  const sortVal = params.sort || params.sortBy;
+  if (sortVal) {
+    urlParams.set("sort", sortVal);
+    urlParams.set("sortBy", sortVal);
+  }
+
+  const queryString = urlParams.toString();
+  const res = await apiFetch<Record<string, unknown>>(`/api/seeker/discover?${queryString}`, {
+    method: "GET",
+  });
+
+  const rawExpertsList = (
+    Array.isArray(res.experts)
+      ? res.experts
+      : Array.isArray(res.matches)
+        ? res.matches
+        : Array.isArray(res.data)
+          ? res.data
+          : []
+  ) as Record<string, unknown>[];
+
+  const experts = rawExpertsList.map((item) => normalizeExpert(item));
+  const rawSuggestions = Array.isArray(res.suggestions)
+    ? res.suggestions as Record<string, unknown>[]
+    : [];
+  const suggestions = rawSuggestions.map((item) => normalizeExpert(item));
+
+  const paginationRaw = (res.pagination || {}) as Record<string, unknown>;
+  const pagination: PaginationInfo = {
+    page: Number(paginationRaw.page) || params.page || 1,
+    limit: Number(paginationRaw.limit) || params.limit || 12,
+    total: typeof paginationRaw.total === "number" ? paginationRaw.total : experts.length,
+    totalPages: typeof paginationRaw.totalPages === "number" ? paginationRaw.totalPages : Math.ceil(experts.length / (params.limit || 12)) || 1,
+    hasNextPage: typeof paginationRaw.hasNextPage === "boolean" ? paginationRaw.hasNextPage : (params.page || 1) < (Math.ceil(experts.length / (params.limit || 12)) || 1),
+    hasPreviousPage: typeof paginationRaw.hasPreviousPage === "boolean" ? paginationRaw.hasPreviousPage : (params.page || 1) > 1,
+  };
+
+  const filtersRaw = (res.filters || {}) as Record<string, unknown>;
+  const priceRaw = (filtersRaw.price || {}) as Record<string, unknown>;
+  const filters: FilterOptions = {
+    categories: Array.isArray(filtersRaw.categories) ? filtersRaw.categories.map(String) : [],
+    languages: Array.isArray(filtersRaw.languages) ? filtersRaw.languages.map(String) : [],
+    price: {
+      min: typeof priceRaw.min === "number" ? priceRaw.min : 0,
+      max: typeof priceRaw.max === "number" ? priceRaw.max : 300000,
+    },
+    availability: Array.isArray(filtersRaw.availability)
+      ? (filtersRaw.availability as Array<{ value: number; label: string }>)
+      : [],
+  };
+
+  return {
+    experts,
+    suggestions,
+    rawExperts: rawExpertsList as unknown as PublicExpertApiItem[],
+    pagination,
+    filters,
+  };
 }
 
 export async function getPublicExperts(
@@ -1235,6 +1589,10 @@ export async function getPublicExperts(
   ) as Record<string, unknown>[];
 
   const experts = rawExpertsList.map((item) => normalizeExpert(item));
+  const rawSuggestions = Array.isArray(res.suggestions)
+    ? res.suggestions as Record<string, unknown>[]
+    : [];
+  const suggestions = rawSuggestions.map((item) => normalizeExpert(item));
 
   const paginationRaw = (res.pagination || {}) as Record<string, unknown>;
   const pagination: PaginationInfo = {
@@ -1262,6 +1620,7 @@ export async function getPublicExperts(
 
   return {
     experts,
+    suggestions,
     rawExperts: rawExpertsList as unknown as PublicExpertApiItem[],
     pagination,
     filters,
@@ -1526,7 +1885,7 @@ export async function updateExpertRequestStatusApi(
   try {
     const isDeclined = status === "declined";
     const isAccepted = status === "accepted";
-    const decisionVal = isDeclined ? "declined" : isAccepted ? "accepted" : (status as any);
+    const decisionVal = isDeclined ? "declined" : isAccepted ? "accepted" : (status as unknown as "accepted" | "declined");
 
     return await submitExpertRequestDecision(requestId, {
       decision: decisionVal,

@@ -9,24 +9,27 @@ interface RejectConfirmModalProps {
   name: string;
   appId: string;
   rejectedSections: { sectionTitle: string; note: string; decision?: string | null }[];
+  initialBlacklisted?: boolean;
   onCancel: () => void;
-  onConfirm: (notes: string) => void;
+  onConfirm: (notes: string, isBlacklisted: boolean) => void;
 }
 
 export default function RejectConfirmModal({
   name,
   appId,
   rejectedSections,
+  initialBlacklisted = false,
   onCancel,
   onConfirm,
 }: RejectConfirmModalProps) {
   const [notes, setNotes] = useState("");
+  const [isBlacklisted, setIsBlacklisted] = useState(Boolean(initialBlacklisted));
+  const [errorMsg, setErrorMsg] = useState("");
 
   const hasIssues = rejectedSections.length > 0;
-  const isValid = hasIssues ? true : notes.trim().length > 0;
 
   const handleConfirmAction = () => {
-    if (!isValid) return;
+    let finalNote = notes.trim();
     if (hasIssues) {
       const compiled = rejectedSections
         .map((item) => {
@@ -34,9 +37,17 @@ export default function RejectConfirmModal({
           return `[${item.sectionTitle} - ${statusLabel}]: ${item.note || "No feedback notes entered"}`;
         })
         .join("; ");
-      onConfirm(compiled);
+      onConfirm(compiled, isBlacklisted);
     } else {
-      onConfirm(notes.trim());
+      if (!finalNote) {
+        if (isBlacklisted) {
+          finalNote = "Profile blacklisted and rejected by administrator.";
+        } else {
+          setErrorMsg("Please provide a reason for rejecting the application.");
+          return;
+        }
+      }
+      onConfirm(finalNote, isBlacklisted);
     }
   };
 
@@ -46,7 +57,7 @@ export default function RejectConfirmModal({
       onClose={onCancel}
       onConfirm={handleConfirmAction}
       title="Reject Application"
-      confirmText="Confirm Rejection"
+      confirmText={isBlacklisted ? "Confirm Rejection & Blacklist" : "Confirm Rejection"}
       cancelText="Cancel"
       variant="danger"
       icon={<AlertTriangle size={32} style={{ color: "#ef4444" }} />}
@@ -87,16 +98,42 @@ export default function RejectConfirmModal({
               <label className={styles.modalFormLabel}>Explain why you are rejecting this application</label>
               <textarea
                 className={styles.modalTextarea}
+                style={errorMsg ? { borderColor: "#ef4444" } : undefined}
                 placeholder="Provide a reason for rejecting the application..."
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => {
+                  setNotes(e.target.value);
+                  if (errorMsg) setErrorMsg("");
+                }}
                 required
               />
+              {errorMsg && (
+                <p style={{ color: "#ef4444", fontSize: "12px", margin: "4px 0 0 0" }}>
+                  {errorMsg}
+                </p>
+              )}
             </div>
           )}
 
+          <div className={styles.modalBlacklistOption}>
+            <label className={styles.modalBlacklistLabel}>
+              <input
+                type="checkbox"
+                checked={isBlacklisted}
+                onChange={(e) => setIsBlacklisted(e.target.checked)}
+                className={styles.modalBlacklistCheckbox}
+              />
+              <div className={styles.modalBlacklistContent}>
+                <span className={styles.modalBlacklistTitle}>Blacklist this profile</span>
+                <span className={styles.modalBlacklistSubtext}>
+                  Prevents this applicant from logging in or registering with these credentials in the future.
+                </span>
+              </div>
+            </label>
+          </div>
+
           <p style={{ marginTop: "16px", margin: "16px 0 0 0", fontSize: "12px", color: "var(--scorpion)", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ color: "#E53B17" }}>ℹ</span>
+            <span style={{ color: "#E53B17" }}></span>
             <span>Note: These details will be shared with the expert in their application detail.</span>
           </p>
         </div>

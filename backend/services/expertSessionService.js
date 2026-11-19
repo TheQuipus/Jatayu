@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { ExpertSession } from '../models/index.js';
+import { forceDisconnectUser } from './notificationService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
 
@@ -25,4 +26,25 @@ export async function issueExpertToken(expert, req, loginMethod = 'password') {
     ipAddress: req.ip || req.socket?.remoteAddress || null, loginMethod, expiresAt,
   });
   return token;
+}
+
+export async function revokeAndExpelExpertSessions(
+  expertId,
+  reason = 'CREDENTIALS_BLACKLISTED',
+  message = 'Your profile is Marked as Blacklisted',
+) {
+  try {
+    await ExpertSession.update(
+      { revokedAt: new Date() },
+      { where: { expertId, revokedAt: null } }
+    );
+  } catch (err) {
+    console.warn(`[Session Revoke Warning] Could not revoke sessions for expert ${expertId}:`, err.message);
+  }
+
+  try {
+    forceDisconnectUser('expert', expertId, { reason, message });
+  } catch (err) {
+    console.warn(`[Force Disconnect Warning] Could not disconnect sockets for expert ${expertId}:`, err.message);
+  }
 }

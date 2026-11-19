@@ -12,7 +12,12 @@ import {
   Scale,
   Briefcase,
   Database,
+  type LucideIcon,
 } from "lucide-react";
+import {
+  buildAudiencePersistencePayload,
+  getPreferredExpertSelectionValues,
+} from "@/lib/expertAudience";
 import styles from "./page.module.css";
 import RegisterStep from "@/components/expert/onboarding/RegisterStep";
 import LoginStep from "@/components/expert/onboarding/LoginStep";
@@ -29,16 +34,25 @@ import ReviewStep from "@/components/expert/onboarding/ReviewStep";
 import SignupCompleteStep from "@/components/expert/onboarding/SignupCompleteStep";
 import AccountStatusStep from "@/components/expert/onboarding/AccountStatusStep";
 import SuccessStep from "@/components/expert/onboarding/SuccessStep";
+import RealtimeNotificationToast from "@/components/ui/RealtimeNotificationToast";
 import { EXPERT_ONBOARDING_STEPS } from "@/components/expert/onboarding/OnboardingProgressBar";
 import {
   createEmptyEducationDegree,
   createEmptyEmploymentPosition,
   deriveExperienceLevel,
+  isEducationDegreeStarted,
+  isEducationDegreeValid,
+  isEmploymentPositionValid,
+  parseEmploymentPositions,
   type EducationDegree,
   type EmploymentPosition,
 } from "@/lib/expertEmployment";
+import { isAvailabilityStepEmpty, isAvailabilityValid } from "@/lib/expertAvailability";
+import { isValidPortfolioUrl } from "@/lib/portfolioUrl";
+import { areRequiredSessionPreferencesValid } from "@/components/expert/onboarding/preferencesData";
 import {
   getProfile,
+  getDigilockerKycStatus,
   submitOnboarding,
   updateProfile,
   type AuthResponse,
@@ -51,9 +65,11 @@ import {
   clearExpertAuthOnly,
   clearPendingOtpSession,
   getPostAuthDestination,
+  getCompletedOnboardingStepFlags,
   getStoredAuthUser,
   isAuthenticated,
   isNavigationHref,
+  isSignupOtpSession,
   parseCredentialsFromProfile,
   persistAuthSession,
   readPendingOtpSession,
@@ -64,7 +80,13 @@ import {
 } from "@/lib/expertAuth";
 import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expertOnboardingStatus";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
+import { getOtpBackStep } from "@/lib/otpFlow";
 import { generateUUID } from "@/lib/uuid";
+import {
+  getExpertProfileLocation,
+  normalizeBackendProfile,
+  type BackendExpertProfile,
+} from "@/lib/expertProfileApi";
 import {
   deriveLocationFromTimezone,
 } from "@/lib/expertApplicationMedia";
@@ -74,24 +96,50 @@ import {
 } from "@/lib/expertApplicationsStore";
 import type {
   ExpertCertificate,
+  ExpertKycPhotos,
   GovernmentIdData,
   PortfolioLink,
   PortfolioSampleFile,
 } from "@/lib/expertApplicationSubmission";
+import { normalizeKycPhotos } from "@/lib/expertKycPhotos";
+import { areKycPhotosComplete } from "@/lib/expertKycPhotos";
+import {
+  canNavigateToOnboardingStep,
+  getExpertOnboardingStepCompletion,
+} from "@/lib/expertOnboardingNavigation";
 import type { TimeSlot } from "@/lib/expertAvailability";
-import { EXPERT_SKILLS_BY_CATEGORY as skillsByCategory } from "@/lib/expertSkillCatalog";
+import {
+  addExpertSecondarySkill,
+  cleanExpertCategorySkills,
+  EXPERT_SKILL_CATEGORIES,
+  EXPERT_SKILLS_BY_CATEGORY as skillsByCategory,
+  removeExpertSecondarySkill,
+  selectExpertPrimarySkill,
+  toggleExpertSecondarySkill,
+} from "@/lib/expertSkillCatalog";
 
-const categories = [
-  { id: "software", label: "Software Engineering", icon: Code },
-  { id: "design", label: "Product Design", icon: Palette },
-  { id: "business", label: "Business Strategy", icon: LineChart },
-  { id: "marketing", label: "Marketing & Growth", icon: Megaphone },
-  { id: "finance", label: "Finance & VC", icon: Coins },
-  { id: "health", label: "Health & Wellness", icon: Heart },
-  { id: "legal", label: "Legal & Compliance", icon: Scale },
-  { id: "product", label: "Product Management", icon: Briefcase },
-  { id: "data", label: "Data Science", icon: Database },
-];
+const categoryIcons = {
+  software: Code,
+  design: Palette,
+  business: LineChart,
+  marketing: Megaphone,
+  finance: Coins,
+  health: Heart,
+  legal: Scale,
+  product: Briefcase,
+  data: Database,
+};
+
+type CategoryOption = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+const categories: CategoryOption[] = EXPERT_SKILL_CATEGORIES.map((category) => ({
+  ...category,
+  icon: categoryIcons[category.id],
+}));
 
 type OnboardingStep = ExpertOnboardingStep;
 
@@ -119,23 +167,6 @@ type ExpertOnboardingProfile = AuthUser & {
   }>;
 };
 
-function asStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string");
-  }
-  if (typeof value === "string" && value.trim()) {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      if (Array.isArray(parsed)) {
-        return parsed.filter((item): item is string => typeof item === "string");
-      }
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
 function asOnboardingProfile(profile: Record<string, unknown>): ExpertOnboardingProfile {
   return profile as unknown as ExpertOnboardingProfile;
 }
@@ -151,6 +182,7 @@ function ExpertOnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<OnboardingStep>("register");
+  const [routeInitialized, setRouteInitialized] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [employmentPositions, setEmploymentPositions] = useState<EmploymentPosition[]>([
@@ -173,19 +205,22 @@ function ExpertOnboardingPageContent() {
   const [registeredPhone, setRegisteredPhone] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registeredName, setRegisteredName] = useState("");
+  const [profileLocation, setProfileLocation] = useState("");
   const [expertId, setExpertId] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [internalStepComplete, setInternalStepComplete] = useState<Record<number, boolean>>({});
+  const [savedStepCompletion, setSavedStepCompletion] = useState<Record<number, boolean>>({});
+  const [liveStepCompletion, setLiveStepCompletion] = useState<Record<number, boolean>>({});
   const [linkedin, setLinkedin] = useState("");
   const [portfolio, setPortfolio] = useState("");
   const [portfolioSamples, setPortfolioSamples] = useState<PortfolioSampleFile[]>([]);
   const [certificates, setCertificates] = useState<ExpertCertificate[]>([]);
   const [governmentId, setGovernmentId] = useState<GovernmentIdData | null>(null);
   const [kycVideoUrl, setKycVideoUrl] = useState("");
+  const [kycPhotos, setKycPhotos] = useState<ExpertKycPhotos>({});
   const [languages, setLanguages] = useState<string[]>([]);
   const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
   const [timezone, setTimezone] = useState("");
-  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[]>([]);
+  const [availabilitySlots, setAvailabilitySlots] = useState<TimeSlot[] | null>(null);
   const [acceptCustomRequests, setAcceptCustomRequests] = useState(false);
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
   const [accountStatus, setAccountStatus] = useState<ExpertAccountStatus | null>(null);
@@ -194,6 +229,7 @@ function ExpertOnboardingPageContent() {
   const otpFlowLockRef = useRef(false);
   const signupFlowRef = useRef(false);
   const loginIntentRef = useRef(false);
+  const digilockerReturnRef = useRef(false);
 
   const resetOnboardingFormState = useCallback(() => {
     setSelectedCategory("");
@@ -212,27 +248,42 @@ function ExpertOnboardingPageContent() {
     setRegisteredPhone("");
     setRegisteredEmail("");
     setRegisteredName("");
+    setProfileLocation("");
     setExpertId("");
     setProfileError(null);
-    setInternalStepComplete({});
+    setSavedStepCompletion({});
+    setLiveStepCompletion({});
     setLinkedin("");
     setPortfolio("");
     setPortfolioSamples([]);
     setCertificates([]);
     setGovernmentId(null);
     setKycVideoUrl("");
+    setKycPhotos({});
     setLanguages([]);
     setSelectedAudiences([]);
     setTimezone("");
-    setAvailabilitySlots([]);
+    setAvailabilitySlots(null);
     setAcceptCustomRequests(false);
     setAccountStatus(null);
     setAuthUser(null);
     clearExpertApplicationDraft();
   }, []);
 
+  const clearStepPassed = (step: number) => {
+    setSavedStepCompletion((prev) => (
+      prev[step] ? { ...prev, [step]: false } : prev
+    ));
+    setLiveStepCompletion((prev) => (
+      prev[step] ? { ...prev, [step]: false } : prev
+    ));
+  };
+
   function hydrateFromProfile(profile: ExpertOnboardingProfile) {
-    const user = profile;
+    const user = {
+      ...profile,
+      ...normalizeBackendProfile(profile as BackendExpertProfile),
+    } as ExpertOnboardingProfile;
     if (user.fullName) setRegisteredName(user.fullName);
     if (user.email) setRegisteredEmail(user.email);
     if (user.phone) setRegisteredPhone(user.phone);
@@ -280,13 +331,23 @@ function ExpertOnboardingPageContent() {
     if (user.formatPrices) setFormatPrices(user.formatPrices);
     if (user.timezone) setTimezone(user.timezone);
 
-    const audiences = asStringArray(user.targetAudience);
-    if (audiences.length > 0) setSelectedAudiences(audiences);
+    const audiences = getPreferredExpertSelectionValues(
+      user.targetAudience,
+      user.onboardingMetadata?.audiences,
+    );
+    setSelectedAudiences(audiences);
 
+    const savedEmploymentPositions = parseEmploymentPositions(
+      user.onboardingMetadata?.employmentPositions,
+    );
     const { employmentPositions: jobs, educationDegrees: degrees } = parseCredentialsFromProfile(
       user.credentials,
     );
-    if (jobs.length > 0) setEmploymentPositions(jobs);
+    if (savedEmploymentPositions?.length) {
+      setEmploymentPositions(savedEmploymentPositions);
+    } else if (jobs.length > 0) {
+      setEmploymentPositions(jobs);
+    }
     if (degrees.length > 0) setEducationDegrees(degrees);
 
     if (user.availabilities?.length) {
@@ -301,20 +362,16 @@ function ExpertOnboardingPageContent() {
     }
 
     const metadata = user.onboardingMetadata ?? {};
+    setProfileLocation(getExpertProfileLocation(metadata));
     if (typeof metadata.linkedin === "string") setLinkedin(metadata.linkedin);
     if (typeof metadata.portfolio === "string") setPortfolio(metadata.portfolio);
-    const languages = asStringArray(metadata.languages).length
-      ? asStringArray(metadata.languages)
-      : asStringArray(user.focusAreas);
-    if (languages.length > 0) setLanguages(languages);
-    if (Array.isArray(metadata.audiences)) {
-      const fromMeta = asStringArray(metadata.audiences);
-      if (fromMeta.length > 0) setSelectedAudiences(fromMeta);
-    }
+    const languages = getPreferredExpertSelectionValues(metadata.languages, user.focusAreas);
+    setLanguages(languages);
     if (typeof metadata.acceptCustomRequests === "boolean") {
       setAcceptCustomRequests(metadata.acceptCustomRequests);
     }
     if (typeof metadata.kycVideoUrl === "string") setKycVideoUrl(metadata.kycVideoUrl);
+    setKycPhotos(normalizeKycPhotos(metadata.kycPhotos));
     if (isGovernmentIdData(metadata.governmentId)) setGovernmentId(metadata.governmentId);
     if (Array.isArray(metadata.certificates)) {
       setCertificates(metadata.certificates as ExpertCertificate[]);
@@ -325,6 +382,8 @@ function ExpertOnboardingPageContent() {
 
     setAuthUser(user);
     setAccountStatus(buildExpertAccountStatus(user));
+    setSavedStepCompletion(getCompletedOnboardingStepFlags(user.onboardingStep));
+    setLiveStepCompletion({});
   }
 
   const handleLinkedinProfileFetched = useCallback((response: LinkedinConnectResponse) => {
@@ -381,29 +440,135 @@ function ExpertOnboardingPageContent() {
   }
 
   const handleStepCompleteChange = useCallback((step: number, complete: boolean) => {
-    setInternalStepComplete((prev) => {
+    setLiveStepCompletion((prev) => {
       if (prev[step] === complete) return prev;
       return { ...prev, [step]: complete };
     });
   }, []);
 
-  const stepCompletion = useMemo(
-    () => [
+  const validity = useMemo(() => {
+    const isPositionStarted = (position: EmploymentPosition) =>
+      Boolean(
+        position.jobTitle.trim() ||
+        position.company.trim() ||
+        position.startMonth ||
+        position.startYear ||
+        position.endMonth ||
+        position.endYear ||
+        position.responsibilities.trim() ||
+        position.currentlyWorking,
+      );
+    const positionsValid = employmentPositions.every(
+      (position) => !isPositionStarted(position) || isEmploymentPositionValid(position),
+    );
+    const degreesValid = educationDegrees.every(
+      (degree) => !isEducationDegreeStarted(degree) || isEducationDegreeValid(degree),
+    );
+    const experienceHasValidEntry =
+      employmentPositions.some(isEmploymentPositionValid) ||
+      educationDegrees.some(
+        (degree) => isEducationDegreeStarted(degree) && isEducationDegreeValid(degree),
+      ) ||
+      Boolean(
+        linkedin.trim() ||
+        (portfolio.trim() && isValidPortfolioUrl(portfolio)) ||
+        portfolioSamples.length > 0,
+      );
+
+    return [
       Boolean(selectedCategory),
       selectedSkills.length > 0,
-      Boolean(internalStepComplete[3]),
-      Boolean(internalStepComplete[4]),
-      Boolean(internalStepComplete[5]),
-      Boolean(internalStepComplete[6]),
-      Boolean(internalStepComplete[7]),
-      Boolean(internalStepComplete[8]),
-      Boolean(internalStepComplete[9]),
+      positionsValid && degreesValid && experienceHasValidEntry,
+      Boolean(professionalTitle.trim() && tagLine.trim() && bio.trim()),
+      Boolean(kycVideoUrl || areKycPhotosComplete(kycPhotos) || liveStepCompletion[5]),
+      areRequiredSessionPreferencesValid(selectedFormats, formatPrices),
+      languages.length > 0 && selectedAudiences.length > 0,
+      isAvailabilityValid(timezone, availabilitySlots ?? []),
+      false,
+    ];
+  }, [
+    selectedCategory,
+    selectedSkills,
+    employmentPositions,
+    educationDegrees,
+    linkedin,
+    portfolio,
+    portfolioSamples,
+    professionalTitle,
+    tagLine,
+    bio,
+    kycVideoUrl,
+    kycPhotos,
+    liveStepCompletion,
+    selectedFormats,
+    formatPrices,
+    languages,
+    selectedAudiences,
+    timezone,
+    availabilitySlots,
+  ]);
+
+  const emptyOptionalSteps = useMemo(
+    () => [
+      false,
+      selectedSkills.length === 0,
+      employmentPositions.every((position) => !position.jobTitle.trim() && !position.company.trim() &&
+        !position.startMonth && !position.startYear && !position.endMonth && !position.endYear &&
+        !position.responsibilities.trim() && !position.currentlyWorking) &&
+        educationDegrees.every((degree) => !isEducationDegreeStarted(degree)) &&
+        !linkedin.trim() && !portfolio.trim() && portfolioSamples.length === 0,
+      !professionalTitle.trim() && !tagLine.trim() && !bio.trim(),
+      !governmentId && !kycVideoUrl && !areKycPhotosComplete(kycPhotos) && certificates.length === 0,
+      false,
+      false,
+      isAvailabilityStepEmpty(timezone, availabilitySlots ?? []),
+      false,
     ],
-    [selectedCategory, selectedSkills, internalStepComplete],
+    [
+      selectedSkills,
+      employmentPositions,
+      educationDegrees,
+      linkedin,
+      portfolio,
+      portfolioSamples,
+      professionalTitle,
+      tagLine,
+      bio,
+      governmentId,
+      kycVideoUrl,
+      kycPhotos,
+      certificates,
+      availabilitySlots,
+    ],
+  );
+  const saved = useMemo(
+    () => Array.from({ length: EXPERT_ONBOARDING_STEPS.length }, (_, index) =>
+      Boolean(savedStepCompletion[index + 1]),
+    ),
+    [savedStepCompletion],
+  );
+  const live = useMemo(
+    () => [
+      Boolean(liveStepCompletion[1] || selectedCategory),
+      Boolean(liveStepCompletion[2] || selectedSkills.length > 0),
+      Boolean(liveStepCompletion[3]),
+      Boolean(liveStepCompletion[4]),
+      Boolean(liveStepCompletion[5] || kycVideoUrl || areKycPhotosComplete(kycPhotos)),
+      Boolean(liveStepCompletion[6]),
+      Boolean(liveStepCompletion[7]),
+      Boolean(liveStepCompletion[8]),
+      Boolean(liveStepCompletion[9]),
+    ],
+    [liveStepCompletion, selectedCategory, selectedSkills, kycVideoUrl, kycPhotos],
+  );
+  const stepCompletion = useMemo(
+    () => getExpertOnboardingStepCompletion(validity, emptyOptionalSteps, saved, live),
+    [validity, emptyOptionalSteps, saved, live],
   );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    setRouteInitialized(true);
     const params = new URLSearchParams(window.location.search);
     const flow = params.get("flow");
     const resume = params.get("resume");
@@ -436,7 +601,7 @@ function ExpertOnboardingPageContent() {
       const pending = readPendingOtpSession();
       if (pending) {
         otpFlowLockRef.current = true;
-        signupFlowRef.current = true;
+        signupFlowRef.current = isSignupOtpSession(pending);
         setExpertId(pending.expertId);
         setRegisteredEmail(pending.email);
         setRegisteredPhone(pending.phone);
@@ -452,8 +617,19 @@ function ExpertOnboardingPageContent() {
       return;
     }
 
+    const kycReturn = params.get("kyc");
+    if (
+      isAuthenticated() &&
+      (kycReturn === "success" || kycReturn === "denied" || kycReturn === "error")
+    ) {
+      digilockerReturnRef.current = true;
+      setStep("credentials");
+      return;
+    }
+
     const stepParam = params.get("step");
     if (stepParam && isAuthenticated()) {
+      if (stepParam === "credentials") digilockerReturnRef.current = true;
       setStep(stepParam as ExpertOnboardingStep);
       return;
     }
@@ -461,6 +637,7 @@ function ExpertOnboardingPageContent() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!routeInitialized) return;
     let targetQuery = "";
     if (step === "register") {
       targetQuery = "?flow=signup";
@@ -475,7 +652,7 @@ function ExpertOnboardingPageContent() {
     if (window.location.pathname + window.location.search !== targetUrl) {
       window.history.replaceState(null, "", targetUrl);
     }
-  }, [step]);
+  }, [routeInitialized, step]);
 
   useEffect(() => {
     if (loginIntentRef.current) return;
@@ -489,7 +666,7 @@ function ExpertOnboardingPageContent() {
       hydrateFromProfile(storedUser as unknown as ExpertOnboardingProfile);
       setAuthUser(storedUser);
       setAccountStatus(buildExpertAccountStatus(storedUser));
-      routeAfterAuth(storedUser);
+      if (!digilockerReturnRef.current) routeAfterAuth(storedUser);
     }
 
     let active = true;
@@ -502,8 +679,7 @@ function ExpertOnboardingPageContent() {
 
         const user = asOnboardingProfile(profile);
         hydrateFromProfile(user);
-        const kycReturn = new URLSearchParams(window.location.search).get("kyc");
-        if (kycReturn === "success" || kycReturn === "denied" || kycReturn === "error") {
+        if (digilockerReturnRef.current) {
           setStep("credentials");
           return;
         }
@@ -512,7 +688,8 @@ function ExpertOnboardingPageContent() {
       .catch(() => {
         // If GET profile endpoint doesn't exist or fails, fallback to stored user from login
         if (storedUser) {
-          routeAfterAuth(storedUser);
+          if (digilockerReturnRef.current) setStep("credentials");
+          else routeAfterAuth(storedUser);
         } else {
           clearAuthSession();
           setStep("login");
@@ -586,6 +763,7 @@ function ExpertOnboardingPageContent() {
       phone,
       email,
       fullName,
+      flow: "signup",
     });
     setExpertId(nextExpertId);
     setRegisteredPhone(phone);
@@ -607,11 +785,13 @@ function ExpertOnboardingPageContent() {
     fullName?: string;
   }) => {
     otpFlowLockRef.current = true;
+    signupFlowRef.current = false;
     savePendingOtpSession({
       expertId: nextExpertId,
       email,
       phone,
       fullName,
+      flow: "login",
     });
     setExpertId(nextExpertId);
     setRegisteredEmail(email);
@@ -621,12 +801,27 @@ function ExpertOnboardingPageContent() {
     clearExpertAuthOnly();
   };
 
-  const handleLoginComplete = (response: AuthResponse) => {
+  const handleLoginComplete = async (response: AuthResponse) => {
     clearPendingOtpSession();
     otpFlowLockRef.current = false;
     signupFlowRef.current = false;
     loginIntentRef.current = false;
-    handleAuthSuccess(response);
+    const authUser = persistAuthSession(response);
+    setExpertId(authUser.id);
+    setRegisteredName(authUser.fullName);
+    setRegisteredEmail(authUser.email);
+    if (authUser.phone) setRegisteredPhone(authUser.phone);
+    setAuthUser(authUser);
+    setAccountStatus(buildExpertAccountStatus(authUser));
+
+    try {
+      const profile = await getProfile();
+      const snapshot = asOnboardingProfile(profile);
+      hydrateFromProfile(snapshot);
+      routeAfterAuth(snapshot);
+    } catch {
+      routeAfterAuth(authUser);
+    }
   };
 
   const handleOtpComplete = (response: AuthResponse) => {
@@ -668,10 +863,37 @@ function ExpertOnboardingPageContent() {
       });
   };
 
-  const handleBackToRegister = () => {
-    signupFlowRef.current = true;
-    setStep("register");
-  };
+const handleBackToRegister = () => {
+clearPendingOtpSession();
+signupFlowRef.current = true;
+setStep("register");
+};
+
+const handleBackFromOtp = () => {
+const pending = readPendingOtpSession();
+clearPendingOtpSession();
+
+if (pending && getOtpBackStep(pending.flow) === "login") {
+  otpFlowLockRef.current = false;
+  signupFlowRef.current = false;
+  loginIntentRef.current = true;
+  setInitialLoginEmail(pending.email || registeredEmail);
+  setStep("login");
+  router.replace(EXPERT_LOGIN_HREF);
+  return;
+}
+
+handleBackToRegister();
+};
+
+const handleOtpBack = () => {
+const pending = readPendingOtpSession();
+if (!pending) {
+  handleBackToRegister();
+  return;
+}
+handleBackFromOtp();
+};
 
   const handleSwitchToLogin = (emailPrefill?: string) => {
     loginIntentRef.current = true;
@@ -698,10 +920,16 @@ function ExpertOnboardingPageContent() {
     photoFile?: File | null,
   ) => {
     setProfileError(null);
+    let profileSaved = true;
     try {
       await updateProfile(payload, photoFile);
     } catch (err) {
-      console.warn("Backend updateProfile unavailable or failed, continuing locally:", err);
+      profileSaved = false;
+      const message = err instanceof Error
+        ? err.message
+        : "Unable to save this onboarding step to your profile.";
+      setProfileError(message);
+      console.warn("Backend updateProfile failed:", err);
     }
     try {
       saveExpertApplicationDraft({
@@ -712,11 +940,13 @@ function ExpertOnboardingPageContent() {
         bio: typeof payload.bio === "string" ? payload.bio : undefined,
         governmentId: governmentId ?? undefined,
         kycVideoUrl,
+        kycPhotos,
         certificates,
       });
     } catch {
       // Ignore local storage error
     }
+    return profileSaved;
   };
 
   const handleCategoryContinue = async () => {
@@ -743,17 +973,6 @@ function ExpertOnboardingPageContent() {
       (cat) => cat.id === id || cat.label.toLowerCase() === trimmed.toLowerCase(),
     );
 
-    const cleanSkillsList = (skills?: string[]) => {
-      if (!skills || !Array.isArray(skills)) return [];
-      const catLower = trimmed.toLowerCase();
-      const prefixPattern = new RegExp(`^${catLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\s:\\-_]+`, "i");
-      return skills.map((s) => {
-        let cleaned = s.replace(prefixPattern, "").trim();
-        if (cleaned) cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-        return cleaned || s;
-      });
-    };
-
     if (exists) {
       const existing = [...categories, ...customCategories].find(
         (cat) => cat.id === id || cat.label.toLowerCase() === trimmed.toLowerCase(),
@@ -761,20 +980,31 @@ function ExpertOnboardingPageContent() {
       if (existing) {
         setSelectedCategory(existing.id);
         if (aiSkills && aiSkills.length > 0) {
-          skillsByCategory[existing.id] = cleanSkillsList(aiSkills);
+          skillsByCategory[existing.id] = cleanExpertCategorySkills(trimmed, aiSkills);
         }
         setSelectedSkills([]);
+        clearStepPassed(2);
       }
       return;
     }
 
     if (aiSkills && aiSkills.length > 0) {
-      skillsByCategory[id] = cleanSkillsList(aiSkills);
+      skillsByCategory[id] = cleanExpertCategorySkills(trimmed, aiSkills);
     }
 
     setCustomCategories((prev) => [...prev, { id, label: trimmed, icon: Briefcase }]);
     setSelectedCategory(id);
     setSelectedSkills([]);
+    clearStepPassed(2);
+  };
+
+  const handleSelectCategory = (id: string) => {
+    const selection = selectExpertPrimarySkill(selectedCategory, id, selectedSkills);
+    if (selectedCategory !== selection.category) {
+      setSelectedCategory(selection.category);
+      setSelectedSkills(selection.skills);
+      clearStepPassed(2);
+    }
   };
 
   const handleRemoveCustomCategory = (id: string) => {
@@ -782,6 +1012,7 @@ function ExpertOnboardingPageContent() {
     if (selectedCategory === id) {
       setSelectedCategory("");
       setSelectedSkills([]);
+      clearStepPassed(2);
     }
     setCustomSkills((prev) => {
       if (!(id in prev)) return prev;
@@ -810,22 +1041,27 @@ function ExpertOnboardingPageContent() {
     }
   };
 
-  const handleBackToSkills = () => {
+  const buildExperiencePersistencePayload = () => ({
+    experienceLevel: deriveExperienceLevel(employmentPositions),
+    credentials: buildCredentialsPayload(employmentPositions, educationDegrees),
+    onboardingMetadata: {
+      linkedin,
+      portfolio,
+      portfolioSamples,
+      employmentPositions,
+    },
+  });
+
+  const handleBackToSkills = async () => {
+    await saveProfileStep(buildExperiencePersistencePayload());
     setStep("skills");
   };
 
   const handleExperienceContinue = async () => {
     try {
-      const resolvedExperienceLevel = deriveExperienceLevel(employmentPositions);
       await saveProfileStep({
         step: "identity",
-        experienceLevel: resolvedExperienceLevel,
-        credentials: buildCredentialsPayload(employmentPositions, educationDegrees),
-        onboardingMetadata: {
-          linkedin,
-          portfolio,
-          portfolioSamples,
-        },
+        ...buildExperiencePersistencePayload(),
       });
     } catch (error) {
       console.warn("Could not save experience", error);
@@ -859,20 +1095,30 @@ function ExpertOnboardingPageContent() {
   };
 
   const handleCredentialsContinue = async () => {
-    try {
-      await saveProfileStep({
-        step: "preferences",
-        onboardingMetadata: {
-          governmentId,
-          kycVideoUrl,
-          certificates,
-        },
-      });
-    } catch (error) {
-      console.warn("Could not save credentials", error);
-    } finally {
-      setStep("preferences");
+    if (!kycVideoUrl && !areKycPhotosComplete(kycPhotos)) {
+      try {
+        const status = await getDigilockerKycStatus();
+        if (status.kyc?.status !== "verified") {
+          setProfileError("Complete DigiLocker or face capture verification before continuing.");
+          return;
+        }
+      } catch (error) {
+        setProfileError(
+          error instanceof Error ? error.message : "Could not verify DigiLocker status.",
+        );
+        return;
+      }
     }
+    const profileSaved = await saveProfileStep({
+      step: "preferences",
+      onboardingMetadata: {
+        governmentId,
+        kycVideoUrl,
+        kycPhotos,
+        certificates,
+      },
+    });
+    if (profileSaved) setStep("preferences");
   };
 
   const handleBackToCredentials = () => {
@@ -901,34 +1147,39 @@ function ExpertOnboardingPageContent() {
     setStep("preferences");
   };
 
-  const handleAudienceContinue = async () => {
-    try {
-      await saveProfileStep({
-        step: "availability",
-        targetAudience: selectedAudiences,
-        focusAreas: languages,
-        onboardingMetadata: {
-          languages,
-          audiences: selectedAudiences,
-        },
-      });
-    } catch (error) {
-      console.warn("Could not save audience", error);
-    } finally {
-      setStep("availability");
-    }
+  const handleAudienceContinue = async ({
+    languages: nextLanguages,
+    audiences,
+  }: {
+    languages: string[];
+    audiences: string[];
+  }) => {
+    setLanguages(nextLanguages);
+    setSelectedAudiences(audiences);
+    const profileSaved = await saveProfileStep(
+      buildAudiencePersistencePayload(nextLanguages, audiences),
+    );
+    if (profileSaved) setStep("availability");
   };
 
   const handleBackToAudience = () => {
     setStep("audience");
   };
 
+  const handleAvailabilityScheduleChange = useCallback(
+    ({ timezone: nextTimezone, slots }: { timezone: string; slots: TimeSlot[] }) => {
+      setTimezone(nextTimezone);
+      setAvailabilitySlots(slots);
+    },
+    [],
+  );
+
   const handleAvailabilityContinue = async () => {
     try {
       await saveProfileStep({
         step: "review",
         timezone,
-        availabilitySlots: availabilitySlots.map((slot) => ({
+        availabilitySlots: (availabilitySlots ?? []).map((slot) => ({
           days: slot.days,
           from: slot.from,
           to: slot.to,
@@ -981,22 +1232,22 @@ function ExpertOnboardingPageContent() {
     }
   };
 
-  const handleJumpToStepNumber = (stepNumber: number) => {
+  const handleJumpToStepNumber = async (stepNumber: number) => {
     const target = EXPERT_ONBOARDING_STEPS[stepNumber - 1];
-    if (target) {
-      setStep(target);
+    const currentStepNumber = EXPERT_ONBOARDING_STEPS.indexOf(
+      step as (typeof EXPERT_ONBOARDING_STEPS)[number],
+    ) + 1;
+    if (!canNavigateToOnboardingStep(stepNumber, currentStepNumber, stepCompletion)) return;
+    if (!target) return;
+    if (step === "experience" && target !== "experience") {
+      await saveProfileStep(buildExperiencePersistencePayload());
     }
+    setStep(target);
   };
 
   // Toggle skill selection
   const handleToggleSkill = (skill: string) => {
-    if (selectedSkills.includes(skill)) {
-      setSelectedSkills(selectedSkills.filter((s) => s !== skill));
-    } else {
-      if (selectedSkills.length < 5) {
-        setSelectedSkills([...selectedSkills, skill]);
-      }
-    }
+    setSelectedSkills((current) => toggleExpertSecondarySkill(current, skill));
   };
 
   // Add custom skill
@@ -1011,12 +1262,7 @@ function ExpertOnboardingPageContent() {
     );
 
     if (existingSkill) {
-      if (
-        !selectedSkills.some((s) => s.toLowerCase() === existingSkill.toLowerCase()) &&
-        selectedSkills.length < 5
-      ) {
-        setSelectedSkills([...selectedSkills, existingSkill]);
-      }
+      setSelectedSkills((current) => addExpertSecondarySkill(current, existingSkill));
       return;
     }
 
@@ -1025,9 +1271,7 @@ function ExpertOnboardingPageContent() {
       [selectedCategory]: [...categoryCustomList, trimmed],
     });
 
-    if (!selectedSkills.includes(trimmed) && selectedSkills.length < 5) {
-      setSelectedSkills([...selectedSkills, trimmed]);
-    }
+    setSelectedSkills((current) => addExpertSecondarySkill(current, trimmed));
   };
 
   const handleRemoveCustomSkill = (skill: string) => {
@@ -1038,9 +1282,7 @@ function ExpertOnboardingPageContent() {
         (s) => s.toLowerCase() !== skill.toLowerCase(),
       ),
     });
-    setSelectedSkills(
-      selectedSkills.filter((s) => s.toLowerCase() !== skill.toLowerCase()),
-    );
+    setSelectedSkills((current) => removeExpertSecondarySkill(current, skill));
   };
 
   // Retrieve current category options
@@ -1089,7 +1331,7 @@ function ExpertOnboardingPageContent() {
           expertId={otpExpertId}
           phone={otpPhone}
           email={otpEmail}
-          onBack={handleBackToRegister}
+          onBack={handleBackFromOtp}
           onContinue={handleOtpComplete}
         />
       ) : null}
@@ -1097,7 +1339,7 @@ function ExpertOnboardingPageContent() {
       {step === "otp" && !otpExpertId ? (
         <section className={styles.otpFallback}>
           <p>Verification session expired. Please register again to receive a new code.</p>
-          <button type="button" onClick={handleBackToRegister}>
+          <button type="button" onClick={handleOtpBack}>
             Back to Register
           </button>
         </section>
@@ -1130,13 +1372,9 @@ function ExpertOnboardingPageContent() {
           categories={allCategories}
           selectedCategory={selectedCategory}
           stepCompletion={stepCompletion}
-          onSelectCategory={(id) => {
-            setSelectedCategory(id);
-            setSelectedSkills([]);
-          }}
+          onSelectCategory={handleSelectCategory}
           onAddCustomCategory={handleAddCustomCategory}
           onRemoveCustomCategory={handleRemoveCustomCategory}
-          onBack={handleBackToRegister}
           onContinue={handleCategoryContinue}
           onJumpToStep={handleJumpToStepNumber}
         />
@@ -1212,6 +1450,8 @@ function ExpertOnboardingPageContent() {
           userName={registeredName}
           kycVideoSrc={kycVideoUrl}
           onKycVideoChange={setKycVideoUrl}
+          kycPhotos={kycPhotos}
+          onKycPhotosChange={setKycPhotos}
           governmentId={governmentId}
           onGovernmentIdChange={setGovernmentId}
           certificates={certificates}
@@ -1246,14 +1486,12 @@ function ExpertOnboardingPageContent() {
       {step === "audience" && (
         <AudienceStep
           userName={registeredName}
+          initialLanguages={languages}
+          initialAudiences={selectedAudiences}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToPreferences}
           onContinue={handleAudienceContinue}
-          onContinueWithAudience={({ languages: nextLanguages, audiences }) => {
-            setLanguages(nextLanguages);
-            setSelectedAudiences(audiences);
-          }}
           onJumpToStep={handleJumpToStepNumber}
         />
       )}
@@ -1261,14 +1499,13 @@ function ExpertOnboardingPageContent() {
       {step === "availability" && (
         <AvailabilityStep
           userName={registeredName}
+          initialTimezone={timezone || undefined}
+          initialSlots={availabilitySlots ?? undefined}
           stepCompletion={stepCompletion}
           onStepCompleteChange={handleStepCompleteChange}
           onBack={handleBackToAudience}
           onContinue={handleAvailabilityContinue}
-          onScheduleChange={({ timezone: nextTimezone, slots }) => {
-            setTimezone(nextTimezone);
-            setAvailabilitySlots(slots);
-          }}
+          onScheduleChange={handleAvailabilityScheduleChange}
           onJumpToStep={handleJumpToStepNumber}
         />
       )}
@@ -1283,6 +1520,7 @@ function ExpertOnboardingPageContent() {
           tagLine={tagLine}
           bio={bio}
           onBioChange={setBio}
+          location={profileLocation}
           categoryLabel={
             allCategories.find((c) => c.id === selectedCategory)?.label ?? "Not selected"
           }
@@ -1295,7 +1533,7 @@ function ExpertOnboardingPageContent() {
           languages={languages}
           selectedAudiences={selectedAudiences}
           timezone={timezone}
-          availabilitySlots={availabilitySlots}
+          availabilitySlots={availabilitySlots ?? []}
           selectedFormats={selectedFormats}
           selectedLengths={selectedLengths}
           formatPrices={formatPrices}
@@ -1325,6 +1563,7 @@ function ExpertOnboardingPageContent() {
           profilePhotoSrc={profilePhotoSrc}
         />
       )}
+      <RealtimeNotificationToast />
     </main>
   );
 }

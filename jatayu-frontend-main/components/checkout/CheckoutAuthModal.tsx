@@ -23,6 +23,7 @@ export type CheckoutAuthModalProps = {
   loginPassword: string;
   onLoginPasswordChange: (value: string) => void;
   loginSubmitAttempted: boolean;
+  isSubmittingLogin: boolean;
   onLoginSubmit: () => void;
   // Register form state
   registerFirstName: string;
@@ -71,6 +72,7 @@ export default function CheckoutAuthModal({
   loginPassword,
   onLoginPasswordChange,
   loginSubmitAttempted,
+  isSubmittingLogin,
   onLoginSubmit,
   registerFirstName,
   onRegisterFirstNameChange,
@@ -240,8 +242,8 @@ export default function CheckoutAuthModal({
                 <div className={styles.authModalActions}>
                   <ContinueButton
                     type="button"
-                    label="Log In"
-                    disabled={!loginEmail.trim() || !loginPassword.trim()}
+                    label={isSubmittingLogin ? "Logging in..." : "Log In"}
+                    disabled={!loginEmail.trim() || !loginPassword.trim() || isSubmittingLogin}
                     onClick={onLoginSubmit}
                     className={styles.registerSendOtpBtn}
                   />

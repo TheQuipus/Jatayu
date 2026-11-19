@@ -2,7 +2,7 @@
 .heroCard {
   background: var(--white);
   border: 1px solid var(--mercury);
-  border-radius: 20px;
+  /* border-radius: 20px; */
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
 }

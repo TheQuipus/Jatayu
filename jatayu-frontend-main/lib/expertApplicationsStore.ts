@@ -123,6 +123,7 @@ export function submitExpertApplication(
     portfolioLinks: draft.portfolioLinks ?? [],
     governmentId: draft.governmentId,
     kycVideoUrl: draft.kycVideoUrl,
+    kycPhotos: draft.kycPhotos,
     certificates: draft.certificates ?? [],
     formats: draft.formats ?? [],
     lengths: draft.lengths ?? [],
@@ -204,7 +205,8 @@ export function computeCompleteness(application: ExpertApplicationSubmission): n
   return Math.round((passed / checks.length) * 100);
 }
 
-export function getSubmittedAgo(submittedAt: string): string {
+export function getSubmittedAgo(submittedAt?: string | null): string {
+  if (!submittedAt || Number.isNaN(new Date(submittedAt).getTime())) return "—";
   const hours = Math.max(
     1,
     Math.floor((Date.now() - new Date(submittedAt).getTime()) / (1000 * 60 * 60)),
@@ -214,12 +216,61 @@ export function getSubmittedAgo(submittedAt: string): string {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-export function getSlaStatus(submittedAt: string): {
+export function formatClosedSlaDuration(startIso: string, endIso: string): string {
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return "—";
+
+  const totalMinutes = Math.round((end - start) / (1000 * 60));
+  if (totalMinutes < 1) return "< 1 min";
+  if (totalMinutes < 60) return `${totalMinutes} mins`;
+
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const remainingHours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const remainingMins = totalMinutes % 60;
+
+  if (days > 0) {
+    return remainingHours > 0
+      ? `${days} day${days === 1 ? "" : "s"} ${remainingHours} hr${remainingHours === 1 ? "" : "s"}`
+      : `${days} day${days === 1 ? "" : "s"}`;
+  }
+
+  if (remainingMins > 0) {
+    return `${remainingHours} hr${remainingHours === 1 ? "" : "s"} ${remainingMins} min${remainingMins === 1 ? "" : "s"}`;
+  }
+
+  return `${remainingHours} hr${remainingHours === 1 ? "" : "s"}`;
+}
+
+export function getSlaStatus(
+  submittedAt: string,
+  closedAt?: string | null,
+): {
   slaStatus: SlaStatus;
   slaLabel: string;
   slaLimit: string;
   hoursElapsed: number;
 } {
+  if (!submittedAt || Number.isNaN(new Date(submittedAt).getTime())) {
+    return {
+      slaStatus: "closed",
+      slaLabel: "—",
+      slaLimit: "",
+      hoursElapsed: 0,
+    };
+  }
+
+  if (closedAt) {
+    const elapsedMs = Math.max(0, new Date(closedAt).getTime() - new Date(submittedAt).getTime());
+    const hoursElapsed = Math.floor(elapsedMs / (1000 * 60 * 60));
+    return {
+      slaStatus: "closed",
+      slaLabel: formatClosedSlaDuration(submittedAt, closedAt),
+      slaLimit: "",
+      hoursElapsed,
+    };
+  }
+
   const elapsedMs = Date.now() - new Date(submittedAt).getTime();
   const totalMinutes = Math.max(0, Math.floor(elapsedMs / (1000 * 60)));
   const hoursElapsed = Math.floor(totalMinutes / 60);
@@ -266,7 +317,8 @@ export function getSlaStatus(submittedAt: string): {
   };
 }
 
-export function formatSubmittedDate(submittedAt: string): string {
+export function formatSubmittedDate(submittedAt?: string | null): string {
+  if (!submittedAt || Number.isNaN(new Date(submittedAt).getTime())) return "—";
   return new Date(submittedAt).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",

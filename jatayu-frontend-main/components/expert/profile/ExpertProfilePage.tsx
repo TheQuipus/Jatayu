@@ -12,7 +12,7 @@ export default function ExpertProfilePage() {
             </h1>
           </div>
           <p className={styles.pageSubtitle}>
-            Complete view of your expert onboarding application, consultation settings, credentials, and public presence.
+            Review and update your expert profile, consultation preferences, and availability schedule.
           </p>
         </header>
 

@@ -28,6 +28,7 @@ export default function SmsSettingsPanel({
                 onChange({ ...draft, provider: newProvider as AdminSettings["sms"]["provider"] })
               }
               placeholder="Select SMS Provider"
+              aria-label="SMS Provider"
             />
           </Field>
           {draft.provider === "msg91" ? (

@@ -53,6 +53,30 @@ export function createEmptyEmploymentPosition(): EmploymentPosition {
   };
 }
 
+export function parseEmploymentPositions(value: unknown): EmploymentPosition[] | null {
+  if (!Array.isArray(value)) return null;
+
+  return value
+    .filter((position): position is Record<string, unknown> => (
+      Boolean(position) && typeof position === "object" && !Array.isArray(position)
+    ))
+    .map((position) => ({
+      id: typeof position.id === "string" && position.id
+        ? position.id
+        : createEmptyEmploymentPosition().id,
+      jobTitle: typeof position.jobTitle === "string" ? position.jobTitle : "",
+      company: typeof position.company === "string" ? position.company : "",
+      startMonth: typeof position.startMonth === "string" ? position.startMonth : "",
+      startYear: typeof position.startYear === "string" ? position.startYear : "",
+      endMonth: typeof position.endMonth === "string" ? position.endMonth : "",
+      endYear: typeof position.endYear === "string" ? position.endYear : "",
+      currentlyWorking: position.currentlyWorking === true,
+      responsibilities: typeof position.responsibilities === "string"
+        ? position.responsibilities
+        : "",
+    }));
+}
+
 export function getYearOptions(count = 50): string[] {
   const currentYear = new Date().getFullYear();
   return Array.from({ length: count }, (_, index) => String(currentYear - index));
@@ -103,9 +127,53 @@ export function isPositionDateNotInFuture(position: EmploymentPosition): boolean
   return true;
 }
 
+function isValidEmploymentMonth(value: string): boolean {
+  return MONTH_OPTIONS.some((month) => month.value === value);
+}
+
+function isValidEmploymentYear(value: string): boolean {
+  if (!/^\d{4}$/.test(value)) return false;
+  const year = Number.parseInt(value, 10);
+  return year >= 1900 && year <= new Date().getFullYear();
+}
+
+export function isEmploymentPositionStarted(position: EmploymentPosition): boolean {
+  return Boolean(
+    position.jobTitle.trim() ||
+      position.company.trim() ||
+      position.startMonth ||
+      position.startYear ||
+      position.endMonth ||
+      position.endYear ||
+      position.responsibilities.trim() ||
+      position.currentlyWorking,
+  );
+}
+
+export type EmploymentDateField = "startMonth" | "startYear" | "endMonth" | "endYear";
+
+export function getEmploymentDateFieldError(
+  position: EmploymentPosition,
+  field: EmploymentDateField,
+): string | undefined {
+  if (!isEmploymentPositionStarted(position)) return undefined;
+  if ((field === "endMonth" || field === "endYear") && position.currentlyWorking) {
+    return undefined;
+  }
+  if (field.endsWith("Month") && !isValidEmploymentMonth(position[field])) {
+    return `Select a valid ${field.startsWith("start") ? "start" : "end"} month.`;
+  }
+  if (field.endsWith("Year") && !isValidEmploymentYear(position[field])) {
+    return `Select a valid ${field.startsWith("start") ? "start" : "end"} year.`;
+  }
+  return undefined;
+}
+
 export function isEmploymentPositionValid(position: EmploymentPosition): boolean {
-  const hasStart = Boolean(position.startMonth && position.startYear);
-  const hasEnd = Boolean(position.endMonth && position.endYear);
+  const hasStart = isValidEmploymentMonth(position.startMonth) &&
+    isValidEmploymentYear(position.startYear);
+  const hasEnd = isValidEmploymentMonth(position.endMonth) &&
+    isValidEmploymentYear(position.endYear);
 
   return (
     Boolean(position.jobTitle.trim() && position.company.trim()) &&
@@ -114,6 +182,42 @@ export function isEmploymentPositionValid(position: EmploymentPosition): boolean
     isPositionDateOrderValid(position) &&
     isPositionDateNotInFuture(position)
   );
+}
+
+export function hasValidSavedEmploymentPosition(credentials: unknown[]): boolean {
+  const currentYear = new Date().getFullYear();
+  const isValidYear = (value: unknown) => {
+    if (typeof value !== "string" && typeof value !== "number") return false;
+    const raw = String(value).trim();
+    if (!/^\d{4}$/.test(raw)) return false;
+    const year = Number(raw);
+    return year >= 1900 && year <= currentYear;
+  };
+
+  return credentials.some((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const credential = item as Record<string, unknown>;
+    const type = typeof credential.type === "string" ? credential.type.toLowerCase() : "";
+    if (!["employment", "experience", "work", "job"].includes(type)) return false;
+
+    const title = typeof credential.title === "string" ? credential.title.trim() : "";
+    const institution = typeof credential.institution === "string"
+      ? credential.institution.trim()
+      : "";
+    if (
+      !title ||
+      !institution ||
+      title.toLowerCase() === "role" ||
+      institution.toLowerCase() === "company" ||
+      !isValidYear(credential.startYear)
+    ) {
+      return false;
+    }
+
+    const endYear = credential.endYear;
+    if (endYear === null || endYear === undefined) return true;
+    return isValidYear(endYear) && Number(endYear) >= Number(credential.startYear);
+  });
 }
 
 export function deriveExperienceLevel(positions: EmploymentPosition[]): ExperienceLevel {
@@ -208,30 +312,30 @@ export const MAX_EDUCATION_DEGREES = 4;
 export const MAX_ACHIEVEMENT_DESCRIPTION = 300;
 
 export const DEGREE_OPTIONS = [
-  "High School",
   "Associate Degree",
   "Bachelor's Degree",
+  "Diploma",
+  "High School",
   "Master's Degree",
   "MBA",
   "PhD / Doctorate",
-  "Diploma",
   "Professional Certification",
   "Other",
 ] as const;
 
 export const FIELD_OF_STUDY_OPTIONS = [
-  "Computer Science / IT",
-  "Engineering",
   "Business Administration",
-  "Finance / Accounting",
-  "Marketing / Communications",
-  "Economics",
-  "Law / Legal Studies",
-  "Medicine / Healthcare",
+  "Computer Science / IT",
   "Design / Arts / Architecture",
-  "Social Sciences / Psychology",
+  "Economics",
+  "Engineering",
+  "Finance / Accounting",
   "Humanities",
+  "Law / Legal Studies",
+  "Marketing / Communications",
+  "Medicine / Healthcare",
   "Sciences (Physics, Chemistry, Bio)",
+  "Social Sciences / Psychology",
   "Other",
 ] as const;
 

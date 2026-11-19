@@ -317,6 +317,7 @@ function AddTemplateModal({
                 options={triggerOptions}
                 onChange={(newCat) => setCategory(newCat as MessageTemplateCategory)}
                 placeholder="Select or search trigger point..."
+                aria-label="Trigger Point"
               />
             </div>
 
@@ -781,6 +782,7 @@ export default function TemplatesPanel({
                       handleUpdate(activeTemplate.id, { category: newCat as MessageTemplateCategory })
                     }
                     placeholder="Select or search trigger point..."
+                    aria-label="Trigger Point"
                   />
                 </div>
 

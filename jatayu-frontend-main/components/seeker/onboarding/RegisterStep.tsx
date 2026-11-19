@@ -18,6 +18,7 @@ import { registerSeeker } from "@/lib/api";
 import type { AuthResponse } from "@/lib/api";
 import SeekerSocialAuth from "./SeekerSocialAuth";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
+import { getNameValidationError } from "@/lib/nameValidation";
 import { isDuplicateRegistrationMessage } from "@/lib/authUtils";
 import {
   buildPasswordContext,
@@ -60,17 +61,13 @@ function getFieldError(
 
   switch (field) {
     case "firstName":
-      if (!firstName.trim()) return "Required";
-      if (firstName.trim().length < 2) return "Too short";
-      return null;
+      return getNameValidationError(firstName);
     case "lastName":
-      if (!lastName.trim()) return "Required";
-      if (lastName.trim().length < 2) return "Too short";
-      return null;
+      return getNameValidationError(lastName);
     case "email":
       return getEmailValidationError(email);
     case "password":
-      return getPasswordValidationError(password, passwordContext);
+      return getPasswordValidationError(password, passwordContext, "instruction");
     case "phone":
       if (!phone) return "Required";
       if (phone.length !== 10) return "Enter 10-digit number";
@@ -116,7 +113,6 @@ export default function RegisterStep({
   const [touched, setTouched] = useState(emptyTouched);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isDuplicateAccountError, setIsDuplicateAccountError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const values = { firstName, lastName, email, password, phone };
@@ -124,7 +120,7 @@ export default function RegisterStep({
   const strength = getPasswordStrength(password, passwordContext);
   const strengthColor = getPasswordStrengthColor(password, passwordContext);
   const strengthLabel = getPasswordStrengthLabel(password, passwordContext);
-  const passwordHint = getPasswordHint(password, passwordContext);
+  const passwordHint = getPasswordHint(password, passwordContext, "instruction");
   const canSubmit = isFormComplete(firstName, lastName, email, password, phone);
   const fullName = buildFullName(firstName, lastName);
 
@@ -161,7 +157,6 @@ export default function RegisterStep({
       });
 
       if (response.message && isDuplicateRegistrationMessage(response.message)) {
-        setIsDuplicateAccountError(true);
         setSubmitError("An account with this email or phone number already exists.");
         return;
       }
@@ -175,10 +170,8 @@ export default function RegisterStep({
     } catch (error) {
       const message = error instanceof Error ? error.message : "Registration failed.";
       if (isDuplicateRegistrationMessage(message)) {
-        setIsDuplicateAccountError(true);
         setSubmitError("An account with this email or phone number already exists.");
       } else {
-        setIsDuplicateAccountError(false);
         setSubmitError(message);
       }
     } finally {
@@ -373,24 +366,6 @@ export default function RegisterStep({
           {submitError ? (
             <div className={register.errorBannerBox} role="alert">
               <p className={register.fieldErrorBelow}>{submitError}</p>
-              {isDuplicateAccountError || isDuplicateRegistrationMessage(submitError) ? (
-                <p className={register.authToggle}>
-                  Already registered?{" "}
-                  {onSwitchToLogin ? (
-                    <button
-                      type="button"
-                      className={register.authToggleBtn}
-                      onClick={() => onSwitchToLogin(normalizeEmail(email))}
-                    >
-                      Log in to your account
-                    </button>
-                  ) : (
-                    <Link href={loginHref || "/seeker/login"} className={register.authToggleBtn}>
-                      Log in to your account
-                    </Link>
-                  )}
-                </p>
-              ) : null}
             </div>
           ) : null}
 
@@ -415,11 +390,21 @@ export default function RegisterStep({
                 className={register.authToggleBtn}
                 onClick={() => onSwitchToLogin(normalizeEmail(email))}
               >
-                Login
+                <span className={register.labelText}>
+                  <span className={register.labelTrack}>
+                    <span className={register.labelUp}>LOGIN</span>
+                    <span className={register.labelUp} aria-hidden="true">LOGIN</span>
+                  </span>
+                </span>
               </button>
             ) : (
               <Link href={loginHref} className={register.authToggleBtn}>
-                Login
+                <span className={register.labelText}>
+                  <span className={register.labelTrack}>
+                    <span className={register.labelUp}>LOGIN</span>
+                    <span className={register.labelUp} aria-hidden="true">LOGIN</span>
+                  </span>
+                </span>
               </Link>
             )}
           </p>

@@ -24,8 +24,10 @@ import { getRazorpayClient, validateRazorpayConfig } from './config/razorpay.js'
 import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 import { createOpenApiDocument } from './config/swagger.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import passwordRecoveryRoutes from './routes/passwordRecoveryRoutes.js';
 import { sendNotification, sendUpcomingExpertReminders, setNotificationSocketServer } from './services/notificationService.js';
-import { Booking, BookingExtension } from './models/index.js';
+import { Booking, BookingExtension, Expert, ExpertSession } from './models/index.js';
+import { isExpertBlacklisted, isExpertSuspended } from './controllers/authController.js';
 import { approveExtension } from './services/bookingExtensionService.js';
 import jwt from 'jsonwebtoken';
 
@@ -33,6 +35,18 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Configure reverse proxy trust for accurate client IP resolution behind Nginx/ALB/Cloudflare
+const trustProxyEnv = process.env.TRUST_PROXY;
+if (trustProxyEnv === 'true') {
+  app.set('trust proxy', true);
+} else if (trustProxyEnv && !Number.isNaN(Number(trustProxyEnv))) {
+  app.set('trust proxy', Number(trustProxyEnv));
+} else if (trustProxyEnv) {
+  app.set('trust proxy', trustProxyEnv);
+} else if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://127.0.0.1:3000')
   .split(',')
   .map((origin) => origin.trim())
@@ -61,7 +75,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // Razorpay signs the exact request bytes, so this route must run before express.json().
 app.use('/api/payments/webhooks', razorpayWebhookRoutes);
-app.use(express.json());
+app.use('/api/expert/profile', express.json({ limit: '32mb' }));
+app.use(express.json({ limit: '7mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 const swaggerEnabled = process.env.SWAGGER_ENABLED !== 'false';
@@ -89,6 +104,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/public/experts', publicExpertRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/password-recovery', passwordRecoveryRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -122,16 +138,36 @@ const startServer = async () => {
       path: '/socket.io',
     });
 
-    io.use((socket, next) => {
+    io.use(async (socket, next) => {
       try {
         const token = socket.handshake.auth?.token;
         const user = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production');
         if (!user?.id) throw new Error();
         user.role ||= 'expert';
         if (!['seeker', 'expert', 'admin'].includes(user.role)) throw new Error();
+
+        if (user.role === 'expert') {
+          const expert = await Expert.findByPk(user.id, { attributes: ['id', 'status', 'isBlacklisted', 'onboardingMetadata'] });
+          if (isExpertBlacklisted(expert)) {
+            return next(new Error('CREDENTIALS_BLACKLISTED'));
+          }
+          if (isExpertSuspended(expert)) {
+            return next(new Error('ACCOUNT_SUSPENDED'));
+          }
+          if (user.jti) {
+            const session = await ExpertSession.findByPk(user.jti);
+            if (!session || session.revokedAt || new Date(session.expiresAt) <= new Date()) {
+              return next(new Error('SESSION_REVOKED'));
+            }
+          }
+        }
+
         socket.user = user;
         next();
-      } catch { next(new Error('Unauthorized')); }
+      } catch (err) {
+        const allowedErrors = ['CREDENTIALS_BLACKLISTED', 'ACCOUNT_SUSPENDED'];
+        next(new Error(allowedErrors.includes(err.message) ? err.message : 'Unauthorized'));
+      }
     });
     setNotificationSocketServer(io);
 

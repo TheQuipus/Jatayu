@@ -75,6 +75,7 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     { name: 'Transcription' },
     { name: 'Public Experts' },
     { name: 'Admin' },
+    { name: 'Password Recovery' },
     { name: 'Payments' },
     { name: 'Notifications' },
   ],
@@ -106,6 +107,29 @@ export const createOpenApiDocument = ({ serverUrl = '/' } = {}) => ({
     },
   },
   paths: {
+    '/api/password-recovery/request': {
+      post: operation({
+        tag: 'Password Recovery',
+        summary: 'Request a password reset link for an admin, expert, or seeker',
+        requestBody: jsonBody('role: admin | expert | user; email: account email address'),
+        responses: {
+          202: response('Request accepted. The response is identical whether or not the account exists.'),
+          422: response('Invalid role or email address'),
+        },
+      }),
+    },
+    '/api/password-recovery/reset': {
+      post: operation({
+        tag: 'Password Recovery',
+        summary: 'Reset a password with a single-use recovery token',
+        requestBody: jsonBody('role: admin | expert | user; userId: account UUID; token: recovery token; password: new password'),
+        responses: {
+          200: response('Password reset successfully'),
+          400: response('Recovery link is invalid or expired'),
+          422: response('Invalid request or password'),
+        },
+      }),
+    },
     '/api/seeker/bookings/{bookingId}/review': {
       get: operation({ tag: 'Reviews', summary: 'Get own booking review and eligibility', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')] }),
       post: operation({ tag: 'Reviews', summary: 'Review a completed booking once; identical retries return existing review', security: bearerSecurity, parameters: [idParameter('bookingId', 'Booking ID')], requestBody: jsonBody('rating: integer 1–5; comment: optional string, maximum 5000 characters'), responses: { 201: response('Saved; creditsAwarded: 15 and creditBalance returned'), 200: response('Identical retry; creditsAwarded: 0'), 404: response('Booking not owned or missing'), 409: response('Incomplete booking or already reviewed'), 422: response('Invalid input') } }),

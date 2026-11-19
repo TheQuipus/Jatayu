@@ -4,12 +4,13 @@ import { useState } from "react";
 import { Medal, Tag, X, Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
+import { MAX_EXPERT_SECONDARY_SKILLS } from "@/lib/expertSkillCatalog";
 import shared from "./onboarding.shared.module.css";
 import styles from "./SkillsStep.module.css";
 
-const MAX_SKILLS = 5;
-const BADGE_SEGMENT_COUNT = 5;
+const BADGE_SEGMENT_COUNT = MAX_EXPERT_SECONDARY_SKILLS;
 
 function polarToCartesian(cx: number, cy: number, radius: number, angleDeg: number) {
   const angleRad = ((angleDeg - 90) * Math.PI) / 180;
@@ -166,7 +167,7 @@ export default function SkillsStep({
         </h1>
 
         <p className={shared.questionSubtitle}>
-          Select up to 5 sub-skills related to {activeCategoryLabel}. This refines your expert profile.
+          Select up to {MAX_EXPERT_SECONDARY_SKILLS} sub-skills related to {activeCategoryLabel}. This refines your expert profile.
         </p>
 
         {/* Directory Wrapper */}
@@ -347,12 +348,8 @@ export default function SkillsStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+          <TextButton label="Back" onClick={onBack} />
+          <TextButton label="Skip" onClick={onContinue} />
           <ContinueButton
             onClick={onContinue}
             disabled={selectedSkills.length === 0}

@@ -102,6 +102,7 @@ export function serializePublicExpert(expert, { includeCredentials = true } = {}
     price: values.price,
     replyTime: values.replyTime,
     replyTimeMinutes: values.replyTimeMinutes,
+    rating: expert.rating ?? null,
     credentials: includeCredentials
       ? (expert.credentials || []).map(serializeCredential)
       : undefined,
@@ -124,6 +125,74 @@ function matchesAny(selected, available) {
   return selected.some((value) => normalizedAvailable.includes(normalized(value)));
 }
 
+export function matchesNonSearchFilters(expert, filters) {
+  if (!matchesAny(filters.categories, [expert.category, ...expert.topics])) return false;
+  if (!matchesAny(filters.languages, expert.languages)) return false;
+  if (filters.ratings.length > 0 && !filters.ratings.some((minimumRating) => expert.rating >= minimumRating)) return false;
+  if (filters.minPrice !== null && (expert.price === null || expert.price < filters.minPrice)) return false;
+  if (filters.maxPrice !== null && (expert.price === null || expert.price > filters.maxPrice)) return false;
+  if (filters.availability.length > 0 && (
+    expert.replyTimeMinutes === null
+    || !filters.availability.some((maximum) => expert.replyTimeMinutes <= maximum)
+  )) return false;
+  return true;
+}
+
+function searchTerms(value) {
+  return new Set(normalized(value).replace(/[^a-z0-9]+/g, ' ').split(/\s+/).filter((term) => term.length > 1));
+}
+
+function fallbackScore(expert, queryTerms, search) {
+  const fields = [
+    { values: [expert.category], weight: 8 },
+    { values: [...expert.skills, ...expert.topics, ...expert.focusAreas], weight: 7 },
+    { values: [expert.professionalTitle], weight: 6 },
+    { values: [expert.tagLine], weight: 5 },
+    { values: expert.languages, weight: 5 },
+    { values: [expert.fullName], weight: 4 },
+    { values: [expert.targetAudience, expert.experienceLevel], weight: 3 },
+    { values: [expert.bio], weight: 2 },
+  ];
+  const matchedTerms = new Map();
+
+  for (const field of fields) {
+    const fieldTerms = searchTerms(field.values.filter(Boolean).join(' '));
+    for (const term of queryTerms) {
+      if (fieldTerms.has(term)) {
+        matchedTerms.set(term, Math.max(matchedTerms.get(term) || 0, field.weight));
+      }
+    }
+  }
+
+  const exactCategoryMatch = normalized(expert.category) === normalized(search);
+  return [...matchedTerms.values()].reduce((total, weight) => total + weight, 0)
+    + (exactCategoryMatch ? 20 : 0);
+}
+
+function findFallbackSuggestions(experts, filters) {
+  const queryTerms = searchTerms(filters.search);
+  if (queryTerms.size === 0) return [];
+
+  const seenIds = new Set();
+  return experts
+    .filter((expert) => matchesNonSearchFilters(expert, filters))
+    .map((expert, index) => ({
+      expert,
+      index,
+      score: fallbackScore(expert, queryTerms, filters.search),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .filter(({ expert }) => {
+      const id = String(expert.id);
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    })
+    .slice(0, filters.limit)
+    .map(({ expert }) => expert);
+}
+
 export function parsePublicExpertListQuery(query) {
   const page = query.page === undefined ? 1 : Number.parseInt(query.page, 10);
   const limit = query.limit === undefined ? 12 : Number.parseInt(query.limit, 10);
@@ -133,6 +202,9 @@ export function parsePublicExpertListQuery(query) {
   const categories = queryValues(query.category);
   const languages = queryValues(query.language);
   const availability = queryValues(query.availability).map(Number);
+  const ratings = queryValues(query.ratings)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value >= 1 && value <= 5);
   const allowedSorts = new Set(['popularity', 'price-asc', 'price-desc', 'alphabetical', 'newest']);
   const sort = String(query.sort || 'popularity');
   const errors = [];
@@ -145,8 +217,11 @@ export function parsePublicExpertListQuery(query) {
   if (availability.some((value) => ![15, 30, 120].includes(value))) {
     errors.push('availability values must be 15, 30, or 120');
   }
+  if (query.ratings !== undefined && ratings.length === 0) {
+    errors.push('ratings values must be between 1 and 5');
+  }
   if (!allowedSorts.has(sort)) errors.push('sort is invalid');
-  return { page, limit, minPrice, maxPrice, search, categories, languages, availability, sort, errors };
+  return { page, limit, minPrice, maxPrice, search, categories, languages, availability, ratings, sort, errors };
 }
 
 export async function findPublicExperts(filters) {
@@ -165,15 +240,7 @@ export async function findPublicExperts(filters) {
       ].map(normalized).join(' ');
       if (!searchable.includes(search)) return false;
     }
-    if (!matchesAny(filters.categories, [expert.category, ...expert.topics])) return false;
-    if (!matchesAny(filters.languages, expert.languages)) return false;
-    if (filters.minPrice !== null && (expert.price === null || expert.price < filters.minPrice)) return false;
-    if (filters.maxPrice !== null && (expert.price === null || expert.price > filters.maxPrice)) return false;
-    if (filters.availability.length > 0 && (
-      expert.replyTimeMinutes === null
-      || !filters.availability.some((maximum) => expert.replyTimeMinutes <= maximum)
-    )) return false;
-    return true;
+    return matchesNonSearchFilters(expert, filters);
   });
 
   filtered.sort((left, right) => {
@@ -186,7 +253,7 @@ export async function findPublicExperts(filters) {
 
   const total = filtered.length;
   const offset = (filters.page - 1) * filters.limit;
-  return {
+  const response = {
     experts: filtered.slice(offset, offset + filters.limit),
     pagination: {
       page: filters.page,
@@ -210,6 +277,12 @@ export async function findPublicExperts(filters) {
       ],
     },
   };
+
+  if (search && filtered.length === 0 && filters.page === 1) {
+    response.suggestions = findFallbackSuggestions(all, filters);
+  }
+
+  return response;
 }
 
 export async function findPublicExpertById(expertId) {

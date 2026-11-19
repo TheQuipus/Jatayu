@@ -14,10 +14,12 @@ export async function updateExpertApplicationStatus(
   appId: string,
   status: ApplicationStatus,
   reviewerNote?: string,
+  isBlacklisted?: boolean,
 ): Promise<ExpertApplicationSubmission> {
   const response = await updateAdminApplicationStatus(appId, {
     status,
     reviewerNote,
+    isBlacklisted,
   });
 
   dispatchUpdated();

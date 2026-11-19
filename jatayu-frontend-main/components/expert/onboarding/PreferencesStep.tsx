@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -9,16 +9,15 @@ import {
   FileText,
   MessageSquare,
   Check,
-  Sparkles,
 } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
 import ContinueButton from "@/components/ui/ContinueButton";
-import Lottie from "lottie-react";
-import checkmarkAnimation from "@/public/Lottie/Checkmark.json";
 import shared from "./onboarding.shared.module.css";
 import styles from "./PreferencesStep.module.css";
 import {
+  areRequiredSessionPreferencesValid,
   CONSULTATION_FORMATS,
   SESSION_LENGTHS,
 } from "./preferencesData";
@@ -64,16 +63,10 @@ export default function PreferencesStep({
   onJumpToStep,
 }: PreferencesStepProps) {
   const formatPriceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
 
-  const hasPricesForAllSelected = selectedFormats.every((id) => {
-    const price = formatPrices[id];
-    return price && parseInt(price, 10) > 0;
-  });
-
-  const canContinue =
-    selectedFormats.length > 0 &&
-    hasPricesForAllSelected &&
-    selectedLengths.length > 0;
+  const canContinue = areRequiredSessionPreferencesValid(selectedFormats, formatPrices);
+  const showValidationError = selectedFormats.length > 0 && !canContinue;
 
   useEffect(() => {
     onStepCompleteChange?.(6, canContinue);
@@ -111,8 +104,17 @@ export default function PreferencesStep({
   const handleFormatPriceChange = (id: string, raw: string) => {
     onFormatPricesChange({
       ...formatPrices,
-      [id]: raw.replace(/\D/g, ""),
+      [id]: raw.replace(/\D/g, "").slice(0, 7),
     });
+  };
+
+  const handleContinue = () => {
+    if (!canContinue) {
+      setHasAttemptedContinue(true);
+      return;
+    }
+
+    onContinue();
   };
 
   const handleToggleLength = (id: string) => {
@@ -159,6 +161,8 @@ export default function PreferencesStep({
           {formats.map((fmt) => {
             const IconComponent = fmt.icon;
             const isSelected = selectedFormats.includes(fmt.id);
+            const price = Number.parseInt(formatPrices[fmt.id] ?? "", 10);
+            const hasValidPrice = Number.isFinite(price) && price > 0;
 
             return (
               <div
@@ -187,27 +191,22 @@ export default function PreferencesStep({
                   />
                 </svg>
 
-                {isSelected && Boolean(formatPrices[fmt.id]?.trim()) && (
-                  <div
-                    className={`${styles.formatCheckbox} ${styles.formatCheckboxSelected}`}
-                    style={{ width: 28, height: 28, top: 16, right: 16 }}
-                    aria-hidden="true"
-                  >
-                    <Lottie
-                      animationData={checkmarkAnimation}
-                      loop={false}
-                      style={{ width: "100%", height: "100%" }}
-                    />
-                  </div>
-                )}
+                <div
+                  className={`${styles.formatCheckbox} ${isSelected ? styles.formatCheckboxSelected : ""}`}
+                  aria-hidden="true"
+                >
+                  {isSelected && hasValidPrice && <Check size={10} strokeWidth={3} />}
+                </div>
 
                 <div className={styles.formatCardBody}>
                   <div className={styles.formatCardInner}>
-                    <div className={styles.formatIconCircle}>
-                      <IconComponent className={styles.formatIcon} />
-                    </div>
                     <div className={styles.formatInfo}>
-                      <h3 className={styles.formatTitle}>{fmt.title}</h3>
+                      {/* Heading and Icon in a flex row */}
+                      <div className={styles.formatHeaderRow}>
+                        <h3 className={styles.formatTitle}>{fmt.title}
+                        </h3>
+                        <IconComponent className={`${styles.formatIcon} ${isSelected ? styles.formatIconSelected : ""}`} />
+                      </div>
                       <p className={styles.formatDesc}>{fmt.desc}</p>
                     </div>
                   </div>
@@ -233,13 +232,19 @@ export default function PreferencesStep({
                         type="text"
                         inputMode="numeric"
                         className={styles.formatPriceInput}
-                        style={{ width: `${Math.max(1, (formatPrices[fmt.id] ?? "").length || 1)}ch` }}
+                        style={{
+                          width: `${Math.min(7, Math.max(1, (formatPrices[fmt.id] ?? "").length))}ch`,
+                        }}
                         value={formatPrices[fmt.id] ?? ""}
                         onChange={(event) => handleFormatPriceChange(fmt.id, event.target.value)}
+                        maxLength={7}
                         placeholder="0"
                         spellCheck={false}
                         autoComplete="off"
+                        max={9999999}
                         aria-label={`${fmt.title} rate in rupees per minute`}
+                        aria-invalid={showValidationError && !(Number.parseInt(formatPrices[fmt.id] ?? "", 10) > 0)}
+                        aria-describedby={showValidationError ? "preferences-validation-error" : undefined}
                       />
                     ) : (
                       <span className={styles.formatPriceInputPlaceholder}>0</span>
@@ -251,12 +256,24 @@ export default function PreferencesStep({
                     >
                       /min
                     </span>
+                    {/* {!hasValidPrice && (
+                      <span className={styles.formatPriceAttention} aria-hidden="true">
+                        !
+                      </span>
+                    )} */}
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
+        {showValidationError && (
+          <p id="preferences-validation-error" className={styles.preferencesValidationError} role="alert">
+              {selectedFormats.length === 0
+                ? "Select at least one consultation type."
+                : "NOTE: Enter a rate greater than ₹0 per minute for each selected consultation type."}
+          </p>
+        )}
       </div>
 
       {/* Session Lengths Section */}
@@ -265,7 +282,7 @@ export default function PreferencesStep({
         style={{ marginBottom: "28px" }}
       >
         <h2 className={styles.preferencesSectionLabel}>
-          Preferred Session Lengths
+          Preferred Session Lengths (Optional)
         </h2>
         <div className={styles.lengthsRow}>
           {lengths.map((len) => {
@@ -323,10 +340,8 @@ export default function PreferencesStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <ContinueButton onClick={onContinue} disabled={!canContinue} />
+          <TextButton label="Back" onClick={onBack} />
+          <ContinueButton onClick={handleContinue} disabled={!canContinue} />
         </div>
       </div>
     </section>

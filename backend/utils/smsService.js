@@ -2,7 +2,6 @@ import twilio from 'twilio';
 import { getSetting, getSettingBool } from './settingsHelper.js';
 
 const OTP_EXPIRY_MINUTES = 10;
-export const TEMP_SMS_OTP = '123456';
 
 function hasPlaceholderCredential(value) {
   if (!value) return true;

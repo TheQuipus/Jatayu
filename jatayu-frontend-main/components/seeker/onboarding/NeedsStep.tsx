@@ -8,6 +8,8 @@ import MatchingProgress from "./MatchingProgress";
 import type { ProgressCompletion, ProgressStepKey } from "./MatchingProgress";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ShinyText from "@/components/ui/ShinyText";
+import TonePillButton from "@/components/ui/TonePillButton";
+import TextButton from "@/components/ui/TextButton";
 import shared from "./onboarding.shared.module.css";
 import styles from "./NeedsStep.module.css";
 import register from "./register.shared.module.css";
@@ -16,29 +18,19 @@ import {
   getSeekerOutcomeDescription,
 } from "./seekerOutcomeOptions";
 import {
-  AI_IMPROVEMENT_STYLES as IMPROVEMENT_STYLES,
   type AiImprovementStyleId as ImprovementStyleId,
   transformTextWithAi as getImprovedText,
-  getAiImprovementHint,
-  DEFAULT_AI_IMPROVE_HINT,
 } from "@/lib/aiTextImprovement";
 import {
   callAiImproveNeeds,
   mapChipIdsToGoalNames,
 } from "@/lib/aiImprovementApi";
 
-function getImprovementHint(
-  styleId: ImprovementStyleId | null,
-  currentText: string,
-  lockedPrefix: string = "",
-): string {
-  const userSuffix = lockedPrefix
-    ? (currentText.startsWith(lockedPrefix) ? currentText.slice(lockedPrefix.length) : "")
-    : currentText;
-
-  const targetText = userSuffix.trim() || currentText.trim();
-  return getAiImprovementHint(styleId, targetText);
-}
+const TONE_PILLS: Array<{ id: ImprovementStyleId; label: string }> = [
+  { id: "casual", label: "Casual" },
+  { id: "professional", label: "Professional" },
+  { id: "concise", label: "Concise" },
+];
 
 function NeedChipIcon({ chipId, isSelected }: { chipId: string; isSelected?: boolean }) {
   const iconClass = `${styles.suggestedPillIcon} ${isSelected ? styles.suggestedPillIconSelected : ""
@@ -102,11 +94,8 @@ export default function NeedsStep({
   progressCompletion,
   onProgressStepClick,
 }: NeedsStepProps) {
-  const [showImprovementPanel, setShowImprovementPanel] = useState(false);
-  const [selectedImproveStyle, setSelectedImproveStyle] = useState<ImprovementStyleId | null>(
-    null,
-  );
-  const [isImprovementApplied, setIsImprovementApplied] = useState(false);
+  const [showTones, setShowTones] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<ImprovementStyleId | null>(null);
   const [internalSelectedNeedChips, setInternalSelectedNeedChips] = useState<string[]>(() => {
     if (selectedNeedChipsProp && selectedNeedChipsProp.length > 0) {
       return selectedNeedChipsProp;
@@ -124,6 +113,7 @@ export default function NeedsStep({
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiOptionsMap, setAiOptionsMap] = useState<Record<string, string> | null>(null);
   const [sourceTextForImprovement, setSourceTextForImprovement] = useState<string>("");
+  const aiRequestIdRef = useRef(0);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const textareaMirrorRef = useRef<HTMLDivElement | null>(null);
@@ -151,18 +141,46 @@ export default function NeedsStep({
     : needsText;
   const canUseAiAssist = userTypedSuffix.trim().length > 0;
 
-  const handleAiAssist = async () => {
-    setShowImprovementPanel(true);
-    setSelectedImproveStyle("professional");
-    setIsImprovementApplied(false);
-    const prefix = getLockedPrefix();
-    const userSuffix = prefix && needsText.startsWith(prefix) ? needsText.slice(prefix.length) : needsText;
-    const targetText = userSuffix.trim() || needsText.trim();
-    setSourceTextForImprovement(targetText);
+  const applyImprovedText = (
+    tone: ImprovementStyleId,
+    optionsMap: Record<string, string> | null,
+    baseText: string,
+    prefix: string,
+  ) => {
+    if (!baseText) return;
+    const improvedSuffix =
+      optionsMap && tone in optionsMap && optionsMap[tone]
+        ? optionsMap[tone]
+        : getImprovedText(tone, baseText);
 
+    const updatedText = prefix ? `${prefix}${improvedSuffix}` : improvedSuffix;
+    onChangeNeedsText(updatedText.slice(0, 1000));
+  };
+
+  const handleImproveNeeds = async (overrideTone?: ImprovementStyleId) => {
+    const prefix = getLockedPrefix();
+    const userSuffix =
+      prefix && needsText.startsWith(prefix) ? needsText.slice(prefix.length) : needsText;
+    const targetText = (sourceTextForImprovement || userSuffix.trim() || needsText.trim()).trim();
+    if (!targetText) return;
+
+    const tone: ImprovementStyleId = overrideTone || selectedTone || "professional";
+    setSelectedTone(tone);
+
+    // If options are already cached for the current text, apply immediately without re-fetching
+    if (aiOptionsMap && sourceTextForImprovement) {
+      applyImprovedText(tone, aiOptionsMap, sourceTextForImprovement, prefix);
+      setShowTones(true);
+      return;
+    }
+
+    const requestId = ++aiRequestIdRef.current;
+    setSourceTextForImprovement(targetText);
     setIsAiLoading(true);
+
     try {
-      const effectiveSubject = (subject && subject.trim()) ? subject.trim() : (step1CategoryOrTopic || "");
+      const effectiveSubject =
+        subject && subject.trim() ? subject.trim() : step1CategoryOrTopic || "";
       const goalNames = mapChipIdsToGoalNames(selectedNeedChips);
 
       const data = await callAiImproveNeeds(
@@ -171,35 +189,45 @@ export default function NeedsStep({
           userText: targetText,
           selectedGoals: goalNames,
         },
-        true
+        true,
       );
 
-      const opts = data.options || data.suggestions;
+      if (requestId !== aiRequestIdRef.current) return;
+
+      const opts = data.options || data.suggestions || null;
       if (opts) {
         setAiOptionsMap(opts);
       }
       if (data.subject && (!subject || !subject.trim()) && onChangeSubject) {
         onChangeSubject(data.subject);
       }
+
+      applyImprovedText(tone, opts, targetText, prefix);
+      setShowTones(true);
     } catch (err) {
+      if (requestId !== aiRequestIdRef.current) return;
       console.error("AI improvement request failed, using local fallback:", err);
+      applyImprovedText(tone, null, targetText, prefix);
+      setShowTones(true);
     } finally {
-      setIsAiLoading(false);
+      if (requestId === aiRequestIdRef.current) {
+        setIsAiLoading(false);
+      }
     }
   };
 
   const handleNeedChipClick = (chip: (typeof NEED_STEP_CHIPS)[number]) => {
-    setIsImprovementApplied(false);
+    aiRequestIdRef.current += 1;
+    setIsAiLoading(false);
+    setAiOptionsMap(null);
+    setSourceTextForImprovement("");
+    setShowTones(false);
+    setSelectedTone(null);
 
     const isSelected = selectedNeedChips.includes(chip.id);
     const nextSelected = isSelected
       ? selectedNeedChips.filter((id) => id !== chip.id)
       : [...selectedNeedChips, chip.id];
-
-    if (nextSelected.length === 0) {
-      setShowImprovementPanel(false);
-      setSelectedImproveStyle(null);
-    }
 
     setSelectedNeedChips(nextSelected);
 
@@ -227,7 +255,12 @@ export default function NeedsStep({
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setIsImprovementApplied(false);
+    aiRequestIdRef.current += 1;
+    setIsAiLoading(false);
+    setSelectedTone(null);
+    setShowTones(false);
+    setAiOptionsMap(null);
+    setSourceTextForImprovement("");
 
     const val = e.target.value;
     const lockedPrefix = getLockedPrefix();
@@ -280,42 +313,6 @@ export default function NeedsStep({
     }
   };
 
-  const getHintText = (styleId: ImprovementStyleId | null) => {
-    if (isAiLoading) return "Generating AI improvement...";
-    if (!styleId) return DEFAULT_AI_IMPROVE_HINT;
-
-    const targetText = sourceTextForImprovement || userTypedSuffix.trim() || needsText.trim();
-    if (!targetText) return DEFAULT_AI_IMPROVE_HINT;
-
-    if (aiOptionsMap && styleId in aiOptionsMap && aiOptionsMap[styleId]) {
-      return aiOptionsMap[styleId];
-    }
-    return getImprovementHint(styleId, targetText, "");
-  };
-
-  const handleApplyImprovement = () => {
-    if (!selectedImproveStyle || isImprovementApplied) return;
-    const currentPrefix = getLockedPrefix();
-    const targetText =
-      sourceTextForImprovement ||
-      (currentPrefix && needsText.startsWith(currentPrefix)
-        ? needsText.slice(currentPrefix.length)
-        : needsText).trim() ||
-      needsText.trim();
-    if (!targetText) return;
-
-    let improvedSuffix = "";
-    if (aiOptionsMap && selectedImproveStyle in aiOptionsMap && aiOptionsMap[selectedImproveStyle]) {
-      improvedSuffix = aiOptionsMap[selectedImproveStyle];
-    } else {
-      improvedSuffix = getImprovedText(selectedImproveStyle, targetText);
-    }
-
-    const updatedText = currentPrefix ? `${currentPrefix}${improvedSuffix}` : improvedSuffix;
-    onChangeNeedsText(updatedText.slice(0, 1000));
-    setIsImprovementApplied(true);
-  };
-
   return (
     <section className={shared.card}>
       <div className={shared.cardHeader}>
@@ -361,6 +358,7 @@ export default function NeedsStep({
                   );
                 })}
               </div>
+
               <div className={styles.needsTextEditor}>
                 <div
                   ref={textareaMirrorRef}
@@ -389,74 +387,49 @@ export default function NeedsStep({
                   maxLength={1000}
                 />
               </div>
-              <div className={styles.charCounter}>
-                {needsText.length} / 1000
-              </div>
-              {canUseAiAssist && !showImprovementPanel ? (
-                <button
-                  type="button"
-                  className={styles.aiAssistTextBtn}
-                  onClick={handleAiAssist}
-                  disabled={!canUseAiAssist || isAiLoading}
-                >
-                  <ShinyText
-                    text={isAiLoading ? "Improving..." : "Improve With Jatayu AI"}
-                    icon="sparkles"
-                    iconSize={14}
-                    speed={2.5}
-                    color="#E53B17"
-                    shineColor="#ffffff"
-                    disabled={!canUseAiAssist || isAiLoading}
-                    className={styles.aiAssistShinyText}
-                  />
-                </button>
-              ) : null}
-            </div>
 
-            {canUseAiAssist && showImprovementPanel ? (
-              <div className={styles.aiImprovePanel}>
-                <div className={styles.improvementChipsWrap}>
-                  {IMPROVEMENT_STYLES.map((style) => {
-                    const isSelected = selectedImproveStyle === style.id;
-
-                    return (
-                      <button
-                        key={style.id}
+              <div className={styles.boxFooter}>
+                {showTones && canUseAiAssist ? (
+                  <div className={styles.pillsHeaderRow}>
+                    {TONE_PILLS.map((pill) => (
+                      <TonePillButton
+                        key={pill.id}
                         type="button"
-                        className={`${styles.suggestedPill} ${isSelected ? styles.suggestedPillSelected : ""
-                          }`}
-                        onClick={() => {
-                          setSelectedImproveStyle(isSelected ? null : style.id);
-                          setIsImprovementApplied(false);
-                        }}
-                        aria-pressed={isSelected}
-                      >
-                        {style.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className={styles.aiImproveHint}>
-                  {getHintText(selectedImproveStyle)}
-                </p>
-                <button
-                  type="button"
-                  className={styles.aiApplyBtn}
-                  onClick={handleApplyImprovement}
-                  disabled={!selectedImproveStyle || isImprovementApplied || isAiLoading}
-                >
-                  <ShinyText
-                    text={isImprovementApplied ? "Applied" : "Apply"}
-                    speed={2.5}
-                    color="#E53B17"
-                    shineColor="#ffffff"
-                    disabled={!selectedImproveStyle || isImprovementApplied}
-                    className={styles.aiApplyShinyText}
-                  />
-                </button>
-              </div>
-            ) : null}
+                        label={pill.label}
+                        selected={selectedTone === pill.id}
+                        disabled={isAiLoading}
+                        className={styles.tonePillButton}
+                        onClick={() => handleImproveNeeds(pill.id)}
+                      />
+                    ))}
+                  </div>
+                ) : canUseAiAssist ? (
+                  <button
+                    type="button"
+                    className={styles.aiAssistTextBtn}
+                    onClick={() => handleImproveNeeds()}
+                    disabled={!canUseAiAssist || isAiLoading}
+                  >
+                    <ShinyText
+                      text={isAiLoading ? "Improving..." : "Improve with JATAYU AI"}
+                      icon="sparkles"
+                      iconSize={14}
+                      speed={2.5}
+                      color="#E53B17"
+                      shineColor="#ffffff"
+                      disabled={!canUseAiAssist || isAiLoading}
+                      className={styles.aiAssistShinyText}
+                    />
+                  </button>
+                ) : (
+                  <div />
+                )}
 
+                <span className={styles.charCounter}>
+                  {needsText.length} / 1000
+                </span>
+              </div>
+            </div>
 
             {/* Pro Tip */}
             <div className={styles.proTipContainer}>
@@ -488,16 +461,13 @@ export default function NeedsStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button
+          <TextButton
             type="button"
             className={shared.textBtn}
             onClick={onBack}
-          >
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+            label="Back"
+          />
+          <TextButton type="button" className={shared.textBtn} onClick={onContinue} label="Skip" />
           <ContinueButton
             onClick={onContinue}
             disabled={needsText.trim().length < 10}

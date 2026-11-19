@@ -150,6 +150,13 @@
   display: block;
 }
 
+.termsCheckbox:focus,
+.termsCheckbox:checked:focus {
+  border-color: #FF3B30;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
+}
+
 .termsText {
   font-family: var(--font-mono);
   font-size: 11px;

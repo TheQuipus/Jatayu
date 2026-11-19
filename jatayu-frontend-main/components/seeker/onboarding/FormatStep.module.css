@@ -55,7 +55,8 @@
 }
 
 .formatPriceInput:focus {
-  border-bottom: 1.5px solid var(--pomegranate, #E53B17);
+  border-bottom: 1px solid #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .formatPriceInputPlaceholder {
@@ -121,6 +122,12 @@
   gap: 24px;
   text-align: left;
   margin-bottom: 48px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.toggleCard:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .toggleTextWrap {
@@ -175,4 +182,33 @@
 
 .switchThumbActive {
   transform: translateX(20px);
+}
+
+/* 1. Length Pills (matches .skillPill hover) */
+.lengthPill:hover:not(.lengthPillSelected):not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--white);
+}
+
+.lengthsSectionDisabled .lengthPill:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Keep selected state intact on hover */
+.lengthPillSelected:hover {
+  background: #080A10;
+  border-color: #E53B17;
+  color: var(--white);
+}
+
+/* 2. Format Price Input (matches input hover without focus override) */
+.formatPriceInput:hover:not(:focus) {
+  border-bottom-color: rgba(255, 255, 255, 0.65);
+}
+
+.switchTrack:hover:not(.switchTrackActive) {
+  background: rgba(255, 255, 255, 0.18);
 }

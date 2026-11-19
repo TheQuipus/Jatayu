@@ -1,28 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { AnimatePresence, motion } from "motion/react";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import OnboardingStepTitle from "./OnboardingStepTitle";
 import OnboardingProgressBar from "./OnboardingProgressBar";
+import TextButton from "@/components/ui/TextButton";
+import TonePillButton from "@/components/ui/TonePillButton";
 import ContinueButton from "@/components/ui/ContinueButton";
 import ExpertCard from "@/components/ui/ExpertCard";
 import ShinyText from "@/components/ui/ShinyText";
 import { type Expert } from "@/lib/experts";
 import { ApiError, suggestOnboardingIdentityCopy } from "@/lib/api";
-import {
-  AI_FALLBACK_NOTICE,
-  buildLocalIdentityCopy,
-  buildIdentityCopyByTone,
-  type IdentityTone,
-  type IdentityToneOptions,
-  type IdentitySuggestIntent,
-} from "@/lib/expertIdentitySuggest";
+import { type IdentityTone } from "@/lib/expertIdentitySuggest";
 import {
   deriveExperienceLevel,
-  getFilledEducationDegrees,
-  getFilledEmploymentPositions,
   type EducationDegree,
   type EmploymentPosition,
 } from "@/lib/expertEmployment";
@@ -34,10 +26,10 @@ function friendlyAiError(error: unknown): string {
   const status = error instanceof ApiError ? error.status : undefined;
   const message = error instanceof Error ? error.message : "";
   if (status === 401) {
-    return "Please sign in again to use AI suggestions, or write your tag line and introduction yourself.";
+    return "Please sign in again to use AI suggestions, or write your title, tag line and introduction yourself.";
   }
   if (code === "AI_NOT_CONFIGURED" || message.toLowerCase().includes("not configured")) {
-    return "AI suggestions are unavailable. You can write your tag line and introduction yourself.";
+    return "AI suggestions are unavailable. You can write your title, tag line and introduction yourself.";
   }
   return "Could not generate suggestions. You can write these yourself or try again.";
 }
@@ -66,10 +58,17 @@ type IdentityStepProps = {
 };
 
 const TONE_PILLS: Array<{ id: IdentityTone; label: string }> = [
-  { id: "professional", label: "Professional" },
   { id: "casual", label: "Casual" },
+  { id: "professional", label: "Professional" },
   { id: "concise", label: "Concise" },
 ];
+
+const DEFAULT_GHOSTED_TAGLINE =
+  "I help startups build scalable design systems and intuitive user experiences.";
+
+// Shorter ghosted text for the brief introduction
+const DEFAULT_GHOSTED_BIO =
+  "I'm a product leader focused on clarity, user research, and shipping impactful work.";
 
 export default function IdentityStep({
   userName,
@@ -94,28 +93,36 @@ export default function IdentityStep({
   onJumpToStep,
 }: IdentityStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const taglineInputRef = useRef<HTMLTextAreaElement>(null);
-  const [photoError, setPhotoError] = useState("");
-  const [aiLoadingField, setAiLoadingField] = useState<"tagLine" | "bio" | null>(null);
-  const [aiError, setAiError] = useState("");
-  const [tagLineTone, setTagLineTone] = useState<IdentityTone | null>(null);
-  const [bioTone, setBioTone] = useState<IdentityTone | null>(null);
-  const [tagLineToneOptions, setTagLineToneOptions] = useState<IdentityToneOptions | null>(null);
-  const [bioToneOptions, setBioToneOptions] = useState<IdentityToneOptions | null>(null);
-  const [showTagLinePills, setShowTagLinePills] = useState(false);
-  const [showBioPills, setShowBioPills] = useState(false);
-  const [isTagLineApplied, setIsTagLineApplied] = useState(false);
-  const [isBioApplied, setIsBioApplied] = useState(false);
-  const variantIndexRef = useRef({ tagLine: 0, bio: 0 });
+  
+  // Tag line refs
+  const tagLineTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const tagLineGhostOverlayRef = useRef<HTMLDivElement>(null);
 
-  const [isTagLineUserEdited, setIsTagLineUserEdited] = useState(false);
+  // Brief Introduction refs
+  const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const bioGhostOverlayRef = useRef<HTMLDivElement>(null);
+
+  const [photoError, setPhotoError] = useState("");
+  const [aiLoading, setAiLoading] = useState({ tagLine: false, bio: false, professionalTitle: false });
+  const [aiErrors, setAiErrors] = useState({ tagLine: "", bio: "", professionalTitle: "" });
+  const [selectedTones, setSelectedTones] = useState<{
+    tagLine: IdentityTone | null;
+    bio: IdentityTone | null;
+    professionalTitle: IdentityTone | null;
+  }>({ tagLine: null, bio: null, professionalTitle: null });
+  
+  const [showTagLineTones, setShowTagLineTones] = useState(false);
+  const [showBioTones, setShowBioTones] = useState(false);
+
+  const requestIdRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
+  const editVersionRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
+  const variantIndexRef = useRef({ tagLine: 0, bio: 0, professionalTitle: 0 });
 
   const safeTagLine = tagLine ?? "";
   const safeBio = bio ?? "";
   const safeTitle = professionalTitle ?? "";
   const maxChars = 160;
   const maxPhotoBytes = 5 * 1024 * 1024;
-  const tagLineCharCount = safeTagLine.length;
   const introCharCount = safeBio.length;
   const isObjectUrl =
     profilePhotoSrc.startsWith("blob:") || profilePhotoSrc.startsWith("data:");
@@ -128,17 +135,32 @@ export default function IdentityStep({
     safeTagLine.trim().length > 0 &&
     safeBio.trim().length > 0;
 
-
-
-  useEffect(() => {
-    if (safeTitle.trim().length > 0 && safeTagLine.trim().length === 0) {
-      handleSuggestField("tagLine");
+  // Sync scroll position between textarea and ghost text overlay for Tag Line
+  const handleTagLineScroll = () => {
+    if (tagLineTextareaRef.current && tagLineGhostOverlayRef.current) {
+      tagLineGhostOverlayRef.current.scrollTop = tagLineTextareaRef.current.scrollTop;
     }
-  }, []);
+  };
+
+  // Sync scroll position between textarea and ghost text overlay for Brief Introduction
+  const handleBioScroll = () => {
+    if (bioTextareaRef.current && bioGhostOverlayRef.current) {
+      bioGhostOverlayRef.current.scrollTop = bioTextareaRef.current.scrollTop;
+    }
+  };
 
   useEffect(() => {
     onStepCompleteChange?.(4, canContinue);
   }, [canContinue, onStepCompleteChange]);
+
+  useEffect(() => {
+    const requestIds = requestIdRef.current;
+    return () => {
+      requestIds.tagLine += 1;
+      requestIds.bio += 1;
+      requestIds.professionalTitle += 1;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -148,9 +170,23 @@ export default function IdentityStep({
     };
   }, [profilePhotoSrc]);
 
-  const fetchToneOptionsFromAi = async (field: "tagLine" | "bio") => {
-    setAiLoadingField(field);
-    setAiError("");
+  const handleSelectTone = (field: "tagLine" | "bio" | "professionalTitle", tone: IdentityTone) => {
+    setSelectedTones((previous) => ({ ...previous, [field]: tone }));
+  };
+
+  const handleSuggestField = async (
+    field: "tagLine" | "bio" | "professionalTitle",
+    overrideTone?: IdentityTone
+  ): Promise<boolean> => {
+    const requestId = ++requestIdRef.current[field];
+    const editVersion = editVersionRef.current[field];
+    const currentText = field === "tagLine" ? safeTagLine : field === "bio" ? safeBio : safeTitle;
+    const variantIndex = variantIndexRef.current[field]++;
+    const tone = overrideTone || selectedTones[field] || "professional";
+
+    setAiLoading((previous) => ({ ...previous, [field]: true }));
+    setAiErrors((previous) => ({ ...previous, [field]: "" }));
+
     try {
       const response = await suggestOnboardingIdentityCopy({
         fullName: userName,
@@ -158,126 +194,66 @@ export default function IdentityStep({
         skills: selectedSkills,
         experienceLevel: experienceLevel || deriveExperienceLevel(employmentPositions),
         professionalTitle,
-        currentTagLine: tagLine,
-        currentBio: bio,
+        languages,
+        employment: employmentPositions,
+        education: educationDegrees,
+        currentTagLine: safeTagLine,
+        currentBio: safeBio,
+        currentProfessionalTitle: safeTitle,
+        tone,
+        intent: currentText.trim() ? "regenerate" : "suggest",
+        variantIndex,
         field,
       });
 
-      const toneOptions = response.tones || response.options || response.suggestions;
-      if (toneOptions) {
-        return toneOptions;
+      if (requestId !== requestIdRef.current[field] || editVersion !== editVersionRef.current[field]) {
+        return false;
       }
 
-      if (field === "tagLine" && response.tagLine) {
-        const generated = response.tagLine;
-        return {
-          professional: { tagLine: generated, bio: bio },
-          casual: { tagLine: generated, bio: bio },
-          concise: { tagLine: generated, bio: bio },
-        };
+      const generated = field === "professionalTitle"
+        ? response.professionalTitle
+        : field === "tagLine"
+          ? response.tagLine
+          : response.bio || response.briefIntroduction;
+      if (!generated?.trim()) {
+        throw new Error("No suggestion was returned. Please try again.");
       }
 
-      if (field === "bio" && response.briefIntroduction) {
-        const generated = response.briefIntroduction;
-        return {
-          professional: { tagLine: tagLine, bio: generated },
-          casual: { tagLine: tagLine, bio: generated },
-          concise: { tagLine: tagLine, bio: generated },
-        };
+      if (field === "professionalTitle") onProfessionalTitleChange(generated.slice(0, maxChars));
+      else if (field === "tagLine") onTagLineChange(generated.slice(0, maxChars));
+      else onBioChange(generated.slice(0, maxChars));
+      
+      return true;
+    } catch (error) {
+      if (requestId === requestIdRef.current[field] && editVersion === editVersionRef.current[field]) {
+        console.warn("AI backend call error:", error);
+        setAiErrors((previous) => ({ ...previous, [field]: friendlyAiError(error) }));
       }
-    } catch (err) {
-      console.warn("AI backend call error:", err);
-      setAiError(friendlyAiError(err));
+      return false;
     } finally {
-      setAiLoadingField(null);
-    }
-    return null;
-  };
-
-  const handleApplyTaglineTone = (tone: IdentityTone, overrideOpts?: IdentityToneOptions) => {
-    const opts = overrideOpts || tagLineToneOptions;
-    if (!opts || !opts[tone]) return;
-
-    if (tagLineTone === tone && !overrideOpts) {
-      setTagLineTone(null);
-      setIsTagLineApplied(false);
-      return;
-    }
-    setTagLineToneOptions(opts);
-    setTagLineTone(tone);
-    onTagLineChange(opts[tone].tagLine);
-    setIsTagLineApplied(true);
-    setIsTagLineUserEdited(false);
-
-    setTimeout(() => {
-      if (taglineInputRef.current) {
-        taglineInputRef.current.focus();
-        const len = taglineInputRef.current.value.length;
-        taglineInputRef.current.setSelectionRange(len, len);
+      if (requestId === requestIdRef.current[field]) {
+        setAiLoading((previous) => ({ ...previous, [field]: false }));
       }
-    }, 50);
-  };
-
-  const handleSelectTone = (field: "tagLine" | "bio", tone: IdentityTone) => {
-    if (field === "tagLine") {
-      handleApplyTaglineTone(tone);
-    } else {
-      if (bioTone === tone) {
-        setBioTone(null);
-        setIsBioApplied(false);
-        return;
-      }
-      const opts = bioToneOptions;
-      if (!opts) return;
-      setBioToneOptions(opts);
-      setBioTone(tone);
-      setIsBioApplied(false);
     }
   };
 
-  const handleApplyTone = (field: "tagLine" | "bio") => {
-    if (field === "tagLine") {
-      handleApplyTaglineTone(tagLineTone || "professional");
-    } else {
-      const opts = bioToneOptions;
-      if (!opts) return;
-      const activeTone = bioTone || "professional";
-      onBioChange(opts[activeTone].bio);
-      setIsBioApplied(true);
+  const handleImproveTagLine = async () => {
+    const success = await handleSuggestField("tagLine");
+    if (success) {
+      setShowTagLineTones(true);
     }
   };
 
-  const handleSuggestField = async (field: "tagLine" | "bio") => {
-    const aiOpts = await fetchToneOptionsFromAi(field);
-    if (!aiOpts) return;
-
-    if (field === "tagLine") {
-      setShowTagLinePills(true);
-      setTagLineToneOptions(aiOpts);
-      const activeTone = tagLineTone || "professional";
-      setTagLineTone(activeTone);
-      if (aiOpts[activeTone]?.tagLine) {
-        onTagLineChange(aiOpts[activeTone].tagLine);
-        setIsTagLineApplied(true);
-        setIsTagLineUserEdited(false);
-      }
-    } else {
-      setShowBioPills(true);
-      setBioToneOptions(aiOpts);
-      const activeTone = bioTone || "professional";
-      setBioTone(activeTone);
-      setIsBioApplied(false);
+  const handleImproveBio = async () => {
+    const success = await handleSuggestField("bio");
+    if (success) {
+      setShowBioTones(true);
     }
   };
 
   const handleTitleChange = (val: string) => {
+    editVersionRef.current.professionalTitle += 1;
     onProfessionalTitleChange(val);
-  };
-
-  const handleTitleBlur = () => {
-    if (safeTitle.trim().length > 0 && (!isTagLineUserEdited || safeTagLine.trim().length === 0)) {
-      handleSuggestField("tagLine");
-    }
   };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -319,8 +295,16 @@ export default function IdentityStep({
   const previewStatsText = professionalTitle.trim()
     ? professionalTitle.trim()
     : "Add your professional title";
-  const tagLineBusy = aiLoadingField === "tagLine";
-  const bioBusy = aiLoadingField === "bio";
+
+  // Ghosted mechanics logic for Tag Line
+  const tagLineTypedLength = safeTagLine.length;
+  const showTagLineGhostOverlay = tagLineTypedLength > 0 && tagLineTypedLength < DEFAULT_GHOSTED_TAGLINE.length;
+  const tagLineGhostRemainingText = showTagLineGhostOverlay ? DEFAULT_GHOSTED_TAGLINE.slice(tagLineTypedLength) : "";
+
+  // Ghosted mechanics logic for Brief Introduction (shortened)
+  const bioTypedLength = safeBio.length;
+  const showBioGhostOverlay = bioTypedLength > 0 && bioTypedLength < DEFAULT_GHOSTED_BIO.length;
+  const bioGhostRemainingText = showBioGhostOverlay ? DEFAULT_GHOSTED_BIO.slice(bioTypedLength) : "";
 
   return (
     <section className={shared.card}>
@@ -343,6 +327,7 @@ export default function IdentityStep({
 
         <div className={styles.splitLayout}>
           <div className={styles.inputsColumn}>
+            {/* Photo Upload Header */}
             <div className={styles.photoUploadContainer}>
               <label
                 htmlFor="identity-photo-upload"
@@ -386,179 +371,195 @@ export default function IdentityStep({
               </div>
             </div>
 
+            {/* PROFESSIONAL TITLE */}
             <div className={styles.fieldGroup}>
               <label htmlFor="title-input" className={styles.fieldLabel}>
                 Professional Title
               </label>
-              <input
-                id="title-input"
-                type="text"
-                value={professionalTitle ?? ""}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                onBlur={handleTitleBlur}
-                className={styles.textField}
-                placeholder="e.g. Senior Software Engineer"
-                autoComplete="off"
-              />
+              <div className={styles.singleLineWrapper}>
+                <input
+                  id="title-input"
+                  type="text"
+                  value={safeTitle}
+                  onChange={(e) => handleTitleChange(e.target.value.slice(0, maxChars))}
+                  className={styles.textField}
+                  placeholder="e.g. Software Engineering Specialist"
+                />
+              </div>
             </div>
 
+            {/* TAG LINE */}
             <div className={styles.fieldGroup}>
               <label htmlFor="tagline-input" className={styles.fieldLabel}>
                 Tag Line
               </label>
-              <div className={styles.textareaWrapperBox}>
-                {safeTitle.trim().length > 0 ? (
-                  <div className={styles.inputBoxHeader}>
-                    <div className={styles.inlinePillsWrap}>
+
+              <div className={styles.tagLineBox}>
+                <div className={styles.ghostTextareaContainer}>
+                  <div
+                    ref={tagLineGhostOverlayRef}
+                    className={styles.ghostTextOverlay}
+                    aria-hidden="true"
+                  >
+                    <span className={styles.ghostTypedSpacer}>{safeTagLine}</span>
+                    <span className={styles.ghostTextRemaining}>{tagLineGhostRemainingText}</span>
+                  </div>
+
+                  <textarea
+                    ref={tagLineTextareaRef}
+                    id="tagline-input"
+                    value={safeTagLine}
+                    onChange={(e) => {
+                      editVersionRef.current.tagLine += 1;
+                      onTagLineChange(e.target.value.slice(0, maxChars));
+                      if (showTagLineTones) {
+                        setShowTagLineTones(false);
+                      }
+                    }}
+                    onScroll={handleTagLineScroll}
+                    className={`${styles.boxTextarea} ${styles.ghostInputTextarea}`}
+                    rows={3}
+                    style={{ resize: "none" }}
+                    placeholder={DEFAULT_GHOSTED_TAGLINE}
+                  />
+                </div>
+
+                <div className={styles.boxFooter}>
+                  {showTagLineTones ? (
+                    <div className={styles.pillsHeaderRow}>
                       {TONE_PILLS.map((pill) => {
-                        const isSelected = tagLineTone === pill.id;
+                        const isSelected = selectedTones.tagLine === pill.id;
+
                         return (
-                          <button
+                          <TonePillButton
                             key={pill.id}
                             type="button"
-                            className={`${styles.suggestedPill} ${styles.inlinePill} ${
-                              isSelected ? styles.suggestedPillSelected : ""
-                            }`}
-                            onClick={() => handleApplyTaglineTone(pill.id)}
-                          >
-                            <span>{pill.label}</span>
-                          </button>
+                            label={pill.label}
+                            className={styles.tonePillButton}
+                            onClick={() => {
+                              handleSelectTone("tagLine", pill.id);
+                              handleSuggestField("tagLine", pill.id);
+                            }}
+                          />
                         );
                       })}
                     </div>
-                  </div>
-                ) : null}
-                <textarea
-                  ref={taglineInputRef}
-                  id="tagline-input"
-                  value={tagLine ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val.trim().length === 0) {
-                      setIsTagLineUserEdited(false);
-                    } else {
-                      setIsTagLineUserEdited(true);
-                    }
-                    onTagLineChange(val.slice(0, maxChars));
-                  }}
-                  className={styles.innerBoxTextarea}
-                  rows={3}
-                  placeholder="e.g. I help startups build scalable design systems and intuitive user experiences."
-                />
-                <div className={styles.inputBoxFooter}>
+                  ) : safeTagLine.trim().length > 0 ? (
+                    <button
+                      type="button"
+                      className={styles.aiTagLineBtn}
+                      onClick={handleImproveTagLine}
+                      disabled={aiLoading.tagLine}
+                    >
+                      <ShinyText
+                        text={aiLoading.tagLine ? "Improving..." : "Improve with JATAYU AI"}
+                        icon="sparkles"
+                        iconSize={14}
+                        speed={2.5}
+                        color="#E53B17"
+                        shineColor="#ffffff"
+                        disabled={aiLoading.tagLine}
+                      />
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+
                   <span className={styles.textareaFooterCounter}>
-                    {tagLineCharCount}/{maxChars}
+                    {safeTagLine.length}/{maxChars}
                   </span>
                 </div>
               </div>
+
+              {aiErrors.tagLine ? (
+                <p className={styles.aiSuggestError}>{aiErrors.tagLine}</p>
+              ) : null}
             </div>
 
+            {/* BRIEF INTRODUCTION */}
             <div className={styles.fieldGroup}>
-              <div className={styles.fieldLabelRow}>
-                <label htmlFor="intro-input" className={styles.fieldLabel}>
-                  Brief Introduction
-                </label>
-              </div>
-              <div className={styles.textareaWrapper}>
-                <textarea
-                  id="intro-input"
-                  value={bio ?? ""}
-                  onChange={(e) => onBioChange(e.target.value.slice(0, maxChars))}
-                  className={`${styles.textareaField} ${styles.textareaWithBioFooter}`}
-                  rows={5}
-                  placeholder="e.g. I'm a product leader with 8+ years guiding teams through complex launches. I focus on clarity, user research, and shipping work that moves the needle."
-                />
-                <div className={styles.textareaFooterInline}>
-                  <AnimatePresence>
-                    {bioBusy ? (
-                      <motion.span
-                        key="bio-ai-loading"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className={styles.aiBioLoadingText}
-                      >
-                        Suggesting…
-                      </motion.span>
-                    ) : !showBioPills ? (
-                      <motion.button
-                        key="bio-ai-suggest"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 1 }}
-                        transition={{ duration: 0.2 }}
-                        type="button"
-                        className={styles.aiBioInlineBtn}
-                        disabled={bioBusy}
-                        onClick={() => handleSuggestField("bio")}
-                      >
-                        <ShinyText
-                          text="Suggest by Jatayu AI"
-                          icon="sparkles"
-                          iconSize={14}
-                          speed={2.5}
-                          color="#E53B17"
-                          shineColor="#ffffff"
-                          className={styles.aiBioShinyText}
-                        />
-                      </motion.button>
-                    ) : null}
-                  </AnimatePresence>
+              <label htmlFor="intro-input" className={styles.fieldLabel}>
+                Brief Introduction
+              </label>
+
+              <div className={styles.introBox}>
+                <div className={styles.ghostTextareaContainer}>
+                  <div
+                    ref={bioGhostOverlayRef}
+                    className={styles.ghostTextOverlay}
+                    aria-hidden="true"
+                  >
+                    <span className={styles.ghostTypedSpacer}>{safeBio}</span>
+                    <span className={styles.ghostTextRemaining}>{bioGhostRemainingText}</span>
+                  </div>
+
+                  <textarea
+                    ref={bioTextareaRef}
+                    id="intro-input"
+                    value={safeBio}
+                    onChange={(e) => {
+                      editVersionRef.current.bio += 1;
+                      onBioChange(e.target.value.slice(0, maxChars));
+                      if (showBioTones) {
+                        setShowBioTones(false);
+                      }
+                    }}
+                    onScroll={handleBioScroll}
+                    className={`${styles.boxTextarea} ${styles.ghostInputTextarea}`}
+                    rows={4}
+                    style={{ resize: "none" }}
+                    placeholder={DEFAULT_GHOSTED_BIO}
+                  />
+                </div>
+
+                <div className={styles.boxFooter}>
+                  {showBioTones ? (
+                    <div className={styles.pillsHeaderRow}>
+                      {TONE_PILLS.map((pill) => {
+                        const isSelected = selectedTones.tagLine === pill.id;
+
+                        return (
+                          <TonePillButton
+                            key={pill.id}
+                            type="button"
+                            label={pill.label}
+                            className={styles.tonePillButton}
+                            onClick={() => {
+                              handleSelectTone("tagLine", pill.id);
+                              handleSuggestField("tagLine", pill.id);
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : safeBio.trim().length > 0 ? (
+                    <button
+                      type="button"
+                      className={styles.aiBioInlineBtn}
+                      onClick={handleImproveBio}
+                      disabled={aiLoading.bio}
+                    >
+                      <ShinyText
+                        text={aiLoading.bio ? "Improving..." : "Improve with JATAYU AI"}
+                        icon="sparkles"
+                        iconSize={14}
+                        speed={2.5}
+                        color="#E53B17"
+                        shineColor="#ffffff"
+                        disabled={aiLoading.bio}
+                      />
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+
                   <span className={styles.textareaFooterCounter}>
                     {introCharCount}/{maxChars}
                   </span>
                 </div>
               </div>
-              <AnimatePresence>
-                {showBioPills ? (
-                  <motion.div
-                    key="bio-ai-panel"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ overflow: "hidden" }}
-                    className={styles.aiImprovePanel}
-                  >
-                    <div className={styles.taglineChipsRow}>
-                      {TONE_PILLS.map((pill) => {
-                        const isSelected = bioTone === pill.id;
-                        return (
-                          <button
-                            key={pill.id}
-                            type="button"
-                            className={`${styles.suggestedPill} ${isSelected ? styles.suggestedPillSelected : ""}`}
-                            onClick={() => handleSelectTone("bio", pill.id)}
-                          >
-                            <span>{pill.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className={styles.aiImproveHint}>
-                      {bioToneOptions
-                        ? bioToneOptions[bioTone || "professional"].bio
-                        : "Select a tone pill to preview."}
-                    </p>
-                    <button
-                      type="button"
-                      className={styles.aiApplyBtn}
-                      onClick={() => handleApplyTone("bio")}
-                      disabled={isBioApplied}
-                    >
-                      <ShinyText
-                        text={isBioApplied ? "Applied" : "Apply"}
-                        speed={2.5}
-                        color="#E53B17"
-                        shineColor="#ffffff"
-                        disabled={isBioApplied}
-                        className={styles.aiApplyShinyText}
-                      />
-                    </button>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-              {aiError ? <p className={styles.aiSuggestError}>{aiError}</p> : null}
+
+              {aiErrors.bio ? <p className={styles.aiSuggestError}>{aiErrors.bio}</p> : null}
             </div>
           </div>
 
@@ -594,12 +595,8 @@ export default function IdentityStep({
         </div>
 
         <div className={shared.footerActions}>
-          <button type="button" className={shared.textBtn} onClick={onBack}>
-            Back
-          </button>
-          <button type="button" className={shared.textBtn} onClick={onContinue}>
-            Skip
-          </button>
+          <TextButton label="Back" onClick={onBack} />
+          <TextButton label="Skip" onClick={onContinue} />
           <ContinueButton onClick={onContinue} disabled={!canContinue} />
         </div>
       </div>

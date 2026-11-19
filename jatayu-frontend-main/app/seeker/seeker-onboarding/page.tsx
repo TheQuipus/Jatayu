@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Briefcase,
@@ -23,6 +23,7 @@ import BudgetStep from "@/components/seeker/onboarding/BudgetStep";
 import PersonalisationStep from "@/components/seeker/onboarding/PersonalisationStep";
 import ReviewStep from "@/components/seeker/onboarding/ReviewStep";
 import SuccessStep from "@/components/seeker/onboarding/SuccessStep";
+import SeekerPhoneStep from "@/components/seeker/onboarding/SeekerPhoneStep";
 import type {
   ProgressCompletion,
   ProgressStepKey,
@@ -34,13 +35,17 @@ import {
   type SeekerOnboardingStepKey,
 } from "@/components/seeker/onboarding/seekerOnboardingSteps";
 import {
-  getSeekerProfile,
+  getSeekerMe,
   submitSeekerOnboarding,
   updateSeekerOnboarding,
   type AuthResponse,
   type AuthUser,
   type UpdateSeekerOnboardingPayload,
 } from "@/lib/api";
+import {
+  mapBackendSeekerToProfile,
+  saveStoredSeekerProfile,
+} from "@/lib/seekerProfileApi";
 import {
   clearPendingSeekerOtpSession,
   clearSeekerAuthOnly,
@@ -52,6 +57,7 @@ import {
   readPendingSeekerOtpSession,
   savePendingSeekerOtpSession,
 } from "@/lib/seekerAuth";
+import { getOtpBackStep } from "@/lib/otpFlow";
 
 const categories = [
   { id: "career-work", label: "Career & Work", icon: Briefcase },
@@ -247,6 +253,7 @@ function getFeaturedTopics(categoryId: string, topics: string[]): string[] {
 }
 
 type OnboardingStep =
+  | "phone"
   | "welcome"
   | "category"
   | "topics"
@@ -262,6 +269,7 @@ type OnboardingStep =
 
 function SeekerOnboardingPageContent() {
   const router = useRouter();
+  const [routeInitialized, setRouteInitialized] = useState(false);
   const [step, setStep] = useState<OnboardingStep>("register");
   const [editReturnStep, setEditReturnStep] = useState<OnboardingStep | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -287,6 +295,38 @@ function SeekerOnboardingPageContent() {
   const [stepSaveError, setStepSaveError] = useState<string | null>(null);
 
   const [prefilledLoginEmail, setPrefilledLoginEmail] = useState("");
+  const profileHydrationRequestIdRef = useRef(0);
+
+  async function hydrateSeekerProfileFromServer(
+    fallbackUser?: AuthUser | null,
+  ): Promise<Record<string, unknown>> {
+    const requestId = ++profileHydrationRequestIdRef.current;
+    const storedUser = fallbackUser ?? getStoredSeekerUser();
+
+    let profileFromServer: Record<string, unknown> | null = null;
+    try {
+      if (isSeekerAuthenticated()) {
+        profileFromServer = await getSeekerMe();
+      }
+    } catch {
+      profileFromServer = null;
+    }
+
+    if (requestId !== profileHydrationRequestIdRef.current) {
+      return (storedUser ?? {}) as Record<string, unknown>;
+    }
+
+    const hydratedData = (profileFromServer ?? (storedUser ?? {})) as Record<string, unknown>;
+    hydrateSeekerFromProfile(hydratedData);
+
+    if (profileFromServer) {
+      saveStoredSeekerProfile(
+        mapBackendSeekerToProfile(profileFromServer as Parameters<typeof mapBackendSeekerToProfile>[0]),
+      );
+    }
+
+    return hydratedData;
+  }
 
   function hydrateSeekerFromProfile(data: Record<string, unknown>) {
     if (data.id && typeof data.id === "string") setSeekerId(data.id);
@@ -294,25 +334,30 @@ function SeekerOnboardingPageContent() {
     if (data.email && typeof data.email === "string") setRegisteredEmail(data.email);
     if (data.phone && typeof data.phone === "string") setRegisteredPhone(data.phone);
 
-    if (data.selectedCategory && typeof data.selectedCategory === "string") {
-      const savedCat = data.selectedCategory;
+    const savedCategory = data.selectedCategory ?? data.category;
+    if (typeof savedCategory === "string" && savedCategory) {
       const knownCat = categories.find(
-        (c) => c.id === savedCat || c.label.toLowerCase() === savedCat.toLowerCase(),
+        (c) => c.id === savedCategory || c.label.toLowerCase() === savedCategory.toLowerCase(),
       );
       if (knownCat) {
         setSelectedCategory(knownCat.id);
       } else {
-        const customId = `custom-${savedCat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "category"}`;
+        const customId = `custom-${savedCategory.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "category"}`;
         setCustomCategories((prev) => {
-          if (prev.some((c) => c.id === customId || c.label === savedCat)) return prev;
-          return [...prev, { id: customId, label: savedCat, icon: Briefcase }];
+          if (prev.some((c) => c.id === customId || c.label === savedCategory)) return prev;
+          return [...prev, { id: customId, label: savedCategory, icon: Briefcase }];
         });
         setSelectedCategory(customId);
       }
     }
 
-    if (Array.isArray(data.selectedTopics)) {
-      setSelectedTopics(data.selectedTopics.map(String));
+    const savedTopics = Array.isArray(data.selectedTopics)
+      ? data.selectedTopics
+      : Array.isArray(data.topics)
+        ? data.topics
+        : null;
+    if (savedTopics) {
+      setSelectedTopics(savedTopics.map(String));
     }
     if (typeof data.needsText === "string") setNeedsText(data.needsText);
     if (Array.isArray(data.selectedNeedChips)) {
@@ -333,6 +378,8 @@ function SeekerOnboardingPageContent() {
   }
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    setRouteInitialized(true);
     const params = new URLSearchParams(window.location.search);
     const auth = params.get("auth");
     const flow = params.get("flow");
@@ -341,43 +388,52 @@ function SeekerOnboardingPageContent() {
     if (auth === "login") {
       clearPendingSeekerOtpSession();
       clearSeekerAuthSession();
-      queueMicrotask(() => setStep("login"));
+      setStep("login");
       return;
     }
 
     if (flow === "signup" || auth === "register" || auth === "signup") {
       clearPendingSeekerOtpSession();
       clearSeekerAuthSession();
-      queueMicrotask(() => handleSwitchToRegister());
+      handleSwitchToRegister();
       return;
     }
 
     if (resume === "otp") {
       const pendingOtp = readPendingSeekerOtpSession();
-      if (pendingOtp) {
-        queueMicrotask(() => {
-          setSeekerId(pendingOtp.seekerId);
-          setRegisteredEmail(pendingOtp.email);
-          setRegisteredPhone(pendingOtp.phone);
-          if (pendingOtp.fullName) setRegisteredName(pendingOtp.fullName);
-          setStep("otp");
-        });
+      const seekerIdParam = params.get("seekerId");
+      const emailParam = params.get("email");
+      const phoneParam = params.get("phone");
+
+      const effectiveSeekerId = pendingOtp?.seekerId || seekerIdParam || "";
+      const effectiveEmail = pendingOtp?.email || emailParam || "";
+      const effectivePhone = pendingOtp?.phone || phoneParam || "";
+
+      if (effectiveSeekerId && effectiveEmail) {
+        setSeekerId(effectiveSeekerId);
+        setRegisteredEmail(effectiveEmail);
+        setRegisteredPhone(effectivePhone);
+        if (pendingOtp?.fullName) setRegisteredName(pendingOtp.fullName);
+        setStep("otp");
         return;
       }
     }
 
-    if (resume === "category" && isSeekerAuthenticated()) {
+    if (isSeekerAuthenticated() && !params.get("step")) {
       clearPendingSeekerOtpSession();
       const storedUser = getStoredSeekerUser();
-      if (storedUser) {
-        hydrateSeekerFromProfile(storedUser as unknown as Record<string, unknown>);
-        const dest = getSeekerPostAuthDestination(storedUser);
+      void (async () => {
+        const hydratedData = await hydrateSeekerProfileFromServer(storedUser);
+        const dest = getSeekerPostAuthDestination({
+          ...(storedUser || {}),
+          ...(hydratedData || {}),
+        } as AuthUser);
         if (typeof dest === "string" && dest.startsWith("/")) {
           window.location.assign(dest);
           return;
         }
         setStep(dest as OnboardingStep);
-      }
+      })();
       return;
     }
 
@@ -385,21 +441,22 @@ function SeekerOnboardingPageContent() {
     if (stepParam && isSeekerAuthenticated()) {
       clearPendingSeekerOtpSession();
       const storedUser = getStoredSeekerUser();
-      if (storedUser) {
-        hydrateSeekerFromProfile(storedUser as unknown as Record<string, unknown>);
-      }
-      setStep(stepParam as OnboardingStep);
+      void (async () => {
+        await hydrateSeekerProfileFromServer(storedUser);
+        setStep(stepParam as OnboardingStep);
+      })();
       return;
     }
 
     // Default for unauthenticated signup / initial visit: clear any old session and show register step
     clearSeekerAuthSession();
     clearPendingSeekerOtpSession();
-    queueMicrotask(() => handleSwitchToRegister());
+    handleSwitchToRegister();
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!routeInitialized) return;
     let targetQuery = "";
     if (step === "register") {
       targetQuery = "?flow=signup";
@@ -414,7 +471,7 @@ function SeekerOnboardingPageContent() {
     if (window.location.pathname + window.location.search !== targetUrl) {
       window.history.replaceState(null, "", targetUrl);
     }
-  }, [step]);
+  }, [routeInitialized, step]);
 
   const handleStartJourney = () => {
     setStep("register");
@@ -430,6 +487,9 @@ function SeekerOnboardingPageContent() {
     setStepSaveError(null);
     try {
       await updateSeekerOnboarding(payload);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "instant" });
+      }
       setStep(nextStep);
     } catch (error) {
       setStepSaveError(
@@ -619,6 +679,7 @@ function SeekerOnboardingPageContent() {
       phone,
       email,
       fullName,
+      flow: "signup",
     });
     setSeekerId(nextSeekerId);
     setRegisteredPhone(phone);
@@ -644,6 +705,7 @@ function SeekerOnboardingPageContent() {
       email,
       phone,
       fullName,
+      flow: "login",
     });
     setSeekerId(nextSeekerId);
     setRegisteredEmail(email);
@@ -653,14 +715,32 @@ function SeekerOnboardingPageContent() {
     clearSeekerAuthOnly();
   };
 
-  const handleAuthSuccess = (response: AuthResponse) => {
+  const handleAuthSuccess = async (response: AuthResponse) => {
     persistSeekerAuthSession(response);
+
+    const storedUser = getStoredSeekerUser();
+    const hydratedData = await hydrateSeekerProfileFromServer(storedUser).catch(() => {
+      return (storedUser ?? response.user) as unknown as Record<string, unknown>;
+    });
+    const normalizedPhone = typeof hydratedData.phone === "string"
+      ? hydratedData.phone
+      : typeof response.user.phone === "string"
+        ? response.user.phone
+        : "";
+
     if (response.user.fullName) setRegisteredName(response.user.fullName);
     if (response.user.email) setRegisteredEmail(response.user.email);
-    if (response.user.phone) setRegisteredPhone(response.user.phone);
-    hydrateSeekerFromProfile(response.user as unknown as Record<string, unknown>);
+    if (normalizedPhone) setRegisteredPhone(normalizedPhone);
+    if (hydratedData && typeof hydratedData === "object") {
+      hydrateSeekerFromProfile(hydratedData);
+    }
 
-    const destination = getSeekerPostAuthDestination(response.user);
+    const destination = getSeekerPostAuthDestination({
+      ...(storedUser || {}),
+      ...(hydratedData || {}),
+      ...(response.user || {}),
+      phone: normalizedPhone,
+    } as AuthUser);
     if (typeof destination === "string" && destination.startsWith("/")) {
       window.location.assign(destination);
       return;
@@ -669,19 +749,55 @@ function SeekerOnboardingPageContent() {
     setStep(destination as OnboardingStep);
   };
 
+  const handlePhoneContinue = async (phone: string) => {
+    const response = await updateSeekerOnboarding({ phone });
+    const savedSeeker = response.seeker;
+    const savedPhone = typeof savedSeeker.phone === "string" ? savedSeeker.phone : "";
+    saveStoredSeekerProfile(
+      mapBackendSeekerToProfile(savedSeeker as Parameters<typeof mapBackendSeekerToProfile>[0]),
+    );
+    setRegisteredPhone(savedPhone);
+
+    const storedUser = getStoredSeekerUser();
+    const destination = getSeekerPostAuthDestination({
+      ...(storedUser || {}),
+      ...savedSeeker,
+      phone: savedPhone,
+    } as AuthUser);
+    if (typeof destination === "string" && destination.startsWith("/")) {
+      router.replace(destination);
+      return;
+    }
+    setStep(destination as OnboardingStep);
+  };
+
   const handleLoginComplete = (response: AuthResponse) => {
     clearPendingSeekerOtpSession();
-    handleAuthSuccess(response);
+    void handleAuthSuccess(response);
   };
 
   const handleOtpComplete = (response: AuthResponse) => {
     clearPendingSeekerOtpSession();
-    handleAuthSuccess(response);
+    void handleAuthSuccess(response);
   };
 
   const handleBackToRegister = () => {
     setStep("register");
     router.replace("/seeker/seeker-onboarding/?flow=signup");
+  };
+
+  const handleOtpBack = () => {
+    const pendingOtp = readPendingSeekerOtpSession();
+    clearPendingSeekerOtpSession();
+
+    if (getOtpBackStep(pendingOtp?.flow) === "login") {
+      setPrefilledLoginEmail(pendingOtp?.email || registeredEmail);
+      setStep("login");
+      router.replace("/seeker/seeker-onboarding/?auth=login");
+      return;
+    }
+
+    handleBackToRegister();
   };
 
   const handleBackFromCategory = () => {
@@ -964,6 +1080,13 @@ function SeekerOnboardingPageContent() {
         />
       )}
 
+      {step === "phone" && (
+        <SeekerPhoneStep
+          userName={registeredName}
+          onContinue={handlePhoneContinue}
+        />
+      )}
+
       {step === "login" && (
         <LoginStep
           onContinue={handleLoginComplete}
@@ -978,7 +1101,7 @@ function SeekerOnboardingPageContent() {
           seekerId={seekerId}
           phone={registeredPhone}
           email={registeredEmail}
-          onBack={handleBackToRegister}
+          onBack={handleOtpBack}
           onContinue={handleOtpComplete}
         />
       ) : null}
@@ -986,7 +1109,7 @@ function SeekerOnboardingPageContent() {
       {step === "otp" && !seekerId ? (
         <section className={styles.pageContainer}>
           <p>Verification session expired. Please register again to receive a new code.</p>
-          <button type="button" onClick={handleBackToRegister}>
+          <button type="button" onClick={handleOtpBack}>
             Back to Register
           </button>
         </section>

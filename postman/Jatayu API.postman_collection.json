@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Jatayu Backend API",
-    "description": "Complete HTTP API collection for the Jatayu backend. Run registration/login requests first so test scripts populate authentication variables automatically. OTP defaults to 123456 when providers are not configured.",
+    "description": "Complete HTTP API collection for the Jatayu backend. Run registration/login requests first so test scripts populate authentication variables automatically. Set the otp variable to the code delivered to your email or phone.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -25,7 +25,7 @@
     { "key": "bookingStartAt", "value": "" },
     { "key": "bookingIdempotencyKey", "value": "" },
     { "key": "notificationId", "value": "" },
-    { "key": "otp", "value": "123456" }
+    { "key": "otp", "value": "" }
   ],
   "item": [
     {
@@ -424,7 +424,11 @@
       "name": "Admin",
       "item": [
         {
-          "name": "Login",
+          "name": "Request Admin Login Code",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@thequipus.com\",\n  \"password\": \"Admin@theQuipus\"\n}" }, "url": "{{baseUrl}}/api/admin/auth/login" }
+        },
+        {
+          "name": "Verify Admin Login Code",
           "event": [{ "listen": "test", "script": { "exec": ["const data = pm.response.json();", "if (data.token) pm.collectionVariables.set('adminToken', data.token);"] } }],
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@thequipus.com\",\n  \"password\": \"Admin@theQuipus\",\n  \"otp\": \"{{otp}}\"\n}" }, "url": "{{baseUrl}}/api/admin/auth/login" }
         },

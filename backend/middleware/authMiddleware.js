@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { ExpertSession } from '../models/index.js';
+import { Expert, ExpertSession } from '../models/index.js';
+import { isExpertBlacklisted, isExpertSuspended } from '../controllers/authController.js';
 
 dotenv.config();
 
@@ -14,6 +15,24 @@ export const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production');
+      if (decoded.role && decoded.role !== 'expert') {
+        return res.status(403).json({ message: 'Not authorized as expert' });
+      }
+      if (!decoded.id) {
+        return res.status(401).json({ message: 'Not authorized, invalid token payload' });
+      }
+
+      const expert = await Expert.findByPk(decoded.id, { attributes: ['id', 'status', 'isBlacklisted', 'onboardingMetadata'] });
+      if (!expert) {
+        return res.status(401).json({ message: 'Not authorized, expert account not found' });
+      }
+      if (isExpertBlacklisted(expert)) {
+        return res.status(403).json({ message: 'Your profile is Marked as Blacklisted', code: 'CREDENTIALS_BLACKLISTED' });
+      }
+      if (isExpertSuspended(expert)) {
+        return res.status(403).json({ message: 'Your Profile has been suspended. Contact Us?', code: 'ACCOUNT_SUSPENDED' });
+      }
+
       if (decoded.jti) {
         const session = await ExpertSession.findByPk(decoded.jti);
         if (!session || session.revokedAt || new Date(session.expiresAt) <= new Date()) {

@@ -14,7 +14,7 @@ export type ExpertFilterKey =
   | "price"
   | "availability";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import { getPublicExperts, type PublicExpertsQueryParams } from "@/lib/api";
+import { getPublicExperts, getSeekerDiscoverExperts, type PublicExpertsQueryParams } from "@/lib/api";
 import {
   availabilityFilters,
   expertiseTags,
@@ -378,6 +378,7 @@ export default function Expert({
 
   // API & Infinite Scroll state
   const [apiExperts, setApiExperts] = useState<ExpertType[]>([]);
+  const [fallbackSuggestions, setFallbackSuggestions] = useState<ExpertType[]>([]);
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -407,6 +408,7 @@ export default function Expert({
     async function fetchExpertsData() {
       if (page === 1) {
         setIsLoading(true);
+        setFallbackSuggestions([]);
       } else {
         setIsLoadingMore(true);
       }
@@ -426,10 +428,15 @@ export default function Expert({
           sortBy,
         };
 
-        const res = await getPublicExperts(queryParams);
+        const res = seeker
+          ? await getSeekerDiscoverExperts(queryParams)
+          : await getPublicExperts(queryParams);
         if (isCancelled) return;
 
         setUsingApi(true);
+        if (page === 1) {
+          setFallbackSuggestions(res.suggestions || []);
+        }
         if (res.experts && res.experts.length > 0) {
           setApiExperts((prev) => {
             if (page === 1) return res.experts;
@@ -446,6 +453,7 @@ export default function Expert({
         if (isCancelled) return;
         setUsingApi(false);
         if (page === 1) {
+          setFallbackSuggestions([]);
           setApiExperts(filteredExperts);
         }
         setHasNextPage(false);
@@ -495,6 +503,7 @@ export default function Expert({
   }, [hasNextPage, isLoading, isLoadingMore]);
 
   const displayedExpertsList = usingApi ? apiExperts : filteredExperts;
+  const displayedFallbackSuggestions = seeker && usingApi ? fallbackSuggestions : [];
 
   const removeAppliedFilter = (key: ExpertFilterKey, value: string) => {
     switch (key) {
@@ -565,6 +574,11 @@ export default function Expert({
                 </span>
               </h2>
               <div className={styles.filterBookmarkRow}>
+                {seeker ? (
+                  <Link href="/seeker/dashboard/" className={styles.dashboardLink}>
+                    Go to Dashboard
+                  </Link>
+                ) : null}
                 <Link
                   href={seeker ? "/seeker/bookmark" : "/bookmark"}
                   className={styles.bookmarkBadge}
@@ -793,10 +807,45 @@ export default function Expert({
               </div>
 
               <div className={styles.speaksCards}>
+                {displayedFallbackSuggestions.length > 0 ? (
+                  <div
+                    role="status"
+                    style={{
+                      gridColumn: "1 / -1",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                      padding: 16,
+                      borderRadius: 12,
+                      background: "#fff7ed",
+                      color: "var(--ink)",
+                    }}
+                  >
+                    <strong>No exact matches found</strong>
+                    <span style={{ color: "var(--dove-gray)", fontSize: 14 }}>
+                      These related experts may still be a good fit.
+                    </span>
+                  </div>
+                ) : null}
                 {isLoading && page === 1 ? (
                   <div className={styles.infiniteScrollContainer}>
                     <div className={styles.spinner} role="status" aria-label="Loading experts..." />
                   </div>
+                ) : displayedFallbackSuggestions.length > 0 ? (
+                  displayedFallbackSuggestions.map((expert, index) => {
+                    const isBookmarked = bookmarkedExperts.has(expert.name);
+
+                    return (
+                      <ExpertCard
+                        key={`${expert.id || expert.name}-${index}`}
+                        expert={expert}
+                        isBookmarked={isBookmarked}
+                        onBookmarkToggle={() => toggleBookmark(expert.name)}
+                        priority={index < 2}
+                        seeker={seeker}
+                      />
+                    );
+                  })
                 ) : displayedExpertsList.length === 0 ? (
                   <p className={styles.noResults}>No experts match your filters yet.</p>
                 ) : (

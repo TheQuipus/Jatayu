@@ -12,6 +12,8 @@
 }
 
 .cardHeader {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   width: 100%;
   padding: 48px 40px 24px;
@@ -29,7 +31,11 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: 0px 40px;
+  /* Extend the scroll viewport to the progress-line baseline without shifting initial content. */
+  margin-top: -46px;
+  padding: 46px 40px 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.35) 23px, #000 46px);
+  mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.35) 23px, #000 46px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -106,16 +112,31 @@
 
 .progressBarBg {
   width: 100%;
-  height: 4px;
+  height: 44px;
   display: flex;
+  align-items: center;
   gap: 4px;
 }
 
 .progressBarSegment {
+  position: relative;
   flex: 1;
-  height: 100%;
+  min-width: 0;
+  min-height: 44px;
   padding: 0;
   border: none;
+  background: transparent;
+  cursor: default;
+}
+
+.progressBarSegment::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  content: "";
+  transform: translateY(-50%);
   background: var(--border-chip);
   border-radius: 2px;
   transition: background 0.3s ease, opacity 0.2s ease;
@@ -126,10 +147,18 @@
 }
 
 .progressBarSegmentFilled {
+  background: transparent;
+}
+
+.progressBarSegmentFilled::before {
   background: var(--pomegranate);
 }
 
 .progressBarSegmentCurrent {
+  background: transparent;
+}
+
+.progressBarSegmentCurrent::before {
   background: var(--gray);
 }
 
@@ -203,8 +232,9 @@
   color: rgba(255, 255, 255, 0.3);
 }
 
-.customInput:focus:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.15);
+.customInputWrapper:focus-within .customInput:not(:disabled) {
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .customInput:disabled {
@@ -233,7 +263,6 @@
 
 .customInputBtn:focus-visible:not(:disabled) {
   color: var(--white);
-  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .customInputBtn:disabled {
@@ -306,9 +335,13 @@
   line-height: 20px;
   color: #E53B17;
   text-transform: uppercase;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
   outline: none;
   padding: 6px;
+}
+
+.textBtn:hover:not(:disabled):not([aria-disabled="true"]) {
+  opacity: 0.8;
 }
 
 @media (max-width: 600px) {
@@ -317,7 +350,10 @@
   }
 
   .cardBody {
-    padding: 20px 24px;
+    margin-top: -42px;
+    padding: 62px 24px 0;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.35) 31px, #000 62px);
+    mask-image: linear-gradient(to bottom, transparent 0px, rgba(0, 0, 0, 0.35) 31px, #000 62px);
   }
 
   .onboardingFooter {
