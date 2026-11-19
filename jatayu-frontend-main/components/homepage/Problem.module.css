@@ -240,8 +240,12 @@
   color: var(--fold-active-text, var(--white));
 }
 
+.previewWrap {
+  display: none;
+}
+
 /* Responsive Storytelling styles */
-@media (min-width: 1281px) {
+@media (min-width: 1024px) {
   .problemWrapper {
     padding-top: var(--nav-height);
     padding-bottom: 120px;
@@ -389,27 +393,27 @@
   }
 
   .scardMiniLabel {
-    font-size: 12px;
+    font-size: clamp(10px, 0.95vw, 12px);
     line-height: 1.2;
     min-height: calc(14px * 1.2 * 2);
     padding: 0 0px 12px 15px;
   }
 
   .scardMiniQuote {
-    font-size: 14px;
+    font-size: clamp(11px, 1.1vw, 14px);
   }
 
   .scardMiniDesc {
-    font-size: 12px;
+    font-size: clamp(10px, 0.95vw, 12px);
   }
 
   .scardMiniTitle {
-    margin: 56px 0 0;
-    font-size: 28px;
+    margin: clamp(32px, 4vw, 56px) 0 0;
+    font-size: clamp(18px, 2vw, 28px);
   }
 }
 
-@media (max-width: 1280.98px) {
+@media (max-width: 1023.98px) {
   .problem {
     padding: 60px 0 120px;
   }
