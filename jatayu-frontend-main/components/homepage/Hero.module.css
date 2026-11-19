@@ -20,9 +20,9 @@
 
 .heroInner {
   display: grid;
-  grid-template-columns: repeat(4, var(--grid-col));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: start;
-  margin-top: 185px;
+  margin-top: clamp(100px, 12.85vw, 185px);
   position: relative;
   z-index: 3;
 }
@@ -89,6 +89,8 @@
   display: flex;
   flex-direction: column;
   gap: 33px;
+  width: 100%;
+  max-width: 360px;
 }
 
 .heroIntro {
@@ -207,11 +209,6 @@
 .heroBarOrange { background: var(--orange); width: 40%; top: 30%; left: 8%; opacity: 0; }
 .heroBarGreen { background: var(--green); width: 30%; top: 52%; left: 18%; opacity: 0; }
 
-@media (max-width: 1200px) {
-  .heroInner {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 
 @media (max-width: 1024px) {
   .heroInner { 
