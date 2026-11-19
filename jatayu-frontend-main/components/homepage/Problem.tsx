@@ -143,7 +143,7 @@ export default function Problem() {
 
     const mm = gsap.matchMedia();
 
-    mm.add("(min-width: 1025px)", () => {
+    mm.add("(min-width: 1281px)", () => {
       // 1. Capture coordinates relative to the centered container (innerRect) to prevent horizontal centering offsets
       const startRects = cards.map((card) => card.getBoundingClientRect());
       const innerRect = inner.getBoundingClientRect();

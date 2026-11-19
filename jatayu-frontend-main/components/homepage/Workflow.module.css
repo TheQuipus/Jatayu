@@ -86,7 +86,7 @@
   width: 100%;
   max-width: 100%;
   display: grid;
-  grid-template-columns: 169px 340px 169px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   gap: 0;
   align-items: start;
 }
@@ -94,19 +94,15 @@
 .workflowShowcase>.carouselViewport:first-of-type {
   position: relative;
   z-index: 1;
-  margin-right: -46px;
-  /* Overlap to match the top-left sloped clip-path cut-in of the large image */
-  width: 215px;
-  /* 169px base + 46px overlap so content is not clipped by overflow:hidden */
+  margin-right: clamp(-46px, -3.2vw, -20px);
+  width: calc(100% + clamp(20px, 3.2vw, 46px));
 }
 
 .workflowShowcase>.carouselViewport:last-of-type {
   position: relative;
   z-index: 1;
-  margin-left: -34px;
-  /* Overlap to match the top-right sloped clip-path cut-in of the large image */
-  width: 203px;
-  /* 169px base + 34px overlap so content is not clipped by overflow:hidden */
+  margin-left: clamp(-34px, -2.4vw, -16px);
+  width: calc(100% + clamp(16px, 2.4vw, 34px));
 }
 
 .workflowShowcase>.cutCardLarge {
@@ -303,13 +299,30 @@
 }
 
 .showcaseNav {
-  width: calc(var(--grid-col) * 2);
+  width: 50%;
   max-width: 100%;
-  margin-left: calc(var(--grid-col) * 2);
+  margin-left: 50%;
   margin-top: 14px;
   display: flex;
   justify-content: flex-end;
   gap: 0px;
+}
+
+@media (min-width: 1025px) and (max-width: 1279.98px) {
+  .workflowBottom {
+    grid-template-columns: 1fr 1.25fr;
+    gap: 32px;
+  }
+  .workflowLeft {
+    grid-column: 1;
+  }
+  .workflowShowcase {
+    grid-column: 2;
+  }
+  .showcaseNav {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 .showcaseNav button {
