@@ -1,11 +1,21 @@
 .hero {
-  background:
-    radial-gradient(52.86% 52.86% at 49.97% 52.28%, rgba(67, 67, 67, 0) 0%, #000000 100%),
-    url("/assets/img/hero-bg.png") center top / cover no-repeat;
+  background: #000;
   padding: 44px 0 70px;
-  min-height: 857px;
+  min-height: max(857px, 100svh);
   position: relative;
-  overflow: hidden;
+  /* overflow stays visible so ScrollTrigger pin can use position:fixed */
+}
+
+.heroVignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(
+    52.86% 52.86% at 49.97% 52.28%,
+    rgba(67, 67, 67, 0) 0%,
+    #000000 100%
+  );
 }
 
 .heroInner {

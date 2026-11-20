@@ -208,11 +208,11 @@ export default function LoginStep({
 
             <div className={styles.forgotPasswordRow}>
               {/* REMOVE fieldError("password") from here, leaving only submitError */}
-              {submitError ? (
+              {/* {submitError ? (
                 <span className={styles.forgotPasswordError} role="alert">
                   {submitError}
                 </span>
-              ) : <span />}
+              ) : <span />} */}
 
               <div className={styles.forgotPasswordRow}>
                 <Link href="/forgot-password?role=expert" className={styles.forgotPasswordLink}>
@@ -228,6 +228,12 @@ export default function LoginStep({
               </div>
             </div>
           </div>
+
+          {submitError && (
+            <p className={styles.forgotPasswordError} role="alert">
+              {submitError}
+            </p>
+          )}
 
           <ContinueButton
             type="submit"

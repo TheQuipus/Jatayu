@@ -820,13 +820,13 @@
   border-color: #E53B17 !important;
 }
 
-/* Universal Clean Input Focus State for All Fields */
-input:focus,
-input:focus-visible,
-textarea:focus,
-textarea:focus-visible,
-select:focus,
-select:focus-visible {
+/* Clean input focus state for fields within this onboarding step. */
+.splitLayout input:focus,
+.splitLayout input:focus-visible,
+.splitLayout textarea:focus,
+.splitLayout textarea:focus-visible,
+.splitLayout select:focus,
+.splitLayout select:focus-visible {
   outline: none !important;
   outline-offset: 0 !important;
   box-shadow: none !important;
