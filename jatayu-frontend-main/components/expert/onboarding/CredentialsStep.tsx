@@ -180,6 +180,7 @@ export default function CredentialsStep({
   const [cameraVerificationCompleted, setCameraVerificationCompleted] = useState<boolean>(() =>
     Boolean(kycVideoSrc),
   );
+  const [showManualDocs, setShowManualDocs] = useState(false);
   const hasKycVideo = Boolean(kycVideoSrc);
   const hasKycPhotos = areKycPhotosComplete(kycPhotos);
   const hasSuccessfulVerification =
@@ -508,11 +509,12 @@ export default function CredentialsStep({
               digilockerError={digilockerError}
               onDigilockerVerification={() => void handleDigilockerVerification()}
               onVerificationComplete={handleKycVerificationComplete}
+              onManualFlowChange={setShowManualDocs}
             />
           </article>
 
           {/* 2. Government ID */}
-          {hasSuccessfulVerification && (
+          {showManualDocs && (
           <article>
             <header className={styles.sectionCardHeader}>
               <div className={styles.sectionCardTitleWrap}>
@@ -645,7 +647,7 @@ export default function CredentialsStep({
           )}
 
           {/* 3. Professional Certificates */}
-          {hasSuccessfulVerification && (
+          {showManualDocs && (
           <article>
             <header className={styles.sectionCardHeader}>
               <div className={styles.sectionCardTitleWrap}>
