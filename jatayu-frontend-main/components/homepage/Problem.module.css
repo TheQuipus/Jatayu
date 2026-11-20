@@ -426,9 +426,9 @@
   }
 
   .previewWrap {
-    top: clamp(80px, 11vh, 105px);
-    width: clamp(200px, 25vh, 250px);
-    max-width: clamp(200px, 25vh, 250px);
+    top: clamp(135px, 18vh, 140px);
+    width: clamp(240px, 34vh, 290px);
+    max-width: clamp(240px, 34vh, 290px);
   }
 
   .scardMini {
