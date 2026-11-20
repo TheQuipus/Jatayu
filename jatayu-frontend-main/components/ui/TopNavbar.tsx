@@ -1,9 +1,12 @@
+
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./TopNavbar.module.css";
+
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 
 function isAdminLoginPage(pathname: string | null) {
@@ -23,13 +26,64 @@ function isOnboardingPath(pathname: string | null) {
   );
 }
 
+function StarDivider({ light = false }: { light?: boolean }) {
+  return (
+    <div className={`${styles.starLine} ${light ? styles.starLineLight : ""}`}>
+      <svg
+        className={styles.starSvg}
+        width="11"
+        height="11"
+        viewBox="0 0 26 26"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M13 0L15.6 10.4L26 13L15.6 15.6L13 26L10.4 15.6L0 13L10.4 10.4L13 0Z" />
+      </svg>
+
+      <div className={styles.line} />
+    </div>
+  );
+}
+
 export default function TopNavbar() {
   const pathname = usePathname();
+
   const onboarding = isOnboardingPath(pathname);
   const isAdminLogin = isAdminLoginPage(pathname);
-  const [onDark, setOnDark] = useState(pathname === "/" || onboarding);
+
+  const [onDark, setOnDark] = useState(
+    pathname === "/" || onboarding
+  );
+
   const [isOpen, setIsOpen] = useState(false);
 
+  // Close drawer on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
+  // Prevent background scrolling when drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  // Navbar surface detection for dark/light sections
   useEffect(() => {
     if (isOnboardingPath(pathname)) {
       setOnDark(true);
@@ -44,12 +98,15 @@ export default function TopNavbar() {
     const navZone =
       parseFloat(
         getComputedStyle(document.documentElement).getPropertyValue(
-          "--nav-height",
-        ),
+          "--nav-height"
+        )
       ) || 84;
 
     const checkSurface = () => {
-      const surfaces = document.querySelectorAll('[data-nav-surface="dark"]');
+      const surfaces = document.querySelectorAll(
+        '[data-nav-surface="dark"]'
+      );
+
       if (!surfaces.length) {
         setOnDark(false);
         return;
@@ -64,7 +121,11 @@ export default function TopNavbar() {
     };
 
     checkSurface();
-    window.addEventListener("scroll", checkSurface, { passive: true });
+
+    window.addEventListener("scroll", checkSurface, {
+      passive: true,
+    });
+
     window.addEventListener("resize", checkSurface);
 
     return () => {
@@ -85,6 +146,7 @@ export default function TopNavbar() {
 
   function isExpertPortalPath(pathname: string | null) {
     if (!pathname) return false;
+
     const expertPortalRoutes = [
       "/expert/dashboard",
       "/expert/availability",
@@ -96,9 +158,13 @@ export default function TopNavbar() {
       "/expert/reviews",
       "/expert/achievements",
     ];
-    return expertPortalRoutes.some((route) => pathname.startsWith(route));
+
+    return expertPortalRoutes.some((route) =>
+      pathname.startsWith(route)
+    );
   }
 
+  // Hide navbar on application-specific pages
   if (
     pathname?.startsWith("/serene-scene") ||
     (pathname?.startsWith("/admin") && !isAdminLogin) ||
@@ -113,141 +179,186 @@ export default function TopNavbar() {
 
   return (
     <>
+      {/* Main Top Navigation Header */}
       <header
-        className={`${styles.navbar} ${onDark ? `${styles.onDarkSurface} nav-on-dark` : ""}`}
+        className={`${styles.navbar} ${
+          onDark ? `${styles.onDarkSurface} nav-on-dark` : ""
+        }`}
       >
         <div className={`container ${styles.inner}`}>
-          <Link href="/" className={styles.logo} aria-label="Go to homepage">
-            JATAYU<sup className={styles.logoMark}>®</sup>
+          <Link
+            href="/"
+            className={styles.logo}
+            aria-label="Go to homepage"
+          >
+            JATAYU
+            <sup className={styles.logoMark}>®</sup>
           </Link>
 
           <button
-            className={`${styles.menuButton} ${isOpen ? styles.isOpen : ""}`}
+            className={`${styles.menuButton} ${
+              isOpen ? styles.isOpen : ""
+            }`}
             onClick={() => setIsOpen(true)}
             aria-label="Open menu"
+            aria-expanded={isOpen}
           >
-            <span></span>
-            <span></span>
-            <span></span>
+            <span />
+            <span />
+            <span />
           </button>
         </div>
       </header>
 
+      {/* Dimmed Backdrop Overlay */}
+      <div
+        className={`${styles.overlay} ${
+          isOpen ? styles.overlayVisible : ""
+        }`}
+        onClick={() => setIsOpen(false)}
+        aria-hidden="true"
+      />
+
       {/* Slide-out Menu Drawer */}
-      <div className={`${styles.drawer} ${isOpen ? styles.drawerOpen : ""}`}>
+      <div
+        className={`${styles.drawer} ${
+          isOpen ? styles.drawerOpen : ""
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Site Navigation Menu"
+      >
         <div className={`container ${styles.drawerContainer}`}>
           <div className={styles.drawerContent}>
-            <button
-              className={styles.closeBtn}
-              onClick={() => setIsOpen(false)}
-              aria-label="Close menu"
+
+            {/* Giant Brand Wordmark (JATAYU) from Figma Specifications */}
+            <div
+              className={styles.watermarkWrapper}
+              aria-hidden="true"
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+              <div className={styles.watermark}>
+                JATAYU
+              </div>
+            </div>
 
-            {/* Divider with Star 1 */}
-            <div className={styles.starLine}>
-              <svg
-                className={styles.starSvg}
-                width="14"
-                height="14"
-                viewBox="0 0 26 26"
-                fill="none"
+            {/* Drawer Header */}
+            <div className={styles.drawerHeader}>
+              <Link
+                href="/"
+                onClick={() => setIsOpen(false)}
+                className={styles.brandLink}
+                aria-label="Jatayu Home"
               >
-                <path
-                  d="M12.999 21.667V17.333M12.999 17.333C12.999 14.94 11.059 13 8.66603 13M12.999 17.333C12.999 14.94 14.939 13 17.332 13M8.66603 13H4.33203M8.66603 13C11.059 13 12.999 11.06 12.999 8.66701M21.666 13H17.332M17.332 13C14.939 13 12.999 11.06 12.999 8.66701M12.999 4.33301V8.66701"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeMiterlimit="10"
+                <Image
+                  src="/assets/img/jatayu-logo-black.png"
+                  alt="JATAYU"
+                  width={220}
+                  height={48}
+                  className={styles.brandImg}
+                  priority
                 />
-              </svg>
-              <div className={styles.line}></div>
+              </Link>
+
+              {/* <button
+                className={styles.closeBtn}
+                onClick={() => setIsOpen(false)}
+                aria-label="Close menu"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button> */}
             </div>
 
-            <div className={styles.loginLinks}>
-              <Link
-                href={EXPERT_LOGIN_HREF}
-                onClick={() => setIsOpen(false)}
-                className={styles.loginLink}
-              >
-                Expert Login
-              </Link>
-              <Link
-                href="/login/?role=user"
-                onClick={() => setIsOpen(false)}
-                className={styles.loginLink}
-              >
-                User Login
-              </Link>
-              <Link
-                href="/admin"
-                onClick={() => setIsOpen(false)}
-                className={styles.loginLink}
-              >
-                Admin Console
-              </Link>
+            {/* Expert and Seeker Login */}
+            <div className={styles.loginGrid}>
+              <div className={styles.loginCol}>
+                <Link
+                  href={EXPERT_LOGIN_HREF}
+                  onClick={() => setIsOpen(false)}
+                  className={styles.loginButton}
+                >
+                  <span className={styles.loginRole}>Expert</span>
+                  <span className={styles.loginAction}>LOGIN</span>
+                </Link>
+                <div className={styles.loginDivider}>
+                  <StarDivider />
+                </div>
+              </div>
+
+              <div className={styles.loginCol}>
+                <Link
+                  href="/login?role=user"
+                  onClick={() => setIsOpen(false)}
+                  className={styles.loginButton}
+                >
+                  <span className={styles.loginRole}>Seeker</span>
+                  <span className={styles.loginAction}>LOGIN</span>
+                </Link>
+                <div className={styles.loginDivider}>
+                  <StarDivider />
+                </div>
+              </div>
             </div>
 
-            {/* Divider with Star 2 */}
-            <div className={styles.starLine}>
-              <svg
-                className={styles.starSvg}
-                width="14"
-                height="14"
-                viewBox="0 0 26 26"
-                fill="none"
-              >
-                <path
-                  d="M12.999 21.667V17.333M12.999 17.333C12.999 14.94 11.059 13 8.66603 13M12.999 17.333C12.999 14.94 14.939 13 17.332 13M8.66603 13H4.33203M8.66603 13C11.059 13 12.999 11.06 12.999 8.66701M21.666 13H17.332M17.332 13C14.939 13 12.999 11.06 12.999 8.66701M12.999 4.33301V8.66701"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeMiterlimit="10"
-                />
-              </svg>
-              <div className={styles.line}></div>
-            </div>
+            {/* Main Navigation Links */}
+            <nav
+              className={styles.navLinks}
+              aria-label="Primary menu"
+            >
+              <div className={styles.navItem}>
+                <a
+                  href="#about"
+                  onClick={() => setIsOpen(false)}
+                  className={styles.mainLink}
+                >
+                  <span className={styles.mainLinkText}>ABOUT</span>
+                </a>
+                <div className={styles.navDivider}>
+                  <StarDivider />
+                </div>
+              </div>
 
-            <div className={styles.navLinksLarge}>
-              <Link
-                href="/expert/"
-                onClick={() => setIsOpen(false)}
-                className={styles.largeLink}
-              >
-                EXPERTS
-              </Link>
-              <a
-                href="#about"
-                onClick={() => setIsOpen(false)}
-                className={styles.largeLink}
-              >
-                ABOUT
-              </a>
-              <a
-                href="#contact"
-                onClick={() => setIsOpen(false)}
-                className={styles.largeLink}
-              >
-                CONTACT
-              </a>
-            </div>
+              <div className={styles.navItem}>
+                <a
+                  href="#contact"
+                  onClick={() => setIsOpen(false)}
+                  className={styles.mainLink}
+                >
+                  <span className={styles.mainLinkText}>CONTACT</span>
+                </a>
+                <div className={styles.navDivider}>
+                  <StarDivider />
+                </div>
+              </div>
+
+              <div className={styles.navItem}>
+                <a
+                  href="#faq"
+                  onClick={() => setIsOpen(false)}
+                  className={styles.mainLink}
+                >
+                  <span className={styles.mainLinkText}>FAQ</span>
+                </a>
+                <div className={styles.navDivider}>
+                  <StarDivider />
+                </div>
+              </div>
+            </nav>
+
           </div>
         </div>
       </div>
-
-      {/* Backdrop overlay */}
-      {isOpen && (
-        <div className={styles.overlay} onClick={() => setIsOpen(false)} />
-      )}
     </>
   );
 }
