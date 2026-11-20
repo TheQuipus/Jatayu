@@ -40,6 +40,7 @@ type KycVerificationPanelProps = {
   digilockerError: string | null;
   onDigilockerVerification: () => void;
   onVerificationComplete?: () => void;
+  onManualFlowChange?: (active: boolean) => void;
 };
 
 type PanelPhase = "intro" | "requesting" | "denied" | "guided" | "review" | "complete";
@@ -450,6 +451,7 @@ export default function KycVerificationPanel({
   digilockerError,
   onDigilockerVerification,
   onVerificationComplete,
+  onManualFlowChange,
 }: KycVerificationPanelProps) {
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const faceOvalRef = useRef<HTMLDivElement>(null);
@@ -483,6 +485,10 @@ export default function KycVerificationPanel({
   const [phase, setPhase] = useState<PanelPhase>(
     videoSrc || areKycPhotosComplete(manualPhotos) ? "complete" : "intro",
   );
+
+  useEffect(() => {
+    onManualFlowChange?.(phase !== "intro");
+  }, [phase, onManualFlowChange]);
   const [stepIndex, setStepIndex] = useState(0);
   const [faceDetected, setFaceDetected] = useState(false);
   const [faceInsideGuide, setFaceInsideGuide] = useState(false);

@@ -120,10 +120,10 @@
   padding: 0;
 }
 
-.dayBtn:hover:not(:disabled) {
+.dayBtn:hover:not(:disabled):not(.dayBtnSelected) {
   background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.3);
+  /* color: var(--white); */
 }
 
 .dayBtnSelected {
@@ -132,17 +132,7 @@
   background: rgba(0, 0, 0, 0.22);
 }
 
-.dayBtn:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: var(--white);
-}
-
-.dayBtnSelected:hover:not(:disabled) {
-  border-color: var(--pomegranate);
-  background: rgba(229, 59, 23, 0.12);
-}
-
-.dayBtn:active:not(:disabled) {
+.dayBtn:active:not(:disabled):not(.dayBtnSelected) {
   background: rgba(229, 59, 23, 0.12);
 }
 
@@ -205,16 +195,19 @@
   color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
   outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
-.addSlotBtn:hover:not(:disabled) {
-  border-color: var(--pomegranate);
-  color: var(--white);
-  background: rgba(229, 59, 23, 0.06);
+.addSlotBtn:hover:not(:disabled),
+.addSlotBtn:focus-visible:not(:disabled) {
+  border-color: var(--silver-chalice);
+  /* color: var(--white); */
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .addSlotBtn:active:not(:disabled) {
-  background: rgba(229, 59, 23, 0.12);
+  border-color: var(--silver-chalice);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 @media (max-width: 900px) {
