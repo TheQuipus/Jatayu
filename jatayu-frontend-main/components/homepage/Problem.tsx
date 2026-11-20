@@ -141,9 +141,17 @@ export default function Problem() {
 
     if (cards.length === 0 || !cardsContainer || !previewWrap) return;
 
-    const mm = gsap.matchMedia();
+    let mm: gsap.MatchMedia | null = null;
+    let lastW = typeof window !== "undefined" ? window.innerWidth : 0;
+    let lastH = typeof window !== "undefined" ? window.innerHeight : 0;
 
-    mm.add("(min-width: 1024px)", () => {
+    const setupAnimation = () => {
+      if (mm) {
+        mm.revert();
+      }
+      mm = gsap.matchMedia();
+
+      mm.add("(min-width: 1024px)", () => {
       // 1. Capture coordinates relative to the centered container (innerRect) to prevent horizontal centering offsets
       const startRects = cards.map((card) => card.getBoundingClientRect());
       const innerRect = inner.getBoundingClientRect();
@@ -156,7 +164,7 @@ export default function Problem() {
       cards.forEach((card, index) => {
         gsap.set(card, {
           position: "absolute",
-          left: startRects[index].left - innerRect.left - paddingLeft - 1,
+          left: startRects[index].left - innerRect.left - paddingLeft,
           top: startRects[index].top - innerRect.top - paddingTop,
           width: startRects[index].width,
           height: startRects[index].height,
@@ -279,11 +287,24 @@ export default function Problem() {
         );
       };
 
-      // 6. Calculate final rows bottom orbit coordinates relative to innerRect (which is centered on screen)
-      const cardWidth = Math.floor(innerRect.width / 6); // Fluid target width in the bottom row (232px at 1440px)
+      // 6. Calculate responsive card sizing and final rows bottom orbit coordinates
+      // availableWidth subtracts inner container padding so 6 cards fit exactly within innerRect without clipping card 6
+      const innerPadding = paddingLeft * 2;
+      const availableWidth = innerRect.width - innerPadding;
+      const cardWidth = Math.floor(availableWidth / 6);
 
-      // Settle cards near the bottom of the nav-offset viewport
-      const finalY = innerRect.height - (window.innerHeight - 750) - 45;
+      // Adapt height, bottom margin, and settle position to viewport height
+      const isCompactH = window.innerHeight <= 820;
+      const isUltraH = window.innerHeight >= 1000;
+      const targetCardHeight = isCompactH
+        ? (window.innerHeight <= 740 ? 165 : 175)
+        : (isUltraH ? 230 : 195);
+      const bottomMargin = isCompactH ? 16 : (isUltraH ? 40 : 0);
+      const finalY = isCompactH
+        ? Math.round(innerRect.height - targetCardHeight - bottomMargin)
+        : (isUltraH ? Math.round(innerRect.height - targetCardHeight - bottomMargin) : 465);
+
+      const dipScale = isCompactH ? 0.35 : 0.8;
 
       let lastActiveIndex = -1;
 
@@ -377,8 +398,8 @@ export default function Problem() {
       cards.forEach((card, index) => {
         // Interleave first and second rows in the final row to prevent diagonal crossing and extra Z rotation
         const targetIndex = index < 3 ? index * 2 : (index - 3) * 2 + 1;
-        const finalX = targetIndex * cardWidth - 1;
-        const startX = startRects[index].left - innerRect.left - paddingLeft - 1;
+        const finalX = targetIndex * cardWidth;
+        const startX = startRects[index].left - innerRect.left - paddingLeft;
         const startY = startRects[index].top - innerRect.top;
 
         // Calculate card's maximum tilt angle in the Z axis based on its position in the layout
@@ -389,10 +410,10 @@ export default function Problem() {
           {
             duration: 2,
             width: cardWidth,
-            height: 195,
+            height: targetCardHeight,
             onUpdate: function () {
               const p = this.progress();
-              const orbitRadius = 240;
+              const orbitRadius = isCompactH ? 140 : 240;
               const angle = Math.PI - Math.PI * p;
               const curveX = Math.cos(angle) * orbitRadius;
               const curveY = Math.sin(angle) * orbitRadius;
@@ -408,7 +429,7 @@ export default function Problem() {
                 x: (finalX - startX) * p + curveX * 0.7 * Math.sin(Math.PI * p),
                 // Plus sign (+ curveY) dips cards DOWNWARD in an arc to settle at the bottom row
                 // Multiplying by Math.sin(Math.PI * p) starts and ends the vertical curve with 0 slope, preventing jumps
-                y: (finalY - startY) * p + curveY * 0.8 * Math.sin(Math.PI * p),
+                y: (finalY - startY) * p + curveY * dipScale * Math.sin(Math.PI * p),
                 rotation: rotation,
                 rotationX: 0,
                 rotationY: 0,
@@ -434,11 +455,24 @@ export default function Problem() {
         });
       });
     });
+    };
+
+    setupAnimation();
+
+    const handleResize = () => {
+      if (window.innerWidth !== lastW || window.innerHeight !== lastH) {
+        lastW = window.innerWidth;
+        lastH = window.innerHeight;
+        setupAnimation();
+      }
+    };
+    window.addEventListener("resize", handleResize);
 
     return () => {
       clearTimeout(timer);
+      window.removeEventListener("resize", handleResize);
       // Revert only this section's matchMedia / ScrollTriggers — never kill Hero's.
-      mm.revert();
+      if (mm) mm.revert();
     };
   }, [pathname]);
 
