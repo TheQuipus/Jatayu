@@ -286,6 +286,95 @@
   }
 }
 
+/* Phone-only responsiveness (max-width: 480px) */
+@media (max-width: 480px) {
+  .contact {
+    padding: 60px 0;
+  }
+
+  .contactInner {
+    row-gap: 28px;
+  }
+
+  .contactTitle {
+    font-size: clamp(28px, 8.5vw, 40px);
+    line-height: 1.0;
+  }
+
+  .contactTitleLine {
+    white-space: normal;
+  }
+
+  .contactActionsWrap {
+    margin-top: 16px;
+  }
+
+  .contactActions {
+    gap: 28px;
+  }
+
+  .contactActionItem {
+    gap: 12px;
+  }
+
+  .contactActionText {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .contactActionButton {
+    padding-left: 20px;
+  }
+
+  .contactActionButton :global(.btn) {
+    min-height: 48px;
+  }
+
+  .formIntro {
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+
+  .formIntroTime {
+    font-size: 16px;
+    margin-top: 10px;
+  }
+
+  .field {
+    padding: 16px 0;
+  }
+
+  .field input {
+    font-size: 16px;
+  }
+
+  .formFoot {
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  .termsLabel {
+    min-height: 44px;
+    gap: 12px;
+  }
+
+  .termsCheckbox {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+  }
+
+  .formTerms {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .formSubmit {
+    min-height: 48px;
+    width: 100%;
+  }
+}
+
 .errorMessage {
   font-family: var(--font-mono);
   font-size: 11px;

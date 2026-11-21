@@ -303,3 +303,73 @@
     gap: 10px;
   }
 }
+
+/* Phone-only responsiveness (max-width: 480px) */
+@media (max-width: 480px) {
+  .footer {
+    padding: 28px 0 20px;
+  }
+
+  .footerInner {
+    gap: 20px;
+  }
+
+  .mainGrid {
+    margin-top: 10px;
+    gap: 20px;
+  }
+
+  .linkGroup {
+    gap: 4px;
+  }
+
+  .linkGroup a,
+  .phoneLink {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 0;
+  }
+
+  .emailLink {
+    font-size: clamp(24px, 7vw, 36px);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    word-break: break-all;
+  }
+
+  .backTopWrap {
+    margin-bottom: 4px;
+  }
+
+  .backTopWrap a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 0;
+  }
+
+  .brandWord {
+    font-size: clamp(48px, 16vw, 76px);
+    line-height: 0.85;
+    margin-top: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .footerMeta {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .metaLinks {
+    gap: 8px;
+  }
+
+  .metaLinks a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 0;
+  }
+}
