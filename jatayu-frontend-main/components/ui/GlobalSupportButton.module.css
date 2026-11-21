@@ -1,0 +1,406 @@
+/* ==========================================================================
+   GlobalSupportButton — Floating Bottom-Right Support Trigger & Popover
+   Matches NotificationPanel.module.css Light Studio Card Style
+   + Onboarding Dark Bunker Trigger Theme Adaptation
+   ========================================================================== */
+
+.container {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1050;
+}
+
+.trigger {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent);
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.trigger:hover,
+.containerOpen .trigger {
+  border-color: var(--pomegranate);
+  background: var(--pomegranate);
+  color: var(--white);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--pomegranate) 30%, transparent);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--pomegranate);
+  outline-offset: 2px;
+}
+
+/* Dark Bunker trigger adaptation for onboarding wizard pages */
+.triggerDark {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: var(--woodsmoke, #14171d);
+  color: var(--white);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+.triggerDark:hover,
+.containerOpen .triggerDark {
+  border-color: var(--pomegranate);
+  background: var(--pomegranate);
+  color: var(--white);
+}
+
+/* Popover Card — Styled like NotificationPanel.module.css (.dropdown) */
+.popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 104px));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mercury);
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--ink) 14%, transparent);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  transform-origin: bottom right;
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.containerOpen .popover {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.popoverHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--mercury);
+  background: var(--white);
+}
+
+.popoverTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.popoverTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.popoverSubtitle {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--scorpion);
+}
+
+.closeBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--scorpion);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.closeBtn:hover {
+  background: var(--seashell);
+  color: var(--ink);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--pomegranate);
+  outline-offset: 1px;
+}
+
+.popoverBody {
+  padding: 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fieldLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dove-gray);
+}
+
+.requiredMark {
+  color: var(--pomegranate);
+  margin-left: 3px;
+}
+
+.charCounter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--silver-chalice);
+}
+
+.charCounterLimit {
+  color: var(--pomegranate);
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.input:hover {
+  border-color: var(--silver-chalice);
+}
+
+.input:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px rgba(11, 13, 20, 0.08);
+}
+
+.inputError {
+  border-color: var(--pomegranate) !important;
+}
+
+.phoneInputWrap {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  border-radius: 4px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  overflow: hidden;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.phoneInputWrap:hover {
+  border-color: var(--silver-chalice);
+}
+
+.phoneInputWrap:focus-within {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px rgba(11, 13, 20, 0.08);
+}
+
+.phonePrefix {
+  padding: 0 10px 0 12px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--scorpion);
+  border-right: 1px solid var(--mercury);
+  user-select: none;
+}
+
+.phoneInput {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.textarea:hover {
+  border-color: var(--silver-chalice);
+}
+
+.textarea:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px rgba(11, 13, 20, 0.08);
+}
+
+.fieldError {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--pomegranate);
+  line-height: 1.35;
+}
+
+.submitErrorBanner {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 35%, transparent);
+  background: color-mix(in srgb, var(--pomegranate) 8%, var(--white));
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--pomegranate);
+}
+
+.submitBtn {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.successState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 12px 4px 6px;
+}
+
+.successIconWrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pomegranate) 12%, var(--white));
+  color: var(--pomegranate);
+  display: grid;
+  place-items: center;
+}
+
+.successTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.successCopy {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--scorpion);
+}
+
+.ticketBadge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.successActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.secondaryBtn {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 30px;
+  border: 1px solid var(--mercury);
+  background: var(--white);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.secondaryBtn:hover {
+  background: var(--seashell);
+  border-color: var(--silver-chalice);
+}
+
+@media (max-width: 640px) {
+  .container {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .trigger {
+    width: 44px;
+    height: 44px;
+  }
+
+  .popover {
+    width: calc(100vw - 32px);
+    max-height: calc(100vh - 88px);
+  }
+}
