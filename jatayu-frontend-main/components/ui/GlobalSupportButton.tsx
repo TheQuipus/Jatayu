@@ -17,6 +17,7 @@ import {
   isAdminRoutePath,
   isOnboardingDarkThemePath,
   normalizeSupportPhone,
+  OPEN_SUPPORT_FORM_EVENT,
   resolveSupportAuthToken,
   submitSupportTicket,
   SUPPORT_CUSTOM_SUBJECT_MAX_LENGTH,
@@ -97,6 +98,21 @@ export default function GlobalSupportButton() {
 
   const isVisible = !isAdminRoutePath(pathname) && Boolean(activeToken);
   const isPopoverOpen = isVisible && isOpen;
+
+  // External trigger to open popover (e.g. from "Raise a ticket" CTA on Support page)
+  useEffect(() => {
+    const handleOpen = () => {
+      setSubmittedTicketNumber(null);
+      setSubmitError("");
+      setFieldErrors({});
+      setIsOpen(true);
+    };
+
+    window.addEventListener(OPEN_SUPPORT_FORM_EVENT, handleOpen);
+    return () => {
+      window.removeEventListener(OPEN_SUPPORT_FORM_EVENT, handleOpen);
+    };
+  }, []);
 
   // Prefill account email & phone when popover opens or when active account token changes
   useEffect(() => {

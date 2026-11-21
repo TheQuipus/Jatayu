@@ -125,7 +125,7 @@ export const PROFILE_NAV: SeekerNavItem = {
 export const QUICK_LINKS: SeekerNavItem[] = [
   { id: "tickets", label: "My Tickets", href: "/seeker/dashboard/#tickets" },
   { id: "saved", label: "Saved Experts", href: "/seeker/bookmark/" },
-  { id: "support", label: "Support", href: "/seeker/dashboard/#support" },
+  { id: "support", label: "Support", href: "/seeker/support" },
 ];
 
 export const TRENDING_CATEGORIES = [

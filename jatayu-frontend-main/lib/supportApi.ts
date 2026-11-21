@@ -253,6 +253,166 @@ export async function fetchSupportMe(
   };
 }
 
+export const OPEN_SUPPORT_FORM_EVENT = "jatayu:support:open_form";
+
+export function openGlobalSupportForm(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(OPEN_SUPPORT_FORM_EVENT));
+}
+
+export const MY_SUPPORT_TICKETS_UPDATED_EVENT = "jatayu:support:tickets_updated";
+
+export function dispatchMySupportTicketsUpdated(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(MY_SUPPORT_TICKETS_UPDATED_EVENT));
+}
+
+export type MySupportTicketSummary = {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  description: string;
+  status: "open" | "replied";
+  createdAt: string;
+  lastRepliedAt: string | null;
+  replyCount: number;
+};
+
+export type MySupportReply = {
+  id: string;
+  adminName: string;
+  message: string;
+  createdAt: string;
+};
+
+export type MySupportTicketDetail = {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  description: string;
+  status: "open" | "replied";
+  createdAt: string;
+  lastRepliedAt: string | null;
+  replies: MySupportReply[];
+};
+
+export type MySupportTicketsCounts = {
+  all: number;
+  open: number;
+  replied: number;
+};
+
+export type MySupportTicketsPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type MySupportTicketsResponse = {
+  items: MySupportTicketSummary[];
+  counts: MySupportTicketsCounts;
+  pagination: MySupportTicketsPagination;
+};
+
+export type MySupportTicketDetailResponse = {
+  ticket: MySupportTicketDetail;
+};
+
+export type MySupportApiError = Error & {
+  status?: number;
+};
+
+export async function getMySupportTickets(
+  {
+    page = 1,
+    limit = 10,
+    status = "all",
+  }: {
+    page?: number;
+    limit?: number;
+    status?: "all" | "open" | "replied";
+  } = {},
+  pathname?: string | null,
+): Promise<MySupportTicketsResponse> {
+  const token = resolveSupportAuthToken(pathname);
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (status && status !== "all") {
+    params.set("status", status);
+  }
+
+  const response = await fetch(
+    `${publicApiBase()}/api/support/tickets?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  const data = (await response.json().catch(() => ({}))) as MySupportTicketsResponse & {
+    message?: string;
+  };
+
+  if (!response.ok) {
+    const err = new Error(
+      data?.message || "Failed to load support tickets",
+    ) as MySupportApiError;
+    err.status = response.status;
+    throw err;
+  }
+
+  return {
+    items: Array.isArray(data.items) ? data.items : [],
+    counts: data.counts || { all: 0, open: 0, replied: 0 },
+    pagination: data.pagination || { page, limit, total: 0, totalPages: 1 },
+  };
+}
+
+export async function getMySupportTicket(
+  ticketId: string,
+  pathname?: string | null,
+): Promise<MySupportTicketDetailResponse> {
+  const token = resolveSupportAuthToken(pathname);
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch(
+    `${publicApiBase()}/api/support/tickets/${encodeURIComponent(ticketId)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  const data = (await response.json().catch(() => ({}))) as MySupportTicketDetailResponse & {
+    message?: string;
+  };
+
+  if (!response.ok || !data.ticket) {
+    const err = new Error(
+      data?.message || "Support ticket not found",
+    ) as MySupportApiError;
+    err.status = response.status;
+    throw err;
+  }
+
+  return data;
+}
+
 export async function submitSupportTicket(
   payload: CreateSupportTicketPayload,
   pathname?: string | null,
@@ -282,6 +442,8 @@ export async function submitSupportTicket(
       data.message || "Something went wrong, please raise the ticket again.",
     );
   }
+
+  dispatchMySupportTicketsUpdated();
 
   return {
     message: data.message || "Your support request has been submitted.",
