@@ -109,6 +109,7 @@
   align-items: center;
   justify-content: space-between;
   transform-style: preserve-3d;
+  pointer-events: none;
 }
 
 .item01 { transform: rotateY(30deg); }
@@ -120,10 +121,15 @@
 
 /* ── Image boxes ──────────────────────────────────────────── */
 .animationImageBox {
+  position: relative;
   width: 700px;
   height: 1000px;
   flex: 0 1 auto;
   transform-style: preserve-3d;
+  overflow: hidden;
+  pointer-events: auto;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .imageBoxLeft {
@@ -145,6 +151,147 @@
   object-fit: cover;
   display: block;
   max-width: 100%;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animationImageBox:hover .animationItemImage {
+  transform: scale(1.03);
+}
+
+/* ── Category Overlay & Floating Tertiary Button ──────────── */
+.categoryOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 60px 20px 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: center;
+  /* background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.45) 45%,
+    rgba(0, 0, 0, 0.92) 100%
+  ); */
+  z-index: 10;
+  transform: translateZ(25px);
+  pointer-events: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.categoryTertiaryBtn {
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 8px 16px;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: #ffffff;
+  user-select: none;
+  font-family: var(--font-sora), "Sora", sans-serif;
+  font-size: 60px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  pointer-events: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.categoryIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  margin-bottom: 12px;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+}
+
+.categoryIcon {
+  width: 60px;
+  height: 60px;
+  display: block;
+}
+
+.categorySubtext {
+  font-family: var(--font-mono), monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.categoryBtnText {
+  display: block;
+  overflow: hidden;
+  height: 1.35em;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.categoryBtnTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.categoryBtnUp {
+  display: block;
+  height: 1.35em;
+  line-height: 1.35;
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  color: #ffffff;
+  text-transform: none;
+  transition: color 0.2s ease;
+}
+
+.categoryAccentBar {
+  display: block;
+  width: 40px;
+  height: 3px;
+  background: #ff6f20;
+  border-radius: 2px;
+  margin-top: 12px;
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Rolling-text hover effect & accent animations */
+.categoryTertiaryBtn:hover .categoryBtnTrack,
+.categoryTertiaryBtn:focus-visible .categoryBtnTrack,
+.animationImageBox:hover .categoryBtnTrack {
+  transform: translateY(-50%);
+}
+
+.categoryTertiaryBtn:hover .categoryBtnUp,
+.animationImageBox:hover .categoryBtnUp {
+  color: #ffffff;
+}
+
+.categoryTertiaryBtn:hover .categoryIconWrap,
+.animationImageBox:hover .categoryIconWrap {
+  transform: translateY(-3px);
+  color: #ff6f20;
+}
+
+.categoryTertiaryBtn:hover .categoryAccentBar,
+.animationImageBox:hover .categoryAccentBar {
+  width: 60px;
+  box-shadow: 0 0 14px rgba(255, 111, 32, 0.7);
 }
 
 /* ── Bottom info bar ──────────────────────────────────────── */
