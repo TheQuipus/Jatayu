@@ -447,3 +447,97 @@
     grid-column: auto;
   }
 }
+
+/* Phone-only responsiveness (max-width: 480px) */
+@media (max-width: 480px) {
+  .workflow {
+    padding: 60px 0;
+  }
+
+  .workflowTop {
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .workflowTop :global(.display) {
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+  }
+
+  .workflowDesc {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .workflowCta {
+    margin-top: 16px;
+    width: 100%;
+  }
+
+  .workflowCta :global(.btn) {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .workflowShowcase {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .carouselViewport {
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .cutCardSmall {
+    height: 220px;
+    --slide-w: 160px;
+    width: 100%;
+  }
+
+  .cutCardLarge {
+    aspect-ratio: 340 / 420;
+    width: 100%;
+  }
+
+  .cutCardBottomArea {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .showcaseCaption {
+    opacity: 1;
+    transform: none;
+    margin-bottom: 8px;
+  }
+
+  .showcaseCaption span {
+    font-size: 12px;
+  }
+
+  .showcaseCaption small {
+    font-size: 14px;
+  }
+
+  .cutCardHover {
+    position: relative;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .cutCardHoverBtn {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .workflowShowcase > .cutCardLarge:hover .showcaseCaption {
+    opacity: 1;
+    transform: none;
+  }
+}

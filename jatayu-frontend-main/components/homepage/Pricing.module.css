@@ -423,3 +423,144 @@
     font-size: 18px;
   }
 }
+
+/* Phone-only responsiveness (max-width: 480px) */
+@media (max-width: 480px) {
+  .pricing {
+    padding: 60px 0;
+  }
+
+  .pricingHead {
+    margin-bottom: 28px;
+  }
+
+  .pricingHead :global(.display) {
+    font-size: clamp(28px, 8.5vw, 40px);
+    line-height: 0.95;
+  }
+
+  .pricingIntro {
+    gap: 18px;
+  }
+
+  .pricingIntro p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .toggle {
+    width: 100%;
+    max-width: 320px;
+    display: flex;
+    margin-left: 0;
+    box-sizing: border-box;
+  }
+
+  .toggleBtn {
+    flex: 1;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .plan {
+    height: auto;
+    min-height: auto;
+    padding: 24px 18px;
+    position: relative;
+    clip-path: none;
+    -webkit-clip-path: none;
+    border-radius: 4px;
+  }
+
+  .planBottom {
+    padding-bottom: 0;
+    gap: 14px;
+  }
+
+  .planPrice {
+    font-size: 20px;
+    margin-top: 14px;
+  }
+
+  .planList li {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .planCtaWrap {
+    position: static;
+    width: 100%;
+    margin-top: 20px;
+    left: auto;
+    right: auto;
+    bottom: auto;
+  }
+
+  .planCta {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .includes {
+    height: auto;
+    min-height: auto;
+    padding: 24px 18px;
+    margin-top: 16px;
+    border-radius: 4px;
+  }
+
+  .includesPrice {
+    font-size: 20px;
+    margin-top: 14px;
+    margin-bottom: 10px;
+  }
+
+  .includes li {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .includesHead span {
+    font-size: 14px;
+  }
+
+  .expertForm {
+    min-height: auto;
+    height: auto;
+    padding: 24px 18px;
+    margin-top: 16px;
+    border-radius: 4px;
+  }
+
+  .field input {
+    font-size: 16px;
+  }
+
+  .checkboxField {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    margin-top: 16px;
+  }
+
+  .checkboxField input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+  }
+
+  .checkboxText {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .formSubmit {
+    min-height: 48px;
+    width: 100%;
+  }
+}
