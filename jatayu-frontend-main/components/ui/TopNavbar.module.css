@@ -1,3 +1,9 @@
+/* ==========================================================================
+   TOP NAVBAR & SLIDE-OUT MENU DRAWER
+   Design Specification: Image 2 (Exact Replica) & Image 3 (Landing Page Overlay)
+   ========================================================================== */
+
+/* Navbar Main Header */
 .navbar {
   position: fixed;
   top: 0;
@@ -7,8 +13,10 @@
   backdrop-filter: blur(10px);
 }
 
-/* .onDarkSurface {
-  background: rgba(0, 0, 0, 0.45);
+
+/* .navbar.onDarkSurface,
+.onDarkSurface {
+  background: rgba(0, 0, 0, 0.281);
 } */
 
 .inner {
@@ -29,6 +37,11 @@
   color: var(--nav-fg);
   text-transform: uppercase;
   margin-top: 6px;
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+  opacity: 0.85;
 }
 
 .logoMark {
@@ -38,6 +51,7 @@
   transform: translateY(4px);
 }
 
+/* Hamburger Trigger Button */
 .menuButton {
   align-self: center;
   width: 30px;
@@ -56,13 +70,13 @@
 .menuButton span {
   display: block;
   width: 100%;
-  height: 2px;
+  height: 2.5px;
   border-radius: 1px;
   transition: all 0.3s ease;
 }
 
 .menuButton span:nth-child(1) {
-  background: var(--orange);
+  background: #FF5C01;
 }
 
 .menuButton span:nth-child(2) {
@@ -73,6 +87,7 @@
   background: #128807;
 }
 
+/* Dimmed Backdrop Overlay (Image 3) */
 .overlay {
   position: fixed;
   inset: 0;
@@ -80,14 +95,24 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   z-index: 24;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.overlayVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Slide-out Menu Drawer - 12-Column Page Grid Positioning (refer Image 2) */
 .drawer {
   position: fixed;
   top: 0;
   right: 0;
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   z-index: 25;
   transform: translateX(100%);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -108,101 +133,351 @@
 
 .drawerContent {
   grid-column: 8 / 14;
-  background: var(--thunderbird);
+  background-color: #FF5C01;
   height: 100%;
-  padding: 80px 24px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  box-shadow: -10px 0 40px rgba(8, 10, 16, 0.3);
+  box-shadow: -12px 0 45px rgba(8, 10, 16, 0.45);
   pointer-events: auto;
   position: relative;
-  margin-top: 0;
-  padding-top: 120px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.drawerContent::-webkit-scrollbar {
+  width: 4px;
+}
+
+.drawerContent::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+/* Giant Brand Wordmark (JATAYU) from Target Design (Image 2) & Figma Specs:
+   Full giant scale lettering reading upwards along the right edge of the drawer:
+   'J' at the bottom, 'U' at the top, apex of letters facing left towards menu.
+*/
+.watermarkWrapper {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 226px;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  overflow: visible;
+}
+
+.watermark {
+  position: absolute;
+  top: 840px;
+  left: 43px;
+  width: 860px;
+  height: 210px;
+  transform-origin: 0 0;
+  transform: rotate(-90deg);
+
+  font-family: var(--font-sora), "Sora", sans-serif;
+  font-weight: 700;
+  font-size: 210px;
+  line-height: 210px;
+  letter-spacing: -4.8px;
+  text-transform: uppercase;
+  color: #FF6F20;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+/* Drawer Header: Brand Logo & Close Button */
+.drawerHeader {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 35px 24px 16px 24px;
+}
+
+.brandLink {
+  display: flex;
+  align-items: center;
+  transition: opacity 0.2s ease;
+}
+
+.brandLink:hover {
+  opacity: 0.85;
+}
+
+.brandImg {
+  height: 52px;
+  width: auto;
+  max-width: 280px;
+  object-fit: contain;
 }
 
 .closeBtn {
-  position: absolute;
-  top: 42px;
-  right: 24px;
   background: transparent;
   border: none;
-  color: var(--white);
+  color: #000000;
   cursor: pointer;
-  padding: 8px;
+  padding: 6px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
 .closeBtn:hover {
+  background-color: rgba(0, 0, 0, 0.12);
+  color: #FFFFFF !important;
   transform: scale(1.1);
-  opacity: 0.8;
 }
 
-.starLine {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-}
-
-.starSvg {
-  flex-shrink: 0;
-}
-
-.line {
-  height: 1px;
-  flex: 1;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.loginLinks {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-left: 26px;
-}
-
-.loginLink {
-  font-family: var(--font-body);
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--white);
-  opacity: 0.85;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+/* Login Row Grid: Expert LOGIN | Seeker LOGIN as Single Unified Buttons
+   Figma: Expert Left 24px, Width 145px | Seeker Left 212px, Width 145px (Gap: 43px)
+*/
+.loginGrid {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 145px 145px;
+  column-gap: 43px;
+  padding: 8px 0 0 24px;
+  margin-bottom: 26px;
   width: fit-content;
 }
 
-.loginLink:hover {
-  opacity: 1;
+.loginCol {
+  display: flex;
+  flex-direction: column;
+  width: 145px;
+}
+
+.loginButton {
+  display: inline-flex;
+  flex-direction: column;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  width: fit-content;
+}
+
+.loginRole {
+  font-family: var(--font-sora), "Sora", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  margin-bottom: 2px;
+  margin-left: 2px;
+  transition: color 0.2s ease;
+}
+
+.loginAction {
+  font-family: var(--font-sora), "Sora", sans-serif;
+  font-size: 40px;
+  font-weight: 600;
+  color: #000000;
+  letter-spacing: -2px;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: color 0.2s ease;
+  
+}
+
+/* Hover effect on entire "Expert LOGIN" / "Seeker LOGIN": Changes to White */
+.loginButton:hover {
+  transform: translateY(-2px);
+}
+
+.loginButton:hover .loginRole,
+.loginButton:hover .loginAction {
+  color: #FFFFFF !important;
+}
+
+/* Non-clickable divider wrapper under login buttons (Figma: Width 145px) */
+.loginDivider {
+  width: 145px;
+  margin-top: 10px;
+  pointer-events: none;
+}
+
+/* Star Divider Line - Single Unified Component */
+.starLine {
+  display: block;
+  width: 100%;
+  height: 11px;
+  color: #FFFFFF;
+  pointer-events: none;
+  overflow: visible;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+/* Light Variant of Star Divider for Black Card */
+.starLineLight {
+  opacity: 0.35;
+}
+
+/* Primary Navigation Links (ABOUT, CONTACT, FAQ)
+   Figma: Left 24px, Size 40px, SemiBold 600, Line Width 333px (ends at 357px)
+*/
+.navLinks {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 0 0 24px 24px;
+  width: 333px;
+}
+
+.navItem {
+  display: flex;
+  flex-direction: column;
+  width: 333px;
+}
+
+.mainLink {
+  display: inline-flex;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  width: fit-content;
+}
+
+.mainLinkText {
+  font-family: var(--font-sora), "Sora", sans-serif;
+  font-size: 40px;
+  font-weight: 600;
+  color: #000000;
+  letter-spacing: -2px;
+  line-height: 1;
+  text-transform: uppercase;
+  transition: color 0.2s ease;
+}
+
+/* Hover effect on nav links: Changes to White */
+.mainLink:hover {
+  transform: translateX(4px);
+}
+
+.mainLink:hover .mainLinkText {
+  color: #FFFFFF !important;
+}
+
+/* Non-clickable divider wrapper under main nav links (Figma: Width 333px) */
+.navDivider {
+  width: 333px;
+  margin-top: 10px;
+  pointer-events: none;
+}
+
+/* Solid Black Container at Bottom (Gray flap completely removed) */
+.blackCard {
+  margin-top: auto;
+  background-color: #000000;
+  padding: 22px 28px 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.joinHeading {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin: 0;
+}
+
+.joinDivider {
+  width: 100%;
+  pointer-events: none;
+}
+
+.joinLinks {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.joinSubLink {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.01em;
+  transition: color 0.2s ease, transform 0.2s ease;
+  width: fit-content;
+}
+
+.joinSubLink:hover {
+  color: #FFFFFF !important;
   transform: translateX(2px);
 }
 
-.navLinksLarge {
+/* Social Media Icons */
+.socialRow {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding-left: 26px;
+  align-items: center;
+  gap: 18px;
+  margin-top: 2px;
 }
 
-.largeLink {
-  font-family: var(--font-display);
-  font-size: 52px;
-  font-weight: 600;
-  letter-spacing: -0.04em;
-  color: var(--white);
-  text-transform: uppercase;
-  line-height: 1;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-  width: fit-content;
+.socialIcon {
+  color: rgba(255, 255, 255, 0.8);
+  display: grid;
+  place-items: center;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
-.largeLink:hover {
-  transform: translateX(6px);
-  opacity: 0.9;
+.socialIcon:hover {
+  color: #FFFFFF !important;
+  transform: translateY(-2px);
 }
 
+/* Indian Tricolor Bar */
+.tricolorBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.barSaffron {
+  flex: 1;
+  height: 4px;
+  background-color: #FF0000;
+  border-radius: 2px;
+}
+
+.barWhite {
+  flex: 1;
+  height: 4px;
+  background-color: #FFFFFF;
+  border-radius: 2px;
+}
+
+.barGreen {
+  flex: 1;
+  height: 4px;
+  background-color: #00A800;
+  border-radius: 2px;
+}
+
+/* Responsive Grid Adaptation */
 @media (max-width: 900px) {
   .drawerContent {
     grid-column: 4 / 13;
@@ -212,5 +487,62 @@
 @media (max-width: 600px) {
   .drawerContent {
     grid-column: 1 / 13;
+  }
+
+  .watermarkWrapper {
+    display: none;
+  }
+
+  .drawerHeader {
+    padding: 24px 20px 12px 20px;
+  }
+
+  .loginGrid {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+    width: 100%;
+    padding: 8px 20px 0 20px;
+    margin-bottom: 24px;
+  }
+
+  .loginCol,
+  .loginDivider,
+  .navLinks,
+  .navItem,
+  .navDivider {
+    width: 100%;
+  }
+
+  .navLinks {
+    padding: 0 20px 24px 20px;
+    gap: 24px;
+  }
+
+  .loginAction,
+  .mainLinkText {
+    font-size: 32px;
+  }
+}
+
+@media (max-height: 720px) {
+  .drawerHeader {
+    padding-top: 18px;
+    padding-bottom: 8px;
+  }
+
+  .loginGrid {
+    padding-top: 6px;
+    padding-bottom: 0;
+    margin-bottom: 12px;
+  }
+
+  .navLinks {
+    gap: 12px;
+    padding-top: 0;
+    padding-bottom: 14px;
+  }
+
+  .mainLinkText {
+    font-size: 26px;
   }
 }
