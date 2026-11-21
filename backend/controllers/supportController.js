@@ -446,6 +446,20 @@ export async function createSupportTicket(req, res) {
   }
 }
 
+function serializeUserTicketSummary(ticket) {
+  const data = ticket.toJSON ? ticket.toJSON() : { ...ticket };
+  return {
+    id: data.id,
+    ticketNumber: data.ticketNumber,
+    subject: data.subject,
+    description: data.description,
+    status: data.status,
+    createdAt: data.createdAt,
+    lastRepliedAt: data.lastRepliedAt,
+    replyCount: Array.isArray(data.replies) ? data.replies.length : 0,
+  };
+}
+
 export async function listMySupportTickets(req, res) {
   try {
     const resolved = await resolveRequesterAccount(req.user);
@@ -457,29 +471,123 @@ export async function listMySupportTickets(req, res) {
     }
 
     const { requester } = resolved;
-    const tickets = await SupportTicket.findAll({
-      where: {
-        requesterType: requester.role,
-        requesterId: requester.id,
+    const page = Math.max(1, Number.parseInt(req.query?.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query?.limit, 10) || 10));
+    const offset = (page - 1) * limit;
+    const statusParam = typeof req.query?.status === 'string' ? req.query.status.trim().toLowerCase() : 'all';
+
+    const baseWhere = {
+      requesterType: requester.role,
+      requesterId: requester.id,
+    };
+
+    const [allCount, openCount, repliedCount] = await Promise.all([
+      SupportTicket.count({ where: baseWhere }),
+      SupportTicket.count({ where: { ...baseWhere, status: 'open' } }),
+      SupportTicket.count({ where: { ...baseWhere, status: 'replied' } }),
+    ]);
+
+    const filterWhere = { ...baseWhere };
+    if (statusParam === 'open' || statusParam === 'replied') {
+      filterWhere.status = statusParam;
+    }
+
+    const { count, rows: tickets } = await SupportTicket.findAndCountAll({
+      where: filterWhere,
+      include: [
+        {
+          model: SupportReply,
+          as: 'replies',
+          attributes: ['id'],
+        },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+      distinct: true,
+    });
+
+    return res.status(200).json({
+      items: tickets.map(serializeUserTicketSummary),
+      counts: {
+        all: allCount,
+        open: openCount,
+        replied: repliedCount,
       },
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.max(1, Math.ceil(count / limit)),
+      },
+    });
+  } catch (error) {
+    console.error('[Support] Failed to list requester tickets:', error.message);
+    return res.status(500).json({ message: 'Unable to load support tickets' });
+  }
+}
+
+export async function getMySupportTicketDetail(req, res) {
+  try {
+    const resolved = await resolveRequesterAccount(req.user);
+    if (resolved.error) {
+      return res.status(resolved.error.status).json({
+        message: resolved.error.message,
+        ...(resolved.error.code ? { code: resolved.error.code } : {}),
+      });
+    }
+
+    const { requester } = resolved;
+    const ticket = await findSupportTicketByIdentifier(req.params.ticketId, {
       include: [
         {
           model: SupportReply,
           as: 'replies',
         },
       ],
-      order: [
-        ['createdAt', 'DESC'],
-        [{ model: SupportReply, as: 'replies' }, 'createdAt', 'ASC'],
-      ],
+      order: [[{ model: SupportReply, as: 'replies' }, 'createdAt', 'ASC']],
+    });
+
+    if (
+      !ticket ||
+      ticket.requesterType !== requester.role ||
+      String(ticket.requesterId) !== String(requester.id)
+    ) {
+      return res.status(404).json({ message: 'Support ticket not found' });
+    }
+
+    const replies = Array.isArray(ticket.replies)
+      ? [...ticket.replies].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      : [];
+
+    const safeReplies = replies.map((reply) => {
+      const rawAdminName = typeof reply.adminName === 'string' ? reply.adminName.trim() : '';
+      const safeAdminName =
+        rawAdminName && !rawAdminName.includes('@') ? rawAdminName : 'Platform Support';
+
+      return {
+        id: reply.id,
+        message: reply.message,
+        createdAt: reply.createdAt,
+        adminName: safeAdminName,
+      };
     });
 
     return res.status(200).json({
-      items: tickets.map(serializeTicket),
+      ticket: {
+        id: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        subject: ticket.subject,
+        description: ticket.description,
+        status: ticket.status,
+        createdAt: ticket.createdAt,
+        lastRepliedAt: ticket.lastRepliedAt,
+        replies: safeReplies,
+      },
     });
   } catch (error) {
-    console.error('[Support] Failed to list requester tickets:', error.message);
-    return res.status(500).json({ message: 'Unable to load support tickets' });
+    console.error('[Support] Failed to get user ticket detail:', error.message);
+    return res.status(500).json({ message: 'Unable to load support ticket details' });
   }
 }
 
