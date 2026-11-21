@@ -235,8 +235,8 @@ test("StepQuestionContext pre-selects onboarding chips and supports editing and 
       ShieldCheck: "ShieldCheck",
       Lightbulb: "Lightbulb",
     },
-    "@/components/ui/ContinueButton": { default: "ContinueButton" },
     "@/components/ui/ShinyText": { default: "ShinyText" },
+    "@/components/ui/TextButton": { default: "TextButton" },
     "@/components/ui/TonePillButton": { default: "TonePillButton" },
     "@/components/seeker/onboarding/seekerOutcomeOptions": outcomeOptions,
     "./checkoutTypes": {
@@ -315,7 +315,7 @@ test("StepQuestionContext pre-selects onboarding chips and supports editing and 
   // Reset button clears subject, context, and selected chips
   const resetButton = findElements(
     tree,
-    (el) => el.type === "ContinueButton" && el.props?.label === "Reset",
+    (el) => el.type === "TextButton" && el.props?.label === "Reset",
   )[0];
   assert.ok(resetButton);
   assert.equal(resetButton.props.disabled, false);

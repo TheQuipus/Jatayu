@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Target, Zap, Brain, Handshake, ShieldCheck, Lightbulb } from "lucide-react";
-import ContinueButton from "@/components/ui/ContinueButton";
 import ShinyText from "@/components/ui/ShinyText";
+import TextButton from "@/components/ui/TextButton";
 import TonePillButton from "@/components/ui/TonePillButton";
 import {
   NEED_STEP_CHIPS,
@@ -236,9 +236,10 @@ export default function StepQuestionContext({
           <label htmlFor="booking-subject" className={styles.contextLabel}>
             Subject / Topic
           </label>
-          <ContinueButton
+          <TextButton
+            type="button"
             label="Reset"
-            showArrow={false}
+            className={styles.resetBtn}
             disabled={!hasContentToReset}
             onClick={handleReset}
           />
