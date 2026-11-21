@@ -103,3 +103,57 @@
 @media (max-width: 600px) {
   .blogGrid { grid-template-columns: 1fr; }
 }
+
+/* Phone-only responsiveness (max-width: 480px) */
+@media (max-width: 480px) {
+  .blog {
+    padding: 60px 0;
+  }
+
+  .blogHead {
+    margin-bottom: 32px;
+    gap: 20px;
+  }
+
+  .blogHead :global(.eyebrow) {
+    margin-bottom: 16px;
+  }
+
+  .blogHead :global(.display) {
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+  }
+
+  .blogRight {
+    gap: 20px;
+  }
+
+  .blogRight p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .blogRight :global(.btn) {
+    min-height: 48px;
+    width: 100%;
+  }
+
+  .blogGrid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .bpostBar {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .bpost h3 {
+    font-size: 15px;
+    line-height: 1.35;
+    margin-top: 10px;
+  }
+}
+
