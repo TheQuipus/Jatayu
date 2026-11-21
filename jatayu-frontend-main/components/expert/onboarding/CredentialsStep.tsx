@@ -376,12 +376,13 @@ export default function CredentialsStep({
           fileName={fileName || "certificate.docx"}
           url={url}
           fileType="DOCX"
+          size="certificate"
         />
-        <span className={styles.certificateFileName}>
+        {/* <span className={styles.certificateFileName}>
           {fileName || "Certificate DOCX"}
         </span>
         {fileSize ? <span className={styles.certificatePreviewLabel}>{fileSize}</span> : null}
-        <span className={styles.certificatePreviewLabel}>Click to preview</span>
+        <span className={styles.certificatePreviewLabel}>Click to preview</span> */}
       </button>
       <button
         type="button"

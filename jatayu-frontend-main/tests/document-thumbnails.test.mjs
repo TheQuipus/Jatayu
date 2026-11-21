@@ -70,3 +70,15 @@ test("admin review uses thumbnails for stored portfolio, ID, DigiLocker, and cer
   assert.match(applicationReview, /fileType={document\.documentType \|\| undefined}/);
   assert.match(applicationReview, /fileType="DOCX"/);
 });
+
+test("document thumbnail component supports DOCX rendering, legacy DOC fallback, and error handling", () => {
+  assert.match(thumbnail, /import\("docx-preview"\)/);
+  assert.match(thumbnail, /renderAsync\(blob, container/);
+  assert.match(thumbnail, /isLegacyDoc =/);
+  assert.match(thumbnail, /isDocx =/);
+  assert.match(thumbnail, /docxLoading/);
+  assert.match(thumbnail, /docxError/);
+  assert.match(thumbnail, /docxContainerRef/);
+  assert.match(thumbnail, /docxWrapper/);
+  assert.match(thumbnail, /transform:\s*`scale\(\$\{scale\}\)`/);
+});

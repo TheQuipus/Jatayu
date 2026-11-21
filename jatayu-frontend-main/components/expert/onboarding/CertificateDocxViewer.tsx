@@ -17,11 +17,13 @@ export default function CertificateDocxViewer({
   onClose,
 }: CertificateDocxViewerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const isLegacyDoc = /\.doc$/i.test(fileName);
 
   useEffect(() => {
+    closeButtonRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
@@ -56,7 +58,9 @@ export default function CertificateDocxViewer({
           useBase64URL: true,
         });
         if (active) setLoading(false);
-      } catch {
+      } catch (error) {
+        console.error("Certificate preview failed:", error);
+
         if (active) {
           setError("This DOCX certificate could not be displayed.");
           setLoading(false);
@@ -85,6 +89,7 @@ export default function CertificateDocxViewer({
         <header className={styles.certificateViewerHeader}>
           <h2 className={styles.certificateViewerTitle}>{fileName}</h2>
           <button
+            ref={closeButtonRef}
             type="button"
             className={styles.certificateViewerClose}
             onClick={onClose}
@@ -99,11 +104,13 @@ export default function CertificateDocxViewer({
           )}
           {error && <p role="alert" className={styles.certificateViewerError}>{error}</p>}
           {isLegacyDoc && (
-            <div>
+            <div className={styles.certificateViewerLegacy}>
               <p className={styles.certificateViewerLoading}>
                 Preview is not available for legacy DOC files.
               </p>
-              <a href={url} download={fileName}>Download certificate</a>
+              <a href={url} download={fileName} className={styles.certificateViewerDownloadLink}>
+                Download certificate
+              </a>
             </div>
           )}
           {!error && <div ref={contentRef} className={styles.certificateDocxContent} />}
