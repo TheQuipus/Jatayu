@@ -176,3 +176,52 @@
     font-size: 23px;
   }
 }
+
+/* ==========================================================================
+   Phone-only styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .trust {
+    padding: 60px 0;
+  }
+
+  .trustTitle {
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+    word-break: break-word;
+  }
+
+  .trustCtaWrap,
+  .trustJoinCta {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .trustCtaBtn,
+  .trustJoinBtn {
+    min-height: 48px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .trustList {
+    margin-top: 24px;
+    gap: 12px;
+  }
+
+  .trustCard {
+    padding: 18px 16px;
+  }
+
+  .cardTitle {
+    font-size: clamp(17px, 5vw, 20px);
+    line-height: 1.3;
+  }
+
+  .cardDesc {
+    font-size: 14px;
+    line-height: 1.45;
+    max-width: 100%;
+  }
+}
+

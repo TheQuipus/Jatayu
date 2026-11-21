@@ -574,3 +574,52 @@
   .benefitsRightCol { grid-template-columns: 1fr; }
   .logosTrack { gap: 16px; }
 }
+
+/* ==========================================================================
+   Phone-only styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .benefits {
+    padding: 60px 0;
+  }
+
+  .benefitsHead {
+    margin-bottom: 24px;
+  }
+
+  .benefitsTitle {
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+    word-break: break-word;
+  }
+
+  .benefitsDesc {
+    font-size: 14px;
+    line-height: 1.45;
+    margin-top: 14px;
+  }
+
+  .benefitsGrid {
+    gap: 20px;
+  }
+
+  .benefitsGrid > .bcard:first-child .bcardPortrait {
+    --portrait-pad-x: 20px;
+    --portrait-pad-top: 16px;
+  }
+
+  .bcard h3 {
+    font-size: 15px;
+  }
+
+  .bcard p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .logos {
+    overflow: hidden;
+    width: 100%;
+  }
+}
+
