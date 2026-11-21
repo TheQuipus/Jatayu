@@ -211,32 +211,42 @@
   }
 
   .aboutUsTop {
+    grid-template-columns: 1fr;
     gap: 16px;
   }
 
   .aboutUsMeta {
     order: -1;
+    grid-column: auto;
     justify-self: start;
   }
 
   .aboutUsTitle {
-    font-size: clamp(30px, 9vw, 42px);
+    grid-column: auto;
+    font-size: clamp(28px, 8.5vw, 40px);
     line-height: 0.95;
     word-break: break-word;
   }
 
   .aboutUsCta {
+    grid-column: auto;
     width: 100%;
     margin-top: 8px;
   }
 
   .aboutUsDesc {
+    grid-column: auto;
     font-size: 14px;
     line-height: 1.45;
     max-width: 100%;
   }
 
+  .aboutUsRule {
+    grid-column: auto;
+  }
+
   .featureGrid {
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 
@@ -256,3 +266,4 @@
     line-height: 1.4;
   }
 }
+
