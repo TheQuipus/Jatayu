@@ -326,9 +326,10 @@
   .linkGroup a,
   .phoneLink {
     min-height: 44px;
+    min-width: 44px;
     display: inline-flex;
     align-items: center;
-    padding: 6px 0;
+    padding: 6px 4px;
   }
 
   .emailLink {
@@ -345,9 +346,10 @@
 
   .backTopWrap a {
     min-height: 44px;
+    min-width: 44px;
     display: inline-flex;
     align-items: center;
-    padding: 6px 0;
+    padding: 6px 4px;
   }
 
   .brandWord {
@@ -368,8 +370,9 @@
 
   .metaLinks a {
     min-height: 44px;
+    min-width: 44px;
     display: inline-flex;
     align-items: center;
-    padding: 6px 0;
+    padding: 6px 4px;
   }
 }
