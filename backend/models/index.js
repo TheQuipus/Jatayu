@@ -21,6 +21,8 @@ import ExpertSession from './ExpertSession.js';
 import ExpertSecurityChallenge from './ExpertSecurityChallenge.js';
 import ExpertCalendarConnection from './ExpertCalendarConnection.js';
 import BookingCalendarEvent from './seeker/BookingCalendarEvent.js';
+import SupportTicket from './SupportTicket.js';
+import SupportReply from './SupportReply.js';
 
 // Expert-module relationships (same database connection)
 Expert.hasMany(Credential, { foreignKey: 'expertId', as: 'credentials', onDelete: 'CASCADE' });
@@ -75,6 +77,10 @@ BookingMessage.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 Booking.hasMany(BookingCalendarEvent, { foreignKey: 'bookingId', as: 'calendarEvents', onDelete: 'CASCADE' });
 BookingCalendarEvent.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 
+// Admin-module relationships (same database connection)
+SupportTicket.hasMany(SupportReply, { foreignKey: 'ticketId', as: 'replies', onDelete: 'CASCADE' });
+SupportReply.belongsTo(SupportTicket, { foreignKey: 'ticketId', as: 'ticket' });
+
 export {
   expertDb,
   seekerDb,
@@ -102,4 +108,6 @@ export {
   ExpertSecurityChallenge,
   ExpertCalendarConnection,
   BookingCalendarEvent,
+  SupportTicket,
+  SupportReply,
 };
