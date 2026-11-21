@@ -461,14 +461,37 @@
 }
 
 @media (max-width: 480px) {
+  .section {
+    height: auto;
+    min-height: 100dvh;
+    padding-top: max(60px, env(safe-area-inset-top, 60px));
+    padding-bottom: 24px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .heroContent {
+    margin-top: clamp(40px, 8vh, 64px);
+    padding: 0 16px;
+  }
+
+  .heroTitle {
+    font-size: clamp(32px, 9vw, 48px);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
   .scrollWrap {
-    height: 340px;
-    margin-top: 56px;
+    height: 280px;
+    margin-top: clamp(24px, 5vh, 40px);
+    overflow: hidden;
   }
 
   .rotationCircleBox,
   .animationBox {
-    width: 800px;
+    width: min(800px, 200vw);
   }
 
   .animationItem {
@@ -482,6 +505,23 @@
   .boxTop {
     width: 475px;
     height: 680px;
+  }
+
+  .heroBottomBox {
+    position: relative;
+    padding: 24px 16px;
+    gap: 20px;
+  }
+
+  .heroInfoBox {
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .primaryBtn {
+    min-height: 44px;
+    width: 100%;
+    justify-content: center;
   }
 }
 
