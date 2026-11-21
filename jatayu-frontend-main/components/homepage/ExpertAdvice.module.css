@@ -475,3 +475,63 @@
     font-size: 16px;
   }
 }
+
+/* ==========================================================================
+   Phone-only styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .expertAdvice {
+    padding-bottom: 60px;
+  }
+
+  .title {
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+    word-break: break-word;
+  }
+
+  .topRight {
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .topCtaBtn {
+    min-height: 48px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .subcopyRow {
+    margin: 10px 0 20px;
+  }
+
+  .subcopy {
+    font-size: 14px;
+    white-space: normal;
+  }
+
+  .stepMain {
+    padding: 12px 14px;
+    grid-template-rows: auto auto;
+    min-height: 56px;
+    gap: 8px 10px;
+  }
+
+  .stepTitle {
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  .stepPlus {
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+  }
+
+  .stepDesc {
+    font-size: 13px;
+    line-height: 1.4;
+    padding-top: 6px;
+  }
+}
