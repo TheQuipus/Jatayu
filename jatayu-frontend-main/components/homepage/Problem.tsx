@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -311,8 +311,9 @@ export default function Problem() {
       // Refresh measures this fold while Hero's pin spacer is reverted, so the
       // stored start is short by that pin and the fold locks on over Services.
       const gridWrap = wrapper.closest(".section-grid-wrap");
-      const previousWrap = gridWrap?.previousElementSibling instanceof HTMLElement
-        ? gridWrap.previousElementSibling
+      const previousElement = gridWrap ? gridWrap.previousElementSibling : wrapper.previousElementSibling;
+      const previousWrap = previousElement instanceof HTMLElement
+        ? previousElement
         : null;
 
       const timeline = gsap.timeline({
@@ -484,6 +485,13 @@ export default function Problem() {
         className={`${styles.problemWrapper} lightfold`}
         data-nav-surface="light"
       >
+        <div
+          className="section-grid-lines"
+          aria-hidden="true"
+          style={{ "--section-grid-line-color": "#FFFFFF" } as CSSProperties}
+        >
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
         <section ref={sectionRef} className={styles.problem}>
           <div ref={innerRef} className={`container ${styles.problemInner}`}>
 

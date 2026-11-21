@@ -9,9 +9,9 @@
 
 .problem {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   padding: 60px 0 calc(120px + 95px);
-  background: var(--fold-background);
+  background: transparent;
 }
 
 .problemInner {
