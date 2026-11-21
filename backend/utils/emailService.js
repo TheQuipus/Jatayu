@@ -180,6 +180,7 @@ export async function sendGenericEmail({ recipientEmail, recipientName, subject,
         htmlContent,
         textContent: textContent || subject,
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
