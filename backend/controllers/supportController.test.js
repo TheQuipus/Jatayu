@@ -13,6 +13,7 @@ import {
 } from '../models/index.js';
 import {
   createSupportTicket,
+  getAdminSupportTicket,
   getSupportMe,
   normalizeSupportPhone,
   PREDEFINED_SUPPORT_SUBJECTS,
@@ -20,6 +21,7 @@ import {
   resetSupportRateLimiter,
   validateSupportTicketInput,
 } from './supportController.js';
+import { getConfiguredSenderEmail } from '../utils/emailService.js';
 import { generateSupportTicketNumber } from '../utils/supportTicketNumber.js';
 
 function response() {
@@ -494,6 +496,106 @@ test('replyAdminSupportTicket rolls back reply and keeps ticket open if requeste
   assert.equal(persistedReplies.length, 1);
   assert.equal(persistedReplies[0].fromEmail, 'support@jatayuconnect.in');
   assert.equal(persistedReplies[0].toEmail, 'priya@example.com');
+
+  // Re-replying to an already replied ticket must return 409 conflict
+  const duplicateReplyRes = response();
+  await replyAdminSupportTicket(
+    {
+      params: { ticketId: 'ticket-1' },
+      admin: { id: 'admin-1', fullName: 'Quipus Admin' },
+      body: { message: 'Second reply should be blocked.' },
+    },
+    duplicateReplyRes,
+  );
+  assert.equal(duplicateReplyRes.statusCode, 409);
+  assert.equal(duplicateReplyRes.body.code, 'SUPPORT_TICKET_ALREADY_REPLIED');
+  assert.equal(persistedReplies.length, 1);
+});
+
+test('getConfiguredSenderEmail, getAdminSupportTicket, and replyAdminSupportTicket share exact FROM_EMAIL / SMTP_USER with null when unconfigured', async (t) => {
+  const settings = new Map();
+  t.mock.method(Setting, 'findByPk', async (key) => (settings.has(key) ? { value: settings.get(key) } : null));
+
+  t.mock.method(SupportTicket, 'findByPk', async (id) => ({
+    id,
+    ticketNumber: 'SUP-1000',
+    requesterType: 'seeker',
+    requesterId: 'seeker-1',
+    requesterName: 'Priya Sharma',
+    email: 'priya@example.com',
+    phone: '9876543210',
+    subject: 'Booking & Scheduling Issue',
+    description: 'Need help',
+    status: 'open',
+    replies: [],
+    toJSON() {
+      return { ...this };
+    },
+  }));
+
+  // 1. Neither FROM_EMAIL nor SMTP_USER configured -> null
+  assert.equal(await getConfiguredSenderEmail(), null);
+
+  const unconfiguredDetailRes = response();
+  await getAdminSupportTicket({ params: { ticketId: 'ticket-1' } }, unconfiguredDetailRes);
+  assert.equal(unconfiguredDetailRes.statusCode, 200);
+  assert.equal(unconfiguredDetailRes.body.supportFromEmail, null);
+
+  const unconfiguredReplyRes = response();
+  await replyAdminSupportTicket(
+    {
+      params: { ticketId: 'ticket-1' },
+      admin: { id: 'admin-1', fullName: 'Quipus Admin' },
+      body: { message: 'Attempt reply without sender address' },
+    },
+    unconfiguredReplyRes,
+  );
+  assert.equal(unconfiguredReplyRes.statusCode, 422);
+  assert.equal(unconfiguredReplyRes.body.code, 'SUPPORT_SENDER_NOT_CONFIGURED');
+
+  // 2. Only SMTP_USER configured -> falls back to SMTP_USER
+  settings.set('SMTP_USER', 'smtp-only@thequipus.com');
+  assert.equal(await getConfiguredSenderEmail(), 'smtp-only@thequipus.com');
+
+  const smtpDetailRes = response();
+  await getAdminSupportTicket({ params: { ticketId: 'ticket-1' } }, smtpDetailRes);
+  assert.equal(smtpDetailRes.body.supportFromEmail, 'smtp-only@thequipus.com');
+
+  // 3. FROM_EMAIL configured -> takes priority over SMTP_USER
+  settings.set('FROM_EMAIL', 'support@thequipus.com');
+  assert.equal(await getConfiguredSenderEmail(), 'support@thequipus.com');
+
+  const fromDetailRes = response();
+  await getAdminSupportTicket({ params: { ticketId: 'ticket-1' } }, fromDetailRes);
+  assert.equal(fromDetailRes.body.supportFromEmail, 'support@thequipus.com');
+
+  // 4. Lookup by human-readable SUP-xxxx ticketNumber also resolves via SupportTicket.findOne
+  let capturedWhere = null;
+  t.mock.method(SupportTicket, 'findOne', async (opts) => {
+    capturedWhere = opts?.where;
+    return {
+      id: 'ticket-sup-1000',
+      ticketNumber: 'SUP-1000',
+      requesterType: 'seeker',
+      requesterId: 'seeker-1',
+      requesterName: 'Priya Sharma',
+      email: 'priya@example.com',
+      phone: '9876543210',
+      subject: 'Booking & Scheduling Issue',
+      description: 'Need help',
+      status: 'open',
+      replies: [],
+      toJSON() {
+        return { ...this };
+      },
+    };
+  });
+
+  const byNumberRes = response();
+  await getAdminSupportTicket({ params: { ticketId: 'SUP-1000' } }, byNumberRes);
+  assert.equal(byNumberRes.statusCode, 200);
+  assert.deepEqual(capturedWhere, { ticketNumber: 'SUP-1000' });
+  assert.equal(byNumberRes.body.ticket.id, 'ticket-sup-1000');
 });
 
 test('getSupportMe returns requester profile with normalized phone and predefined categories', async (t) => {

@@ -18,6 +18,22 @@ export const BUILD_TIME_APPLICATION_APP_IDS = [
   ...new Set([...DEMO_APPLICATION_APP_IDS, ...getAdminAppIdRange()]),
 ];
 
+/** First SUP-* id issued when no prior support tickets exist. */
+const SUPPORT_TICKET_ID_MIN = 1000;
+const SUPPORT_TICKET_ID_MAX = 1099;
+
+function getAdminSupportTicketIdRange(): string[] {
+  const ids: string[] = [];
+  for (let n = SUPPORT_TICKET_ID_MIN; n <= SUPPORT_TICKET_ID_MAX; n += 1) {
+    ids.push(`SUP-${n}`);
+  }
+  return ids;
+}
+
 export function getAdminAppStaticParams() {
   return BUILD_TIME_APPLICATION_APP_IDS.map((appId) => ({ appId }));
+}
+
+export function getAdminSupportTicketStaticParams() {
+  return getAdminSupportTicketIdRange().map((ticketId) => ({ ticketId }));
 }

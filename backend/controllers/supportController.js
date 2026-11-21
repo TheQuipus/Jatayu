@@ -7,8 +7,7 @@ import {
   SupportReply,
   SupportTicket,
 } from '../models/index.js';
-import { sendGenericEmail } from '../utils/emailService.js';
-import { getDatabaseSetting } from '../utils/settingsHelper.js';
+import { getConfiguredSenderEmail, sendGenericEmail } from '../utils/emailService.js';
 import { generateSupportTicketNumber } from '../utils/supportTicketNumber.js';
 import { isSeekerSuspended } from './seeker/seekerAuthController.js';
 
@@ -550,17 +549,34 @@ export async function listAdminSupportTickets(req, res) {
   }
 }
 
+function findSupportTicketByIdentifier(ticketId, options = {}) {
+  const raw = String(ticketId || '').trim();
+  if (/^SUP-\d+$/i.test(raw)) {
+    return SupportTicket.findOne({
+      ...options,
+      where: {
+        ...(options.where || {}),
+        ticketNumber: raw.toUpperCase(),
+      },
+    });
+  }
+  return SupportTicket.findByPk(raw, options);
+}
+
 export async function getAdminSupportTicket(req, res) {
   try {
-    const ticket = await SupportTicket.findByPk(req.params.ticketId, {
-      include: [
-        {
-          model: SupportReply,
-          as: 'replies',
-        },
-      ],
-      order: [[{ model: SupportReply, as: 'replies' }, 'createdAt', 'ASC']],
-    });
+    const [ticket, supportFromEmail] = await Promise.all([
+      findSupportTicketByIdentifier(req.params.ticketId, {
+        include: [
+          {
+            model: SupportReply,
+            as: 'replies',
+          },
+        ],
+        order: [[{ model: SupportReply, as: 'replies' }, 'createdAt', 'ASC']],
+      }),
+      getConfiguredSenderEmail(),
+    ]);
 
     if (!ticket) {
       return res.status(404).json({ message: 'Support ticket not found' });
@@ -568,6 +584,7 @@ export async function getAdminSupportTicket(req, res) {
 
     return res.status(200).json({
       ticket: serializeTicket(ticket),
+      supportFromEmail,
     });
   } catch (error) {
     console.error('[Support] Admin get support ticket failed:', error.message);
@@ -591,22 +608,37 @@ export async function replyAdminSupportTicket(req, res) {
   }
 
   try {
-    const ticket = await SupportTicket.findByPk(req.params.ticketId);
+    const ticket = await findSupportTicketByIdentifier(req.params.ticketId);
     if (!ticket) {
       return res.status(404).json({ message: 'Support ticket not found' });
     }
+    if (ticket.status === 'replied') {
+      return res.status(409).json({
+        message: 'This support ticket has already been replied to.',
+        code: 'SUPPORT_TICKET_ALREADY_REPLIED',
+      });
+    }
 
-    const fromEmail =
-      (await getDatabaseSetting('FROM_EMAIL')) ||
-      (await getDatabaseSetting('SMTP_USER')) ||
-      process.env.ADMIN_EMAIL ||
-      'support@jatayuconnect.in';
+    const fromEmail = await getConfiguredSenderEmail();
+    if (!fromEmail) {
+      return res.status(422).json({
+        message: 'Support sender address not configured. Please configure Sender Email or SMTP Username in Admin Settings.',
+        code: 'SUPPORT_SENDER_NOT_CONFIGURED',
+      });
+    }
 
     const result = await adminDb.transaction(async (transaction) => {
       const lockedTicket = await SupportTicket.findByPk(ticket.id, {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
+
+      if (lockedTicket.status === 'replied') {
+        const conflictError = new Error('This support ticket has already been replied to.');
+        conflictError.statusCode = 409;
+        conflictError.code = 'SUPPORT_TICKET_ALREADY_REPLIED';
+        throw conflictError;
+      }
 
       const now = new Date();
       const reply = await SupportReply.create(
@@ -660,8 +692,15 @@ export async function replyAdminSupportTicket(req, res) {
         createdAt: result.reply.createdAt,
       },
       ticket: serializeTicket(refreshed || result.ticket),
+      supportFromEmail: fromEmail,
     });
   } catch (error) {
+    if (error.statusCode === 409) {
+      return res.status(409).json({
+        message: error.message,
+        code: error.code || 'SUPPORT_TICKET_ALREADY_REPLIED',
+      });
+    }
     console.error('[Support] Admin reply email or save failed:', error.message);
     return res.status(502).json({
       message: 'Failed to send reply email. Please try again.',
