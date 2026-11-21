@@ -1,0 +1,116 @@
+.clickableRow {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.clickableRow:hover td {
+  background-color: var(--seashell, #f8f8f8);
+}
+
+.ticketIdPill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  background: var(--seashell);
+  border: 1px solid var(--mercury);
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.roleSeeker {
+  background: color-mix(in srgb, #0ea5e9 14%, var(--white));
+  color: #0284c7;
+}
+
+.roleExpert {
+  background: color-mix(in srgb, #8b5cf6 14%, var(--white));
+  color: #7c3aed;
+}
+
+.requesterCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+
+.requesterName {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.requesterContact {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--dove-gray);
+  word-break: break-all;
+}
+
+.subjectCell {
+  max-width: 220px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 30%, var(--mercury));
+  background: color-mix(in srgb, var(--pomegranate) 8%, var(--white));
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.errorBannerContent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pomegranate);
+}
+
+.errorRetryBtn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--pomegranate);
+  background: var(--white);
+  color: var(--pomegranate);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.errorRetryBtn:hover {
+  background: var(--pomegranate);
+  color: var(--white);
+}

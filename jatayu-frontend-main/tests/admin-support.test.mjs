@@ -10,6 +10,7 @@ function transpileCommonJs(relativePath) {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2020,
+      jsx: ts.JsxEmit.React,
     },
   });
   return { source, outputText };
@@ -203,3 +204,227 @@ test("AdminShell places Support directly below User Management and above Setting
     "AdminShell must show a red badge with openSupportCount when openSupportCount > 0",
   );
 });
+
+test("AdminSupportList helper functions correctly format date, time, relative ago and filter tickets", () => {
+  const listModule = loadModule("../components/admin/support/AdminSupportList.tsx", {
+    require(id) {
+      if (id === "@/components/ui/ChamferCardBorder") {
+        return () => null;
+      }
+      if (id === "@/lib/adminSupportApi") {
+        return {
+          ADMIN_SUPPORT_UPDATED_EVENT: "admin-support-updated",
+          getAdminSupportTickets: async () => ({ items: [], counts: { all: 0, open: 0, replied: 0 } }),
+        };
+      }
+      if (id === "@/components/admin/applications/ExpertApplications.module.css") {
+        return {};
+      }
+      if (id === "./AdminSupportList.module.css") {
+        return {};
+      }
+      if (id === "next/link" || id === "next/navigation" || id === "lucide-react") {
+        return {};
+      }
+      return {};
+    },
+  });
+
+  const {
+    formatSubmittedDate,
+    formatSubmittedTime,
+    formatSubmittedAgo,
+    filterSupportTickets,
+  } = listModule;
+
+  const iso = "2026-11-20T10:30:00.000Z";
+  assert.ok(formatSubmittedDate(iso).includes("2026"));
+  assert.ok(formatSubmittedTime(iso).length > 0);
+  assert.ok(formatSubmittedAgo(iso).includes("ago"));
+  assert.equal(formatSubmittedDate(null), "—");
+  assert.equal(formatSubmittedTime(null), "—");
+  assert.equal(formatSubmittedAgo(null), "—");
+
+  const sampleTickets = [
+    {
+      id: "t-1",
+      ticketNumber: "SUP-1001",
+      requesterType: "seeker",
+      requesterName: "Priya Sharma",
+      subject: "Billing Issue",
+      status: "open",
+      createdAt: iso,
+    },
+    {
+      id: "t-2",
+      ticketNumber: "SUP-1002",
+      requesterType: "expert",
+      requesterName: "Dr. Expert",
+      subject: "Account Access",
+      status: "replied",
+      createdAt: iso,
+    },
+  ];
+
+  // Filter by requesterName
+  const byName = filterSupportTickets(sampleTickets, {
+    requesterName: "Priya Sharma",
+    role: "all",
+    subject: "all",
+    status: "all",
+    submittedDate: "all",
+  });
+  assert.equal(byName.length, 1);
+  assert.equal(byName[0].ticketNumber, "SUP-1001");
+
+  // Filter by role
+  const byRole = filterSupportTickets(sampleTickets, {
+    requesterName: "all",
+    role: "expert",
+    subject: "all",
+    status: "all",
+    submittedDate: "all",
+  });
+  assert.equal(byRole.length, 1);
+  assert.equal(byRole[0].ticketNumber, "SUP-1002");
+
+  // Filter by subject
+  const bySubject = filterSupportTickets(sampleTickets, {
+    requesterName: "all",
+    role: "all",
+    subject: "Billing Issue",
+    status: "all",
+    submittedDate: "all",
+  });
+  assert.equal(bySubject.length, 1);
+  assert.equal(bySubject[0].ticketNumber, "SUP-1001");
+
+  // Filter by status
+  const byStatus = filterSupportTickets(sampleTickets, {
+    requesterName: "all",
+    role: "all",
+    subject: "all",
+    status: "replied",
+    submittedDate: "all",
+  });
+  assert.equal(byStatus.length, 1);
+  assert.equal(byStatus[0].ticketNumber, "SUP-1002");
+
+  // Default 'all' preserves all
+  const allFiltered = filterSupportTickets(sampleTickets, {
+    requesterName: "all",
+    role: "all",
+    subject: "all",
+    status: "all",
+    submittedDate: "all",
+  });
+  assert.equal(allFiltered.length, 2);
+});
+
+test("AdminSupportList KPI cards use baseStyles.kpiRow with label 'Total' to match ExpertApplications 1:1", () => {
+  const listSource = fs.readFileSync(
+    new URL("../components/admin/support/AdminSupportList.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Must use baseStyles.kpiRow directly without kpiRowThree
+  assert.ok(
+    listSource.includes("className={baseStyles.kpiRow}"),
+    "KPI row must use baseStyles.kpiRow directly without overriding grid columns",
+  );
+  assert.ok(
+    !listSource.includes("customStyles.kpiRowThree"),
+    "customStyles.kpiRowThree must not be present in AdminSupportList.tsx",
+  );
+
+  // Label must be "Total" (not "Total Tickets")
+  assert.ok(
+    listSource.includes("<span className={baseStyles.kpiLabel}>Total</span>"),
+    "Card label must be 'Total' (matching ExpertApplications)",
+  );
+});
+
+test("AdminSupportDetailPage exports generateStaticParams and metadata matching [ticketId]", async () => {
+  const pageSource = fs.readFileSync(
+    new URL("../app/admin/(app)/support/[ticketId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.ok(pageSource.includes("generateStaticParams"), "Page must export generateStaticParams");
+  assert.ok(
+    pageSource.includes("getAdminSupportTicketStaticParams"),
+    "Page must call getAdminSupportTicketStaticParams() for static export",
+  );
+  assert.ok(pageSource.includes("generateMetadata"), "Page must export generateMetadata");
+
+  const pageModule = loadModule("../app/admin/(app)/support/[ticketId]/page.tsx", {
+    require(id) {
+      if (id === "@/components/admin/support/AdminSupportDetail") {
+        return () => null;
+      }
+      if (id === "@/lib/adminStaticParams") {
+        return {
+          getAdminSupportTicketStaticParams: () => [{ ticketId: "SUP-1000" }, { ticketId: "SUP-1001" }],
+        };
+      }
+      return {};
+    },
+  });
+
+  const staticParams = pageModule.generateStaticParams();
+  assert.deepEqual(staticParams, [{ ticketId: "SUP-1000" }, { ticketId: "SUP-1001" }]);
+
+  const metadata = await pageModule.generateMetadata({
+    params: Promise.resolve({ ticketId: "SUP-1005" }),
+  });
+  assert.equal(metadata.title, "SUP-1005 — Support — Jatayu Admin");
+});
+
+test("AdminSupportDetail component implements required error handling, limits, and sender check", () => {
+  const detailSource = fs.readFileSync(
+    new URL("../components/admin/support/AdminSupportDetail.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // 1. Max character limit 5000
+  assert.ok(detailSource.includes("MAX_REPLY_CHARS = 5000"), "Must enforce 5000 char limit");
+  assert.ok(detailSource.includes("maxLength={MAX_REPLY_CHARS}"), "Textarea must have maxLength=5000");
+
+  // 2. Unconfigured sender warning & button disable
+  assert.ok(
+    detailSource.includes("Support sender address not configured."),
+    "Must warn if supportFromEmail is not configured",
+  );
+  assert.ok(
+    detailSource.includes("!supportFromEmail"),
+    "Send button must be disabled when supportFromEmail is null or empty",
+  );
+
+  // 3. Error mappings
+  assert.ok(
+    detailSource.includes("Email could not be sent, the ticket is still Open, please try again."),
+    "Must handle 502 with clear retry message and preserve draft",
+  );
+  assert.ok(
+    detailSource.includes("SUPPORT_TICKET_ALREADY_REPLIED"),
+    "Must handle 409 already replied and reload ticket",
+  );
+  assert.ok(
+    detailSource.includes("SUPPORT_SENDER_NOT_CONFIGURED"),
+    "Must handle 422 sender unconfigured",
+  );
+
+  // 4. Replied state lock note
+  assert.ok(
+    detailSource.includes("This ticket has been replied to."),
+    "Must show read-only note when ticket is replied",
+  );
+
+  // 5. Breadcrumb & back button to /admin/support
+  assert.ok(
+    detailSource.includes('href="/admin/support"'),
+    "Must provide link back to /admin/support",
+  );
+});
+
+
