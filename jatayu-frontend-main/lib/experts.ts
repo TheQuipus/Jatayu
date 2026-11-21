@@ -192,207 +192,334 @@ function withExpertDetails(expert: Expert): Expert {
 
 const baseExperts: Expert[] = [
   {
-    name: "Sneha Laxmeshwar",
-    role: "Ex-VC Partner at Sequoia | Startup Advisor | 15+ Yrs Exp",
-    desc: "VC partner helping founders navigate fundraising and venture capital",
-    bio: "I help early-stage founders navigate the complex world of venture capital. With over 15 years of experience on both sides of the table—as a founder who raised ₹150 Cr+ and as a VC partner who deployed over ₹750 Cr—I know exactly what investors are looking for. Whether you need help tearing down your pitch deck, structuring your seed round, or negotiating a term sheet, I provide actionable, no-nonsense advice.",
-    image: "/assets/img/team1.png",
-    topics: ["Legal & Compliance", "Startup & Fundraising", "Career & Jobs", "Tax & Finance"],
-    languages: ["Hindi", "English"],
-    price: 2500,
+    name: "Prakash Raj",
+    role: "National Award-Winning Actor, Director & Producer | Prakash Raj Foundation",
+    desc: "5-time National Film Award winner; mentors on stagecraft, creative leadership, and public communication",
+    bio: "National Award-winning actor, director, and producer with over 30 years across theatre and multi-lingual Indian cinema (Tamil, Telugu, Kannada, Hindi). Founder of the Prakash Raj Foundation focusing on rural empowerment and education. I advise on voice modulation, narrative authenticity, handling creative criticism, and fearless public communication.",
+    image: "/assets/img/influencers/prakash-raj-card.jpg",
+    topics: ["Creator Access", "Career & Jobs", "Enterprise Learning"],
+    languages: ["Kannada", "Tamil", "Telugu", "Hindi", "English"],
+    price: 499,
     rating: 4.9,
-    replyTime: "< 2 hours",
-    reviewsCount: 120,
-    sessionsCompleted: "350+ Sessions Completed",
-    location: "Mumbai, India",
+    replyTime: "15 min",
+    reviewsCount: 420,
+    sessionsCompleted: "850+ Sessions Completed",
+    location: "Bengaluru, India",
     sampleAnswers: [
       {
-        question: "How should i value my pre-revenue saas startup for a seed round?",
-        answer: "Pre-revenue valuation is more art than science. Don't focus on DCF models; investors won't believe them anyway. Instead, look at the market standard for your geography and sector. In India right now, a standard seed round for a high-quality SaaS team ranges from ₹8 Cr to ₹16 Cr at a ₹50 Cr to ₹80 Cr post-money valuation. Focus on dilution: aim to give up 15-20% of your company in your seed round, and back-calculate your valuation from the amount you actually need to raise to reach 18-24 months of runway."
+        question: "How can actors or public speakers conquer stage fear and project authentic authority?",
+        answer: "Fear is merely energy without direction. Don't suppress nervousness—anchor it into your breath and the first sentence. Speak from your diaphragm, maintain steady eye contact with individual people rather than a blurry crowd, and care more about the message reaching them than how clever you appear."
       },
       {
-        question: "What is the biggest mistake founders make during term sheet negotiation?",
-        answer: "Focusing too much on valuation and ignoring control clauses. A high valuation with demanding liquidation preferences, board veto rights, or anti-dilution clauses can hurt you more than a slightly lower valuation with clean, founder-friendly terms. Keep control in your hands during the early rounds."
+        question: "What should creators and artists prioritize when building long-term career longevity?",
+        answer: "Never attach your identity to temporary applause or harsh criticism. Hone the craft during silent seasons, embrace diverse languages and mediums, and maintain an independent voice with social responsibility."
       }
     ],
     reviews: [
       {
-        userName: "Neha K.",
+        userName: "Karthik R.",
         userAvatar: "/assets/img/avatar1.png",
         consultationType: "Live Call",
         dateString: "2 days ago",
         rating: 5,
-        text: "Vikram's advice on our pitch deck was game-changing. He pointed out exactly what VCs would push back on and helped us reframe our narrative. Highly recommend for any early-stage founder."
+        text: "Unbelievable depth of knowledge. Prakash sir's advice on narrative presence completely transformed how I present keynotes."
       },
       {
-        userName: "Rahul M.",
+        userName: "Deepa S.",
         userAvatar: "",
         consultationType: "Text Consultation",
         dateString: "1 week ago",
         rating: 5,
-        text: "Very detailed and actionable response to my questions about term sheet clauses. Saved us from making a critical mistake with liquidation preferences."
-      },
-      {
-        userName: "Neha K.",
-        userAvatar: "/assets/img/avatar1.png",
-        consultationType: "Live Call",
-        dateString: "2 days ago",
-        rating: 5,
-        text: "Vikram's advice on our pitch deck was game-changing. He pointed out exactly what VCs would push back on and helped us reframe our narrative. Highly recommend for any early-stage founder."
-      },
-      {
-        userName: "Rahul M.",
-        userAvatar: "",
-        consultationType: "Text Consultation",
-        dateString: "1 week ago",
-        rating: 5,
-        text: "Very detailed and actionable response to my questions about term sheet clauses. Saved us from making a critical mistake with liquidation preferences."
+        text: "Such grounded and direct feedback on handling creative transitions. Truly an inspiring mentor."
       }
     ]
   },
   {
-    name: "Dylan Brooks",
-    role: "From 49",
-    desc: "Product career mentor for PM interviews and salary negotiation",
-    bio: "I help aspiring and mid-career product managers land roles at top tech companies and optimize their compensation packages. With a decade of PM experience at companies like Google and Flipkart, I guide you through product design, strategy, and metric interviews. Let's practice mock interviews, refine your resume, and negotiate your next offer.",
-    image: "/assets/img/team1.png",
-    topics: ["Career & Jobs"],
-    languages: ["English", "Hindi", "Marathi"],
-    price: 149,
+    name: "Gaurav Chaudhary",
+    role: "Tech Creator, M.Tech Microelectronics | Host of Technical Guruji",
+    desc: "India's pioneer tech creator; guides on gadget decisions, consumer tech, and scaling digital content",
+    bio: "M.Tech in Microelectronics from BITS Pilani (Dubai) and creator behind Technical Guruji, one of the world's largest Hindi technology channels with over 23 million subscribers. Forbes 30 Under 30 honoree and National Creator Award winner. I break down smartphones, AI hardware, emerging tech gadgets, and share how to build high-reach creator ecosystems.",
+    image: "/assets/img/influencers/technical-guruji-card.jpg",
+    topics: ["Creator Access", "SMB Growth", "Career & Jobs"],
+    languages: ["Hindi", "English"],
+    price: 249,
     rating: 4.8,
-    replyTime: "14 min"
+    replyTime: "8 min",
+    reviewsCount: 310,
+    sessionsCompleted: "680+ Sessions Completed",
+    location: "Dubai & New Delhi",
+    sampleAnswers: [
+      {
+        question: "What should creators prioritize when choosing camera and audio gear on a budget?",
+        answer: "Audio is 60% of your video quality—viewers will forgive average 1080p video, but bad muffled audio will make them click away immediately. Invest first in a good wireless lavalier mic and clean key lighting, and use your existing smartphone camera with manual exposure settings."
+      },
+      {
+        question: "How do you stay consistent creating daily tech content for years?",
+        answer: "Build a streamlined production workflow: script bullet points instead of full transcripts, batch-record b-roll and unboxings, and stay genuinely curious about consumer problems rather than chasing empty spec sheets."
+      }
+    ]
   },
   {
-    name: "Lila Anderson",
-    role: "Framer Developer",
-    desc: "Expert admissions advisor for masters applications and scholarship essays",
-    bio: "I assist students in crafting compelling Master's and PhD applications for top global universities. Drawing on my background as an admissions officer and essay coach, I help you identify your unique narrative, polish your statement of purpose, and draft standout letters of recommendation. Let's maximize your chances to secure funding and scholarships.",
-    image: "/assets/img/team2.png",
-    topics: ["Education & Admissions"],
-    languages: ["English", "Tamil", "Telugu"],
+    name: "Alakh Pandey",
+    role: "Founder & CEO, PhysicsWallah | EdTech Pioneer & Teacher",
+    desc: "Built PW into India's premier affordable education unicorn; guides on exam strategy and scaling mission-led startups",
+    bio: "Founder and CEO of PhysicsWallah (PW). I started teaching from a whiteboard on YouTube to make quality JEE, NEET, and foundational education accessible to every student in Bharat regardless of financial background. Today PW is a profitable edtech unicorn serving millions of learners. I advise on pedagogy, exam preparation mindset, and mission-driven entrepreneurship.",
+    image: "/assets/img/influencers/alakh-pandey-card.jpg",
+    topics: ["Education & Admissions", "Startup & Fundraising", "Enterprise Learning"],
+    languages: ["Hindi", "English"],
     price: 199,
+    rating: 5.0,
+    replyTime: "10 min",
+    reviewsCount: 450,
+    sessionsCompleted: "920+ Sessions Completed",
+    location: "Prayagraj & Noida, India",
+    sampleAnswers: [
+      {
+        question: "How should a student overcome burnout and exam anxiety during competitive exam prep?",
+        answer: "Padhai ko bojh mat banao—break your daily study into small 45-minute sprint goals. When anxiety hits, stop solving new mock tests for half a day, revise your strongest notes, and remember that an exam tests your preparation on that day, not your self-worth."
+      },
+      {
+        question: "How did PhysicsWallah maintain ultra-low prices while scaling to a unicorn?",
+        answer: "By keeping zero marketing spend and building an organic bond of trust with students. When students know you genuinely care about their learning rather than extracting money, word-of-mouth becomes stronger than any multi-crore ad campaign."
+      }
+    ]
+  },
+  {
+    name: "Nikhil Kamath",
+    role: "Co-founder, Zerodha, True Beacon & Gruhas | Investor & Host of 'WTF is?'",
+    desc: "Pioneered discount broking in India; advises on bootstrapped scaling, public markets, and venture investing",
+    bio: "Co-founder of Zerodha, India's largest retail brokerage built completely bootstrapped, and asset management firm True Beacon. Angel investor and host of the 'WTF is?' podcast. I share candid insights on capital allocation, building sustainable businesses with positive unit economics, navigating public markets, and macro-economic trends in India.",
+    image: "/assets/img/influencers/nikhil-kamath-card.jpg",
+    topics: ["Tax & Finance", "Startup & Fundraising", "Career & Jobs"],
+    languages: ["English", "Hindi", "Kannada"],
+    price: 499,
+    rating: 4.9,
+    replyTime: "15 min",
+    reviewsCount: 240,
+    sessionsCompleted: "510+ Sessions Completed",
+    location: "Bengaluru, India",
+    sampleAnswers: [
+      {
+        question: "Should early founders bootstrap or raise venture capital in today's market?",
+        answer: "If your business can generate early customer revenue with healthy gross margins, stay bootstrapped as long as possible. Bootstrapping forces frugality, product obsession, and total independence. Raise VC only when you have proven product-market fit and capital acts as a genuine rocket fuel, not as a substitute for customer validation."
+      },
+      {
+        question: "How should young professionals approach asset allocation in India?",
+        answer: "Don't overcomplicate. Start with a solid index fund foundation (Nifty 50 / Next 50), maintain a conservative emergency debt reserve, and avoid high-leverage speculative bets. The secret to wealth compounding is staying in the game for decades without getting wiped out."
+      }
+    ]
+  },
+  {
+    name: "Dr. Palaniappan Manickam",
+    role: "Gastroenterologist & Gut Health Specialist | 'MedCom' Health Educator",
+    desc: "Board-certified gastroenterologist & MPH; demystifies gut health, fasting, and metabolic wellness with humor",
+    bio: "I am a board-certified gastroenterologist and epidemiologist (MPH) blending medicine with comedy ('MedCom') to make gut health and preventive medicine engaging. With medical training at Wayne State and fellowships in Gastroenterology & Nutrition, I help people understand the gut microbiome, time-restricted eating, and sustainable lifestyle changes to reverse metabolic conditions.",
+    image: "/assets/img/influencers/dr-pal-card.jpg",
+    topics: ["Education & Admissions", "Creator Access", "Career & Jobs"],
+    languages: ["Tamil", "English", "Hindi"],
+    price: 399,
+    rating: 4.9,
+    replyTime: "12 min",
+    reviewsCount: 180,
+    sessionsCompleted: "420+ Sessions Completed",
+    location: "Chennai & California",
+    sampleAnswers: [
+      {
+        question: "What is the simplest way to improve gut microbiome health without fancy supplements?",
+        answer: "Focus on variety in plant fibers—aim for 30 different plant foods a week (fruits, veggies, lentils, seeds, spices). Practice time-restricted eating with a 14:10 or 16:8 window to give your gut lining time for cellular repair (migrating motor complex), and stop late-night heavy snacking."
+      },
+      {
+        question: "How does stress directly trigger digestive and acidity issues?",
+        answer: "The gut-brain axis is a two-way superhighway connected by the vagus nerve. Acute stress shifts your nervous system into sympathetic 'fight or flight', which throttles stomach acid regulation, slows gastric emptying, and triggers bloating or IBS flare-ups."
+      }
+    ]
+  },
+  {
+    name: "Dr. Tanaya Narendra",
+    role: "MBBS, MSc Clinical Embryology (Oxon) | FRSPH & Bestselling Author",
+    desc: "Oxford-trained doctor; champions science-backed, shame-free reproductive health, anatomy, and wellness education",
+    bio: "Internationally trained medical doctor, embryologist (University of Oxford), Fellow of the Royal Society for Public Health, and author of the national bestseller 'Dr. Cuterus: Everything Nobody Tells You About Your Body'. I debunk myths around sexual health, fertility, hormonal balances like PCOS, and reproductive anatomy in a warm, stigma-free way.",
+    image: "/assets/img/influencers/dr-tanaya-card.jpg",
+    topics: ["Education & Admissions", "Creator Access", "Career & Jobs"],
+    languages: ["English", "Hindi"],
+    price: 299,
+    rating: 4.9,
+    replyTime: "14 min",
+    reviewsCount: 215,
+    sessionsCompleted: "480+ Sessions Completed",
+    location: "New Delhi & Oxford",
+    sampleAnswers: [
+      {
+        question: "What are the first medical steps someone should take if they suspect PCOS?",
+        answer: "First, consult a qualified gynecologist or endocrinologist for a pelvic ultrasound and hormonal blood panel (LH:FSH ratio, free testosterone, insulin resistance markers). Don't fall for crash detox teas on social media—managing PCOS is about insulin sensitivity, resistance training, balanced sleep, and personalized medical guidance."
+      },
+      {
+        question: "How can parents have comfortable, science-grounded body talks with teenagers?",
+        answer: "Use accurate anatomical terms early on to remove secrecy and shame. Frame conversations around biology, bodily autonomy, and safety rather than moral judgment, so they feel safe coming to you with questions instead of trusting unvetted internet forums."
+      }
+    ]
+  },
+  {
+    name: "Raj Shamani",
+    role: "Podcaster & Entrepreneur",
+    desc: "Host of Figuring Out; guides creators & founders on branding, storytelling, and audience growth",
+    bio: "Host of Figuring Out, one of India's top business and leadership podcasts. Founder of House of X, angel investor, and keynote speaker. I help creators, founders, and leaders build authentic brand narratives, unlock media presence, and scale digital-first businesses.",
+    image: "/assets/img/influencers/raj-shamani-card.jpg",
+    topics: ["Creator Access", "Startup & Fundraising", "Career & Jobs"],
+    languages: ["English", "Hindi"],
+    price: 299,
     rating: 4.9,
     replyTime: "10 min"
   },
   {
-    name: "Harper Collins",
-    role: "CEO & Art Director",
-    desc: "CA for GST filings, creator income, and tax planning",
-    bio: "I specialize in tax advisory and compliance for creators, digital freelancers, and high-growth direct-to-consumer (D2C) brands. From setting up GST registration to optimizing multi-state supply chain tax planning and structuring foreign income remittance, I demystify complex tax laws. Get clear, actionable strategies to minimize liabilities and ensure complete audit readiness.",
-    image: "/assets/img/team3.png",
-    topics: ["Tax & Finance"],
-    languages: ["English", "Kannada", "Hindi"],
-    price: 299,
-    rating: 4.7,
-    replyTime: "20 min"
-  },
-  {
-    name: "Mason Turner",
-    role: "Motion & UI Designer",
-    desc: "Startup lawyer for founder agreements, ESOPs, and SaaS contracts",
-    bio: "I advise early-stage startup founders on corporate law, legal structuring, and IP protection. Having drafted hundreds of founder agreements, ESOP pools, commercial SaaS agreements, and terms of service, I focus on protecting your interests without slowing down your business velocity. Let's ensure your startup is legally robust and investor-ready from day one.",
-    image: "/assets/img/team4.png",
-    topics: ["Legal & Compliance"],
-    languages: ["English", "Hindi", "Gujarati"],
-    price: 249,
-    rating: 4.6,
-    replyTime: "15 min"
-  },
-  {
-    name: "Nora Bennett",
-    role: "Growth Strategist",
-    desc: "Helps D2C founders build retention and scale paid acquisition",
-    bio: "I partner with early and growth-stage consumer brands to optimize customer acquisition cost (CAC) and drive long-term customer lifetime value (LTV). Through data-driven marketing audits, cohort retention strategies, and performance marketing optimization across Meta and Google, I help you build sustainable growth loops that scale. Stop burning cash and start scaling profitably.",
-    image: "/assets/img/team1.png",
-    topics: ["Startup & Fundraising", "SMB Growth"],
-    languages: ["English", "Bengali"],
-    price: 199,
-    rating: 4.8,
-    replyTime: "12 min"
-  },
-  {
-    name: "Ethan Clarke",
-    role: "Career Coach",
-    desc: "Guides professionals with resume rewrites and interview game plans",
-    bio: "I help ambitious professionals navigate career transitions, pivot into new industries, and break through growth plateaus. My coaching covers end-to-end career strategy: from rewriting executive resumes to optimizing LinkedIn presence for headhunters, building networking confidence, and mastering situational behavioral interviews. Let's design a customized roadmap for your next big move.",
-    image: "/assets/img/team2.png",
-    topics: ["Career & Jobs"],
-    languages: ["English", "Malayalam", "Hindi"],
-    price: 99,
-    rating: 4.5,
-    replyTime: "25 min"
-  },
-  {
-    name: "Amelia Hayes",
-    role: "Finance Advisor",
-    desc: "Supports founders with runway planning, pricing, and investor decks",
-    bio: "I act as a fractional CFO for high-growth startups, specializing in financial modeling, unit economics, and runway management. I help founders construct robust three-statement financial projections, optimize SaaS pricing structures, and translate complex financial metrics into pitch-deck-ready narratives that build investor trust. Let's align your financials with your strategic roadmap.",
-    image: "/assets/img/team3.png",
-    topics: ["Startup & Fundraising", "Tax & Finance"],
-    languages: ["English", "Marathi", "Gujarati"],
-    price: 299,
-    rating: 4.8,
-    replyTime: "8 min"
-  },
-  {
-    name: "Lucas Perry",
-    role: "Admissions Mentor",
-    desc: "Builds strong SOPs, profile strategy, and college application timelines",
-    bio: "I help high school and undergraduate students build winning profiles for top-tier university applications. From selecting the right extracurricular strategies to aligning application timelines, drafting impactful personal statements, and prepping for competitive college interviews, I demystify the admissions puzzle. Let's structure a plan that makes your application impossible to ignore.",
-    image: "/assets/img/team4.png",
-    topics: ["Education & Admissions"],
-    languages: ["English", "Hindi", "Odia"],
-    price: 149,
-    rating: 4.7,
-    replyTime: "18 min"
-  },
-  {
-    name: "Olivia Reed",
-    role: "Compliance Specialist",
-    desc: "Advises on GST, contracts, and compliance for growing teams",
-    bio: "I guide corporate teams and growing small businesses through the complex landscape of regulatory compliance and corporate governance. From managing GST audits to advising on FDI reporting, corporate secretarial filings, and labor law compliance, I protect your business from expensive fines. Let's clean up your compliance backlog and build a risk-free operational setup.",
-    image: "/assets/img/team1.png",
-    topics: ["Legal & Compliance", "Tax & Finance"],
-    languages: ["English", "Punjabi", "Hindi"],
-    price: 249,
-    rating: 4.9,
-    replyTime: "11 min"
-  },
-  {
-    name: "Noah Wilson",
-    role: "Tax Consultant",
-    desc: "Optimizes tax structures for creators, freelancers, and early startups",
-    bio: "I provide strategic tax planning and structural advice for independent professionals, creators, and early-stage startups. I specialize in maximizing tax deductions, structuring intellectual property licensing, and managing double taxation compliance for international clients. Let's review your income streams and structure a custom plan that keeps more money in your business.",
-    image: "/assets/img/team2.png",
-    topics: ["Tax & Finance"],
-    languages: ["English", "Telugu", "Hindi"],
-    price: 199,
-    rating: 4.6,
-    replyTime: "16 min"
-  },
-  {
-    name: "Ava Simmons",
-    role: "Creator Partner Manager",
-    desc: "Connects content creators to brand opportunities and monetization plans",
-    bio: "I bridge the gap between digital content creators and top consumer brands looking for authentic partnerships. With years of experience managing influencer campaigns and negotiating brand deals, I help creators price their content, pitch to dream brands, and build diversified, long-term monetization channels beyond ad revenue. Let's turn your audience into a sustainable business.",
-    image: "/assets/img/team3.png",
-    topics: ["Creator Access"],
-    languages: ["English", "Kannada", "Tamil"],
-    price: 149,
-    rating: 4.7,
-    replyTime: "22 min"
-  },
-  {
-    name: "James Carter",
-    role: "L&D Consultant",
-    desc: "Designs enterprise upskilling programs with clear and measurable outcomes",
-    bio: "I consult with corporate HR and leadership teams to design and implement impactful Learning & Development (L&D) frameworks. By aligning employee training programs with key business objectives and metrics, I ensure your talent development efforts yield measurable improvements in productivity and employee retention. Let's build a culture of continuous growth.",
-    image: "/assets/img/team4.png",
-    topics: ["Enterprise Learning"],
+    name: "Harsha Bhogle",
+    role: "The Voice of Cricket | Storyteller, IIM Ahmedabad Alum & Keynote Speaker",
+    desc: "Legendary sports broadcaster and author of 'The Winning Way'; translates elite team culture into leadership excellence",
+    bio: "Chemical Engineer from Osmania University and alumnus of IIM Ahmedabad. Widely recognized globally as the 'Voice of Indian Cricket' with over 40 years behind the microphone across AIR, ABC, BBC, ESPN, and Star Sports. Author of 'The Winning Way'. I consult and speak with corporate leadership teams on high-performance psychology, handling pressure, and champion team cultures.",
+    image: "/assets/img/influencers/harsha-bhogle-card.jpg",
+    topics: ["Enterprise Learning", "Career & Jobs", "Creator Access"],
     languages: ["English", "Hindi", "Marathi"],
+    price: 349,
+    rating: 5.0,
+    replyTime: "10 min",
+    reviewsCount: 380,
+    sessionsCompleted: "760+ Sessions Completed",
+    location: "Mumbai, India",
+    sampleAnswers: [
+      {
+        question: "What can business leaders learn from champion sports captains about handling high-stakes pressure?",
+        answer: "Focus relentlessly on the process, never on the scoreboard. When you worry about the consequence—the trophy, the quarterly target—tension paralyses execution. Great captains like MS Dhoni take pressure out of the system by narrowing the focus to just the very next ball."
+      },
+      {
+        question: "What is the secret to compelling storytelling and public speaking?",
+        answer: "Never make the story about yourself—make it about the game, the protagonist, and the audience. Use simple words with evocative verbs, let moments breathe with pauses, and remember that silence in commentary is often as powerful as spoken words."
+      }
+    ]
+  },
+  {
+    name: "Manasi Chaudhari",
+    role: "Founder & CEO, Pink Legal | Oxford MSc in Law & Finance | Corporate & Tech Lawyer",
+    desc: "Oxford Law alumna & ex-Supreme Court judicial clerk; guides founders on POSH, agreements, and IP",
+    bio: "Founder of Pink Legal, India's first digital platform for women's legal rights. Oxford MSc in Law and Finance graduate, former judicial clerk under CJI D.Y. Chandrachud working on landmark constitutional cases. I guide founders on company incorporation, founder contracts, IP protection, POSH policies, and risk-proof compliance.",
+    image: "/assets/img/influencers/manasi-chaudhari-card.jpg",
+    topics: ["Legal & Compliance", "Startup & Fundraising", "Career & Jobs"],
+    languages: ["English", "Hindi", "Marathi"],
+    price: 299,
+    rating: 4.9,
+    replyTime: "12 min",
+    reviewsCount: 260,
+    sessionsCompleted: "540+ Sessions Completed",
+    location: "Mumbai, India",
+    sampleAnswers: [
+      {
+        question: "What are the essential legal agreements every startup needs before raising angel funds?",
+        answer: "First, a robust Founders' Agreement covering equity vesting, IP assignment, and exit clauses. Second, standard employment/contractor agreements with unambiguous IP assignment clauses. Third, non-disclosure agreements (NDAs) for sensitive partnerships. Having these in order prevents fatal red flags during investor due diligence."
+      },
+      {
+        question: "How should modern Indian startups implement an effective POSH compliance framework?",
+        answer: "Don't treat POSH as a paper exercise. Establish an Internal Committee (IC) with an experienced external member, draft a transparent gender-neutral grievance mechanism, and conduct mandatory sensitization workshops for every employee annually."
+      }
+    ]
+  },
+  {
+    name: "Vikas Khanna",
+    role: "Michelin-Starred Chef, Restaurateur & Author | Judge, MasterChef India",
+    desc: "NYC culinary visionary behind Junoon & Bungalow; guides on hospitality scaling, culinary arts, and food ventures",
+    bio: "Michelin-starred chef, author of 40+ books, filmmaker, and restaurateur behind NYC's Bungalow and Junoon. Long-time judge on MasterChef India and James Beard Award semifinalist. I guide aspiring food entrepreneurs, restaurateurs, and culinary artists on menu engineering, luxury hospitality branding, and building global culinary businesses.",
+    image: "/assets/img/influencers/vikas-khanna-card.jpg",
+    topics: ["Creator Access", "SMB Growth", "Enterprise Learning"],
+    languages: ["Hindi", "English", "Punjabi"],
     price: 399,
+    rating: 4.9,
+    replyTime: "10 min",
+    reviewsCount: 390,
+    sessionsCompleted: "810+ Sessions Completed",
+    location: "New York / Amritsar",
+    sampleAnswers: [
+      {
+        question: "What is the biggest operational hurdle when scaling a regional food brand globally?",
+        answer: "Preserving cultural authenticity while standardizing consistency. You must deconstruct traditional flavors into repeatable kitchen SOPs without losing the emotional soul of the dish. Sourcing core heritage spices and training staff on storytelling are just as vital as recipe specs."
+      },
+      {
+        question: "How should a first-time restaurateur price their initial menu?",
+        answer: "Focus on prime costs (food cost + labor cost), which should generally remain under 60-65% of revenue. Engineer your menu with 'stars' (high-profit, high-popularity) and avoid menu bloat. A tight, focused 20-dish menu executed flawlessly always beats a confusing 80-item catalog."
+      }
+    ]
+  },
+  {
+    name: "Dhruv Rathee",
+    role: "YouTube Educator & Data Analyst | M.Sc Renewable Energy (KIT Germany)",
+    desc: "Leading video essayist (25M+ subscribers); guides on research methodology, explanatory storytelling, and video production",
+    bio: "Mechanical Engineer with a Master's in Renewable Energy from Karlsruhe Institute of Technology (KIT), Germany. TIME Next Generation Leader and digital educator with over 25 million subscribers. I break down complex socio-economic, environmental, and geopolitical issues into structured, accessible video essays. I advise creators on deep-dive research, data storytelling, and production workflows.",
+    image: "/assets/img/influencers/dhruv-rathee-card.jpg",
+    topics: ["Creator Access", "Education & Admissions", "SMB Growth"],
+    languages: ["Hindi", "English", "German"],
+    price: 299,
     rating: 4.8,
-    replyTime: "15 min"
+    replyTime: "14 min",
+    reviewsCount: 450,
+    sessionsCompleted: "920+ Sessions Completed",
+    location: "Berlin / New Delhi",
+    sampleAnswers: [
+      {
+        question: "How do you structure research for deep-dive explanatory videos so the audience stays hooked?",
+        answer: "Start with a primary question that directly affects the viewer's everyday life. Structure your argument like a pyramid: establish undisputed facts first, introduce conflicting data points, and then reveal systemic insights using infographics and primary research papers rather than opinion."
+      },
+      {
+        question: "What is the best way for a new educational creator to stand out in saturated niches?",
+        answer: "Clarity over complexity. The creator who can explain a sophisticated macroeconomic or scientific concept using simple analogies, motion graphics, and zero jargon wins every single time."
+      }
+    ]
+  },
+  {
+    name: "Hitesh Choudhary",
+    role: "Tech Educator & Software Architect | Founder, ChaiCode & LearnCodeOnline",
+    desc: "Taught millions of developers; mentors on full-stack web dev, system design, and software engineering careers",
+    bio: "Programmer, educator, and founder of ChaiCode and LearnCodeOnline (acquired by iNeuron/PW). Having traveled to 45+ countries and taught millions across YouTube and live cohorts, I demystify JavaScript, backend engineering, system design, DevOps, and Generative AI. I mentor developers on cracking tech interviews and building production software.",
+    image: "/assets/img/influencers/hitesh-choudhary-card.jpg",
+    topics: ["Career & Jobs", "Education & Admissions", "Enterprise Learning"],
+    languages: ["Hindi", "English"],
+    price: 199,
+    rating: 5.0,
+    replyTime: "8 min",
+    reviewsCount: 520,
+    sessionsCompleted: "1100+ Sessions Completed",
+    location: "Jaipur, India",
+    sampleAnswers: [
+      {
+        question: "What should a developer build to get hired as a junior/mid-level full stack engineer today?",
+        answer: "Stop building clone apps. Build full-stack applications with real-world complexities: auth with refresh tokens, rate limiting, background job queues, webhook integrations, and automated unit/integration tests. Deploy it on cloud infra with CI/CD and document your architecture in the README."
+      },
+      {
+        question: "How should engineers prepare for system design rounds in tech companies?",
+        answer: "Focus on fundamentals before buzzwords. Understand caching strategies (Redis), SQL vs NoSQL trade-offs, database indexing, horizontal scaling, load balancers, and message brokers (Kafka/RabbitMQ). Draw end-to-end data flows clearly and calculate back-of-the-envelope estimations."
+      }
+    ]
+  },
+  {
+    name: "Aakash Chopra",
+    role: "Former Indian Test Cricketer | Leading Hindi Cricket Commentator & Author",
+    desc: "Ex-India opener & Ranji champion; guides on sports analytics, broadcasting, and high-performance discipline",
+    bio: "Former Indian opening batsman with 10,000+ first-class runs and consecutive Ranji Trophy championship captaincy with Rajasthan. Leading cricket commentator across Star Sports, JioCinema, and author of 'Beyond the Blues' and 'Out of the Blue'. I consult on sports journalism, Hindi commentary craft, media analysis, and the discipline required for elite performance under pressure.",
+    image: "/assets/img/influencers/aakash-chopra-card.jpg",
+    topics: ["Enterprise Learning", "Creator Access", "Career & Jobs"],
+    languages: ["Hindi", "English"],
+    price: 349,
+    rating: 4.9,
+    replyTime: "10 min",
+    reviewsCount: 340,
+    sessionsCompleted: "710+ Sessions Completed",
+    location: "Delhi, India",
+    sampleAnswers: [
+      {
+        question: "What does it take to build a career in professional sports broadcasting and commentary?",
+        answer: "Command of language, unmatched observation skills, and deep tactical understanding. You aren't just reciting what is happening on screen—the viewer can already see that. Your job is to explain why fielders moved, what the bowler is setting up, and convey the emotional pulse of the game with spontaneous, rich vocabulary."
+      },
+      {
+        question: "How can athletes and high-pressure professionals bounce back after public failures?",
+        answer: "Separate your self-worth from performance outcomes. In sports and high-stakes careers, failure is routine data, not a character verdict. Review footage objectively without emotion, make specific technical corrections in training, and keep showing up."
+      }
+    ]
   }
 ];
 

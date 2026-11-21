@@ -25,13 +25,18 @@ export default function Services() {
   const swapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const endTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Clean up timeouts on unmount
+  // Clean up timeouts on unmount and sync featuredExperts
   useEffect(() => {
+    if (!selectedCategory) {
+      setDisplayedExperts(featuredExperts);
+    } else {
+      setDisplayedExperts(featuredExperts.filter((expert) => expert.topics.includes(selectedCategory)));
+    }
     return () => {
       if (swapTimeoutRef.current) clearTimeout(swapTimeoutRef.current);
       if (endTimeoutRef.current) clearTimeout(endTimeoutRef.current);
     };
-  }, []);
+  }, [selectedCategory, featuredExperts]);
 
   const handleCategoryClick = (category: ExpertiseTag, forceSelect = false) => {
     const nextCategory = forceSelect ? category : (selectedCategory === category ? null : category);

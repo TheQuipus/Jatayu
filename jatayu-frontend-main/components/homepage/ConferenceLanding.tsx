@@ -1,7 +1,8 @@
 "use client";
 
 import styles from "./ConferenceLanding.module.css";
-import { useEffect, useRef, type CSSProperties } from "react";
+import Link from "next/link";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
 const AVATARS = [
   "https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/699958ab03c92db0829d26ed_1.avif",
@@ -9,6 +10,145 @@ const AVATARS = [
   "https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/699958ab4ab329c4fcfccea8_3.avif",
   "https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/699958f55e3a1a63d1bd0ef0_4.avif",
 ];
+
+interface CategoryConfig {
+  id: string;
+  title: string;
+  subtext?: string;
+  imageSrc: string;
+  altText: string;
+  href: string;
+  icon: (cls?: string) => ReactNode;
+}
+
+const CATEGORIES: Record<string, CategoryConfig> = {
+  creator: {
+    id: "creator",
+    title: "Creator",
+    subtext: "YOUTUBE CHANNEL",
+    imageSrc: "/assets/img/conference/category-creator.jpg?v=2",
+    altText: "Charismatic young Indian YouTube creator presenting on stage with glowing YouTube play button screen.",
+    href: "/seeker/discover?category=creator",
+    icon: (cls) => (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="2" y="4" width="20" height="16" rx="5" />
+        <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
+  marketing: {
+    id: "marketing",
+    title: "Digital Marketing",
+    imageSrc: "/assets/img/conference/category-marketing.jpg?v=2",
+    altText: "Confident young Indian businesswoman in beige blazer presenting digital marketing analytics on stage.",
+    href: "/seeker/discover?category=marketing",
+    icon: (cls) => (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 11l14-5v12L3 13v-2z" />
+        <path d="M11.6 16.8L14 21h3l-2.8-5.6" />
+        <path d="M20 8a5 5 0 0 1 0 8" />
+      </svg>
+    ),
+  },
+  legal: {
+    id: "legal",
+    title: "Legal",
+    imageSrc: "/assets/img/conference/category-legal.jpg?v=2",
+    altText: "Distinguished Indian male lawyer in dark navy suit speaking at wooden podium with Scales of Justice backdrop.",
+    href: "/seeker/discover?category=legal",
+    icon: (cls) => (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 3v18" />
+        <path d="M5 6h14" />
+        <path d="M5 6l-3 7h6l-3-7z" fill="currentColor" fillOpacity="0.1" />
+        <path d="M19 6l-3 7h6l-3-7z" fill="currentColor" fillOpacity="0.1" />
+        <path d="M9 21h6" />
+      </svg>
+    ),
+  },
+  immigration: {
+    id: "immigration",
+    title: "Immigration",
+    imageSrc: "/assets/img/conference/category-immigration.jpg?v=3",
+    altText: "Professional Indian immigration consultant speaking on stage with world travel and flight path graphics.",
+    href: "/seeker/discover?category=immigration",
+    icon: (cls) => (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.8-.2-1.6.2-2 .9l-.5.9 5.8 3.5-3 3-2.1-.6c-.5-.1-1 .1-1.3.5l-.2.3 2.5 1.5 1.5 2.5.3-.2c.4-.3.6-.8.5-1.3l-.6-2.1 3-3 3.5 5.8.9-.5c.7-.4 1.1-1.2.9-2z" />
+      </svg>
+    ),
+  },
+  education: {
+    id: "education",
+    title: "Education",
+    imageSrc: "/assets/img/conference/category-education.jpg?v=2",
+    altText: "Indian female academic leader presenting at conference with graduation cap motif.",
+    href: "/seeker/discover?category=education",
+    icon: (cls) => (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+      </svg>
+    ),
+  },
+  business: {
+    id: "business",
+    title: "Starting a Business",
+    imageSrc: "/assets/img/conference/category-business.jpg?v=3",
+    altText: "Energetic Indian startup founder presenting on stage before Build Scale Grow rocket slide.",
+    href: "/seeker/discover?category=business",
+    icon: (cls) => (
+      <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+        <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+        <path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-2.5 5-2.5" />
+        <path d="M15 12v5s3.03-.55 4.5-2c1.63-1.62 2.5-5 2.5-5" />
+      </svg>
+    ),
+  },
+};
+
+function CategoryPanel({
+  category,
+  sideClass,
+}: {
+  category: CategoryConfig;
+  sideClass: string;
+}) {
+  return (
+    <div className={`${styles.animationImageBox} ${sideClass}`}>
+      <img
+        src={category.imageSrc}
+        loading="lazy"
+        alt={category.altText}
+        className={styles.animationItemImage}
+      />
+      <div className={styles.categoryOverlay}>
+        <Link
+          href={category.href}
+          className={styles.categoryTertiaryBtn}
+          aria-label={`${category.title} Category`}
+        >
+          <div className={styles.categoryIconWrap} aria-hidden="true">
+            {category.icon(styles.categoryIcon)}
+          </div>
+          <span className={styles.categoryBtnText}>
+            <span className={styles.categoryBtnTrack}>
+              <span className={styles.categoryBtnUp}>{category.title}</span>
+              <span className={styles.categoryBtnUp} aria-hidden="true">
+                {category.title}
+              </span>
+            </span>
+          </span>
+          {category.subtext && (
+            <span className={styles.categorySubtext}>{category.subtext}</span>
+          )}
+          <span className={styles.categoryAccentBar} aria-hidden="true" />
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 /** Set to `true` to restore the When/Where/CTA bottom bar. Carousel does not depend on this. */
 const SHOW_HERO_BOTTOM_BAR = false;
@@ -35,8 +175,40 @@ export default function ConferenceLanding() {
       const sharedRotation = reduceMotion.matches ? 0 : 77.65 + progress * 102.35;
 
       items.forEach((item, index) => {
-        if (index === 0) return;
-        item.style.transform = `translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateY(${sharedRotation + index * 30}deg) rotateZ(0deg) skew(0deg, 0deg)`;
+        // Item 0 is an unrotated duplicate; keep hidden and non-interactive so it never blocks hover
+        if (index === 0) {
+          item.style.display = "none";
+          item.style.pointerEvents = "none";
+          return;
+        }
+
+        const rot = sharedRotation + index * 30;
+        item.style.transform = `translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateY(${rot}deg) rotateZ(0deg) skew(0deg, 0deg)`;
+
+        const rotRad = (rot * Math.PI) / 180;
+        const sinVal = Math.sin(rotRad);
+
+        // In the concave amphitheater carousel, cards on the back arc (facing the camera)
+        // are the ones the user sees and should interact with.
+        // Left card normal points towards camera when sin(rot) < 0.
+        // Right card normal points towards camera when sin(rot) > 0.
+        // Cards on the front arc (facing away, between camera and carousel center)
+        // must have pointer-events: none and visibility: hidden so they never block
+        // hover effects and clicks on the visible cards behind them.
+        const isLeftFacing = sinVal < 0.05;
+        const isRightFacing = sinVal > -0.05;
+
+        const leftCard = item.children[0] as HTMLElement | undefined;
+        const rightCard = item.children[1] as HTMLElement | undefined;
+
+        if (leftCard) {
+          leftCard.style.pointerEvents = isLeftFacing ? "auto" : "none";
+          leftCard.style.visibility = isLeftFacing ? "visible" : "hidden";
+        }
+        if (rightCard) {
+          rightCard.style.pointerEvents = isRightFacing ? "auto" : "none";
+          rightCard.style.visibility = isRightFacing ? "visible" : "hidden";
+        }
       });
     };
 
@@ -76,144 +248,46 @@ export default function ConferenceLanding() {
             {/* animation-box is the perspective + rotation hub */}
             <div className={styles.animationBox}>
 
-              {/* Item 0 — 0° (default, no extra class) */}
-              <div className={styles.animationItem}>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxLeft}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a561d3b0a89c5a9a425121_Skyscraper%20in%20the%20Clouds.avif"
-                    loading="lazy"
-                    alt="Modern skyscraper rising above thick clouds under a clear blue sky."
-                    className={styles.animationItemImage}
-                  />
-                </div>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxRight}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a5625b1fb7b91637559bd7_Ergonomic%20Office%20Setup.avif"
-                    loading="lazy"
-                    alt="Black ergonomic office chair positioned next to a white desk with a closed notebook and pen."
-                    className={styles.animationItemImage}
-                  />
-                </div>
+              {/* Item 0 — 0° (default, legacy duplicate, hidden so it never blocks hover) */}
+              <div className={styles.animationItem} style={{ display: "none", pointerEvents: "none" }}>
+                <CategoryPanel category={CATEGORIES.business} sideClass={styles.imageBoxLeft} />
+                <CategoryPanel category={CATEGORIES.legal} sideClass={styles.imageBoxRight} />
               </div>
 
               {/* Item _01 — 30° */}
               <div className={`${styles.animationItem} ${styles.item01}`}>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxLeft}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c8a1123eacc95153428_11.avif"
-                    loading="lazy"
-                    alt="Smiling man and woman in business attire looking at a display wall in a modern conference or exhibition hall."
-                    className={styles.animationItemImage}
-                  />
-                </div>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxRight}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69aa7e65c9f811f0c751fcb0_large-group-people-sitting-listening-speaker-business-conference-modern_660230-114846.avif"
-                    loading="lazy"
-                    alt="Speaker on stage presenting to a large audience in a modern conference room with blue and purple lighting."
-                    className={styles.animationItemImage}
-                  />
-                </div>
+                <CategoryPanel category={CATEGORIES.business} sideClass={styles.imageBoxLeft} />
+                <CategoryPanel category={CATEGORIES.legal} sideClass={styles.imageBoxRight} />
               </div>
 
               {/* Item _02 — 60° */}
               <div className={`${styles.animationItem} ${styles.item02}`}>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxLeft}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c8ad08db77f527b5071_10.avif"
-                    loading="lazy"
-                    alt="Diverse group of business professionals seated in an audience at a conference."
-                    className={styles.animationItemImage}
-                  />
-                </div>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxRight}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c89d9211cd16f2bac36_5.avif"
-                    loading="lazy"
-                    alt="Focused young man with a beard working on a laptop at a crowded tech event."
-                    className={styles.animationItemImage}
-                  />
-                </div>
+                <CategoryPanel category={CATEGORIES.education} sideClass={styles.imageBoxLeft} />
+                <CategoryPanel category={CATEGORIES.marketing} sideClass={styles.imageBoxRight} />
               </div>
 
               {/* Item _03 — 90° */}
               <div className={`${styles.animationItem} ${styles.item03}`}>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxLeft}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c8aac31045842a5779f_9.avif"
-                    loading="lazy"
-                    alt="Man in a suit seen from behind giving a presentation in a dimly lit conference room."
-                    className={styles.animationItemImage}
-                  />
-                </div>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxRight}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c864553329dee4647b0_3.avif"
-                    loading="lazy"
-                    alt="Business professional speaking with a microphone in front of a seated audience."
-                    className={styles.animationItemImage}
-                  />
-                </div>
+                <CategoryPanel category={CATEGORIES.immigration} sideClass={styles.imageBoxLeft} />
+                <CategoryPanel category={CATEGORIES.creator} sideClass={styles.imageBoxRight} />
               </div>
 
               {/* Item _04 — 120° */}
               <div className={`${styles.animationItem} ${styles.item04}`}>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxLeft}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c8afb8ff0d0084231d2_8.avif"
-                    loading="lazy"
-                    alt="Group of business professionals networking at a conference."
-                    className={styles.animationItemImage}
-                  />
-                </div>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxRight}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c8673c2575fb161d76b_2.avif"
-                    loading="lazy"
-                    alt="Man in a gray suit speaking on stage to a seated audience at a seminar."
-                    className={styles.animationItemImage}
-                  />
-                </div>
+                <CategoryPanel category={CATEGORIES.business} sideClass={styles.imageBoxLeft} />
+                <CategoryPanel category={CATEGORIES.legal} sideClass={styles.imageBoxRight} />
               </div>
 
               {/* Item _05 — 150° */}
               <div className={`${styles.animationItem} ${styles.item05}`}>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxLeft}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c8a659a4a4dfabff4a3_7.avif"
-                    loading="lazy"
-                    alt="Businessman standing with a laptop leading a meeting with colleagues around a table."
-                    className={styles.animationItemImage}
-                  />
-                </div>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxRight}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c86a55cbce419df0a1c_1.avif"
-                    loading="lazy"
-                    alt="Diverse group of professionals seated and taking notes during a conference or seminar."
-                    className={styles.animationItemImage}
-                  />
-                </div>
+                <CategoryPanel category={CATEGORIES.education} sideClass={styles.imageBoxLeft} />
+                <CategoryPanel category={CATEGORIES.marketing} sideClass={styles.imageBoxRight} />
               </div>
 
               {/* Item _06 — 180° */}
               <div className={`${styles.animationItem} ${styles.item06}`}>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxLeft}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a69c89a80bfede8cefad9d_6.avif"
-                    loading="lazy"
-                    alt="Young woman in a blue blazer smiling and clapping while seated in an audience."
-                    className={styles.animationItemImage}
-                  />
-                </div>
-                <div className={`${styles.animationImageBox} ${styles.imageBoxRight}`}>
-                  <img
-                    src="https://cdn.prod.website-files.com/6997ed9c377cb53af04778ca/69a56370d53bea1444372e7e_Team%20Collaboration%20Meeting.avif"
-                    loading="lazy"
-                    alt="Seven diverse professionals collaborating around a white table with a laptop in a modern office setting."
-                    className={styles.animationItemImage}
-                  />
-                </div>
+                <CategoryPanel category={CATEGORIES.immigration} sideClass={styles.imageBoxLeft} />
+                <CategoryPanel category={CATEGORIES.creator} sideClass={styles.imageBoxRight} />
               </div>
 
             </div>

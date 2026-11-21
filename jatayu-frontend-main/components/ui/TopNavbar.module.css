@@ -11,9 +11,13 @@
   width: 100%;
   z-index: 20;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: background-color 0.3s ease;
 }
+
+
+/* .navbar.onDarkSurface,
+.onDarkSurface {
+  background: rgba(0, 0, 0, 0.281);
+} */
 
 .inner {
   min-height: 64px;
@@ -242,7 +246,8 @@
   display: grid;
   grid-template-columns: 145px 145px;
   column-gap: 43px;
-  padding: 8px 0 16px 24px;
+  padding: 8px 0 0 24px;
+  margin-bottom: 26px;
   width: fit-content;
 }
 
@@ -269,6 +274,7 @@
   letter-spacing: 0.01em;
   line-height: 1.2;
   margin-bottom: 2px;
+  margin-left: 2px;
   transition: color 0.2s ease;
 }
 
@@ -281,6 +287,7 @@
   line-height: 1;
   text-transform: uppercase;
   transition: color 0.2s ease;
+  
 }
 
 /* Hover effect on entire "Expert LOGIN" / "Seeker LOGIN": Changes to White */
@@ -300,37 +307,20 @@
   pointer-events: none;
 }
 
-/* Star Divider Line */
+/* Star Divider Line - Single Unified Component */
 .starLine {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  display: block;
   width: 100%;
+  height: 11px;
   color: #FFFFFF;
   pointer-events: none;
-  transition: color 0.2s ease;
-}
-
-.starSvg {
-  flex-shrink: 0;
-  transform: translateY(0.5px);
-  transition: color 0.2s ease;
-}
-
-.line {
-  height: 1px;
-  flex: 1;
-  background-color: rgba(255, 255, 255, 0.85);
-  transition: background-color 0.2s ease;
+  overflow: visible;
+  transition: color 0.2s ease, opacity 0.2s ease;
 }
 
 /* Light Variant of Star Divider for Black Card */
 .starLineLight {
-  color: #FFFFFF;
-}
-
-.starLineLight .line {
-  background-color: rgba(255, 255, 255, 0.28);
+  opacity: 0.35;
 }
 
 /* Primary Navigation Links (ABOUT, CONTACT, FAQ)
@@ -341,8 +331,8 @@
   z-index: 10;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 10px 0 24px 24px;
+  gap: 26px;
+  padding: 0 0 24px 24px;
   width: 333px;
 }
 
@@ -410,6 +400,11 @@
   margin: 0;
 }
 
+.joinDivider {
+  width: 100%;
+  pointer-events: none;
+}
+
 .joinLinks {
   display: flex;
   align-items: center;
@@ -430,15 +425,6 @@
 .joinSubLink:hover {
   color: #FFFFFF !important;
   transform: translateX(2px);
-}
-
-.adminLink {
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-}
-
-.adminLink:hover {
-  color: #FFFFFF !important;
 }
 
 /* Social Media Icons */
@@ -472,22 +458,22 @@
 
 .barSaffron {
   flex: 1;
-  height: 3.5px;
-  background-color: #FF5C01;
+  height: 4px;
+  background-color: #FF0000;
   border-radius: 2px;
 }
 
 .barWhite {
   flex: 1;
-  height: 3.5px;
+  height: 4px;
   background-color: #FFFFFF;
   border-radius: 2px;
 }
 
 .barGreen {
   flex: 1;
-  height: 3.5px;
-  background-color: #128807;
+  height: 4px;
+  background-color: #00A800;
   border-radius: 2px;
 }
 
@@ -515,7 +501,8 @@
     grid-template-columns: 1fr 1fr;
     column-gap: 20px;
     width: 100%;
-    padding: 8px 20px 16px 20px;
+    padding: 8px 20px 0 20px;
+    margin-bottom: 24px;
   }
 
   .loginCol,
@@ -527,7 +514,8 @@
   }
 
   .navLinks {
-    padding: 10px 20px 24px 20px;
+    padding: 0 20px 24px 20px;
+    gap: 24px;
   }
 
   .loginAction,
@@ -544,11 +532,13 @@
 
   .loginGrid {
     padding-top: 6px;
-    padding-bottom: 10px;
+    padding-bottom: 0;
+    margin-bottom: 12px;
   }
 
   .navLinks {
-    gap: 8px;
+    gap: 12px;
+    padding-top: 0;
     padding-bottom: 14px;
   }
 

@@ -28,20 +28,28 @@ function isOnboardingPath(pathname: string | null) {
 
 function StarDivider({ light = false }: { light?: boolean }) {
   return (
-    <div className={`${styles.starLine} ${light ? styles.starLineLight : ""}`}>
-      <svg
-        className={styles.starSvg}
-        width="11"
-        height="11"
-        viewBox="0 0 26 26"
+    <svg
+      className={`${styles.starLine} ${light ? styles.starLineLight : ""}`}
+      width="100%"
+      height="11"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M5.5 0L6.6 4.4L11 5.5L6.6 6.6L5.5 11L4.4 6.6L0 5.5L4.4 4.4Z"
         fill="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M13 0L15.6 10.4L26 13L15.6 15.6L13 26L10.4 15.6L0 13L10.4 10.4L13 0Z" />
-      </svg>
-
-      <div className={styles.line} />
-    </div>
+      />
+      <line
+        x1="10"
+        y1="5.5"
+        x2="100%"
+        y2="5.5"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeOpacity="0.85"
+      />
+    </svg>
   );
 }
 
@@ -355,6 +363,96 @@ export default function TopNavbar() {
                 </div>
               </div>
             </nav>
+
+            {/* Solid Black Footer Container at Bottom */}
+            <div className={styles.blackCard}>
+              <h3 className={styles.joinHeading}>JOIN US</h3>
+
+              <div className={styles.joinDivider}>
+                <StarDivider light />
+              </div>
+
+              <div className={styles.joinLinks}>
+                <Link
+                  href="/expert/expert-onboarding"
+                  onClick={() => setIsOpen(false)}
+                  className={styles.joinSubLink}
+                >
+                  Become Expert
+                </Link>
+                <Link
+                  href="/seeker/seeker-onboarding"
+                  onClick={() => setIsOpen(false)}
+                  className={styles.joinSubLink}
+                >
+                  Join as Seeker
+                </Link>
+              </div>
+
+              <div className={styles.socialRow}>
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.socialIcon}
+                  aria-label="Instagram"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                  </svg>
+                </a>
+                <a
+                  href="https://x.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.socialIcon}
+                  aria-label="X (formerly Twitter)"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://facebook.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.socialIcon}
+                  aria-label="Facebook"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.704 0-1.229.17-1.57.51-.341.341-.512.894-.512 1.66v1.81h3.765l-.544 3.667h-3.221v7.98H9.101z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://linkedin.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.socialIcon}
+                  aria-label="LinkedIn"
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z" />
+                  </svg>
+                </a>
+              </div>
+
+              <div className={styles.tricolorBar}>
+                <span className={styles.barSaffron} />
+                <span className={styles.barWhite} />
+                <span className={styles.barGreen} />
+              </div>
+            </div>
 
           </div>
         </div>
