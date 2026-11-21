@@ -1,7 +1,7 @@
 import { getDigilockerKycStatus, getProfile, updateProfile } from "@/lib/api";
 import type { ExperienceLevel, ExpertProfileData } from "@/lib/expertProfile";
 import type { TimeSlot } from "@/lib/expertAvailability";
-import { saveExpertProfile } from "@/lib/expertStore";
+import { saveExpertProfile, saveExpertDashboardProfileCache } from "@/lib/expertStore";
 import { areRequiredSessionPreferencesValid } from "@/components/expert/onboarding/preferencesData";
 import { hasValidSavedEmploymentPosition } from "@/lib/expertEmployment";
 import { getPreferredExpertSelectionValues } from "@/lib/expertAudience";
@@ -91,33 +91,38 @@ export function buildExpertProfileCompletion(
   hasKyc: boolean,
 ): ExpertDashboardProfile["completion"] {
   const credentials = expert.credentials || [];
+  const metadata = asRecord(expert.onboardingMetadata);
+  const certificates = Array.isArray(metadata.certificates) ? metadata.certificates : [];
+  const hasCredentialsOrCerts = credentials.length > 0 || certificates.length > 0;
   const formats = expert.selectedFormats || [];
   const prices = expert.formatPrices || {};
-  const submitted = Boolean(expert.submittedAt)
-    || ["pending_review", "in_review", "on_hold", "approved", "rejected"].includes(expert.status || "")
+  const isApproved = expert.status === "approved";
+  const submitted = isApproved
+    || Boolean(expert.submittedAt)
+    || ["pending_review", "in_review", "on_hold", "rejected"].includes(expert.status || "")
     || expert.onboardingStep === "success";
   const checklist: ExpertDashboardProfile["completion"]["checklist"] = [
-    { id: "category", label: "Expert category", status: profile.category ? "done" : "pending" },
-    { id: "skills", label: "Skills & expertise", status: profile.skills.length ? "done" : "pending" },
+    { id: "category", label: "Expert category", status: isApproved || profile.category ? "done" : "pending" },
+    { id: "skills", label: "Skills & expertise", status: isApproved || profile.skills.length ? "done" : "pending" },
     {
       id: "experience",
       label: "Work experience",
-      status: hasValidSavedEmploymentPosition(credentials) ? "done" : "pending",
+      status: isApproved || hasValidSavedEmploymentPosition(credentials) ? "done" : "pending",
     },
-    { id: "identity", label: "Profile identity", status: profile.name && profile.role && profile.tagLine && profile.bio ? "done" : "pending" },
-    { id: "credentials", label: "Credentials & KYC", status: credentials.length > 0 && hasKyc ? "done" : "pending" },
+    { id: "identity", label: "Profile identity", status: isApproved || (Boolean(profile.name) && Boolean(profile.role) && Boolean(profile.tagLine) && Boolean(profile.bio)) ? "done" : "pending" },
+    { id: "credentials", label: "Credentials & KYC", status: isApproved || (hasCredentialsOrCerts && hasKyc) ? "done" : "pending" },
     {
       id: "preferences",
       label: "Consultation preferences",
-      status: areRequiredSessionPreferencesValid(formats, prices) ? "done" : "pending",
+      status: isApproved || areRequiredSessionPreferencesValid(formats, prices) ? "done" : "pending",
     },
-    { id: "audience", label: "Target audience", status: asStringArray(expert.targetAudience).length ? "done" : "pending" },
-    { id: "availability", label: "Availability schedule", status: expert.timezone && expert.availabilities?.length ? "done" : "pending" },
+    { id: "audience", label: "Target audience", status: isApproved || asStringArray(expert.targetAudience).length > 0 ? "done" : "pending" },
+    { id: "availability", label: "Availability schedule", status: isApproved || (Boolean(expert.timezone) && Boolean(expert.availabilities?.length)) ? "done" : "pending" },
     { id: "review", label: "Review & submit", status: submitted ? "done" : "pending" },
   ];
   const completedCount = checklist.filter((item) => item.status === "done").length;
   return {
-    percentage: Math.round((completedCount / checklist.length) * 100),
+    percentage: isApproved ? 100 : Math.round((completedCount / checklist.length) * 100),
     checklist,
   };
 }
@@ -262,19 +267,25 @@ export async function fetchExpertDashboardProfile(): Promise<ExpertDashboardProf
   ]);
   const expert = normalizeBackendProfile(profileResponse as BackendExpertProfile);
   const profile = mapBackendProfileToExpertData(expert);
-  const metadata = expert.onboardingMetadata || {};
-  const hasKyc = digilocker?.kyc?.status === "verified"
-    || Boolean(metadata.governmentId)
-    || Boolean(metadata.kycVideoUrl);
+  const metadata = asRecord(expert.onboardingMetadata);
+  const kycPhotos = asRecord(metadata.kycPhotos);
+  const hasKyc =
+    digilocker?.kyc?.status === "verified" ||
+    Boolean(metadata.governmentId) ||
+    Boolean(metadata.kycVideoUrl) ||
+    Boolean(metadata.kycVideoSrc) ||
+    Object.keys(kycPhotos).length > 0;
   const completion = buildExpertProfileCompletion(expert, profile, hasKyc);
   saveExpertProfile(profile);
-  return {
+  const result: ExpertDashboardProfile = {
     profile,
     reviewStatus: expert.status || "draft",
     reviewerNote: expert.reviewerNote || null,
     submittedAt: expert.submittedAt || null,
     completion,
   };
+  saveExpertDashboardProfileCache(result);
+  return result;
 }
 
 export async function saveExpertProfileData(

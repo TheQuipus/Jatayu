@@ -9,6 +9,7 @@ import {
   submitOnboarding,
   suggestOnboardingIdentity,
   recommendOnboardingSkills,
+  getDashboardStats,
 } from '../controllers/expertController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { getRequest, getRequests, updateRequestDecision } from '../controllers/expertRequestController.js';
@@ -80,6 +81,7 @@ const upload = multer({
 
 // Profile endpoints
 router.get('/me', protect, getProfile);
+router.get('/dashboard/stats', protect, getDashboardStats);
 router.get('/reviews', protect, reviewAction(expertReviews));
 router.put('/reviews/:reviewId/reply', protect, reviewAction(replyToReview));
 router.get('/security', protect, securityAction(getSecurity));

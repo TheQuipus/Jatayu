@@ -14,6 +14,7 @@ import {
 import { triggerNotification } from '../utils/templateNotificationService.js';
 import { sendNotification } from '../services/notificationService.js';
 import { appendSectionAuditEvent } from '../utils/applicationAuditLog.js';
+import { getExpertDashboardStats } from '../services/expertDashboardService.js';
 
 function publicExpert(expert) {
   const data = expert?.toJSON ? expert.toJSON() : { ...expert };
@@ -622,6 +623,23 @@ export const recommendOnboardingSkills = async (req, res) => {
     return res.status(200).json({
       skills: [],
       source: 'ai',
+    });
+  }
+};
+
+/**
+ * Get dashboard statistics for authenticated expert
+ */
+export const getDashboardStats = async (req, res) => {
+  const expertId = req.user.id;
+  try {
+    const statsData = await getExpertDashboardStats(expertId);
+    return res.status(200).json(statsData);
+  } catch (error) {
+    console.error('Get Dashboard Stats Error:', error);
+    return res.status(error.message === 'EXPERT_NOT_FOUND' ? 404 : 500).json({
+      message: 'Server error retrieving dashboard stats',
+      error: error.message,
     });
   }
 };

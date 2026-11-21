@@ -252,6 +252,55 @@
   width: 100%;
 }
 
+/* ── Error / unavailable state ───────────────────────────────────────────── */
+.sectionUnavailable {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pomegranate) 6%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 20%, var(--white));
+  color: var(--pomegranate);
+  font-family: var(--font-body);
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.retryBtn {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--pomegranate);
+  background: transparent;
+  color: var(--pomegranate);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.retryBtn:hover {
+  background: var(--pomegranate);
+  color: var(--white);
+}
+
+/* Stale data label */
+.staleLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--silver-chalice);
+  opacity: 0.75;
+  vertical-align: middle;
+}
+
 .reviewStepper {
   display: flex;
   flex-direction: column;

@@ -189,15 +189,14 @@ export async function updateRequestStatusAsync(
 ): Promise<ClientRequest[]> {
   const { updateExpertRequestStatusApi, getExpertRequests } = await import("@/lib/api");
 
-  try {
-    await updateExpertRequestStatusApi(requestId, newStatus, declineReason, declineNotes);
-    const fresh = await getExpertRequests({ status: "all", page: 1, limit: 20, sort: "newest" });
-    if (fresh.requests && fresh.requests.length > 0) {
-      saveStoredRequests(fresh.requests);
-      return fresh.requests;
-    }
-  } catch {
-    // ignore backend error on offline/standalone mode
+  await updateExpertRequestStatusApi(requestId, newStatus, declineReason, declineNotes);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("expert-requests-updated"));
+  }
+  const fresh = await getExpertRequests({ status: "all", page: 1, limit: 20, sort: "newest" });
+  if (fresh.requests && fresh.requests.length > 0) {
+    saveStoredRequests(fresh.requests);
+    return fresh.requests;
   }
 
   return updateStoredRequestStatus(requestId, newStatus, declineReason, declineNotes);
@@ -206,10 +205,9 @@ export async function updateRequestStatusAsync(
 export async function acceptExpertBookingRequest(bookingId: string): Promise<ClientRequest[]> {
   const { submitExpertRequestDecision } = await import("@/lib/api");
 
-  try {
-    await submitExpertRequestDecision(bookingId, { decision: "accepted" });
-  } catch {
-    // ignore backend error on offline/standalone mode
+  await submitExpertRequestDecision(bookingId, { decision: "accepted" });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("expert-requests-updated"));
   }
 
   return updateStoredRequestStatus(bookingId, "accepted");

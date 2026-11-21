@@ -6,7 +6,9 @@
 
 import { type Expert, expertSlug, getExpertById, getTopMatchesByCategory, normalizeExpert } from "@/lib/experts";
 import type { ClientRequest, RequestStatus } from "@/lib/expertRequests";
+export type { ClientRequest, RequestStatus };
 import type { IdentityToneOptions } from "@/lib/expertIdentitySuggest";
+import type { ExpertStat } from "@/lib/expertDashboard";
 import { publicApiBase } from "@/lib/publicApiBase";
 import { parseUtcDate, formatUtcToLocalDate, formatUtcToLocalTime, formatUtcRelativeTime } from "@/lib/dateTimeUtils";
 import type { ApplicationStatus } from "./expertApplicationSubmission";
@@ -704,6 +706,23 @@ export type ExpertEarningsResponse = {
 };
 
 export const getExpertEarnings = () => apiFetch<ExpertEarningsResponse>("/api/expert/earnings", { method: "GET" });
+
+export type ExpertDashboardStatsResponse = {
+  stats: ExpertStat[];
+  summary: {
+    sessionsDone: number;
+    avgRating: number;
+    totalReviews: number;
+    totalClients: number;
+    pendingRequests: number;
+    weeklyHours: number;
+    avgResponseMinutes: number | null;
+    bookingRate: number;
+  };
+};
+
+export const getExpertDashboardStats = () =>
+  apiFetch<ExpertDashboardStatsResponse>("/api/expert/dashboard/stats", { method: "GET" });
 
 export type DigilockerKycStartResponse = {
   authorizationUrl: string;

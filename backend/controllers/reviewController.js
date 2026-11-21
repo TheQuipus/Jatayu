@@ -59,12 +59,21 @@ export async function expertReviews(req, res) {
   if (req.query.filter === 'fiveStar') where.rating = 5;
   if (req.query.filter === 'recent') where.createdAt = { [Op.gte]: new Date(Date.now() - 30 * 86400000) };
   const { rows, count } = await BookingReview.findAndCountAll({ where, include: [{ model: Booking, as: 'booking', attributes: ['subject'] }], order: req.query.sort === 'highest' ? [['rating', 'DESC'], ['createdAt', 'DESC']] : req.query.sort === 'lowest' ? [['rating', 'ASC'], ['createdAt', 'DESC']] : [['createdAt', 'DESC']], limit, offset: (page - 1) * limit });
-  const seekers = await Seeker.findAll({ where: { id: { [Op.in]: rows.map((row) => row.seekerId) } }, attributes: ['id', 'fullName'] });
-  const names = new Map(seekers.map((seeker) => [seeker.id, seeker.fullName]));
+  const seekers = await Seeker.findAll({ where: { id: { [Op.in]: rows.map((row) => row.seekerId) } }, attributes: ['id', 'fullName', 'profilePhotoSrc', 'category'] });
+  const seekerMap = new Map(seekers.map((seeker) => [seeker.id, seeker]));
   const stats = await BookingReview.findAll({ where: { expertId: req.user.id }, attributes: ['rating', 'createdAt', 'repliedAt'] });
   const total = stats.length;
   const replied = stats.filter((item) => item.repliedAt);
-  res.json({ items: rows.map((row) => ({ ...row.toJSON(), clientName: names.get(row.seekerId) || 'Seeker', sessionTitle: row.booking?.subject || 'Consultation' })),
+  res.json({ items: rows.map((row) => {
+    const seeker = seekerMap.get(row.seekerId);
+    return {
+      ...row.toJSON(),
+      clientName: seeker?.fullName || 'Seeker',
+      clientAvatar: seeker?.profilePhotoSrc || null,
+      clientRole: seeker?.category || null,
+      sessionTitle: row.booking?.subject || 'Consultation',
+    };
+  }),
     pagination: { page, limit, total: count, pages: Math.ceil(count / limit) },
     summary: { totalReviews: total, overallRating: total ? Number((stats.reduce((sum, row) => sum + row.rating, 0) / total).toFixed(1)) : 0,
       needsReply: total - replied.length,

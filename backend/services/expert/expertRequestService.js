@@ -128,6 +128,14 @@ export async function listExpertRequests(expertId, options) {
   await completeEndedBookings();
   const now = Date.now();
   const cutoff = new Date(now - EXPERT_REQUEST_NEW_WINDOW_MS);
+  let order;
+  if (options.status === 'upcoming') {
+    order = [['scheduledStartAt', options.sort === 'oldest' ? 'DESC' : 'ASC']];
+  } else if (options.status === 'completed') {
+    order = [['scheduledEndAt', options.sort === 'oldest' ? 'ASC' : 'DESC']];
+  } else {
+    order = [['expertRequestedAt', options.sort === 'oldest' ? 'ASC' : 'DESC']];
+  }
   const { rows, count } = await Booking.findAndCountAll({
     where: whereForStatus(expertId, options.status, cutoff),
     include: [
@@ -135,7 +143,7 @@ export async function listExpertRequests(expertId, options) {
       { model: BookingPayment, as: 'payments', required: false },
     ],
     distinct: true,
-    order: [['expertRequestedAt', options.sort === 'oldest' ? 'ASC' : 'DESC']],
+    order,
     limit: options.limit,
     offset: (options.page - 1) * options.limit,
   });

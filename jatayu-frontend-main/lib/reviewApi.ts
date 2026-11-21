@@ -4,6 +4,7 @@ import { publicApiBase } from './publicApiBase';
 export type SessionReview = {
   id: string; bookingId: string; rating: number; comment: string; createdAt: string;
   reply: string | null; repliedAt: string | null; clientName?: string; sessionTitle?: string;
+  clientAvatar?: string | null; clientRole?: string | null;
 };
 export type ExpertReviewResponse = {
   items: SessionReview[];
