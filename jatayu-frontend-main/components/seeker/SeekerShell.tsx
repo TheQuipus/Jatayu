@@ -27,6 +27,11 @@ import {
   SEEKER_PROFILE_UPDATED_EVENT,
 } from "@/lib/seekerProfileApi";
 import { clearSeekerAuthSession } from "@/lib/seekerAuth";
+import { getSeekerToken } from "@/lib/api";
+import {
+  getMySupportSummary,
+  MY_SUPPORT_TICKETS_UPDATED_EVENT,
+} from "@/lib/supportApi";
 import styles from "./SeekerShell.module.css";
 
 const NAV_ICONS = {
@@ -79,6 +84,7 @@ export default function SeekerShell({ children }: SeekerShellProps) {
     }
   });
   const [currentHash, setCurrentHash] = useState("");
+  const [supportResponseCount, setSupportResponseCount] = useState(0);
   const shellContext = useMemo(() => ({ setBreadcrumbs }), []);
 
   const handleToggleCollapse = () => {
@@ -154,6 +160,32 @@ export default function SeekerShell({ children }: SeekerShellProps) {
     window.addEventListener("hashchange", handleHashChange);
     return () => {
       window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!getSeekerToken()) return;
+    let active = true;
+
+    const refreshSupportBadge = () => {
+      if (!getSeekerToken()) return;
+      getMySupportSummary("/seeker/support/")
+        .then((res) => {
+          if (active) setSupportResponseCount(res.responseReceivedCount);
+        })
+        .catch(() => {});
+    };
+
+    refreshSupportBadge();
+    window.addEventListener("focus", refreshSupportBadge);
+    window.addEventListener(MY_SUPPORT_TICKETS_UPDATED_EVENT, refreshSupportBadge);
+    window.addEventListener("jatayu:notification", refreshSupportBadge);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshSupportBadge);
+      window.removeEventListener(MY_SUPPORT_TICKETS_UPDATED_EVENT, refreshSupportBadge);
+      window.removeEventListener("jatayu:notification", refreshSupportBadge);
     };
   }, []);
 
@@ -233,6 +265,11 @@ export default function SeekerShell({ children }: SeekerShellProps) {
                 >
                   <Icon size={16} aria-hidden="true" />
                   {!isCollapsed && <span className={styles.navLabelText}>{item.label}</span>}
+                  {!isCollapsed && item.id === "support" && supportResponseCount > 0 ? (
+                    <span className={`${styles.navBadge} ${styles.navBadgeRed}`}>
+                      {supportResponseCount > 99 ? "99+" : supportResponseCount}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

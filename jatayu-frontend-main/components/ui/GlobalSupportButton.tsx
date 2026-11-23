@@ -14,6 +14,7 @@ import ContinueButton from "@/components/ui/ContinueButton";
 import DropdownFilter from "@/components/ui/DropdownFilter";
 import Spinner from "@/components/ui/Spinner";
 import {
+  dispatchMySupportTicketsUpdated,
   fetchSupportMe,
   isAdminRoutePath,
   isOnboardingDarkThemePath,
@@ -253,6 +254,7 @@ export default function GlobalSupportButton() {
       setSubmittedTicketNumber(response.ticket.ticketNumber);
       setSubject(null);
       setDescription("");
+      dispatchMySupportTicketsUpdated();
     } catch {
       // Keep user's entered form values intact so they can immediately retry
       setSubmitError("Something went wrong, please raise the ticket again.");
@@ -303,8 +305,7 @@ export default function GlobalSupportButton() {
                 Ticket #{submittedTicketNumber}
               </span>
               <p className={styles.successCopy}>
-                We have received your support request and notified our team. We will
-                reply to your email address shortly.
+                We have received your support request and we will provide a response shortly.
               </p>
               <div className={styles.successActions}>
                 <button
@@ -328,131 +329,113 @@ export default function GlobalSupportButton() {
             </div>
           ) : (
             <form className={styles.form} onSubmit={handleSubmit} noValidate>
-              <div className={styles.fieldGroup}>
-                <div className={styles.labelRow}>
-                  <label htmlFor={emailId} className={styles.fieldLabel}>
-                    Email Address
-                    <span className={styles.requiredMark} aria-hidden="true">
-                      *
-                    </span>
-                  </label>
-                </div>
-                <input
-                  ref={emailInputRef}
-                  id={emailId}
-                  type="email"
-                  autoComplete="email"
-                  readOnly={accountHasEmail}
-                  tabIndex={accountHasEmail ? -1 : undefined}
-                  className={`${styles.input} ${
-                    accountHasEmail ? styles.inputReadOnly : ""
-                  } ${fieldErrors.email ? styles.inputError : ""}`}
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => {
-                    if (accountHasEmail) return;
-                    setEmail(e.target.value);
-                    if (fieldErrors.email) {
-                      setFieldErrors((prev) => ({ ...prev, email: undefined }));
-                    }
-                    if (submitError) setSubmitError("");
-                  }}
-                  disabled={isSubmitting}
-                  aria-readonly={accountHasEmail}
-                  aria-invalid={Boolean(fieldErrors.email)}
-                  aria-describedby={
-                    fieldErrors.email
-                      ? `${emailId}-error`
-                      : accountHasEmail
-                        ? `${emailId}-helper`
-                        : undefined
-                  }
-                />
-                {accountHasEmail ? (
-                  <p id={`${emailId}-helper`} className={styles.fieldHelperText}>
-                    From your account
-                  </p>
-                ) : null}
-                {fieldErrors.email ? (
-                  <p
-                    id={`${emailId}-error`}
-                    className={styles.fieldError}
-                    role="alert"
-                  >
-                    {fieldErrors.email}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className={styles.fieldGroup}>
-                <div className={styles.labelRow}>
-                  <label htmlFor={phoneId} className={styles.fieldLabel}>
-                    Mobile Number
-                    <span className={styles.requiredMark} aria-hidden="true">
-                      *
-                    </span>
-                  </label>
-                </div>
-                <div
-                  className={`${styles.phoneInputWrap} ${
-                    accountHasPhone ? styles.phoneInputWrapReadOnly : ""
-                  } ${fieldErrors.phone ? styles.inputError : ""}`}
-                >
-                  <span className={styles.phonePrefix} aria-hidden="true">
-                    +91
+              {accountHasEmail ? (
+                <div className={styles.compactContactRow}>
+                  <span className={styles.compactContactLabel}>Email address -</span>
+                  <span className={styles.compactContactValue} title={email}>
+                    {email}
                   </span>
+                </div>
+              ) : (
+                <div className={styles.fieldGroup}>
+                  <div className={styles.labelRow}>
+                    <label htmlFor={emailId} className={styles.fieldLabel}>
+                      Email Address
+                      <span className={styles.requiredMark} aria-hidden="true">
+                        *
+                      </span>
+                    </label>
+                  </div>
                   <input
-                    id={phoneId}
-                    type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel-national"
-                    readOnly={accountHasPhone}
-                    tabIndex={accountHasPhone ? -1 : undefined}
-                    className={`${styles.phoneInput} ${
-                      accountHasPhone ? styles.phoneInputReadOnly : ""
-                    }`}
-                    placeholder="10-digit mobile number"
-                    maxLength={10}
-                    value={phone}
+                    ref={emailInputRef}
+                    id={emailId}
+                    type="email"
+                    autoComplete="email"
+                    className={`${styles.input} ${fieldErrors.email ? styles.inputError : ""}`}
+                    placeholder="you@example.com"
+                    value={email}
                     onChange={(e) => {
-                      if (accountHasPhone) return;
-                      const normalized = normalizeSupportPhone(e.target.value).slice(
-                        0,
-                        10,
-                      );
-                      setPhone(normalized);
-                      if (fieldErrors.phone) {
-                        setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                      setEmail(e.target.value);
+                      if (fieldErrors.email) {
+                        setFieldErrors((prev) => ({ ...prev, email: undefined }));
                       }
                       if (submitError) setSubmitError("");
                     }}
                     disabled={isSubmitting}
-                    aria-readonly={accountHasPhone}
-                    aria-invalid={Boolean(fieldErrors.phone)}
-                    aria-describedby={
-                      fieldErrors.phone
-                        ? `${phoneId}-error`
-                        : accountHasPhone
-                          ? `${phoneId}-helper`
-                          : undefined
-                    }
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    aria-describedby={fieldErrors.email ? `${emailId}-error` : undefined}
                   />
+                  {fieldErrors.email ? (
+                    <p
+                      id={`${emailId}-error`}
+                      className={styles.fieldError}
+                      role="alert"
+                    >
+                      {fieldErrors.email}
+                    </p>
+                  ) : null}
                 </div>
-                {accountHasPhone ? (
-                  <p id={`${phoneId}-helper`} className={styles.fieldHelperText}>
-                    From your account
-                  </p>
-                ) : null}
-                {fieldErrors.phone ? (
-                  <p
-                    id={`${phoneId}-error`}
-                    className={styles.fieldError}
-                    role="alert"
+              )}
+
+              {accountHasPhone ? (
+                <div className={styles.compactContactRow}>
+                  <span className={styles.compactContactLabel}>Mobile number -</span>
+                  <span className={styles.compactContactValue}>+91 {phone}</span>
+                </div>
+              ) : (
+                <div className={styles.fieldGroup}>
+                  <div className={styles.labelRow}>
+                    <label htmlFor={phoneId} className={styles.fieldLabel}>
+                      Mobile Number
+                      <span className={styles.requiredMark} aria-hidden="true">
+                        *
+                      </span>
+                    </label>
+                  </div>
+                  <div
+                    className={`${styles.phoneInputWrap} ${
+                      fieldErrors.phone ? styles.inputError : ""
+                    }`}
                   >
-                    {fieldErrors.phone}
-                  </p>
-                ) : null}
-              </div>
+                    <span className={styles.phonePrefix} aria-hidden="true">
+                      +91
+                    </span>
+                    <input
+                      id={phoneId}
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      className={styles.phoneInput}
+                      placeholder="10-digit mobile number"
+                      maxLength={10}
+                      value={phone}
+                      onChange={(e) => {
+                        const normalized = normalizeSupportPhone(e.target.value).slice(
+                          0,
+                          10,
+                        );
+                        setPhone(normalized);
+                        if (fieldErrors.phone) {
+                          setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                        }
+                        if (submitError) setSubmitError("");
+                      }}
+                      disabled={isSubmitting}
+                      aria-invalid={Boolean(fieldErrors.phone)}
+                      aria-describedby={fieldErrors.phone ? `${phoneId}-error` : undefined}
+                    />
+                  </div>
+                  {fieldErrors.phone ? (
+                    <p
+                      id={`${phoneId}-error`}
+                      className={styles.fieldError}
+                      role="alert"
+                    >
+                      {fieldErrors.phone}
+                    </p>
+                  ) : null}
+                </div>
+              )}
 
               <div className={styles.fieldGroup}>
                 <DropdownFilter
@@ -496,7 +479,7 @@ export default function GlobalSupportButton() {
                 </div>
                 <textarea
                   id={descriptionId}
-                  rows={3}
+                  rows={6}
                   maxLength={SUPPORT_DESCRIPTION_MAX_LENGTH}
                   className={`${styles.textarea} ${
                     fieldErrors.description ? styles.inputError : ""

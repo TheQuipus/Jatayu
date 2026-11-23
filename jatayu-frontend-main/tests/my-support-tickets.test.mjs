@@ -416,7 +416,7 @@ test("MySupportTickets implements requester status mapping, chip filters, compos
   });
 });
 
-test("GlobalSupportButton implements read-only account fields, Spinner submitting state, and inverted trigger colors", () => {
+test("GlobalSupportButton implements compact contact rows, taller description, new success copy, Spinner submitting state, and inverted trigger colors", () => {
   const buttonSource = fs.readFileSync(
     new URL("../components/ui/GlobalSupportButton.tsx", import.meta.url),
     "utf8",
@@ -426,10 +426,16 @@ test("GlobalSupportButton implements read-only account fields, Spinner submittin
     "utf8",
   );
 
-  // Read-only email/phone when account has them + fallback helper
-  assert.ok(buttonSource.includes("readOnly={accountHasEmail}"));
-  assert.ok(buttonSource.includes("readOnly={accountHasPhone}"));
-  assert.ok(buttonSource.includes("From your account"));
+  // Compact contact rows when account has email/phone, no "From your account" helper
+  assert.ok(buttonSource.includes("Email address -"));
+  assert.ok(buttonSource.includes("Mobile number -"));
+  assert.equal(buttonSource.includes("From your account"), false);
+  assert.ok(buttonSource.includes("rows={6}"));
+  assert.ok(
+    buttonSource.includes(
+      "We have received your support request and we will provide a response shortly.",
+    ),
+  );
 
   // Submitting state with Spinner and "Submitting" label
   assert.ok(buttonSource.includes("<Spinner") && buttonSource.includes('"Submitting"'));
@@ -437,4 +443,34 @@ test("GlobalSupportButton implements read-only account fields, Spinner submittin
   // Inverted floating button colors: orange default, white when open
   assert.ok(buttonCss.includes(".trigger {") && buttonCss.includes("background: var(--pomegranate);"));
   assert.ok(buttonCss.includes(".containerOpen .trigger {") && buttonCss.includes("background: var(--white);"));
+});
+
+test("SeekerShell, ExpertShell, and notificationApi implement support response badge and admin notification token routing", () => {
+  const seekerShell = fs.readFileSync(
+    new URL("../components/seeker/SeekerShell.tsx", import.meta.url),
+    "utf8",
+  );
+  const expertShell = fs.readFileSync(
+    new URL("../components/expert/ExpertShell.tsx", import.meta.url),
+    "utf8",
+  );
+  const notificationApi = fs.readFileSync(
+    new URL("../lib/notificationApi.ts", import.meta.url),
+    "utf8",
+  );
+  const notificationPanel = fs.readFileSync(
+    new URL("../components/seeker/NotificationPanel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.ok(seekerShell.includes("getMySupportSummary"));
+  assert.ok(seekerShell.includes("supportResponseCount > 99 ? \"99+\" : supportResponseCount"));
+  assert.ok(seekerShell.includes("navBadgeRed"));
+
+  assert.ok(expertShell.includes("getMySupportSummary"));
+  assert.ok(expertShell.includes("supportResponseCount > 99 ? \"99+\" : supportResponseCount"));
+  assert.ok(expertShell.includes("navBadgeRed"));
+
+  assert.ok(notificationApi.includes('window.location.pathname.startsWith("/admin")'));
+  assert.ok(notificationPanel.includes('window.addEventListener("focus", loadNotifications)'));
 });

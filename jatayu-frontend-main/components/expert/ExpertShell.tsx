@@ -41,8 +41,12 @@ import { getExpertProfile } from "@/lib/expertStore";
 import { fetchExpertProfileData, fetchExpertProfileRecord } from "@/lib/expertProfileApi";
 import { clearAuthSession, getStoredAuthUser } from "@/lib/expertAuth";
 import { getStoredRequests } from "@/lib/expertRequests";
-import { getExpertRequests } from "@/lib/api";
+import { getExpertRequests, getExpertToken } from "@/lib/api";
 import { fetchNotificationUnreadCount } from "@/lib/notificationApi";
+import {
+  getMySupportSummary,
+  MY_SUPPORT_TICKETS_UPDATED_EVENT,
+} from "@/lib/supportApi";
 import styles from "./ExpertShell.module.css";
 
 const NAV_ICONS = {
@@ -159,7 +163,11 @@ function NavLink({
       {!isCollapsed && <span>{item.label}</span>}
       {item.badge ? (
         <span
-          className={`${styles.navBadge} ${isCollapsed ? styles.navBadgeDot : ""}`}
+          className={`${styles.navBadge} ${
+            (item as ExpertNavItem & { badgeVariant?: "red" }).badgeVariant === "red"
+              ? styles.navBadgeRed
+              : ""
+          } ${isCollapsed ? styles.navBadgeDot : ""}`}
           title={isCollapsed ? `${item.badge} unread` : undefined}
         >
           {isCollapsed ? "" : item.badge}
@@ -208,6 +216,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     return 0;
   });
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [supportResponseCount, setSupportResponseCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -294,6 +303,32 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!getExpertToken()) return;
+    let isSubscribed = true;
+
+    const refreshSupportBadge = () => {
+      if (!getExpertToken()) return;
+      getMySupportSummary("/expert/support/")
+        .then((res) => {
+          if (isSubscribed) setSupportResponseCount(res.responseReceivedCount);
+        })
+        .catch(() => {});
+    };
+
+    refreshSupportBadge();
+    window.addEventListener("focus", refreshSupportBadge);
+    window.addEventListener(MY_SUPPORT_TICKETS_UPDATED_EVENT, refreshSupportBadge);
+    window.addEventListener("jatayu:notification", refreshSupportBadge);
+
+    return () => {
+      isSubscribed = false;
+      window.removeEventListener("focus", refreshSupportBadge);
+      window.removeEventListener(MY_SUPPORT_TICKETS_UPDATED_EVENT, refreshSupportBadge);
+      window.removeEventListener("jatayu:notification", refreshSupportBadge);
+    };
+  }, []);
+
   const dynamicMainNav = useMemo(() => {
     return MAIN_NAV.map((item) => {
       if (item.id === "requests") {
@@ -303,9 +338,16 @@ export default function ExpertShell({ children }: ExpertShellProps) {
         };
       }
       if (item.id === "notifications") return { ...item, badge: notificationUnreadCount };
+      if (item.id === "support" && supportResponseCount > 0) {
+        return {
+          ...item,
+          badge: supportResponseCount > 99 ? "99+" : supportResponseCount,
+          badgeVariant: "red" as const,
+        };
+      }
       return item;
     });
-  }, [notificationUnreadCount, requestsBadgeCount]);
+  }, [notificationUnreadCount, requestsBadgeCount, supportResponseCount]);
 
   useEffect(() => {
     setCurrentHash(window.location.hash);

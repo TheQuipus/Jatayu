@@ -18,6 +18,7 @@ import {
 import Spinner from "@/components/ui/Spinner";
 import {
   createMySupportReply,
+  dispatchMySupportTicketsUpdated,
   getMySupportTicket,
   getMySupportTickets,
   MY_SUPPORT_TICKETS_UPDATED_EVENT,
@@ -213,6 +214,7 @@ export default function MySupportTickets() {
         setPagination(res.pagination);
         setError(null);
         setLoading(false);
+        dispatchMySupportTicketsUpdated();
       })
       .catch((err: unknown) => {
         if (!active) return;

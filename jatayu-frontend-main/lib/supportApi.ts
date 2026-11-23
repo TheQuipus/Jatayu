@@ -275,6 +275,34 @@ export function dispatchMySupportTicketsUpdated(): void {
   window.dispatchEvent(new CustomEvent(MY_SUPPORT_TICKETS_UPDATED_EVENT));
 }
 
+export async function getMySupportSummary(
+  pathname?: string | null,
+): Promise<{ responseReceivedCount: number }> {
+  const token = resolveSupportAuthToken(pathname);
+  if (!token) {
+    return { responseReceivedCount: 0 };
+  }
+
+  const response = await fetch(`${publicApiBase()}/api/support/tickets/summary`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to load support summary");
+  }
+
+  const data = (await response.json().catch(() => ({}))) as {
+    responseReceivedCount?: number;
+  };
+  return {
+    responseReceivedCount: Math.max(0, Number(data.responseReceivedCount) || 0),
+  };
+}
+
 export type MySupportDbStatus = "open" | "closed";
 export type MySupportLastReplyBy = "requester" | "admin" | null;
 export type MySupportAuthorType = "admin" | "seeker" | "expert";

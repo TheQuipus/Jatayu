@@ -2,7 +2,8 @@ export type ExpertNavItem = {
   id: string;
   label: string;
   href: string;
-  badge?: number;
+  badge?: number | string;
+  badgeVariant?: "red";
 };
 
 export type ProfileChecklistItem = {
