@@ -495,7 +495,16 @@ export async function createSupportTicket(req, res) {
     }
 
     const { requester } = resolved;
-    const validation = validateSupportTicketInput(req.body);
+    const accountEmail = typeof requester.email === 'string' ? requester.email.trim() : '';
+    const accountPhone = normalizeSupportPhone(requester.phone || '');
+    const hasAccountEmail = Boolean(accountEmail);
+    const hasAccountPhone = /^\d{10}$/.test(accountPhone);
+
+    const validation = validateSupportTicketInput({
+      ...req.body,
+      email: hasAccountEmail ? accountEmail : req.body?.email,
+      phone: hasAccountPhone ? accountPhone : req.body?.phone,
+    });
     if (!validation.valid) {
       const firstError = Object.values(validation.errors)[0] || 'Invalid support ticket input';
       return res.status(422).json({

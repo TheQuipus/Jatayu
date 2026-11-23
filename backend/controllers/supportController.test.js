@@ -261,6 +261,91 @@ test('createSupportTicket commits and escapes HTML when admin email succeeds, an
   assert.equal(committedTickets.length, 1, 'Failed email must roll back and not leave a second ticket in DB');
 });
 
+test('createSupportTicket uses authenticated account email/phone and only falls back to body when account field is missing', async (t) => {
+  resetSupportRateLimiter();
+
+  let accountRecord = {
+    id: 'seeker-enforce-1',
+    fullName: 'Priya Sharma',
+    email: 'account-email@example.com',
+    phone: '+91 98765 43210',
+    status: 'active',
+    onboardingMetadata: {},
+  };
+  t.mock.method(Seeker, 'findByPk', async () => accountRecord);
+
+  const settings = new Map([
+    ['EMAIL_ENABLED', 'true'],
+    ['SMTP_HOST', 'smtp.example.com'],
+    ['SMTP_PORT', '465'],
+    ['SMTP_SECURE', 'true'],
+    ['SMTP_USER', 'smtp-sender@example.com'],
+    ['SMTP_PASS', 'secret-pass'],
+    ['FROM_EMAIL', 'support@jatayuconnect.in'],
+  ]);
+  t.mock.method(Setting, 'findByPk', async (key) => (settings.has(key) ? { value: settings.get(key) } : null));
+  t.mock.method(Admin, 'findOne', async () => ({
+    id: 'admin-1',
+    email: 'admin@thequipus.com',
+    fullName: 'Quipus Admin',
+  }));
+  t.mock.method(dns, 'lookup', (host, options, callback) => callback(null, '192.0.2.1'));
+  t.mock.method(nodemailer, 'createTransport', () => ({ sendMail: async () => {} }));
+  t.mock.method(SupportTicket, 'findOne', async () => null);
+  t.mock.method(adminDb, 'transaction', async (callback) => callback({ id: 'tx-enforce' }));
+
+  const createdPayloads = [];
+  t.mock.method(SupportTicket, 'create', async (data) => {
+    createdPayloads.push(data);
+    return {
+      id: `ticket-${createdPayloads.length}`,
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      toJSON() {
+        return { ...this };
+      },
+    };
+  });
+
+  // 1. Spoofed body email/phone must be ignored when account has both
+  const res1 = response();
+  await createSupportTicket(
+    {
+      user: { id: 'seeker-enforce-1', role: 'seeker' },
+      body: {
+        email: 'spoofed@evil.com',
+        phone: '1111111111',
+        subject: 'Technical Bug',
+        description: 'Testing account email/phone enforcement',
+      },
+    },
+    res1,
+  );
+  assert.equal(res1.statusCode, 201);
+  assert.equal(createdPayloads[0].email, 'account-email@example.com');
+  assert.equal(createdPayloads[0].phone, '9876543210');
+
+  // 2. Missing phone on account falls back to validated body phone while still enforcing account email
+  accountRecord = { ...accountRecord, phone: '' };
+  const res2 = response();
+  await createSupportTicket(
+    {
+      user: { id: 'seeker-enforce-1', role: 'seeker' },
+      body: {
+        email: 'spoofed@evil.com',
+        phone: '+91 91234 56789',
+        subject: 'Technical Bug',
+        description: 'Testing missing phone fallback',
+      },
+    },
+    res2,
+  );
+  assert.equal(res2.statusCode, 201);
+  assert.equal(createdPayloads[1].email, 'account-email@example.com');
+  assert.equal(createdPayloads[1].phone, '9123456789');
+});
+
 test('createSupportTicket retries up to 5 times on SequelizeUniqueConstraintError for ticketNumber inside the same transaction', async (t) => {
   resetSupportRateLimiter();
 
