@@ -10,14 +10,18 @@ import {
   SupportReply,
   SupportTicket,
 } from '../models/index.js';
+import Notification from '../models/Notification.js';
 import {
   closeAdminSupportTicket,
   createMySupportReply,
+  createSupportTicket,
+  getMySupportSummary,
   listAdminSupportTickets,
   reopenAdminSupportTicket,
   replyAdminSupportTicket,
   resetSupportRateLimiter,
 } from '../controllers/supportController.js';
+import { buildSupportEmailFooter, getSupportTicketUrl } from '../utils/supportEmailFooter.js';
 import {
   buildViewerStatusWhere,
   deriveViewerStatus,
@@ -459,4 +463,252 @@ test('migrateSupportTicketsConversation executes idempotent backfill & enum tran
     executedQueries.some((q) => q.includes("UPDATE SupportReplies SET authorType = COALESCE(authorType, 'admin')")),
     'Must backfill SupportReplies author fields',
   );
+});
+
+test('buildSupportEmailFooter builds role-specific URLs, escapes HTML, and handles missing FRONTEND_URL', (t) => {
+  const seekerFooter = buildSupportEmailFooter({
+    recipientRole: 'seeker',
+    ticketNumber: 'SUP-1005',
+    frontendBaseUrl: 'https://app.jatayuconnect.in/',
+  });
+  assert.equal(seekerFooter.ticketUrl, 'https://app.jatayuconnect.in/seeker/support/?ticket=SUP-1005');
+  assert.ok(
+    seekerFooter.htmlFooter.includes(
+      'This email is auto-generated. To respond on this ticket, please click on <a href="https://app.jatayuconnect.in/seeker/support/?ticket=SUP-1005"',
+    ),
+  );
+  assert.equal(
+    seekerFooter.textFooter,
+    'This email is auto-generated. To respond on this ticket, please click on https://app.jatayuconnect.in/seeker/support/?ticket=SUP-1005.',
+  );
+
+  const expertUrl = getSupportTicketUrl({
+    recipientRole: 'expert',
+    ticketNumber: 'SUP-1006',
+    frontendBaseUrl: 'https://app.jatayuconnect.in',
+  });
+  assert.equal(expertUrl, 'https://app.jatayuconnect.in/expert/support/?ticket=SUP-1006');
+
+  const adminUrl = getSupportTicketUrl({
+    recipientRole: 'admin',
+    ticketNumber: 'SUP-1007',
+    frontendBaseUrl: 'https://app.jatayuconnect.in',
+  });
+  assert.equal(adminUrl, 'https://app.jatayuconnect.in/admin/support/SUP-1007/');
+
+  // Escaping special characters in base URL / ticket query
+  const escapedFooter = buildSupportEmailFooter({
+    recipientRole: 'seeker',
+    ticketNumber: 'SUP-1008',
+    frontendBaseUrl: 'https://example.com/?a=1&b="2"',
+  });
+  assert.ok(escapedFooter.htmlFooter.includes('&amp;b=&quot;2&quot;'));
+
+  // Missing FRONTEND_URL logs warning and omits footer without throwing
+  const warnings = [];
+  t.mock.method(console, 'warn', (msg) => warnings.push(msg));
+  const missingFooter = buildSupportEmailFooter({
+    recipientRole: 'admin',
+    ticketNumber: 'SUP-1009',
+    frontendBaseUrl: '',
+  });
+  assert.equal(missingFooter.ticketUrl, null);
+  assert.equal(missingFooter.htmlFooter, '');
+  assert.equal(missingFooter.textFooter, '');
+  assert.equal(warnings.length, 1);
+});
+
+test('Support bell notifications: created for right recipients, one-unread-per-ticket upsert, skipped on failure, and resilient to notification errors', async (t) => {
+  resetSupportRateLimiter();
+
+  const storedNotifications = [];
+  t.mock.method(Notification, 'findAll', async ({ where }) =>
+    storedNotifications.filter(
+      (n) =>
+        n.recipientType === where.recipientType &&
+        n.recipientId === where.recipientId &&
+        n.readAt === null,
+    ),
+  );
+  t.mock.method(Notification, 'create', async (payload) => {
+    const row = {
+      id: `notif-${storedNotifications.length + 1}`,
+      ...payload,
+      readAt: null,
+      createdAt: new Date(),
+      setDataValue(k, v) {
+        this[k] = v;
+      },
+      changed() {},
+      async save() {},
+      toJSON() {
+        return { ...this };
+      },
+    };
+    storedNotifications.push(row);
+    return row;
+  });
+
+  t.mock.method(Seeker, 'findByPk', async () => ({
+    id: 'seeker-1',
+    fullName: 'Asha Seeker',
+    email: 'asha@example.com',
+    phone: '9876543210',
+    isSuspended: false,
+  }));
+  t.mock.method(Admin, 'findOne', async () => ({
+    id: 'admin-1',
+    email: 'admin@jatayuconnect.in',
+    fullName: 'Platform Admin',
+  }));
+  t.mock.method(Admin, 'findAll', async () => [{ id: 'admin-1' }]);
+  t.mock.method(Setting, 'findByPk', async (key) => {
+    if (key === 'FROM_EMAIL') return { value: 'support@jatayuconnect.in' };
+    if (key === 'SMTP_HOST') return { value: '192.0.2.1' };
+    if (key === 'SMTP_PORT') return { value: '587' };
+    if (key === 'SMTP_USER') return { value: 'support@jatayuconnect.in' };
+    if (key === 'SMTP_PASS') return { value: 'secret' };
+    return null;
+  });
+  t.mock.method(nodemailer, 'createTransport', () => ({
+    sendMail: async () => ({ messageId: 'ok' }),
+  }));
+  t.mock.method(adminDb, 'transaction', async (cb) => cb({ LOCK: { UPDATE: 'UPDATE' } }));
+
+  const ticketState = {
+    id: 'ticket-n1',
+    ticketNumber: 'SUP-3001',
+    requesterType: 'seeker',
+    requesterId: 'seeker-1',
+    requesterName: 'Asha Seeker',
+    email: 'asha@example.com',
+    phone: '9876543210',
+    subject: 'Technical Bug',
+    description: 'Cannot open report',
+    status: 'open',
+    lastReplyBy: null,
+    createdAt: new Date(),
+    replies: [],
+    async save() {},
+    toJSON() {
+      return { ...this };
+    },
+  };
+
+  t.mock.method(SupportTicket, 'findOne', async () => ticketState);
+  t.mock.method(SupportTicket, 'create', async (data) => {
+    Object.assign(ticketState, data);
+    return ticketState;
+  });
+  t.mock.method(SupportTicket, 'findByPk', async () => ticketState);
+  t.mock.method(SupportReply, 'create', async (data) => ({
+    id: `reply-${ticketState.replies.length + 1}`,
+    ...data,
+    createdAt: new Date(),
+  }));
+
+  // 1. Create ticket -> creates 1 unread notification for admin
+  const createRes = mockRes();
+  await createSupportTicket(
+    {
+      user: { id: 'seeker-1', role: 'seeker' },
+      body: { subject: 'Technical Bug', description: 'Cannot open report' },
+    },
+    createRes,
+  );
+  assert.equal(createRes.statusCode, 201);
+  const createdTicketNumber = createRes.body.ticket.ticketNumber;
+  assert.equal(storedNotifications.length, 1);
+  assert.equal(storedNotifications[0].recipientType, 'admin');
+  assert.equal(storedNotifications[0].recipientId, 'admin-1');
+  assert.equal(storedNotifications[0].href, `/admin/support/${createdTicketNumber}/`);
+
+  // 2. Requester replies while admin's notification is still unread -> updates existing unread notification (still 1)
+  const reqReplyRes = mockRes();
+  await createMySupportReply(
+    {
+      user: { id: 'seeker-1', role: 'seeker' },
+      params: { ticketId: createdTicketNumber },
+      body: { message: 'Still happening' },
+    },
+    reqReplyRes,
+  );
+  assert.equal(reqReplyRes.statusCode, 201);
+  assert.equal(storedNotifications.length, 1);
+  assert.ok(storedNotifications[0].title.includes(`New reply on ${createdTicketNumber}`));
+
+  // 3. Admin replies -> creates 1 unread notification for seeker
+  const adminReplyRes = mockRes();
+  await replyAdminSupportTicket(
+    {
+      params: { ticketId: createdTicketNumber },
+      admin: { id: 'admin-1', fullName: 'Platform Admin' },
+      body: { message: 'We fixed it' },
+    },
+    adminReplyRes,
+  );
+  assert.equal(adminReplyRes.statusCode, 201);
+  assert.equal(storedNotifications.length, 2);
+  const seekerNotif = storedNotifications.find((n) => n.recipientType === 'seeker');
+  assert.equal(seekerNotif.recipientId, 'seeker-1');
+  assert.equal(seekerNotif.href, `/seeker/support/?ticket=${createdTicketNumber}`);
+
+  // 4. If notification creation throws, reply still succeeds (201)
+  t.mock.method(Notification, 'findAll', async () => {
+    throw new Error('Notification DB unavailable');
+  });
+  const resilientRes = mockRes();
+  await replyAdminSupportTicket(
+    {
+      params: { ticketId: 'SUP-3001' },
+      admin: { id: 'admin-1', fullName: 'Platform Admin' },
+      body: { message: 'Second reply' },
+    },
+    resilientRes,
+  );
+  assert.equal(resilientRes.statusCode, 201);
+
+  // 5. If transaction/email fails, no notification is created
+  const countBeforeFail = storedNotifications.length;
+  t.mock.method(nodemailer, 'createTransport', () => ({
+    sendMail: async () => {
+      throw new Error('SMTP failed');
+    },
+  }));
+  const failedReplyRes = mockRes();
+  await replyAdminSupportTicket(
+    {
+      params: { ticketId: 'SUP-3001' },
+      admin: { id: 'admin-1', fullName: 'Platform Admin' },
+      body: { message: 'Should fail' },
+    },
+    failedReplyRes,
+  );
+  assert.equal(failedReplyRes.statusCode, 502);
+  assert.equal(storedNotifications.length, countBeforeFail);
+});
+
+test('getMySupportSummary returns responseReceivedCount scoped to requester', async (t) => {
+  t.mock.method(Seeker, 'findByPk', async () => ({
+    id: 'seeker-1',
+    fullName: 'Asha Seeker',
+    email: 'asha@example.com',
+    phone: '9876543210',
+    isSuspended: false,
+  }));
+
+  let capturedWhere = null;
+  t.mock.method(SupportTicket, 'count', async ({ where }) => {
+    capturedWhere = where;
+    return 4;
+  });
+
+  const res = mockRes();
+  await getMySupportSummary({ user: { id: 'seeker-1', role: 'seeker' } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { responseReceivedCount: 4 });
+  assert.equal(capturedWhere.requesterType, 'seeker');
+  assert.equal(capturedWhere.requesterId, 'seeker-1');
+  assert.equal(capturedWhere.status, 'open');
+  assert.equal(capturedWhere.lastReplyBy, 'admin');
 });

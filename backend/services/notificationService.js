@@ -103,6 +103,67 @@ export async function sendUpcomingExpertReminders(now = new Date()) {
   return bookings.length;
 }
 
+export async function upsertUnreadSupportNotification({
+  recipientType,
+  recipientId,
+  ticketId,
+  ticketNumber,
+  eventType,
+  title,
+  body,
+  href,
+  data = {},
+}) {
+  const unreadSupportNotifications = await Notification.findAll({
+    where: {
+      recipientType,
+      recipientId,
+      readAt: null,
+      eventType: { [Op.like]: 'support.%' },
+    },
+    order: [['createdAt', 'DESC']],
+  });
+
+  const existing = unreadSupportNotifications.find((item) => {
+    const itemData = item.data && typeof item.data === 'object' ? item.data : {};
+    return (
+      (ticketId && String(itemData.ticketId || '') === String(ticketId)) ||
+      (ticketNumber && String(itemData.ticketNumber || '') === String(ticketNumber)) ||
+      (href && item.href === href)
+    );
+  });
+
+  const now = new Date();
+  if (existing) {
+    existing.eventType = eventType;
+    existing.title = title;
+    existing.body = body;
+    existing.href = href;
+    existing.data = { ...data, ticketId, ticketNumber };
+    existing.setDataValue('createdAt', now);
+    existing.changed('createdAt', true);
+    await existing.save();
+
+    const payload = existing.toJSON();
+    emitRealtime(recipientType, recipientId, 'notification:new', payload);
+    return payload;
+  }
+
+  const created = await Notification.create({
+    recipientType,
+    recipientId,
+    eventType,
+    dedupeKey: null,
+    title,
+    body,
+    href,
+    data: { ...data, ticketId, ticketNumber },
+  });
+  const payload = created.toJSON();
+  emitRealtime(recipientType, recipientId, 'notification:new', payload);
+  return payload;
+}
+
 export async function listNotifications(recipientType, recipientId, { page = 1, limit = 30 } = {}) {
   const safeLimit = Math.min(100, Math.max(1, Number(limit) || 30));
   const safePage = Math.max(1, Number(page) || 1);

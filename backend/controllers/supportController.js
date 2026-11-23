@@ -8,6 +8,8 @@ import {
   SupportTicket,
 } from '../models/index.js';
 import { getConfiguredSenderEmail, sendGenericEmail } from '../utils/emailService.js';
+import { buildSupportEmailFooter } from '../utils/supportEmailFooter.js';
+import { upsertUnreadSupportNotification } from '../services/notificationService.js';
 import {
   buildViewerStatusWhere,
   deriveViewerStatus,
@@ -39,6 +41,50 @@ async function resolveAdminRecipient({ transaction }) {
     adminEmail: (adminRecord?.email || process.env.ADMIN_EMAIL || 'admin@thequipus.com').trim(),
     adminName: adminRecord?.fullName || process.env.ADMIN_NAME || 'Platform Admin',
   };
+}
+
+async function notifyAdminsSupportEvent({ ticket, eventType, title, body }) {
+  try {
+    const admins = await Admin.findAll({ attributes: ['id'] });
+    const href = `/admin/support/${encodeURIComponent(ticket.ticketNumber)}/`;
+    await Promise.all(
+      admins.map((admin) =>
+        upsertUnreadSupportNotification({
+          recipientType: 'admin',
+          recipientId: admin.id,
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          eventType,
+          title,
+          body,
+          href,
+          data: { ticketId: ticket.id, ticketNumber: ticket.ticketNumber, requesterType: ticket.requesterType },
+        }),
+      ),
+    );
+  } catch (error) {
+    console.error('[Support] Admin notification failed:', error?.message || error);
+  }
+}
+
+async function notifyRequesterSupportReply({ ticket, replyMessage }) {
+  try {
+    const role = ticket.requesterType === 'expert' ? 'expert' : 'seeker';
+    const href = `/${role}/support/?ticket=${encodeURIComponent(ticket.ticketNumber)}`;
+    await upsertUnreadSupportNotification({
+      recipientType: role,
+      recipientId: ticket.requesterId,
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      eventType: 'support.reply_received',
+      title: `You have a new reply on ${ticket.ticketNumber} (${ticket.subject})`,
+      body: replyMessage,
+      href,
+      data: { ticketId: ticket.id, ticketNumber: ticket.ticketNumber },
+    });
+  } catch (error) {
+    console.error('[Support] Requester notification failed:', error?.message || error);
+  }
 }
 
 export const PREDEFINED_SUPPORT_SUBJECTS = Object.freeze([
@@ -217,6 +263,10 @@ function buildAdminSupportTicketEmail({ ticket, submittedAt }) {
     timeStyle: 'short',
   });
   const roleLabel = ticket.requesterType === 'expert' ? 'Expert' : 'Seeker';
+  const footer = buildSupportEmailFooter({
+    recipientRole: 'admin',
+    ticketNumber: ticket.ticketNumber,
+  });
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; color: #0B0D14;">
@@ -256,6 +306,7 @@ function buildAdminSupportTicketEmail({ ticket, submittedAt }) {
           <td style="padding: 8px; border: 1px solid #E6E6E6;">${escapeHtml(formattedDate)} (IST)</td>
         </tr>
       </table>
+      ${footer.htmlFooter}
     </div>
   `;
 
@@ -268,6 +319,7 @@ function buildAdminSupportTicketEmail({ ticket, submittedAt }) {
     `Subject: ${ticket.subject}`,
     `Issue Description: ${ticket.description}`,
     `Submitted At: ${formattedDate} (IST)`,
+    ...(footer.textFooter ? ['', footer.textFooter] : []),
   ].join('\n');
 
   return {
@@ -278,6 +330,11 @@ function buildAdminSupportTicketEmail({ ticket, submittedAt }) {
 }
 
 function buildRequesterReplyEmail({ ticket, replyMessage, fromEmail }) {
+  const footer = buildSupportEmailFooter({
+    recipientRole: ticket.requesterType === 'expert' ? 'expert' : 'seeker',
+    ticketNumber: ticket.ticketNumber,
+  });
+
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; color: #0B0D14;">
       <h2 style="margin-bottom: 12px; color: #E53B17;">Update on your Support Request (${escapeHtml(ticket.ticketNumber)})</h2>
@@ -289,6 +346,7 @@ function buildRequesterReplyEmail({ ticket, replyMessage, fromEmail }) {
         ${escapeHtml(ticket.description)}
       </p>
       <p style="font-size: 12px; color: #888;">Sent from ${escapeHtml(fromEmail)}</p>
+      ${footer.htmlFooter}
     </div>
   `;
 
@@ -300,6 +358,7 @@ function buildRequesterReplyEmail({ ticket, replyMessage, fromEmail }) {
     replyMessage,
     '',
     `Your Original Issue: ${ticket.description}`,
+    ...(footer.textFooter ? ['', footer.textFooter] : []),
   ].join('\n');
 
   return {
@@ -316,6 +375,10 @@ function buildAdminSupportReplyEmail({ ticket, requester, replyMessage, repliedA
     timeStyle: 'short',
   });
   const roleLabel = requester.role === 'expert' ? 'Expert' : 'Seeker';
+  const footer = buildSupportEmailFooter({
+    recipientRole: 'admin',
+    ticketNumber: ticket.ticketNumber,
+  });
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; color: #0B0D14;">
@@ -336,6 +399,7 @@ function buildAdminSupportReplyEmail({ ticket, requester, replyMessage, repliedA
           <td style="padding: 6px 8px; border: 1px solid #E6E6E6;">${escapeHtml(formattedDate)} (IST)</td>
         </tr>
       </table>
+      ${footer.htmlFooter}
     </div>
   `;
 
@@ -349,6 +413,7 @@ function buildAdminSupportReplyEmail({ ticket, requester, replyMessage, repliedA
     `Requester Email: ${ticket.email}`,
     `Mobile Number: +91 ${ticket.phone}`,
     `Replied At: ${formattedDate} (IST)`,
+    ...(footer.textFooter ? ['', footer.textFooter] : []),
   ].join('\n');
 
   return {
@@ -580,6 +645,14 @@ export async function createSupportTicket(req, res) {
       return ticket;
     });
 
+    const roleLabel = requester.role === 'expert' ? 'Expert' : 'Seeker';
+    await notifyAdminsSupportEvent({
+      ticket: createdTicket,
+      eventType: 'support.ticket_created',
+      title: `New support ticket ${createdTicket.ticketNumber} from ${requester.fullName} (${roleLabel})`,
+      body: `${createdTicket.subject} — ${createdTicket.description}`,
+    });
+
     return res.status(201).json({
       message: 'Your support request has been submitted.',
       ticket: serializeTicket(createdTicket, 'requester'),
@@ -610,6 +683,32 @@ function serializeUserTicketSummary(ticket) {
     closedAt: data.closedAt ?? null,
     replyCount: Array.isArray(data.replies) ? data.replies.length : 0,
   };
+}
+
+export async function getMySupportSummary(req, res) {
+  try {
+    const resolved = await resolveRequesterAccount(req.user);
+    if (resolved.error) {
+      return res.status(resolved.error.status).json({
+        message: resolved.error.message,
+        ...(resolved.error.code ? { code: resolved.error.code } : {}),
+      });
+    }
+
+    const { requester } = resolved;
+    const responseReceivedCount = await SupportTicket.count({
+      where: {
+        requesterType: requester.role,
+        requesterId: requester.id,
+        ...buildViewerStatusWhere('requester', 'response_received'),
+      },
+    });
+
+    return res.status(200).json({ responseReceivedCount });
+  } catch (error) {
+    console.error('[Support] Failed to load requester summary:', error.message);
+    return res.status(500).json({ message: 'Unable to load support summary' });
+  }
 }
 
 export async function listMySupportTickets(req, res) {
@@ -864,6 +963,13 @@ export async function createMySupportReply(req, res) {
     const sortedReplies = sortRepliesChronologically(finalTicket.replies || [result.reply]);
     const viewerStatus = deriveViewerStatus(finalTicket, 'requester');
 
+    await notifyAdminsSupportEvent({
+      ticket: finalTicket,
+      eventType: 'support.reply_received',
+      title: `New reply on ${finalTicket.ticketNumber} from ${requester.fullName}`,
+      body: validation.message,
+    });
+
     return res.status(201).json({
       message: 'Reply sent successfully',
       reply: serializeRequesterReply(result.reply, finalTicket),
@@ -1110,11 +1216,17 @@ export async function replyAdminSupportTicket(req, res) {
       include: [{ model: SupportReply, as: 'replies' }],
       order: [[{ model: SupportReply, as: 'replies' }, 'createdAt', 'ASC']],
     });
+    const finalTicket = refreshed || result.ticket;
+
+    await notifyRequesterSupportReply({
+      ticket: finalTicket,
+      replyMessage: validation.message,
+    });
 
     return res.status(201).json({
       message: 'Reply sent successfully',
       reply: serializeAdminReply(result.reply),
-      ticket: serializeTicket(refreshed || result.ticket, 'admin'),
+      ticket: serializeTicket(finalTicket, 'admin'),
       supportFromEmail: fromEmail,
     });
   } catch (error) {

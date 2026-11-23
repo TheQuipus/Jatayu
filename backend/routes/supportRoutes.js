@@ -2,6 +2,7 @@ import express from 'express';
 import {
   createMySupportReply,
   createSupportTicket,
+  getMySupportSummary,
   getMySupportTicketDetail,
   getSupportMe,
   listMySupportTickets,
@@ -13,6 +14,7 @@ const router = express.Router();
 router.use(protectNotification);
 
 router.get('/me', getSupportMe);
+router.get('/tickets/summary', getMySupportSummary);
 router.get('/tickets', listMySupportTickets);
 router.get('/tickets/:ticketId', getMySupportTicketDetail);
 router.post('/tickets', createSupportTicket);
