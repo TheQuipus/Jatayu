@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
-  CheckCircle2,
+  Archive,
+  BellRing,
   Clock,
   Eye,
+  Inbox,
   Layers,
   Search,
 } from "lucide-react";
@@ -15,8 +17,13 @@ import ChamferCardBorder from "@/components/ui/ChamferCardBorder";
 import {
   ADMIN_SUPPORT_UPDATED_EVENT,
   getAdminSupportTickets,
+  type AdminSupportCounts,
   type AdminSupportTicket,
 } from "@/lib/adminSupportApi";
+import {
+  resolveTicketViewerStatus,
+  type SupportViewerStatusKey,
+} from "@/lib/supportStatus";
 import baseStyles from "@/components/admin/applications/ExpertApplications.module.css";
 import customStyles from "./AdminSupportList.module.css";
 
@@ -84,7 +91,9 @@ export function filterSupportTickets(
     result = result.filter((t) => t.subject === filters.subject);
   }
   if (filters.status !== "all") {
-    result = result.filter((t) => t.status === filters.status);
+    result = result.filter(
+      (t) => resolveTicketViewerStatus(t, "admin").key === filters.status,
+    );
   }
   if (filters.submittedDate !== "all") {
     result = result.filter((t) => formatSubmittedDate(t.createdAt) === filters.submittedDate);
@@ -125,19 +134,35 @@ function TableHeaderFilter({
   );
 }
 
+const DEFAULT_COUNTS: AdminSupportCounts = {
+  all: 0,
+  new: 0,
+  in_progress: 0,
+  response_received: 0,
+  closed: 0,
+  needsAttention: 0,
+};
+
+function getStatusBadgeToneClass(tone: "red" | "amber" | "neutral" | "muted"): string {
+  if (tone === "red") return customStyles.statusNew;
+  if (tone === "amber") return customStyles.statusResponseReceived;
+  if (tone === "muted") return customStyles.statusClosed;
+  return customStyles.statusInProgress;
+}
+
 export default function AdminSupportList() {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const limit = 25;
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [activeCard, setActiveCard] = useState<"all" | "open" | "replied">("all");
+  const [activeCard, setActiveCard] = useState<"all" | SupportViewerStatusKey>("all");
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>(DEFAULT_COLUMN_FILTERS);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<AdminSupportTicket[]>([]);
-  const [counts, setCounts] = useState({ all: 0, open: 0, replied: 0 });
+  const [counts, setCounts] = useState<AdminSupportCounts>(DEFAULT_COUNTS);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -164,7 +189,7 @@ export default function AdminSupportList() {
       .then((res) => {
         if (!active) return;
         setTickets(res.items || []);
-        setCounts(res.counts || { all: 0, open: 0, replied: 0 });
+        setCounts(res.counts || DEFAULT_COUNTS);
         setTotalPages(res.pagination?.totalPages || 1);
         setTotalCount(res.pagination?.total || 0);
         setError(null);
@@ -201,7 +226,7 @@ export default function AdminSupportList() {
     };
   }, []);
 
-  const handleCardClick = (cardId: "all" | "open" | "replied") => {
+  const handleCardClick = (cardId: "all" | SupportViewerStatusKey) => {
     setPage(1);
     setColumnFilters(DEFAULT_COLUMN_FILTERS);
     setActiveCard(cardId);
@@ -211,7 +236,12 @@ export default function AdminSupportList() {
     setColumnFilters((prev) => {
       const next = { ...prev, [key]: val };
       if (key === "status") {
-        if (val === "open" || val === "replied") {
+        if (
+          val === "new" ||
+          val === "in_progress" ||
+          val === "response_received" ||
+          val === "closed"
+        ) {
           setActiveCard(val);
         } else {
           setActiveCard("all");
@@ -260,9 +290,9 @@ export default function AdminSupportList() {
           </div>
         </header>
 
-        {/* 3 KPI Cards */}
+        {/* 5 KPI Cards */}
         <div
-          className={baseStyles.kpiRow}
+          className={`${baseStyles.kpiRow} ${customStyles.kpiRowFive}`}
           role="group"
           aria-label="Filter by ticket status"
         >
@@ -292,54 +322,106 @@ export default function AdminSupportList() {
             </p>
           </button>
 
-          {/* Open */}
+          {/* New */}
           <button
             type="button"
-            className={`${baseStyles.kpiCard} ${activeCard === "open" ? baseStyles.kpiCardActive : ""}`}
-            onClick={() => handleCardClick("open")}
-            aria-pressed={activeCard === "open"}
+            className={`${baseStyles.kpiCard} ${activeCard === "new" ? baseStyles.kpiCardActive : ""}`}
+            onClick={() => handleCardClick("new")}
+            aria-pressed={activeCard === "new"}
           >
             <ChamferCardBorder />
             <div className={baseStyles.kpiHeader}>
-              <span className={baseStyles.kpiLabel}>Open</span>
+              <span className={baseStyles.kpiLabel}>New</span>
+              <span className={baseStyles.kpiIconBox}>
+                <Inbox size={20} aria-hidden="true" />
+              </span>
+            </div>
+            <p className={baseStyles.kpiValue}>
+              {loading && counts.new === 0 ? (
+                <span
+                  className={baseStyles.skeletonBox}
+                  style={{ display: "inline-block", width: 38, height: 30, borderRadius: 4 }}
+                />
+              ) : (
+                String(counts.new).padStart(2, "0")
+              )}
+            </p>
+          </button>
+
+          {/* In Progress */}
+          <button
+            type="button"
+            className={`${baseStyles.kpiCard} ${activeCard === "in_progress" ? baseStyles.kpiCardActive : ""}`}
+            onClick={() => handleCardClick("in_progress")}
+            aria-pressed={activeCard === "in_progress"}
+          >
+            <ChamferCardBorder />
+            <div className={baseStyles.kpiHeader}>
+              <span className={baseStyles.kpiLabel}>In Progress</span>
               <span className={baseStyles.kpiIconBox}>
                 <Clock size={20} aria-hidden="true" />
               </span>
             </div>
             <p className={baseStyles.kpiValue}>
-              {loading && counts.open === 0 ? (
+              {loading && counts.in_progress === 0 ? (
                 <span
                   className={baseStyles.skeletonBox}
                   style={{ display: "inline-block", width: 38, height: 30, borderRadius: 4 }}
                 />
               ) : (
-                String(counts.open).padStart(2, "0")
+                String(counts.in_progress).padStart(2, "0")
               )}
             </p>
           </button>
 
-          {/* Replied */}
+          {/* Response Received */}
           <button
             type="button"
-            className={`${baseStyles.kpiCard} ${activeCard === "replied" ? baseStyles.kpiCardActive : ""}`}
-            onClick={() => handleCardClick("replied")}
-            aria-pressed={activeCard === "replied"}
+            className={`${baseStyles.kpiCard} ${activeCard === "response_received" ? baseStyles.kpiCardActive : ""}`}
+            onClick={() => handleCardClick("response_received")}
+            aria-pressed={activeCard === "response_received"}
           >
             <ChamferCardBorder />
             <div className={baseStyles.kpiHeader}>
-              <span className={baseStyles.kpiLabel}>Replied</span>
+              <span className={baseStyles.kpiLabel}>Response Received</span>
               <span className={baseStyles.kpiIconBox}>
-                <CheckCircle2 size={20} aria-hidden="true" />
+                <BellRing size={20} aria-hidden="true" />
               </span>
             </div>
             <p className={baseStyles.kpiValue}>
-              {loading && counts.replied === 0 ? (
+              {loading && counts.response_received === 0 ? (
                 <span
                   className={baseStyles.skeletonBox}
                   style={{ display: "inline-block", width: 38, height: 30, borderRadius: 4 }}
                 />
               ) : (
-                String(counts.replied).padStart(2, "0")
+                String(counts.response_received).padStart(2, "0")
+              )}
+            </p>
+          </button>
+
+          {/* Closed */}
+          <button
+            type="button"
+            className={`${baseStyles.kpiCard} ${activeCard === "closed" ? baseStyles.kpiCardActive : ""}`}
+            onClick={() => handleCardClick("closed")}
+            aria-pressed={activeCard === "closed"}
+          >
+            <ChamferCardBorder />
+            <div className={baseStyles.kpiHeader}>
+              <span className={baseStyles.kpiLabel}>Closed</span>
+              <span className={baseStyles.kpiIconBox}>
+                <Archive size={20} aria-hidden="true" />
+              </span>
+            </div>
+            <p className={baseStyles.kpiValue}>
+              {loading && counts.closed === 0 ? (
+                <span
+                  className={baseStyles.skeletonBox}
+                  style={{ display: "inline-block", width: 38, height: 30, borderRadius: 4 }}
+                />
+              ) : (
+                String(counts.closed).padStart(2, "0")
               )}
             </p>
           </button>
@@ -433,8 +515,10 @@ export default function AdminSupportList() {
                       value={columnFilters.status}
                       onChange={(v) => handleSetColumnFilter("status", v)}
                       options={[
-                        { value: "open", label: "Open" },
-                        { value: "replied", label: "Replied" },
+                        { value: "new", label: "New" },
+                        { value: "in_progress", label: "In Progress" },
+                        { value: "response_received", label: "Response Received" },
+                        { value: "closed", label: "Closed" },
                       ]}
                       ariaLabel="Filter by status"
                     />
@@ -488,7 +572,7 @@ export default function AdminSupportList() {
                   filteredTickets.map((ticket, index) => {
                     const rowNumber = (page - 1) * limit + index + 1;
                     const ticketHref = `/admin/support/${ticket.id}`;
-                    const isOpen = ticket.status === "open";
+                    const statusMeta = resolveTicketViewerStatus(ticket, "admin");
 
                     return (
                       <tr
@@ -511,14 +595,16 @@ export default function AdminSupportList() {
                           </div>
                         </td>
                         <td>
-                          <span
-                            className={`${customStyles.roleBadge} ${
-                              ticket.requesterType === "seeker"
-                                ? customStyles.roleSeeker
-                                : customStyles.roleExpert
-                            }`}
-                          >
-                            {ticket.requesterType}
+                          <span className={customStyles.roleBadge}>
+                            <span
+                              className={`${customStyles.roleMarker} ${
+                                ticket.requesterType === "seeker"
+                                  ? customStyles.roleMarkerSeeker
+                                  : customStyles.roleMarkerExpert
+                              }`}
+                              aria-hidden="true"
+                            />
+                            {ticket.requesterType === "expert" ? "Expert" : "Seeker"}
                           </span>
                         </td>
                         <td>
@@ -536,11 +622,9 @@ export default function AdminSupportList() {
                         </td>
                         <td>
                           <span
-                            className={`${baseStyles.statusBadge} ${
-                              isOpen ? baseStyles.statusPending : baseStyles.statusApproved
-                            }`}
+                            className={`${baseStyles.statusBadge} ${getStatusBadgeToneClass(statusMeta.badgeTone)}`}
                           >
-                            {isOpen ? "Open" : "Replied"}
+                            {statusMeta.label}
                           </span>
                         </td>
                         <td onClick={(e) => e.stopPropagation()}>

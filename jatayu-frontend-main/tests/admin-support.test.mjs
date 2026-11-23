@@ -96,27 +96,34 @@ test("adminSupportApi calls admin support endpoints with Bearer token and dispat
     status: 200,
     body: {
       items: [],
-      counts: { all: 7, open: 3, replied: 4 },
+      counts: {
+        all: 7,
+        new: 2,
+        in_progress: 3,
+        response_received: 1,
+        closed: 1,
+        needsAttention: 3,
+      },
       pagination: { page: 2, limit: 10, total: 7, totalPages: 1 },
     },
   };
   const listRes = await api.getAdminSupportTickets({
     page: 2,
     limit: 10,
-    status: "open",
+    status: "new",
     requesterType: "seeker",
     search: "  SUP-1001 ",
   });
-  assert.equal(listRes.counts.open, 3);
+  assert.equal(listRes.counts.needsAttention, 3);
   assert.equal(
     fetchCalls.at(-1).url,
-    "http://localhost:5000/api/admin/support/tickets?page=2&limit=10&status=open&requesterType=seeker&search=SUP-1001",
+    "http://localhost:5000/api/admin/support/tickets?page=2&limit=10&status=new&requesterType=seeker&search=SUP-1001",
   );
   assert.equal(fetchCalls.at(-1).init.headers.Authorization, "Bearer admin-jwt-token");
 
-  // 2. getAdminSupportOpenCount
-  const openCount = await api.getAdminSupportOpenCount();
-  assert.equal(openCount, 3);
+  // 2. getAdminSupportNeedsAttentionCount
+  const needsAttentionCount = await api.getAdminSupportNeedsAttentionCount();
+  assert.equal(needsAttentionCount, 3);
   assert.equal(
     fetchCalls.at(-1).url,
     "http://localhost:5000/api/admin/support/tickets?page=1&limit=1",
@@ -127,7 +134,13 @@ test("adminSupportApi calls admin support endpoints with Bearer token and dispat
     ok: true,
     status: 200,
     body: {
-      ticket: { id: "t-1", ticketNumber: "SUP-1000", status: "open" },
+      ticket: {
+        id: "t-1",
+        ticketNumber: "SUP-1000",
+        status: "open",
+        lastReplyBy: null,
+        viewerStatus: { key: "new", label: "New" },
+      },
       supportFromEmail: "support@thequipus.com",
     },
   };
@@ -145,15 +158,54 @@ test("adminSupportApi calls admin support endpoints with Bearer token and dispat
     body: {
       message: "Reply sent successfully",
       reply: { id: "r-1", fromEmail: "support@thequipus.com" },
-      ticket: { id: "t-1", ticketNumber: "SUP-1000", status: "replied" },
+      ticket: {
+        id: "t-1",
+        ticketNumber: "SUP-1000",
+        status: "open",
+        lastReplyBy: "admin",
+        viewerStatus: { key: "in_progress", label: "In Progress" },
+      },
       supportFromEmail: "support@thequipus.com",
     },
   };
   const replyRes = await api.replyToAdminSupportTicket("t-1", "Issue has been resolved.");
-  assert.equal(replyRes.ticket.status, "replied");
+  assert.equal(replyRes.ticket.lastReplyBy, "admin");
   assert.deepEqual(dispatchedEvents, [api.ADMIN_SUPPORT_UPDATED_EVENT]);
 
-  // 5. replyToAdminSupportTicket failure throws with status & code and does NOT dispatch event
+  // 5. closeAdminSupportTicket and reopenAdminSupportTicket dispatch ADMIN_SUPPORT_UPDATED_EVENT
+  nextResponse = {
+    ok: true,
+    status: 200,
+    body: {
+      message: "Support ticket marked as closed",
+      ticket: { id: "t-1", status: "closed", viewerStatus: { key: "closed", label: "Closed" } },
+    },
+  };
+  const closeRes = await api.closeAdminSupportTicket("t-1");
+  assert.equal(closeRes.ticket.status, "closed");
+  assert.equal(
+    fetchCalls.at(-1).url,
+    "http://localhost:5000/api/admin/support/tickets/t-1/close",
+  );
+  assert.equal(dispatchedEvents.length, 2);
+
+  nextResponse = {
+    ok: true,
+    status: 200,
+    body: {
+      message: "Support ticket reopened",
+      ticket: { id: "t-1", status: "open", lastReplyBy: null, viewerStatus: { key: "new", label: "New" } },
+    },
+  };
+  const reopenRes = await api.reopenAdminSupportTicket("t-1");
+  assert.equal(reopenRes.ticket.status, "open");
+  assert.equal(
+    fetchCalls.at(-1).url,
+    "http://localhost:5000/api/admin/support/tickets/t-1/reopen",
+  );
+  assert.equal(dispatchedEvents.length, 3);
+
+  // 6. replyToAdminSupportTicket failure throws with status & code and does NOT dispatch event
   nextResponse = {
     ok: false,
     status: 502,
@@ -171,10 +223,10 @@ test("adminSupportApi calls admin support endpoints with Bearer token and dispat
       return true;
     },
   );
-  assert.equal(dispatchedEvents.length, 1);
+  assert.equal(dispatchedEvents.length, 3);
 });
 
-test("AdminShell places Support directly below User Management and above Settings with red open-ticket badge and event refresh", () => {
+test("AdminShell places Support directly below User Management and above Settings with red needsAttention badge and focus/event refresh", () => {
   const shellSource = fs.readFileSync(
     new URL("../components/admin/AdminShell.tsx", import.meta.url),
     "utf8",
@@ -195,17 +247,49 @@ test("AdminShell places Support directly below User Management and above Setting
   );
   assert.ok(
     shellSource.includes("ADMIN_SUPPORT_UPDATED_EVENT") &&
-      shellSource.includes("getAdminSupportOpenCount()"),
-    "AdminShell must load open ticket count and refresh when ADMIN_SUPPORT_UPDATED_EVENT fires",
+      shellSource.includes("getAdminSupportNeedsAttentionCount()") &&
+      shellSource.includes('window.addEventListener("focus"'),
+    "AdminShell must load needsAttention count and refresh on ADMIN_SUPPORT_UPDATED_EVENT and window focus",
   );
   assert.ok(
     shellSource.includes("badge: openSupportCount") &&
       shellSource.includes('badgeVariant: "red"'),
-    "AdminShell must show a red badge with openSupportCount when openSupportCount > 0",
+    "AdminShell must show a red badge with openSupportCount when > 0",
   );
 });
 
+test("supportStatus helper covers all four viewer status keys, labels, and badge tones", () => {
+  const statusHelper = loadModule("../lib/supportStatus.ts");
+
+  assert.deepEqual({ ...statusHelper.getSupportStatusMeta("new") }, {
+    key: "new",
+    label: "New",
+    badgeTone: "red",
+  });
+  assert.deepEqual({ ...statusHelper.getSupportStatusMeta("in_progress") }, {
+    key: "in_progress",
+    label: "In Progress",
+    badgeTone: "neutral",
+  });
+  assert.deepEqual({ ...statusHelper.getSupportStatusMeta("response_received") }, {
+    key: "response_received",
+    label: "Response Received",
+    badgeTone: "amber",
+  });
+  assert.deepEqual({ ...statusHelper.getSupportStatusMeta("closed") }, {
+    key: "closed",
+    label: "Closed",
+    badgeTone: "muted",
+  });
+
+  assert.equal(statusHelper.resolveTicketViewerStatus({ status: "open", lastReplyBy: null }, "admin").key, "new");
+  assert.equal(statusHelper.resolveTicketViewerStatus({ status: "open", lastReplyBy: "admin" }, "admin").key, "in_progress");
+  assert.equal(statusHelper.resolveTicketViewerStatus({ status: "open", lastReplyBy: "requester" }, "admin").key, "response_received");
+  assert.equal(statusHelper.resolveTicketViewerStatus({ status: "closed", lastReplyBy: "admin" }, "admin").key, "closed");
+});
+
 test("AdminSupportList helper functions correctly format date, time, relative ago and filter tickets", () => {
+  const statusHelper = loadModule("../lib/supportStatus.ts");
   const listModule = loadModule("../components/admin/support/AdminSupportList.tsx", {
     require(id) {
       if (id === "@/components/ui/ChamferCardBorder") {
@@ -214,8 +298,14 @@ test("AdminSupportList helper functions correctly format date, time, relative ag
       if (id === "@/lib/adminSupportApi") {
         return {
           ADMIN_SUPPORT_UPDATED_EVENT: "admin-support-updated",
-          getAdminSupportTickets: async () => ({ items: [], counts: { all: 0, open: 0, replied: 0 } }),
+          getAdminSupportTickets: async () => ({
+            items: [],
+            counts: { all: 0, new: 0, in_progress: 0, response_received: 0, closed: 0, needsAttention: 0 },
+          }),
         };
+      }
+      if (id === "@/lib/supportStatus") {
+        return statusHelper;
       }
       if (id === "@/components/admin/applications/ExpertApplications.module.css") {
         return {};
@@ -253,6 +343,8 @@ test("AdminSupportList helper functions correctly format date, time, relative ag
       requesterName: "Priya Sharma",
       subject: "Billing Issue",
       status: "open",
+      lastReplyBy: null,
+      viewerStatus: { key: "new", label: "New" },
       createdAt: iso,
     },
     {
@@ -261,7 +353,9 @@ test("AdminSupportList helper functions correctly format date, time, relative ag
       requesterType: "expert",
       requesterName: "Dr. Expert",
       subject: "Account Access",
-      status: "replied",
+      status: "open",
+      lastReplyBy: "admin",
+      viewerStatus: { key: "in_progress", label: "In Progress" },
       createdAt: iso,
     },
   ];
@@ -299,12 +393,12 @@ test("AdminSupportList helper functions correctly format date, time, relative ag
   assert.equal(bySubject.length, 1);
   assert.equal(bySubject[0].ticketNumber, "SUP-1001");
 
-  // Filter by status
+  // Filter by viewerStatus key
   const byStatus = filterSupportTickets(sampleTickets, {
     requesterName: "all",
     role: "all",
     subject: "all",
-    status: "replied",
+    status: "in_progress",
     submittedDate: "all",
   });
   assert.equal(byStatus.length, 1);
@@ -321,27 +415,24 @@ test("AdminSupportList helper functions correctly format date, time, relative ag
   assert.equal(allFiltered.length, 2);
 });
 
-test("AdminSupportList KPI cards use baseStyles.kpiRow with label 'Total' to match ExpertApplications 1:1", () => {
+test("AdminSupportList uses 5 KPI cards with baseStyles.kpiCard and no blue/purple role colors", () => {
   const listSource = fs.readFileSync(
     new URL("../components/admin/support/AdminSupportList.tsx", import.meta.url),
     "utf8",
   );
-
-  // Must use baseStyles.kpiRow directly without kpiRowThree
-  assert.ok(
-    listSource.includes("className={baseStyles.kpiRow}"),
-    "KPI row must use baseStyles.kpiRow directly without overriding grid columns",
-  );
-  assert.ok(
-    !listSource.includes("customStyles.kpiRowThree"),
-    "customStyles.kpiRowThree must not be present in AdminSupportList.tsx",
+  const listCssSource = fs.readFileSync(
+    new URL("../components/admin/support/AdminSupportList.module.css", import.meta.url),
+    "utf8",
   );
 
-  // Label must be "Total" (not "Total Tickets")
-  assert.ok(
-    listSource.includes("<span className={baseStyles.kpiLabel}>Total</span>"),
-    "Card label must be 'Total' (matching ExpertApplications)",
-  );
+  assert.ok(listSource.includes("baseStyles.kpiRow") && listSource.includes("customStyles.kpiRowFive"));
+  for (const label of ["Total", "New", "In Progress", "Response Received", "Closed"]) {
+    assert.ok(
+      listSource.includes(`<span className={baseStyles.kpiLabel}>${label}</span>`),
+      `KPI row must include '${label}' card`,
+    );
+  }
+  assert.ok(!listCssSource.includes("#0ea5e9") && !listCssSource.includes("#8b5cf6"), "No blue or purple role chips");
 });
 
 test("AdminSupportDetailPage exports generateStaticParams and metadata matching [ticketId]", async () => {
@@ -380,51 +471,76 @@ test("AdminSupportDetailPage exports generateStaticParams and metadata matching 
   assert.equal(metadata.title, "SUP-1005 — Support — Jatayu Admin");
 });
 
-test("AdminSupportDetail component implements required error handling, limits, and sender check", () => {
+test("AdminSupportDetail component implements multi-reply, close/reopen, error mapping, and form visibility rules", () => {
   const detailSource = fs.readFileSync(
     new URL("../components/admin/support/AdminSupportDetail.tsx", import.meta.url),
     "utf8",
   );
+  const statusHelper = loadModule("../lib/supportStatus.ts");
+  const detailModule = loadModule("../components/admin/support/AdminSupportDetail.tsx", {
+    require(id) {
+      if (id === "@/components/ui/Spinner") return () => null;
+      if (id === "@/lib/adminSupportApi") {
+        return {
+          ADMIN_SUPPORT_UPDATED_EVENT: "admin-support-updated",
+          getAdminSupportTicket: async () => ({}),
+          replyToAdminSupportTicket: async () => ({}),
+          closeAdminSupportTicket: async () => ({}),
+          reopenAdminSupportTicket: async () => ({}),
+        };
+      }
+      if (id === "@/lib/supportStatus") return statusHelper;
+      if (id === "./AdminSupportDetail.module.css") return {};
+      return {};
+    },
+  });
 
-  // 1. Max character limit 5000
+  // 1. Max character limit 5000 & no window.confirm / alert
   assert.ok(detailSource.includes("MAX_REPLY_CHARS = 5000"), "Must enforce 5000 char limit");
   assert.ok(detailSource.includes("maxLength={MAX_REPLY_CHARS}"), "Textarea must have maxLength=5000");
+  assert.ok(!detailSource.includes("window.confirm") && !detailSource.includes("window.alert"));
 
-  // 2. Unconfigured sender warning & button disable
-  assert.ok(
-    detailSource.includes("Support sender address not configured."),
-    "Must warn if supportFromEmail is not configured",
+  // 2. Form visibility rules (open even after admin replied, hidden only when closed)
+  assert.equal(detailModule.isReplyFormVisible({ status: "open" }), true);
+  assert.equal(detailModule.isReplyFormVisible({ status: "closed" }), false);
+
+  // 3. Error code -> message mapping
+  assert.deepEqual({ ...detailModule.getReplyErrorMessage({ status: 502 }) }, {
+    message: "Email could not be sent, please try again",
+    shouldReload: false,
+  });
+  assert.deepEqual(
+    { ...detailModule.getReplyErrorMessage({ status: 422, code: "SUPPORT_SENDER_NOT_CONFIGURED" }) },
+    {
+      message: "Support sender address not configured. Please configure Sender Email or SMTP Username in Admin Settings.",
+      shouldReload: false,
+    },
   );
-  assert.ok(
-    detailSource.includes("!supportFromEmail"),
-    "Send button must be disabled when supportFromEmail is null or empty",
+  assert.deepEqual(
+    { ...detailModule.getReplyErrorMessage({ status: 409, code: "SUPPORT_TICKET_CLOSED" }) },
+    {
+      message: "This ticket is closed. Reopen it to reply.",
+      shouldReload: true,
+    },
+  );
+  assert.deepEqual(
+    { ...detailModule.getCloseReopenErrorMessage({ status: 409, code: "SUPPORT_TICKET_ALREADY_CLOSED" }, "close") },
+    {
+      message: "This ticket is already closed.",
+      shouldReload: true,
+    },
+  );
+  assert.deepEqual(
+    { ...detailModule.getCloseReopenErrorMessage({ status: 409, code: "SUPPORT_TICKET_NOT_CLOSED" }, "reopen") },
+    {
+      message: "This ticket is not closed.",
+      shouldReload: true,
+    },
   );
 
-  // 3. Error mappings
-  assert.ok(
-    detailSource.includes("Email could not be sent, the ticket is still Open, please try again."),
-    "Must handle 502 with clear retry message and preserve draft",
-  );
-  assert.ok(
-    detailSource.includes("SUPPORT_TICKET_ALREADY_REPLIED"),
-    "Must handle 409 already replied and reload ticket",
-  );
-  assert.ok(
-    detailSource.includes("SUPPORT_SENDER_NOT_CONFIGURED"),
-    "Must handle 422 sender unconfigured",
-  );
-
-  // 4. Replied state lock note
-  assert.ok(
-    detailSource.includes("This ticket has been replied to."),
-    "Must show read-only note when ticket is replied",
-  );
-
-  // 5. Breadcrumb & back button to /admin/support
-  assert.ok(
-    detailSource.includes('href="/admin/support"'),
-    "Must provide link back to /admin/support",
-  );
+  // 4. Closed note & back button
+  assert.ok(detailSource.includes("This ticket is closed. Reopen it to reply."));
+  assert.ok(detailSource.includes('href="/admin/support"'));
 });
 
 

@@ -1,18 +1,38 @@
 import { getAdminToken } from "@/lib/api";
 import { publicApiBase } from "@/lib/publicApiBase";
+import type {
+  SupportViewerStatus,
+  SupportViewerStatusKey,
+} from "@/lib/supportStatus";
 
-export type AdminSupportTicketStatus = "open" | "replied";
+export type AdminSupportDbStatus = "open" | "closed";
+export type AdminSupportLastReplyBy = "requester" | "admin" | null;
 export type AdminSupportRequesterType = "seeker" | "expert";
+export type AdminSupportAuthorType = "admin" | "seeker" | "expert";
 
 export type AdminSupportReply = {
   id: string;
   ticketId: string;
+  authorType: AdminSupportAuthorType;
+  authorId: string | null;
+  authorName: string;
   adminId: string | null;
-  adminName: string;
-  fromEmail: string;
-  toEmail: string;
+  adminName: string | null;
+  fromEmail: string | null;
+  toEmail: string | null;
   message: string;
   createdAt: string;
+};
+
+export type AdminSupportThreadItem = {
+  id: string;
+  authorType: AdminSupportAuthorType;
+  authorName: string;
+  message: string;
+  createdAt: string;
+  isInitial: boolean;
+  fromEmail?: string | null;
+  toEmail?: string | null;
 };
 
 export type AdminSupportTicket = {
@@ -25,18 +45,27 @@ export type AdminSupportTicket = {
   phone: string;
   subject: string;
   description: string;
-  status: AdminSupportTicketStatus;
+  status: AdminSupportDbStatus;
+  lastReplyBy: AdminSupportLastReplyBy;
+  viewerStatus: SupportViewerStatus;
+  statusLabel: string;
   adminNotifiedAt: string | null;
   lastRepliedAt: string | null;
+  closedAt: string | null;
+  closedByAdminId: string | null;
   createdAt: string;
   updatedAt: string;
   replies?: AdminSupportReply[];
+  thread?: AdminSupportThreadItem[];
 };
 
 export type AdminSupportCounts = {
   all: number;
-  open: number;
-  replied: number;
+  new: number;
+  in_progress: number;
+  response_received: number;
+  closed: number;
+  needsAttention: number;
 };
 
 export type AdminSupportPagination = {
@@ -62,6 +91,11 @@ export type AdminSupportTicketReplyResponse = {
   reply: AdminSupportReply;
   ticket: AdminSupportTicket;
   supportFromEmail: string | null;
+};
+
+export type AdminSupportTicketStateResponse = {
+  message: string;
+  ticket: AdminSupportTicket;
 };
 
 export type AdminSupportApiError = Error & {
@@ -112,7 +146,7 @@ export function getAdminSupportTickets({
 }: {
   page?: number;
   limit?: number;
-  status?: "all" | AdminSupportTicketStatus;
+  status?: "all" | SupportViewerStatusKey;
   requesterType?: "all" | AdminSupportRequesterType;
   search?: string;
 } = {}): Promise<AdminSupportTicketsResponse> {
@@ -132,9 +166,9 @@ export function getAdminSupportTickets({
   return adminSupportRequest<AdminSupportTicketsResponse>(`/tickets?${params.toString()}`);
 }
 
-export async function getAdminSupportOpenCount(): Promise<number> {
+export async function getAdminSupportNeedsAttentionCount(): Promise<number> {
   const response = await getAdminSupportTickets({ page: 1, limit: 1 });
-  return response.counts?.open ?? 0;
+  return response.counts?.needsAttention ?? 0;
 }
 
 export function getAdminSupportTicket(ticketId: string): Promise<AdminSupportTicketDetailResponse> {
@@ -152,6 +186,32 @@ export async function replyToAdminSupportTicket(
     {
       method: "POST",
       body: JSON.stringify({ message }),
+    },
+  );
+  dispatchAdminSupportUpdated();
+  return response;
+}
+
+export async function closeAdminSupportTicket(
+  ticketId: string,
+): Promise<AdminSupportTicketStateResponse> {
+  const response = await adminSupportRequest<AdminSupportTicketStateResponse>(
+    `/tickets/${encodeURIComponent(ticketId)}/close`,
+    {
+      method: "POST",
+    },
+  );
+  dispatchAdminSupportUpdated();
+  return response;
+}
+
+export async function reopenAdminSupportTicket(
+  ticketId: string,
+): Promise<AdminSupportTicketStateResponse> {
+  const response = await adminSupportRequest<AdminSupportTicketStateResponse>(
+    `/tickets/${encodeURIComponent(ticketId)}/reopen`,
+    {
+      method: "POST",
     },
   );
   dispatchAdminSupportUpdated();

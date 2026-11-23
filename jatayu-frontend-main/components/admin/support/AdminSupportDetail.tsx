@@ -1,27 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
+  Archive,
   ArrowLeft,
   CheckCircle2,
-  Clock,
-  Loader2,
   Mail,
   MessageSquare,
   Phone,
+  RotateCcw,
   Send,
   User,
 } from "lucide-react";
+import Spinner from "@/components/ui/Spinner";
 import {
   ADMIN_SUPPORT_UPDATED_EVENT,
+  closeAdminSupportTicket,
   getAdminSupportTicket,
+  reopenAdminSupportTicket,
   replyToAdminSupportTicket,
   type AdminSupportApiError,
+  type AdminSupportThreadItem,
   type AdminSupportTicket,
 } from "@/lib/adminSupportApi";
+import {
+  resolveTicketViewerStatus,
+  type SupportStatusBadgeTone,
+} from "@/lib/supportStatus";
 import styles from "./AdminSupportDetail.module.css";
 
 const MAX_REPLY_CHARS = 5000;
@@ -38,6 +46,119 @@ function formatFullDateTime(dateIso?: string | null): string {
     minute: "2-digit",
     hour12: true,
   });
+}
+
+export function isReplyFormVisible(
+  ticket: Pick<AdminSupportTicket, "status"> | null | undefined,
+): boolean {
+  if (!ticket) return false;
+  return ticket.status !== "closed";
+}
+
+export function getReplyErrorMessage(apiError: AdminSupportApiError | null | undefined): {
+  message: string;
+  shouldReload: boolean;
+} {
+  if (apiError?.status === 502) {
+    return {
+      message: "Email could not be sent, please try again",
+      shouldReload: false,
+    };
+  }
+  if (
+    apiError?.code === "SUPPORT_SENDER_NOT_CONFIGURED" ||
+    apiError?.status === 422
+  ) {
+    return {
+      message:
+        apiError?.message ||
+        "Support sender address not configured. Please configure Sender Email or SMTP Username in Admin Settings.",
+      shouldReload: false,
+    };
+  }
+  if (
+    apiError?.code === "SUPPORT_TICKET_CLOSED" ||
+    apiError?.status === 409
+  ) {
+    return {
+      message: "This ticket is closed. Reopen it to reply.",
+      shouldReload: true,
+    };
+  }
+  return {
+    message: apiError?.message || "Failed to send reply. Please try again.",
+    shouldReload: false,
+  };
+}
+
+export function getCloseReopenErrorMessage(
+  apiError: AdminSupportApiError | null | undefined,
+  action: "close" | "reopen",
+): { message: string; shouldReload: boolean } {
+  if (
+    apiError?.code === "SUPPORT_TICKET_ALREADY_CLOSED" ||
+    apiError?.code === "SUPPORT_TICKET_NOT_CLOSED" ||
+    apiError?.status === 409
+  ) {
+    return {
+      message:
+        apiError?.message ||
+        (action === "close"
+          ? "This ticket is already closed."
+          : "This ticket is not closed."),
+      shouldReload: true,
+    };
+  }
+  return {
+    message:
+      apiError?.message ||
+      (action === "close"
+        ? "Unable to close support ticket. Please try again."
+        : "Unable to reopen support ticket. Please try again."),
+    shouldReload: false,
+  };
+}
+
+export function getThreadMessages(ticket: AdminSupportTicket): AdminSupportThreadItem[] {
+  if (Array.isArray(ticket.thread) && ticket.thread.length > 0) {
+    return ticket.thread;
+  }
+
+  const initial: AdminSupportThreadItem = {
+    id: `initial-${ticket.id}`,
+    authorType: ticket.requesterType,
+    authorName: ticket.requesterName,
+    message: ticket.description,
+    createdAt: ticket.createdAt,
+    isInitial: true,
+  };
+
+  const replies = Array.isArray(ticket.replies) ? ticket.replies : [];
+  const replyItems: AdminSupportThreadItem[] = replies.map((r) => ({
+    id: r.id,
+    authorType: r.authorType || "admin",
+    authorName: r.authorName || r.adminName || "Platform Admin",
+    message: r.message,
+    createdAt: r.createdAt,
+    isInitial: false,
+    fromEmail: r.fromEmail,
+    toEmail: r.toEmail,
+  }));
+
+  return [initial, ...replyItems];
+}
+
+function getStatusBadgeClass(tone: SupportStatusBadgeTone): string {
+  if (tone === "red") return styles.statusNew;
+  if (tone === "amber") return styles.statusResponseReceived;
+  if (tone === "muted") return styles.statusClosed;
+  return styles.statusInProgress;
+}
+
+function formatAuthorRoleLabel(authorType: AdminSupportThreadItem["authorType"]): string {
+  if (authorType === "expert") return "Expert";
+  if (authorType === "seeker") return "Seeker";
+  return "Admin";
 }
 
 type AdminSupportDetailProps = {
@@ -58,6 +179,13 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Close / Reopen state
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [isChangingStatus, setIsChangingStatus] = useState<"closing" | "reopening" | null>(null);
+
+  const threadListRef = useRef<HTMLDivElement | null>(null);
+  const lastThreadCountRef = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -106,9 +234,19 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
     };
   }, []);
 
+  const threadCount = ticket ? getThreadMessages(ticket).length : 0;
+
+  useEffect(() => {
+    if (!ticket || !threadListRef.current) return;
+    if (threadCount > 0 && threadCount !== lastThreadCountRef.current) {
+      threadListRef.current.scrollTop = threadListRef.current.scrollHeight;
+      lastThreadCountRef.current = threadCount;
+    }
+  }, [ticket, threadCount]);
+
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticket) return;
+    if (!ticket || isChangingStatus) return;
 
     const trimmed = replyDraft.trim();
     if (!trimmed) {
@@ -134,28 +272,57 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
       }
       setReplyDraft("");
     } catch (err: unknown) {
-      const apiError = err as AdminSupportApiError;
-      if (apiError?.status === 502) {
-        setReplyError("Email could not be sent, the ticket is still Open, please try again.");
-      } else if (
-        apiError?.code === "SUPPORT_SENDER_NOT_CONFIGURED" ||
-        apiError?.status === 422
-      ) {
-        setReplyError(
-          apiError?.message ||
-            "Support sender address is not configured. Please contact an administrator.",
-        );
-      } else if (
-        apiError?.code === "SUPPORT_TICKET_ALREADY_REPLIED" ||
-        apiError?.status === 409
-      ) {
-        setReplyError("This ticket was already replied to by another admin.");
+      const handled = getReplyErrorMessage(err as AdminSupportApiError);
+      setReplyError(handled.message);
+      if (handled.shouldReload) {
         setReloadKey((k) => k + 1);
-      } else {
-        setReplyError(apiError?.message || "Failed to send reply. Please try again.");
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmClose = async () => {
+    if (!ticket || isChangingStatus) return;
+    try {
+      setIsChangingStatus("closing");
+      setError(null);
+      setReplyError(null);
+      setSuccessMessage(null);
+      const res = await closeAdminSupportTicket(ticket.id);
+      setTicket(res.ticket);
+      setConfirmCloseOpen(false);
+      setSuccessMessage(res.message || "Support ticket marked as closed.");
+    } catch (err: unknown) {
+      const handled = getCloseReopenErrorMessage(err as AdminSupportApiError, "close");
+      setError(handled.message);
+      setConfirmCloseOpen(false);
+      if (handled.shouldReload) {
+        setReloadKey((k) => k + 1);
+      }
+    } finally {
+      setIsChangingStatus(null);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!ticket || isChangingStatus) return;
+    try {
+      setIsChangingStatus("reopening");
+      setError(null);
+      setReplyError(null);
+      setSuccessMessage(null);
+      const res = await reopenAdminSupportTicket(ticket.id);
+      setTicket(res.ticket);
+      setSuccessMessage(res.message || "Support ticket reopened.");
+    } catch (err: unknown) {
+      const handled = getCloseReopenErrorMessage(err as AdminSupportApiError, "reopen");
+      setError(handled.message);
+      if (handled.shouldReload) {
+        setReloadKey((k) => k + 1);
+      }
+    } finally {
+      setIsChangingStatus(null);
     }
   };
 
@@ -188,24 +355,12 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
             <div className={styles.mainCol}>
               <div className={styles.card}>
                 <div className={styles.cardHeader}>
-                  <div className={styles.skeletonBox} style={{ width: 100, height: 18 }} />
-                  <div className={styles.skeletonBox} style={{ width: 120, height: 22 }} />
-                </div>
-                <div className={styles.cardBody}>
-                  <div
-                    className={styles.skeletonBox}
-                    style={{ width: "100%", height: 80, borderRadius: 8 }}
-                  />
-                </div>
-              </div>
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
                   <div className={styles.skeletonBox} style={{ width: 140, height: 18 }} />
                 </div>
                 <div className={styles.cardBody}>
                   <div
                     className={styles.skeletonBox}
-                    style={{ width: "100%", height: 140, borderRadius: 8 }}
+                    style={{ width: "100%", height: 160, borderRadius: 8 }}
                   />
                 </div>
               </div>
@@ -310,9 +465,12 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
 
   if (!ticket) return null;
 
-  const replies = ticket.replies || [];
-  const isOpen = ticket.status === "open";
+  const threadMessages = getThreadMessages(ticket);
+  const statusMeta = resolveTicketViewerStatus(ticket, "admin");
+  const isClosed = ticket.status === "closed";
+  const showReplyForm = isReplyFormVisible(ticket);
   const remainingChars = MAX_REPLY_CHARS - replyDraft.length;
+  const isBusy = isSubmitting || isChangingStatus !== null;
 
   return (
     <section className={styles.dashboard}>
@@ -339,8 +497,11 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
               </h1>
               <p className={styles.pageSubtitle}>
                 Submitted {formatFullDateTime(ticket.createdAt)}
-                {ticket.status === "replied" && ticket.lastRepliedAt
-                  ? ` · Last replied ${formatFullDateTime(ticket.lastRepliedAt)}`
+                {ticket.lastRepliedAt
+                  ? ` · Last message ${formatFullDateTime(ticket.lastRepliedAt)}`
+                  : ""}
+                {isClosed && ticket.closedAt
+                  ? ` · Closed ${formatFullDateTime(ticket.closedAt)}`
                   : ""}
               </p>
             </div>
@@ -349,14 +510,83 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
               <Link href="/admin/support" className={styles.backBtn}>
                 <ArrowLeft size={16} /> Back to Support
               </Link>
-              <span
-                className={`${styles.statusBadge} ${isOpen ? styles.statusOpen : styles.statusReplied}`}
-              >
-                {isOpen ? <Clock size={14} /> : <CheckCircle2 size={14} />}
-                {isOpen ? "Open" : "Replied"}
+              <span className={`${styles.statusBadge} ${getStatusBadgeClass(statusMeta.badgeTone)}`}>
+                {statusMeta.label}
               </span>
+              {!isClosed ? (
+                <button
+                  type="button"
+                  className={styles.closeTicketBtn}
+                  onClick={() => setConfirmCloseOpen((prev) => !prev)}
+                  disabled={isBusy}
+                >
+                  {isChangingStatus === "closing" ? (
+                    <>
+                      <Spinner size={14} />
+                      Closing...
+                    </>
+                  ) : (
+                    <>
+                      <Archive size={14} aria-hidden="true" />
+                      Mark as Closed
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.reopenTicketBtn}
+                  onClick={handleReopen}
+                  disabled={isBusy}
+                >
+                  {isChangingStatus === "reopening" ? (
+                    <>
+                      <Spinner size={14} />
+                      Reopening...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw size={14} aria-hidden="true" />
+                      Reopen
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </header>
+
+          {confirmCloseOpen && !isClosed && (
+            <div className={styles.confirmBar} role="region" aria-label="Confirm closing ticket">
+              <span className={styles.confirmText}>
+                Mark ticket {ticket.ticketNumber} as closed? Neither side can reply until reopened.
+              </span>
+              <div className={styles.confirmActions}>
+                <button
+                  type="button"
+                  className={styles.confirmCancelBtn}
+                  onClick={() => setConfirmCloseOpen(false)}
+                  disabled={isChangingStatus === "closing"}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={styles.confirmProceedBtn}
+                  onClick={handleConfirmClose}
+                  disabled={isChangingStatus === "closing"}
+                >
+                  {isChangingStatus === "closing" ? (
+                    <>
+                      <Spinner size={14} />
+                      Closing...
+                    </>
+                  ) : (
+                    "Confirm Close"
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Success Banner */}
@@ -391,63 +621,58 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
         <div className={styles.contentGrid}>
           {/* Main Column */}
           <div className={styles.mainCol}>
-            {/* Ticket Enquiry Card */}
+            {/* Conversation Thread Card */}
             <div className={styles.card}>
               <div className={styles.cardHeader}>
                 <h2 className={styles.cardHeaderTitle}>
                   <MessageSquare size={16} />
-                  Enquiry
+                  Conversation
+                  <span className={styles.replyCountBadge}>{threadMessages.length}</span>
                 </h2>
                 <span className={styles.subjectPill}>{ticket.subject}</span>
               </div>
               <div className={styles.cardBody}>
-                <div className={styles.descriptionBox}>
-                  <p className={styles.descriptionText}>{ticket.description}</p>
+                <div className={styles.repliesList} ref={threadListRef}>
+                  {threadMessages.map((msg) => {
+                    const isAdmin = msg.authorType === "admin";
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`${styles.replyItem} ${
+                          isAdmin ? styles.replyItemAdmin : styles.replyItemRequester
+                        }`}
+                      >
+                        <div className={styles.replyHeader}>
+                          <span className={styles.replyAuthor}>
+                            <User size={15} />
+                            {msg.authorName}
+                            <span
+                              className={`${styles.replyAuthorBadge} ${
+                                !isAdmin ? styles.replyAuthorBadgeRequester : ""
+                              }`}
+                            >
+                              {formatAuthorRoleLabel(msg.authorType)}
+                            </span>
+                          </span>
+                          <span className={styles.replyTimestamp}>
+                            {formatFullDateTime(msg.createdAt)}
+                          </span>
+                        </div>
+                        {isAdmin && msg.fromEmail && msg.toEmail && (
+                          <div className={styles.replyRouting}>
+                            From: {msg.fromEmail} &rarr; To: {msg.toEmail}
+                          </div>
+                        )}
+                        <div className={styles.replyMessage}>{msg.message}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {/* Reply Thread Card */}
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <h2 className={styles.cardHeaderTitle}>
-                  <Mail size={16} />
-                  Reply History
-                </h2>
-                <span className={styles.replyCountBadge}>{replies.length}</span>
-              </div>
-              <div className={styles.cardBody}>
-                {replies.length === 0 ? (
-                  <p className={styles.noRepliesNotice}>
-                    No replies yet. Use the composer below to reply to the requester.
-                  </p>
-                ) : (
-                  <div className={styles.repliesList}>
-                    {replies.map((reply) => (
-                      <div key={reply.id} className={styles.replyItem}>
-                        <div className={styles.replyHeader}>
-                          <span className={styles.replyAuthor}>
-                            <User size={15} />
-                            {reply.adminName}
-                            <span className={styles.replyAuthorBadge}>Staff</span>
-                          </span>
-                          <span className={styles.replyTimestamp}>
-                            {formatFullDateTime(reply.createdAt)}
-                          </span>
-                        </div>
-                        <div className={styles.replyRouting}>
-                          From: {reply.fromEmail} &rarr; To: {reply.toEmail}
-                        </div>
-                        <div className={styles.replyMessage}>{reply.message}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Reply Composer Card (Open Tickets Only) */}
-            {isOpen ? (
+            {/* Reply Composer Card (Visible whenever ticket is NOT closed) */}
+            {showReplyForm ? (
               <div className={styles.card}>
                 <div className={styles.cardHeader}>
                   <h2 className={styles.cardHeaderTitle}>
@@ -506,7 +731,8 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
                         }}
                         placeholder="Write your reply to the requester..."
                         maxLength={MAX_REPLY_CHARS}
-                        rows={7}
+                        rows={6}
+                        disabled={isBusy}
                         className={styles.textarea}
                         aria-label="Reply message"
                         required
@@ -532,7 +758,7 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
                       <button
                         type="submit"
                         disabled={
-                          isSubmitting ||
+                          isBusy ||
                           !supportFromEmail ||
                           !replyDraft.trim()
                         }
@@ -540,7 +766,7 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
                       >
                         {isSubmitting ? (
                           <>
-                            <Loader2 size={16} className={styles.spinner} />
+                            <Spinner size={16} />
                             Sending...
                           </>
                         ) : (
@@ -555,13 +781,16 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
                 </div>
               </div>
             ) : (
-              /* Already Replied Note */
-              <div className={styles.repliedNotice}>
-                <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
-                <span>
-                  This ticket has been replied to. Further replies are locked to prevent
-                  duplicate communications.
-                </span>
+              <div className={styles.closedNotice} role="status">
+                <div className={styles.closedNoticeContent}>
+                  <Archive size={18} style={{ flexShrink: 0 }} />
+                  <span>This ticket is closed. Reopen it to reply.</span>
+                </div>
+                {ticket.closedAt && (
+                  <span style={{ fontSize: 13 }}>
+                    Closed on {formatFullDateTime(ticket.closedAt)}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -585,14 +814,16 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
 
                   <div className={styles.infoRow}>
                     <span className={styles.infoLabel}>Account Type</span>
-                    <span
-                      className={`${styles.roleBadge} ${
-                        ticket.requesterType === "seeker"
-                          ? styles.roleSeeker
-                          : styles.roleExpert
-                      }`}
-                    >
-                      {ticket.requesterType}
+                    <span className={styles.roleBadge}>
+                      <span
+                        className={`${styles.roleMarker} ${
+                          ticket.requesterType === "seeker"
+                            ? styles.roleMarkerSeeker
+                            : styles.roleMarkerExpert
+                        }`}
+                        aria-hidden="true"
+                      />
+                      {ticket.requesterType === "expert" ? "Expert" : "Seeker"}
                     </span>
                   </div>
 
@@ -621,9 +852,18 @@ export default function AdminSupportDetail({ ticketId }: AdminSupportDetailProps
 
                   {ticket.lastRepliedAt && (
                     <div className={styles.infoRow}>
-                      <span className={styles.infoLabel}>Last Replied At</span>
+                      <span className={styles.infoLabel}>Last Message At</span>
                       <span className={styles.infoValue}>
                         {formatFullDateTime(ticket.lastRepliedAt)}
+                      </span>
+                    </div>
+                  )}
+
+                  {isClosed && ticket.closedAt && (
+                    <div className={styles.infoRow}>
+                      <span className={styles.infoLabel}>Closed At</span>
+                      <span className={styles.infoValue}>
+                        {formatFullDateTime(ticket.closedAt)}
                       </span>
                     </div>
                   )}

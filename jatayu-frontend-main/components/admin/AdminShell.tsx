@@ -34,7 +34,7 @@ import {
 } from "@/lib/adminDashboard";
 import {
   ADMIN_SUPPORT_UPDATED_EVENT,
-  getAdminSupportOpenCount,
+  getAdminSupportNeedsAttentionCount,
 } from "@/lib/adminSupportApi";
 import {
   getAdminApplicationStats,
@@ -284,22 +284,24 @@ export default function AdminShell({ children }: AdminShellProps) {
   useEffect(() => {
     let active = true;
 
-    const refreshOpenSupportCount = () => {
-      getAdminSupportOpenCount()
-        .then((openCount) => {
-          if (active) setOpenSupportCount(openCount);
+    const refreshNeedsAttentionCount = () => {
+      getAdminSupportNeedsAttentionCount()
+        .then((count) => {
+          if (active) setOpenSupportCount(count);
         })
         .catch(() => {
           if (active) setOpenSupportCount(0);
         });
     };
 
-    refreshOpenSupportCount();
-    window.addEventListener(ADMIN_SUPPORT_UPDATED_EVENT, refreshOpenSupportCount);
+    refreshNeedsAttentionCount();
+    window.addEventListener(ADMIN_SUPPORT_UPDATED_EVENT, refreshNeedsAttentionCount);
+    window.addEventListener("focus", refreshNeedsAttentionCount);
 
     return () => {
       active = false;
-      window.removeEventListener(ADMIN_SUPPORT_UPDATED_EVENT, refreshOpenSupportCount);
+      window.removeEventListener(ADMIN_SUPPORT_UPDATED_EVENT, refreshNeedsAttentionCount);
+      window.removeEventListener("focus", refreshNeedsAttentionCount);
     };
   }, []);
 
