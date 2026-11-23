@@ -1,0 +1,574 @@
+/* MenuCategoryPanel - Expert Conference View matching Figma specifications */
+
+.panelContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 40px clamp(32px, 4vw, 64px) 40px clamp(40px, 5vw, 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  color: #ffffff;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.panelContainer::-webkit-scrollbar {
+  width: 4px;
+}
+
+.panelContainer::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* Atmospheric Background Image Layer */
+.bgLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url('/assets/img/conference/category-creator.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.22;
+  pointer-events: none;
+  filter: grayscale(40%) contrast(110%);
+}
+
+.bgOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(circle at 30% 30%, rgba(20, 24, 34, 0.7) 0%, rgba(10, 11, 16, 0.96) 80%);
+  pointer-events: none;
+}
+
+/* Ghost Watermark Typography */
+.ghostWatermark {
+  position: absolute;
+  top: 90px;
+  left: 36px;
+  font-family: var(--font-sora, 'Sora', sans-serif);
+  font-size: clamp(38px, 6vw, 76px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: rgba(255, 255, 255, 0.05);
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.ghostSubtitle {
+  position: absolute;
+  top: 72px;
+  left: 48px;
+  font-family: var(--font-space-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: rgba(255, 255, 255, 0.22);
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+/* Main Content Wrapper */
+.contentWrapper {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 740px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Header Section matching Figma Image 4a */
+.headerSection {
+  margin-top: 40px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.categoryEyebrow {
+  font-family: var(--font-space-mono, ui-monospace, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 6px;
+  margin-left: 4px;
+  text-transform: capitalize;
+}
+
+.categoryDropdownTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  outline: none;
+  text-align: left;
+  user-select: none;
+}
+
+.categoryTitle {
+  font-family: var(--font-sora, 'Sora', sans-serif);
+  font-size: clamp(28px, 3.5vw, 40px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.048em;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.dropdownArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: #ffffff;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dropdownArrowOpen {
+  transform: rotate(180deg);
+}
+
+/* Star Divider Line */
+.starDivider {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  margin-bottom: 28px;
+  width: 100%;
+  max-width: 680px;
+}
+
+.starIcon {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1;
+  margin-right: 8px;
+  user-select: none;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.1) 80%, transparent 100%);
+}
+
+/* Dropdown Menu Popover */
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  width: 320px;
+  background: #14161F;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 8px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #D1D5DB;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.dropdownItem:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.dropdownItemActive {
+  background: rgba(255, 92, 1, 0.15);
+  color: #FF5C01;
+  font-weight: 600;
+}
+
+.dropdownItemCount {
+  font-size: 11px;
+  font-family: var(--font-space-mono, ui-monospace, monospace);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 3-Column Capsule Grid matching Figma Image 4b */
+.capsuleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(200px, 236px));
+  column-gap: clamp(14px, 1.8vw, 20px);
+  row-gap: 16px;
+  margin-top: 4px;
+  align-items: start;
+  width: fit-content;
+  max-width: 750px;
+}
+
+/* Capsule Slot - Isolating position for zero layout shift */
+.capsuleSlot {
+  position: relative;
+  width: 100%;
+  max-width: 236px;
+  height: 54px;
+}
+
+/* Capsule Pill matching Figma Group 51 specs (236px x 54px) */
+.capsulePill {
+  width: 100%;
+  max-width: 236px;
+  height: 54px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px 4px 6px;
+  border-radius: 9999px;
+  background: #E2E4E8;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+  overflow: hidden;
+}
+
+.capsulePill:hover {
+  transform: translateY(-2px) scale(1.02);
+  background: #FFFFFF;
+  border-color: #FF5C01;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 0 12px rgba(255, 92, 1, 0.2);
+}
+
+/* Hovered Capsule State -> "LET'S TALK" Pill Button (Image 3 & 4) */
+.letsTalkPill {
+  width: 100%;
+  max-width: 236px;
+  height: 54px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px 6px 20px;
+  border-radius: 9999px;
+  background: #0B0D14;
+  border: 1.5px solid #f8f7f7;
+  /* box-shadow: 0 4px 20px rgba(255, 92, 1, 0.3), 0 0 14px rgba(255, 92, 1, 0.2); */
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.letsTalkPill:hover {
+  /* background: #000000; */
+  border-color: white;
+  /* transform: translateY(-2px) scale(1.02); */
+  /* box-shadow: 0 6px 24px rgba(255, 92, 1, 0.45), 0 0 18px rgba(255, 92, 1, 0.3); */
+}
+
+.letsTalkText {
+  font-family: var(--font-sora, 'Sora', sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  padding-left: 35px;
+  letter-spacing: 0.08em;
+  color: #FFFFFF;
+  text-transform: uppercase;
+}
+
+.letsTalkIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.letsTalkPill:hover .letsTalkIcon {
+  transform: rotate(45deg);
+}
+
+/* Floating Hover Preview Card (Image 3 & 4) */
+.hoverCard {
+  position: absolute;
+  left: 0;
+  width: 236px;
+  height: 280px;
+  z-index: 50;
+  pointer-events: auto;
+  background: #14161F;
+  clip-path: polygon(
+    10% 3.179%,
+    12.647% 0%,
+    91.177% 0%,
+    96.765% 4.48%,
+    96.765% 53.757%,
+    100% 57.659%,
+    100% 95.376%,
+    95.294% 100%,
+    0% 100%,
+    0% 19.364%,
+    10% 8.736%,
+    10% 3.179%
+  );
+  -webkit-clip-path: polygon(
+    10% 3.179%,
+    12.647% 0%,
+    91.177% 0%,
+    96.765% 4.48%,
+    96.765% 53.757%,
+    100% 57.659%,
+    100% 95.376%,
+    95.294% 100%,
+    0% 100%,
+    0% 19.364%,
+    10% 8.736%,
+    10% 3.179%
+  );
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.hoverCardAbove {
+  bottom: calc(100% + 10px);
+}
+
+.hoverCardBelow {
+  top: calc(100% + 10px);
+}
+
+.cardBadgeWrap {
+  position: absolute;
+  top: 10px;
+  left: 18px;
+  z-index: 10;
+}
+
+.cardBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(230, 230, 230, 0.95);
+  border-radius: 9999px;
+  font-family: var(--font-space-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #262626;
+  letter-spacing: -0.02em;
+}
+
+.cardBadgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #087C75;
+}
+
+.cardImageWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.cardImage {
+  object-fit: cover;
+  object-position: top center;
+}
+
+.cardGradientOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 11, 16, 0.05) 0%,
+    rgba(10, 11, 16, 0.35) 35%,
+    rgba(10, 11, 16, 0.92) 70%,
+    rgba(10, 11, 16, 0.98) 100%
+  );
+}
+
+.cardMeta {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 14px 14px 14px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cardNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cardStatusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #EF4444;
+  flex-shrink: 0;
+}
+
+.cardName {
+  font-family: var(--font-sora, 'Sora', sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardPriceRow {
+  font-size: 10px;
+  font-weight: 500;
+  color: #9CA3AF;
+  white-space: nowrap;
+}
+
+.cardDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 4px 0;
+}
+
+.cardDesc {
+  font-size: 9.5px;
+  line-height: 1.35;
+  color: #D1D5DB;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.capsuleAvatarWrapper {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1.5px solid #18181B;
+  background-color: #D1D5DB;
+  flex-shrink: 0;
+}
+
+.capsuleTextWrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.15;
+  padding-right: 4px;
+}
+
+.capsuleName {
+  font-family: var(--font-sora, 'Sora', sans-serif);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  width: 100%;
+  display: block;
+}
+
+.capsuleRole {
+  font-size: 10px;
+  font-weight: 500;
+  color: #4B5563;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1.5px;
+  width: 100%;
+  display: block;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1100px) {
+  .capsuleGrid {
+    grid-template-columns: repeat(3, minmax(180px, 210px));
+    column-gap: 12px;
+  }
+}
+
+@media (max-width: 900px) {
+  .capsuleGrid {
+    grid-template-columns: repeat(2, minmax(180px, 236px));
+    max-width: 490px;
+  }
+}
+
+@media (max-width: 768px) {
+  .panelContainer {
+    padding: 24px 16px;
+  }
+  .capsuleGrid {
+    grid-template-columns: 1fr;
+    max-width: 280px;
+  }
+  .capsulePill {
+    width: 100%;
+    max-width: 280px;
+  }
+}
+

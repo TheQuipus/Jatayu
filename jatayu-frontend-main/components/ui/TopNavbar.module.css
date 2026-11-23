@@ -125,10 +125,30 @@
 
 .drawerContainer {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: stretch;
   pointer-events: none;
+}
+
+/* Expert Conference Category Panel (Columns 1 to 7) */
+.categoryPanelCol {
+  grid-column: 1 / 8;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+  padding-right: clamp(24px, 3vw, 56px);
+  box-sizing: border-box;
+}
+
+.drawerOpen .categoryPanelCol {
+  opacity: 1;
 }
 
 .drawerContent {
@@ -566,6 +586,10 @@
 
 /* Responsive Grid Adaptation */
 @media (max-width: 900px) {
+  .categoryPanelCol {
+    display: none;
+  }
+
   .drawerContent {
     grid-column: 4 / 13;
   }

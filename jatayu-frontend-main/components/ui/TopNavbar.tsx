@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import styles from "./TopNavbar.module.css";
+import MenuCategoryPanel from "./MenuCategoryPanel";
 
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 
@@ -237,6 +238,11 @@ export default function TopNavbar() {
         aria-label="Site Navigation Menu"
       >
         <div className={`container ${styles.drawerContainer}`}>
+          {/* Expert Conference Category View (Columns 1 to 7) - Image 1 */}
+          <div className={styles.categoryPanelCol}>
+            <MenuCategoryPanel onCloseMenu={() => setIsOpen(false)} />
+          </div>
+
           <div className={styles.drawerContent}>
 
             {/* Giant Brand Wordmark (JATAYU) from Figma Specifications */}
@@ -270,7 +276,7 @@ export default function TopNavbar() {
                 />
               </Link>
 
-              {/* <button
+              <button
                 className={styles.closeBtn}
                 onClick={() => setIsOpen(false)}
                 aria-label="Close menu"
@@ -288,7 +294,7 @@ export default function TopNavbar() {
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
-              </button> */}
+              </button>
             </div>
 
             {/* Expert and Seeker Login */}
