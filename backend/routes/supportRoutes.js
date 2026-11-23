@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  createMySupportReply,
   createSupportTicket,
   getMySupportTicketDetail,
   getSupportMe,
@@ -15,5 +16,6 @@ router.get('/me', getSupportMe);
 router.get('/tickets', listMySupportTickets);
 router.get('/tickets/:ticketId', getMySupportTicketDetail);
 router.post('/tickets', createSupportTicket);
+router.post('/tickets/:ticketId/replies', createMySupportReply);
 
 export default router;

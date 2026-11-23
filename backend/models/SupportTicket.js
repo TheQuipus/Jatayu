@@ -41,9 +41,14 @@ const SupportTicket = adminDb.define('SupportTicket', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('open', 'replied'),
+    type: DataTypes.ENUM('open', 'closed'),
     allowNull: false,
     defaultValue: 'open',
+  },
+  lastReplyBy: {
+    type: DataTypes.ENUM('requester', 'admin'),
+    allowNull: true,
+    defaultValue: null,
   },
   adminNotifiedAt: {
     type: DataTypes.DATE,
@@ -52,6 +57,16 @@ const SupportTicket = adminDb.define('SupportTicket', {
   lastRepliedAt: {
     type: DataTypes.DATE,
     allowNull: true,
+  },
+  closedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+  },
+  closedByAdminId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    defaultValue: null,
   },
 }, {
   timestamps: true,
@@ -63,6 +78,10 @@ const SupportTicket = adminDb.define('SupportTicket', {
     {
       name: 'support_tickets_status_created',
       fields: ['status', 'createdAt'],
+    },
+    {
+      name: 'support_tickets_status_reply_created',
+      fields: ['status', 'lastReplyBy', 'createdAt'],
     },
   ],
 });

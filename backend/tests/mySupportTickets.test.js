@@ -64,7 +64,8 @@ test('listMySupportTickets returns caller tickets with safe fields, counts, and 
       phone: '9876543210',
       subject: 'Account Question',
       description: 'How to update profile',
-      status: 'replied',
+      status: 'open',
+      lastReplyBy: 'admin',
       adminNotifiedAt: new Date().toISOString(),
       lastRepliedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -77,8 +78,9 @@ test('listMySupportTickets returns caller tickets with safe fields, counts, and 
   ];
 
   t.mock.method(SupportTicket, 'count', async ({ where }) => {
-    if (where.status === 'open') return 1;
-    if (where.status === 'replied') return 1;
+    if (where.status === 'closed') return 0;
+    if (where.status === 'open' && where.lastReplyBy === 'admin') return 1;
+    if (where.status === 'open') return 2;
     return 2;
   });
 
@@ -97,7 +99,14 @@ test('listMySupportTickets returns caller tickets with safe fields, counts, and 
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.items.length, 2);
-  assert.deepEqual(res.body.counts, { all: 2, open: 1, replied: 1 });
+  assert.deepEqual(res.body.counts, {
+    all: 2,
+    in_progress: 2,
+    response_received: 1,
+    closed: 0,
+    open: 2,
+    replied: 1,
+  });
   assert.deepEqual(res.body.pagination, { page: 1, limit: 10, total: 2, totalPages: 1 });
 
   // Safe fields check: NO adminId, fromEmail, toEmail, phone, adminNotifiedAt
@@ -107,6 +116,8 @@ test('listMySupportTickets returns caller tickets with safe fields, counts, and 
   assert.equal(item.subject, 'Billing Issue');
   assert.equal(item.description, 'Need help with payment');
   assert.equal(item.status, 'open');
+  assert.deepEqual(item.viewerStatus, { key: 'in_progress', label: 'In Progress' });
+  assert.equal(item.statusLabel, 'In Progress');
   assert.equal(item.replyCount, 0);
   assert.equal(item.phone, undefined, 'Phone must not be exposed');
   assert.equal(item.email, undefined, 'Email must not be exposed in user list');
@@ -133,17 +144,20 @@ test('getMySupportTicketDetail returns caller ticket with sanitized replies', as
     ticketNumber: 'SUP-1001',
     requesterType: 'seeker',
     requesterId: 'seeker-101',
+    requesterName: 'Test Seeker',
     subject: 'Billing Issue',
     description: 'Need help with payment',
-    status: 'replied',
+    status: 'open',
+    lastReplyBy: 'admin',
     createdAt: new Date().toISOString(),
     lastRepliedAt: new Date().toISOString(),
     replies: [
       {
         id: 'rep-1',
         ticketId: 'st-1',
+        authorType: 'admin',
         adminId: 'admin-uuid-secret',
-        adminName: 'admin@jatayu.com', // email format! Must be sanitized
+        adminName: 'admin@jatayu.com', // email format! Must never be exposed
         fromEmail: 'support@thequipus.com',
         toEmail: 'seeker@example.com',
         message: 'Your refund has been processed.',
@@ -165,12 +179,22 @@ test('getMySupportTicketDetail returns caller ticket with sanitized replies', as
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.ticket.id, 'st-1');
   assert.equal(res.body.ticket.ticketNumber, 'SUP-1001');
+  assert.deepEqual(res.body.ticket.viewerStatus, {
+    key: 'response_received',
+    label: 'Response Received',
+  });
   assert.equal(res.body.ticket.replies.length, 1);
+  assert.equal(res.body.ticket.thread.length, 2);
+  assert.equal(res.body.ticket.thread[0].isInitial, true);
+  assert.equal(res.body.ticket.thread[0].message, 'Need help with payment');
+  assert.equal(res.body.ticket.thread[1].isInitial, false);
 
   const reply = res.body.ticket.replies[0];
   assert.equal(reply.id, 'rep-1');
+  assert.equal(reply.authorType, 'admin');
   assert.equal(reply.message, 'Your refund has been processed.');
-  assert.equal(reply.adminName, 'Platform Support', 'Admin email must be sanitized to display name');
+  assert.equal(reply.adminName, 'Jatayu Support', 'Admin identity must be generic display name');
+  assert.equal(reply.authorName, 'Jatayu Support');
   assert.equal(reply.adminId, undefined, 'adminId must not be exposed');
   assert.equal(reply.fromEmail, undefined, 'fromEmail must not be exposed');
   assert.equal(reply.toEmail, undefined, 'toEmail must not be exposed');

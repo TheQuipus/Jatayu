@@ -8,8 +8,38 @@ import {
   SupportTicket,
 } from '../models/index.js';
 import { getConfiguredSenderEmail, sendGenericEmail } from '../utils/emailService.js';
+import {
+  buildViewerStatusWhere,
+  deriveViewerStatus,
+  isValidStatusFilter,
+} from '../utils/supportStatus.js';
 import { generateSupportTicketNumber } from '../utils/supportTicketNumber.js';
 import { isSeekerSuspended } from './seeker/seekerAuthController.js';
+
+const REQUESTER_ADMIN_DISPLAY_NAME = 'Jatayu Support';
+const MAX_REPLY_MESSAGE_LENGTH = 5000;
+
+function validateReplyMessage(body) {
+  const rawMessage = typeof body?.message === 'string' ? body.message.trim() : '';
+  if (!rawMessage) {
+    return { valid: false, message: 'Reply message is required' };
+  }
+  if (rawMessage.length > MAX_REPLY_MESSAGE_LENGTH) {
+    return { valid: false, message: `Reply message must not exceed ${MAX_REPLY_MESSAGE_LENGTH} characters` };
+  }
+  return { valid: true, message: rawMessage };
+}
+
+async function resolveAdminRecipient({ transaction }) {
+  const adminRecord = await Admin.findOne({
+    order: [['createdAt', 'ASC']],
+    transaction,
+  });
+  return {
+    adminEmail: (adminRecord?.email || process.env.ADMIN_EMAIL || 'admin@thequipus.com').trim(),
+    adminName: adminRecord?.fullName || process.env.ADMIN_NAME || 'Platform Admin',
+  };
+}
 
 export const PREDEFINED_SUPPORT_SUBJECTS = Object.freeze([
   'Booking & Scheduling Issue',
@@ -279,8 +309,123 @@ function buildRequesterReplyEmail({ ticket, replyMessage, fromEmail }) {
   };
 }
 
-function serializeTicket(ticket) {
+function buildAdminSupportReplyEmail({ ticket, requester, replyMessage, repliedAt }) {
+  const formattedDate = new Date(repliedAt).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const roleLabel = requester.role === 'expert' ? 'Expert' : 'Seeker';
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; color: #0B0D14;">
+      <h2 style="margin-bottom: 12px; color: #E53B17;">New Reply on Support Ticket (${escapeHtml(ticket.ticketNumber)})</h2>
+      <p><strong>${escapeHtml(requester.fullName)}</strong> (${escapeHtml(roleLabel)}) replied on ticket <strong>${escapeHtml(ticket.ticketNumber)}</strong> (${escapeHtml(ticket.subject)}):</p>
+      <div style="padding: 14px 16px; background: #F8F8F8; border-left: 4px solid #E53B17; margin: 16px 0; white-space: pre-wrap;">${escapeHtml(replyMessage)}</div>
+      <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+        <tr>
+          <td style="padding: 6px 8px; border: 1px solid #E6E6E6; font-weight: 600; width: 150px;">Requester Email</td>
+          <td style="padding: 6px 8px; border: 1px solid #E6E6E6;">${escapeHtml(ticket.email)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 8px; border: 1px solid #E6E6E6; font-weight: 600;">Mobile Number</td>
+          <td style="padding: 6px 8px; border: 1px solid #E6E6E6;">+91 ${escapeHtml(ticket.phone)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 8px; border: 1px solid #E6E6E6; font-weight: 600;">Replied At</td>
+          <td style="padding: 6px 8px; border: 1px solid #E6E6E6;">${escapeHtml(formattedDate)} (IST)</td>
+        </tr>
+      </table>
+    </div>
+  `;
+
+  const textContent = [
+    `New Reply on Support Ticket (${ticket.ticketNumber})`,
+    `From: ${requester.fullName} (${roleLabel})`,
+    `Subject: ${ticket.subject}`,
+    '',
+    replyMessage,
+    '',
+    `Requester Email: ${ticket.email}`,
+    `Mobile Number: +91 ${ticket.phone}`,
+    `Replied At: ${formattedDate} (IST)`,
+  ].join('\n');
+
+  return {
+    subject: `Re: [Support ${ticket.ticketNumber}] ${ticket.subject} — ${requester.fullName} (${roleLabel})`,
+    htmlContent,
+    textContent,
+  };
+}
+
+function sortRepliesChronologically(replies) {
+  if (!Array.isArray(replies)) return [];
+  return [...replies].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+}
+
+function serializeAdminReply(reply) {
+  const authorType = reply.authorType || 'admin';
+  const authorName = reply.authorName || reply.adminName || (authorType === 'admin' ? 'Platform Admin' : 'Requester');
+  return {
+    id: reply.id,
+    ticketId: reply.ticketId,
+    authorType,
+    authorId: reply.authorId ?? reply.adminId ?? null,
+    authorName,
+    adminId: reply.adminId ?? null,
+    adminName: reply.adminName ?? null,
+    fromEmail: reply.fromEmail ?? null,
+    toEmail: reply.toEmail ?? null,
+    message: reply.message,
+    createdAt: reply.createdAt,
+  };
+}
+
+function serializeRequesterReply(reply, ticket) {
+  const authorType = reply.authorType || 'admin';
+  const isAdminAuthor = authorType === 'admin';
+  const safeAuthorName = isAdminAuthor
+    ? REQUESTER_ADMIN_DISPLAY_NAME
+    : (reply.authorName || ticket.requesterName);
+
+  return {
+    id: reply.id,
+    authorType,
+    authorName: safeAuthorName,
+    adminName: safeAuthorName,
+    message: reply.message,
+    createdAt: reply.createdAt,
+  };
+}
+
+function buildThreadEntries(ticket, replies, viewerRole) {
+  const initialEntry = {
+    id: `initial-${ticket.id}`,
+    authorType: ticket.requesterType,
+    authorName: ticket.requesterName,
+    message: ticket.description,
+    createdAt: ticket.createdAt,
+    isInitial: true,
+  };
+
+  const sorted = sortRepliesChronologically(replies);
+  const replyEntries = sorted.map((reply) => ({
+    ...(viewerRole === 'admin'
+      ? serializeAdminReply(reply)
+      : serializeRequesterReply(reply, ticket)),
+    isInitial: false,
+  }));
+
+  return [initialEntry, ...replyEntries];
+}
+
+function serializeTicket(ticket, viewerRole = 'admin') {
   const data = ticket.toJSON ? ticket.toJSON() : { ...ticket };
+  const viewerStatus = deriveViewerStatus(data, viewerRole);
+  const sortedReplies = Array.isArray(data.replies)
+    ? sortRepliesChronologically(data.replies)
+    : null;
+
   return {
     id: data.id,
     ticketNumber: data.ticketNumber,
@@ -292,22 +437,19 @@ function serializeTicket(ticket) {
     subject: data.subject,
     description: data.description,
     status: data.status,
+    lastReplyBy: data.lastReplyBy ?? null,
+    viewerStatus,
+    statusLabel: viewerStatus.label,
     adminNotifiedAt: data.adminNotifiedAt,
     lastRepliedAt: data.lastRepliedAt,
+    closedAt: data.closedAt ?? null,
+    closedByAdminId: data.closedByAdminId ?? null,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
-    ...(Array.isArray(data.replies)
+    ...(sortedReplies
       ? {
-          replies: data.replies.map((reply) => ({
-            id: reply.id,
-            ticketId: reply.ticketId,
-            adminId: reply.adminId,
-            adminName: reply.adminName,
-            fromEmail: reply.fromEmail,
-            toEmail: reply.toEmail,
-            message: reply.message,
-            createdAt: reply.createdAt,
-          })),
+          replies: sortedReplies.map(serializeAdminReply),
+          thread: buildThreadEntries(data, sortedReplies, viewerRole),
         }
       : {}),
   };
@@ -392,6 +534,7 @@ export async function createSupportTicket(req, res) {
               subject: validation.values.subject,
               description: validation.values.description,
               status: 'open',
+              lastReplyBy: null,
               adminNotifiedAt: now,
             },
             { transaction },
@@ -410,12 +553,7 @@ export async function createSupportTicket(req, res) {
         throw lastUniqueError || new Error('Unable to generate unique support ticket number');
       }
 
-      const adminRecord = await Admin.findOne({
-        order: [['createdAt', 'ASC']],
-        transaction,
-      });
-      const adminEmail = (adminRecord?.email || process.env.ADMIN_EMAIL || 'admin@thequipus.com').trim();
-      const adminName = adminRecord?.fullName || process.env.ADMIN_NAME || 'Platform Admin';
+      const { adminEmail, adminName } = await resolveAdminRecipient({ transaction });
 
       const emailPayload = buildAdminSupportTicketEmail({
         ticket,
@@ -435,7 +573,7 @@ export async function createSupportTicket(req, res) {
 
     return res.status(201).json({
       message: 'Your support request has been submitted.',
-      ticket: serializeTicket(createdTicket),
+      ticket: serializeTicket(createdTicket, 'requester'),
     });
   } catch (error) {
     console.error('[Support] Ticket creation or admin email failed:', error.message);
@@ -448,14 +586,19 @@ export async function createSupportTicket(req, res) {
 
 function serializeUserTicketSummary(ticket) {
   const data = ticket.toJSON ? ticket.toJSON() : { ...ticket };
+  const viewerStatus = deriveViewerStatus(data, 'requester');
   return {
     id: data.id,
     ticketNumber: data.ticketNumber,
     subject: data.subject,
     description: data.description,
     status: data.status,
+    lastReplyBy: data.lastReplyBy ?? null,
+    viewerStatus,
+    statusLabel: viewerStatus.label,
     createdAt: data.createdAt,
     lastRepliedAt: data.lastRepliedAt,
+    closedAt: data.closedAt ?? null,
     replyCount: Array.isArray(data.replies) ? data.replies.length : 0,
   };
 }
@@ -474,23 +617,49 @@ export async function listMySupportTickets(req, res) {
     const page = Math.max(1, Number.parseInt(req.query?.page, 10) || 1);
     const limit = Math.min(50, Math.max(1, Number.parseInt(req.query?.limit, 10) || 10));
     const offset = (page - 1) * limit;
-    const statusParam = typeof req.query?.status === 'string' ? req.query.status.trim().toLowerCase() : 'all';
+    const statusParam = typeof req.query?.status === 'string' && req.query.status.trim()
+      ? req.query.status.trim().toLowerCase()
+      : 'all';
+
+    if (!isValidStatusFilter('requester', statusParam)) {
+      return res.status(422).json({
+        message: 'Status filter must be all, in_progress, response_received, or closed',
+        code: 'VALIDATION_ERROR',
+      });
+    }
 
     const baseWhere = {
       requesterType: requester.role,
       requesterId: requester.id,
     };
 
-    const [allCount, openCount, repliedCount] = await Promise.all([
+    const [allCount, inProgressCount, responseReceivedCount, closedCount, openCount] = await Promise.all([
       SupportTicket.count({ where: baseWhere }),
+      SupportTicket.count({
+        where: {
+          ...baseWhere,
+          ...buildViewerStatusWhere('requester', 'in_progress'),
+        },
+      }),
+      SupportTicket.count({
+        where: {
+          ...baseWhere,
+          ...buildViewerStatusWhere('requester', 'response_received'),
+        },
+      }),
+      SupportTicket.count({
+        where: {
+          ...baseWhere,
+          status: 'closed',
+        },
+      }),
       SupportTicket.count({ where: { ...baseWhere, status: 'open' } }),
-      SupportTicket.count({ where: { ...baseWhere, status: 'replied' } }),
     ]);
 
-    const filterWhere = { ...baseWhere };
-    if (statusParam === 'open' || statusParam === 'replied') {
-      filterWhere.status = statusParam;
-    }
+    const filterWhere = {
+      ...baseWhere,
+      ...buildViewerStatusWhere('requester', statusParam),
+    };
 
     const { count, rows: tickets } = await SupportTicket.findAndCountAll({
       where: filterWhere,
@@ -511,8 +680,11 @@ export async function listMySupportTickets(req, res) {
       items: tickets.map(serializeUserTicketSummary),
       counts: {
         all: allCount,
+        in_progress: inProgressCount,
+        response_received: responseReceivedCount,
+        closed: closedCount,
         open: openCount,
-        replied: repliedCount,
+        replied: responseReceivedCount,
       },
       pagination: {
         page,
@@ -556,22 +728,9 @@ export async function getMySupportTicketDetail(req, res) {
       return res.status(404).json({ message: 'Support ticket not found' });
     }
 
-    const replies = Array.isArray(ticket.replies)
-      ? [...ticket.replies].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-      : [];
-
-    const safeReplies = replies.map((reply) => {
-      const rawAdminName = typeof reply.adminName === 'string' ? reply.adminName.trim() : '';
-      const safeAdminName =
-        rawAdminName && !rawAdminName.includes('@') ? rawAdminName : 'Platform Support';
-
-      return {
-        id: reply.id,
-        message: reply.message,
-        createdAt: reply.createdAt,
-        adminName: safeAdminName,
-      };
-    });
+    const sortedReplies = sortRepliesChronologically(ticket.replies);
+    const safeReplies = sortedReplies.map((reply) => serializeRequesterReply(reply, ticket));
+    const viewerStatus = deriveViewerStatus(ticket, 'requester');
 
     return res.status(200).json({
       ticket: {
@@ -580,9 +739,14 @@ export async function getMySupportTicketDetail(req, res) {
         subject: ticket.subject,
         description: ticket.description,
         status: ticket.status,
+        lastReplyBy: ticket.lastReplyBy ?? null,
+        viewerStatus,
+        statusLabel: viewerStatus.label,
         createdAt: ticket.createdAt,
         lastRepliedAt: ticket.lastRepliedAt,
+        closedAt: ticket.closedAt ?? null,
         replies: safeReplies,
+        thread: buildThreadEntries(ticket, sortedReplies, 'requester'),
       },
     });
   } catch (error) {
@@ -591,21 +755,160 @@ export async function getMySupportTicketDetail(req, res) {
   }
 }
 
+export async function createMySupportReply(req, res) {
+  try {
+    const resolved = await resolveRequesterAccount(req.user);
+    if (resolved.error) {
+      return res.status(resolved.error.status).json({
+        message: resolved.error.message,
+        ...(resolved.error.code ? { code: resolved.error.code } : {}),
+      });
+    }
+
+    const validation = validateReplyMessage(req.body);
+    if (!validation.valid) {
+      return res.status(422).json({
+        message: validation.message,
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    const { requester } = resolved;
+    const rateKey = `reply:${requester.role}:${requester.id}`;
+    const rateStatus = checkSupportRateLimit(rateKey);
+    if (!rateStatus.allowed) {
+      return res.status(429).json({
+        message: 'Too many support replies submitted recently. Please wait a moment and try again.',
+        code: 'SUPPORT_RATE_LIMITED',
+        retryAfterSeconds: rateStatus.retryAfterSeconds,
+      });
+    }
+
+    const result = await adminDb.transaction(async (transaction) => {
+      const lockedTicket = await findSupportTicketByIdentifier(req.params.ticketId, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (
+        !lockedTicket ||
+        lockedTicket.requesterType !== requester.role ||
+        String(lockedTicket.requesterId) !== String(requester.id)
+      ) {
+        const notFoundError = new Error('Support ticket not found');
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+
+      if (lockedTicket.status === 'closed') {
+        const closedError = new Error('This support ticket is closed and cannot receive new replies.');
+        closedError.statusCode = 409;
+        closedError.code = 'SUPPORT_TICKET_CLOSED';
+        throw closedError;
+      }
+
+      const now = new Date();
+      const reply = await SupportReply.create(
+        {
+          ticketId: lockedTicket.id,
+          authorType: requester.role,
+          authorId: requester.id,
+          authorName: requester.fullName,
+          adminId: null,
+          adminName: null,
+          fromEmail: null,
+          toEmail: null,
+          message: validation.message,
+        },
+        { transaction },
+      );
+
+      lockedTicket.status = 'open';
+      lockedTicket.lastReplyBy = 'requester';
+      lockedTicket.lastRepliedAt = now;
+      await lockedTicket.save({ transaction });
+
+      const { adminEmail, adminName } = await resolveAdminRecipient({ transaction });
+      const emailPayload = buildAdminSupportReplyEmail({
+        ticket: lockedTicket,
+        requester,
+        replyMessage: validation.message,
+        repliedAt: now,
+      });
+
+      await sendGenericEmail({
+        recipientEmail: adminEmail,
+        recipientName: adminName,
+        subject: emailPayload.subject,
+        htmlContent: emailPayload.htmlContent,
+        textContent: emailPayload.textContent,
+      });
+
+      return { ticket: lockedTicket, reply };
+    });
+
+    const refreshed = await SupportTicket.findByPk(result.ticket.id, {
+      include: [{ model: SupportReply, as: 'replies' }],
+      order: [[{ model: SupportReply, as: 'replies' }, 'createdAt', 'ASC']],
+    });
+    const finalTicket = refreshed || result.ticket;
+    const sortedReplies = sortRepliesChronologically(finalTicket.replies || [result.reply]);
+    const viewerStatus = deriveViewerStatus(finalTicket, 'requester');
+
+    return res.status(201).json({
+      message: 'Reply sent successfully',
+      reply: serializeRequesterReply(result.reply, finalTicket),
+      ticket: {
+        id: finalTicket.id,
+        ticketNumber: finalTicket.ticketNumber,
+        subject: finalTicket.subject,
+        description: finalTicket.description,
+        status: finalTicket.status,
+        lastReplyBy: finalTicket.lastReplyBy ?? null,
+        viewerStatus,
+        statusLabel: viewerStatus.label,
+        createdAt: finalTicket.createdAt,
+        lastRepliedAt: finalTicket.lastRepliedAt,
+        closedAt: finalTicket.closedAt ?? null,
+        replies: sortedReplies.map((r) => serializeRequesterReply(r, finalTicket)),
+        thread: buildThreadEntries(finalTicket, sortedReplies, 'requester'),
+      },
+    });
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.statusCode === 409) {
+      return res.status(409).json({
+        message: error.message,
+        code: error.code || 'SUPPORT_TICKET_CLOSED',
+      });
+    }
+    console.error('[Support] Requester reply email or save failed:', error.message);
+    return res.status(502).json({
+      message: 'Failed to send reply. Please try again.',
+      code: 'SUPPORT_REPLY_DELIVERY_FAILED',
+    });
+  }
+}
+
 export async function listAdminSupportTickets(req, res) {
   try {
-    const statusFilter = String(req.query?.status || 'all').trim().toLowerCase();
+    const statusFilter = String(req.query?.status || 'all').trim().toLowerCase() || 'all';
     const roleFilter = String(req.query?.requesterType || 'all').trim().toLowerCase();
     const search = String(req.query?.search || '').trim();
     const page = Math.max(1, Number.parseInt(req.query?.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, Number.parseInt(req.query?.limit, 10) || 25));
 
-    const where = {};
-    if (statusFilter !== 'all') {
-      if (!['open', 'replied'].includes(statusFilter)) {
-        return res.status(422).json({ message: 'Status filter must be all, open, or replied' });
-      }
-      where.status = statusFilter;
+    if (!isValidStatusFilter('admin', statusFilter)) {
+      return res.status(422).json({
+        message: 'Status filter must be all, new, in_progress, response_received, or closed',
+      });
     }
+
+    const where = {
+      ...buildViewerStatusWhere('admin', statusFilter),
+    };
 
     if (roleFilter !== 'all') {
       if (!['seeker', 'expert'].includes(roleFilter)) {
@@ -626,23 +929,39 @@ export async function listAdminSupportTickets(req, res) {
       ];
     }
 
-    const [{ rows, count }, openCount, repliedCount] = await Promise.all([
+    const [
+      { rows, count },
+      newCount,
+      inProgressCount,
+      responseReceivedCount,
+      closedCount,
+    ] = await Promise.all([
       SupportTicket.findAndCountAll({
         where,
         order: [['createdAt', 'DESC']],
         limit,
         offset: (page - 1) * limit,
       }),
-      SupportTicket.count({ where: { status: 'open' } }),
-      SupportTicket.count({ where: { status: 'replied' } }),
+      SupportTicket.count({ where: buildViewerStatusWhere('admin', 'new') }),
+      SupportTicket.count({ where: buildViewerStatusWhere('admin', 'in_progress') }),
+      SupportTicket.count({ where: buildViewerStatusWhere('admin', 'response_received') }),
+      SupportTicket.count({ where: buildViewerStatusWhere('admin', 'closed') }),
     ]);
 
+    const openCount = newCount + inProgressCount + responseReceivedCount;
+    const needsAttention = newCount + responseReceivedCount;
+
     return res.status(200).json({
-      items: rows.map(serializeTicket),
+      items: rows.map((row) => serializeTicket(row, 'admin')),
       counts: {
-        all: openCount + repliedCount,
+        all: openCount + closedCount,
+        new: newCount,
+        in_progress: inProgressCount,
+        response_received: responseReceivedCount,
+        closed: closedCount,
+        needsAttention,
         open: openCount,
-        replied: repliedCount,
+        replied: inProgressCount,
       },
       pagination: {
         page,
@@ -691,7 +1010,7 @@ export async function getAdminSupportTicket(req, res) {
     }
 
     return res.status(200).json({
-      ticket: serializeTicket(ticket),
+      ticket: serializeTicket(ticket, 'admin'),
       supportFromEmail,
     });
   } catch (error) {
@@ -701,32 +1020,15 @@ export async function getAdminSupportTicket(req, res) {
 }
 
 export async function replyAdminSupportTicket(req, res) {
-  const rawMessage = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
-  if (!rawMessage) {
+  const validation = validateReplyMessage(req.body);
+  if (!validation.valid) {
     return res.status(422).json({
-      message: 'Reply message is required',
-      code: 'VALIDATION_ERROR',
-    });
-  }
-  if (rawMessage.length > 5000) {
-    return res.status(422).json({
-      message: 'Reply message must not exceed 5000 characters',
+      message: validation.message,
       code: 'VALIDATION_ERROR',
     });
   }
 
   try {
-    const ticket = await findSupportTicketByIdentifier(req.params.ticketId);
-    if (!ticket) {
-      return res.status(404).json({ message: 'Support ticket not found' });
-    }
-    if (ticket.status === 'replied') {
-      return res.status(409).json({
-        message: 'This support ticket has already been replied to.',
-        code: 'SUPPORT_TICKET_ALREADY_REPLIED',
-      });
-    }
-
     const fromEmail = await getConfiguredSenderEmail();
     if (!fromEmail) {
       return res.status(422).json({
@@ -736,38 +1038,51 @@ export async function replyAdminSupportTicket(req, res) {
     }
 
     const result = await adminDb.transaction(async (transaction) => {
-      const lockedTicket = await SupportTicket.findByPk(ticket.id, {
+      const lockedTicket = await findSupportTicketByIdentifier(req.params.ticketId, {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
 
-      if (lockedTicket.status === 'replied') {
-        const conflictError = new Error('This support ticket has already been replied to.');
+      if (!lockedTicket) {
+        const notFoundError = new Error('Support ticket not found');
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+
+      if (lockedTicket.status === 'closed') {
+        const conflictError = new Error('This support ticket is closed. Reopen it before replying.');
         conflictError.statusCode = 409;
-        conflictError.code = 'SUPPORT_TICKET_ALREADY_REPLIED';
+        conflictError.code = 'SUPPORT_TICKET_CLOSED';
         throw conflictError;
       }
 
       const now = new Date();
+      const adminId = req.admin?.id || null;
+      const adminName = req.admin?.fullName || 'Platform Admin';
+
       const reply = await SupportReply.create(
         {
           ticketId: lockedTicket.id,
-          adminId: req.admin?.id || null,
-          adminName: req.admin?.fullName || 'Platform Admin',
+          authorType: 'admin',
+          authorId: adminId,
+          authorName: adminName,
+          adminId,
+          adminName,
           fromEmail,
           toEmail: lockedTicket.email,
-          message: rawMessage,
+          message: validation.message,
         },
         { transaction },
       );
 
-      lockedTicket.status = 'replied';
+      lockedTicket.status = 'open';
+      lockedTicket.lastReplyBy = 'admin';
       lockedTicket.lastRepliedAt = now;
       await lockedTicket.save({ transaction });
 
       const emailPayload = buildRequesterReplyEmail({
         ticket: lockedTicket,
-        replyMessage: rawMessage,
+        replyMessage: validation.message,
         fromEmail,
       });
 
@@ -789,24 +1104,18 @@ export async function replyAdminSupportTicket(req, res) {
 
     return res.status(201).json({
       message: 'Reply sent successfully',
-      reply: {
-        id: result.reply.id,
-        ticketId: result.reply.ticketId,
-        adminId: result.reply.adminId,
-        adminName: result.reply.adminName,
-        fromEmail: result.reply.fromEmail,
-        toEmail: result.reply.toEmail,
-        message: result.reply.message,
-        createdAt: result.reply.createdAt,
-      },
-      ticket: serializeTicket(refreshed || result.ticket),
+      reply: serializeAdminReply(result.reply),
+      ticket: serializeTicket(refreshed || result.ticket, 'admin'),
       supportFromEmail: fromEmail,
     });
   } catch (error) {
+    if (error.statusCode === 404) {
+      return res.status(404).json({ message: error.message });
+    }
     if (error.statusCode === 409) {
       return res.status(409).json({
         message: error.message,
-        code: error.code || 'SUPPORT_TICKET_ALREADY_REPLIED',
+        code: error.code || 'SUPPORT_TICKET_CLOSED',
       });
     }
     console.error('[Support] Admin reply email or save failed:', error.message);
@@ -814,5 +1123,112 @@ export async function replyAdminSupportTicket(req, res) {
       message: 'Failed to send reply email. Please try again.',
       code: 'SUPPORT_REPLY_DELIVERY_FAILED',
     });
+  }
+}
+
+export async function closeAdminSupportTicket(req, res) {
+  try {
+    const updated = await adminDb.transaction(async (transaction) => {
+      const lockedTicket = await findSupportTicketByIdentifier(req.params.ticketId, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!lockedTicket) {
+        const notFoundError = new Error('Support ticket not found');
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+
+      if (lockedTicket.status === 'closed') {
+        const conflictError = new Error('This support ticket is already closed.');
+        conflictError.statusCode = 409;
+        conflictError.code = 'SUPPORT_TICKET_ALREADY_CLOSED';
+        throw conflictError;
+      }
+
+      lockedTicket.status = 'closed';
+      lockedTicket.closedAt = new Date();
+      lockedTicket.closedByAdminId = req.admin?.id || null;
+      await lockedTicket.save({ transaction });
+
+      return lockedTicket;
+    });
+
+    const refreshed = await SupportTicket.findByPk(updated.id, {
+      include: [{ model: SupportReply, as: 'replies' }],
+      order: [[{ model: SupportReply, as: 'replies' }, 'createdAt', 'ASC']],
+    });
+
+    return res.status(200).json({
+      message: 'Support ticket marked as closed',
+      ticket: serializeTicket(refreshed || updated, 'admin'),
+    });
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.statusCode === 409) {
+      return res.status(409).json({
+        message: error.message,
+        code: error.code || 'SUPPORT_TICKET_ALREADY_CLOSED',
+      });
+    }
+    console.error('[Support] Failed to close support ticket:', error.message);
+    return res.status(500).json({ message: 'Unable to close support ticket' });
+  }
+}
+
+export async function reopenAdminSupportTicket(req, res) {
+  try {
+    const updated = await adminDb.transaction(async (transaction) => {
+      const lockedTicket = await findSupportTicketByIdentifier(req.params.ticketId, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!lockedTicket) {
+        const notFoundError = new Error('Support ticket not found');
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+
+      if (lockedTicket.status !== 'closed') {
+        const conflictError = new Error('Only closed support tickets can be reopened.');
+        conflictError.statusCode = 409;
+        conflictError.code = 'SUPPORT_TICKET_NOT_CLOSED';
+        throw conflictError;
+      }
+
+      lockedTicket.status = 'open';
+      lockedTicket.lastReplyBy = null;
+      lockedTicket.closedAt = null;
+      lockedTicket.closedByAdminId = null;
+      await lockedTicket.save({ transaction });
+
+      return lockedTicket;
+    });
+
+    const refreshed = await SupportTicket.findByPk(updated.id, {
+      include: [{ model: SupportReply, as: 'replies' }],
+      order: [[{ model: SupportReply, as: 'replies' }, 'createdAt', 'ASC']],
+    });
+
+    return res.status(200).json({
+      message: 'Support ticket reopened',
+      ticket: serializeTicket(refreshed || updated, 'admin'),
+    });
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.statusCode === 409) {
+      return res.status(409).json({
+        message: error.message,
+        code: error.code || 'SUPPORT_TICKET_NOT_CLOSED',
+      });
+    }
+    console.error('[Support] Failed to reopen support ticket:', error.message);
+    return res.status(500).json({ message: 'Unable to reopen support ticket' });
   }
 }

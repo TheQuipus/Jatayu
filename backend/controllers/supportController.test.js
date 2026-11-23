@@ -417,6 +417,7 @@ test('replyAdminSupportTicket rolls back reply and keeps ticket open if requeste
   t.mock.method(dns, 'lookup', (host, options, callback) => callback(null, '192.0.2.1'));
 
   let persistedStatus = 'open';
+  let persistedLastReplyBy = null;
   const persistedReplies = [];
 
   t.mock.method(SupportTicket, 'findByPk', async (id) => ({
@@ -430,10 +431,12 @@ test('replyAdminSupportTicket rolls back reply and keeps ticket open if requeste
     subject: 'Booking & Scheduling Issue',
     description: 'Need help',
     status: persistedStatus,
+    lastReplyBy: persistedLastReplyBy,
     replies: persistedReplies,
     async save(saveOptions) {
       assert.ok(saveOptions?.transaction);
       saveOptions.transaction.stagedStatus = this.status;
+      saveOptions.transaction.stagedLastReplyBy = this.lastReplyBy;
     },
     toJSON() {
       return { ...this };
@@ -451,10 +454,12 @@ test('replyAdminSupportTicket rolls back reply and keeps ticket open if requeste
     const tx = {
       LOCK: { UPDATE: 'UPDATE' },
       stagedStatus: persistedStatus,
+      stagedLastReplyBy: persistedLastReplyBy,
       stagedReplies: [],
     };
     const result = await callback(tx);
     persistedStatus = tx.stagedStatus;
+    persistedLastReplyBy = tx.stagedLastReplyBy;
     persistedReplies.push(...tx.stagedReplies);
     return result;
   });
@@ -492,24 +497,25 @@ test('replyAdminSupportTicket rolls back reply and keeps ticket open if requeste
   );
 
   assert.equal(successRes.statusCode, 201);
-  assert.equal(persistedStatus, 'replied');
+  assert.equal(persistedStatus, 'open');
   assert.equal(persistedReplies.length, 1);
   assert.equal(persistedReplies[0].fromEmail, 'support@jatayuconnect.in');
   assert.equal(persistedReplies[0].toEmail, 'priya@example.com');
+  assert.equal(persistedReplies[0].authorType, 'admin');
 
-  // Re-replying to an already replied ticket must return 409 conflict
-  const duplicateReplyRes = response();
+  // Multi-reply conversation: admin can reply again while ticket is open
+  const secondReplyRes = response();
   await replyAdminSupportTicket(
     {
       params: { ticketId: 'ticket-1' },
       admin: { id: 'admin-1', fullName: 'Quipus Admin' },
-      body: { message: 'Second reply should be blocked.' },
+      body: { message: 'Following up with additional details.' },
     },
-    duplicateReplyRes,
+    secondReplyRes,
   );
-  assert.equal(duplicateReplyRes.statusCode, 409);
-  assert.equal(duplicateReplyRes.body.code, 'SUPPORT_TICKET_ALREADY_REPLIED');
-  assert.equal(persistedReplies.length, 1);
+  assert.equal(secondReplyRes.statusCode, 201);
+  assert.equal(persistedReplies.length, 2);
+  assert.equal(secondReplyRes.body.ticket.viewerStatus.key, 'in_progress');
 });
 
 test('getConfiguredSenderEmail, getAdminSupportTicket, and replyAdminSupportTicket share exact FROM_EMAIL / SMTP_USER with null when unconfigured', async (t) => {

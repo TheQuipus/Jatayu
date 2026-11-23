@@ -11,6 +11,19 @@ const SupportReply = adminDb.define('SupportReply', {
     type: DataTypes.UUID,
     allowNull: false,
   },
+  authorType: {
+    type: DataTypes.ENUM('admin', 'seeker', 'expert'),
+    allowNull: false,
+    defaultValue: 'admin',
+  },
+  authorId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+  },
+  authorName: {
+    type: DataTypes.STRING(180),
+    allowNull: true,
+  },
   adminId: {
     type: DataTypes.UUID,
     allowNull: true,
@@ -21,11 +34,11 @@ const SupportReply = adminDb.define('SupportReply', {
   },
   fromEmail: {
     type: DataTypes.STRING(254),
-    allowNull: false,
+    allowNull: true,
   },
   toEmail: {
     type: DataTypes.STRING(254),
-    allowNull: false,
+    allowNull: true,
   },
   message: {
     type: DataTypes.TEXT,

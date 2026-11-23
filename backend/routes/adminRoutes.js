@@ -18,8 +18,10 @@ import { getAdminTranscript } from '../controllers/agoraTranscriptionController.
 import { adminSeekerAction, getAdminSeeker, grantAdminSeekerCredits, listAdminSeekerNotifications, listAdminSeekers, markAdminSeekerNotificationRead, updateAdminSeekerStatus } from '../controllers/adminSeekerController.js';
 import { adminExpertAction, listAdminExperts, getAdminExpert, updateAdminExpertStatus } from '../controllers/adminExpertController.js';
 import {
+  closeAdminSupportTicket,
   getAdminSupportTicket,
   listAdminSupportTickets,
+  reopenAdminSupportTicket,
   replyAdminSupportTicket,
 } from '../controllers/supportController.js';
 
@@ -58,5 +60,7 @@ router.post('/applications/:id/dropout-followup', protectAdmin, sendDropoutFollo
 router.get('/support/tickets', protectAdmin, listAdminSupportTickets);
 router.get('/support/tickets/:ticketId', protectAdmin, getAdminSupportTicket);
 router.post('/support/tickets/:ticketId/reply', protectAdmin, replyAdminSupportTicket);
+router.post('/support/tickets/:ticketId/close', protectAdmin, closeAdminSupportTicket);
+router.post('/support/tickets/:ticketId/reopen', protectAdmin, reopenAdminSupportTicket);
 
 export default router;

@@ -18,8 +18,11 @@ test('SupportTicket and SupportReply models are bound to adminDb with expected s
     'subject',
     'description',
     'status',
+    'lastReplyBy',
     'adminNotifiedAt',
     'lastRepliedAt',
+    'closedAt',
+    'closedByAdminId',
     'createdAt',
     'updatedAt',
   ]) {
@@ -28,12 +31,16 @@ test('SupportTicket and SupportReply models are bound to adminDb with expected s
 
   assert.equal(ticketAttrs.status.defaultValue, 'open');
   assert.deepEqual(ticketAttrs.requesterType.values, ['seeker', 'expert']);
-  assert.deepEqual(ticketAttrs.status.values, ['open', 'replied']);
+  assert.deepEqual(ticketAttrs.status.values, ['open', 'closed']);
+  assert.deepEqual(ticketAttrs.lastReplyBy.values, ['requester', 'admin']);
 
   const replyAttrs = SupportReply.getAttributes();
   for (const field of [
     'id',
     'ticketId',
+    'authorType',
+    'authorId',
+    'authorName',
     'adminId',
     'adminName',
     'fromEmail',
@@ -44,6 +51,9 @@ test('SupportTicket and SupportReply models are bound to adminDb with expected s
   ]) {
     assert.ok(replyAttrs[field], `SupportReply missing attribute: ${field}`);
   }
+  assert.deepEqual(replyAttrs.authorType.values, ['admin', 'seeker', 'expert']);
+  assert.equal(replyAttrs.fromEmail.allowNull, true);
+  assert.equal(replyAttrs.toEmail.allowNull, true);
 
   assert.ok(SupportTicket.associations.replies, 'SupportTicket must have replies association');
   assert.ok(SupportReply.associations.ticket, 'SupportReply must have ticket association');
