@@ -148,7 +148,9 @@ export default function TopNavbar() {
       pathname?.startsWith("/seeker/discover") ||
       pathname?.startsWith("/seeker/bookings") ||
       pathname?.startsWith("/seeker/bookmark") ||
-      pathname?.startsWith("/seeker/expert")
+      pathname?.startsWith("/seeker/expert") ||
+      pathname?.startsWith("/seeker/profile") ||
+      pathname?.startsWith("/seeker/support")
     );
   }
 
@@ -165,6 +167,8 @@ export default function TopNavbar() {
       "/expert/requests",
       "/expert/reviews",
       "/expert/achievements",
+      "/expert/settings",
+      "/expert/support",
     ];
 
     return expertPortalRoutes.some((route) =>

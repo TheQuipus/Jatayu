@@ -3,9 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   ChevronDown,
+  Headphones,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -21,8 +28,14 @@ import {
   ADMIN_EXPERT_PATH_PREFIXES,
   ADMIN_NAV,
   ADMIN_SETTINGS_HREF,
+  ADMIN_SUPPORT_HREF,
+  ADMIN_SUPPORT_PATH_PREFIXES,
   type AdminNavItem,
 } from "@/lib/adminDashboard";
+import {
+  ADMIN_SUPPORT_UPDATED_EVENT,
+  getAdminSupportNeedsAttentionCount,
+} from "@/lib/adminSupportApi";
 import {
   getAdminApplicationStats,
   getAdminMe,
@@ -38,6 +51,7 @@ import styles from "./AdminShell.module.css";
 const NAV_ICONS = {
   dashboard: LayoutDashboard,
   expert: UserCheck,
+  support: Headphones,
 } as const;
 
 type AdminShellProps = {
@@ -59,6 +73,10 @@ function isNavActive(pathname: string, itemId: string, href: string): boolean {
 
   if (itemId === "expert") {
     return ADMIN_EXPERT_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+  }
+
+  if (itemId === "support") {
+    return ADMIN_SUPPORT_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
   }
 
   return path.startsWith(normalizedHref);
@@ -89,14 +107,16 @@ function NavLink({ item, pathname, isCollapsed }: { item: AdminNavItem; pathname
   );
 }
 
+const subscribeNoop = () => () => {};
+
 function UserManagementNavGroup({ pathname, isCollapsed }: { pathname: string; isCollapsed?: boolean }) {
   const path = normalizeAdminPath(pathname);
   const usersActive = path.startsWith("/admin/users");
-  const [expanded, setExpanded] = useState(usersActive);
-
-  useEffect(() => {
-    setExpanded(usersActive);
-  }, [usersActive]);
+  const [toggleOverride, setToggleOverride] = useState<{ path: string; expanded: boolean } | null>(
+    null,
+  );
+  const expanded =
+    toggleOverride && toggleOverride.path === path ? toggleOverride.expanded : usersActive;
 
   const isExpertActive =
     path === "/admin/users/experts" ||
@@ -116,7 +136,7 @@ function UserManagementNavGroup({ pathname, isCollapsed }: { pathname: string; i
         type="button"
         className={`${styles.navLink} ${styles.navLinkToggle} ${usersActive || expanded ? styles.navLinkParentActive : ""
           }`}
-        onClick={() => setExpanded((current) => !current)}
+        onClick={() => setToggleOverride({ path, expanded: !expanded })}
         aria-expanded={expanded}
         aria-controls="admin-users-subnav"
         title={isCollapsed ? "User Management" : undefined}
@@ -161,11 +181,11 @@ function UserManagementNavGroup({ pathname, isCollapsed }: { pathname: string; i
 function SettingsNavGroup({ pathname, isCollapsed }: { pathname: string; isCollapsed?: boolean }) {
   const path = normalizeAdminPath(pathname);
   const settingsActive = path.startsWith(normalizeAdminPath(ADMIN_SETTINGS_HREF));
-  const [expanded, setExpanded] = useState(settingsActive);
-
-  useEffect(() => {
-    setExpanded(settingsActive);
-  }, [settingsActive]);
+  const [toggleOverride, setToggleOverride] = useState<{ path: string; expanded: boolean } | null>(
+    null,
+  );
+  const expanded =
+    toggleOverride && toggleOverride.path === path ? toggleOverride.expanded : settingsActive;
 
   return (
     <div className={styles.navGroup}>
@@ -173,7 +193,7 @@ function SettingsNavGroup({ pathname, isCollapsed }: { pathname: string; isColla
         type="button"
         className={`${styles.navLink} ${styles.navLinkToggle} ${settingsActive || expanded ? styles.navLinkParentActive : ""
           }`}
-        onClick={() => setExpanded((current) => !current)}
+        onClick={() => setToggleOverride({ path, expanded: !expanded })}
         aria-expanded={expanded}
         aria-controls="admin-settings-subnav"
         title={isCollapsed ? "Settings" : undefined}
@@ -219,14 +239,15 @@ function SettingsNavGroup({ pathname, isCollapsed }: { pathname: string; isColla
 
 export default function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false,
+  );
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [adminUser, setAdminUser] = useState<AdminAuthUser | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [openSupportCount, setOpenSupportCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -260,11 +281,50 @@ export default function AdminShell({ children }: AdminShellProps) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const refreshNeedsAttentionCount = () => {
+      getAdminSupportNeedsAttentionCount()
+        .then((count) => {
+          if (active) setOpenSupportCount(count);
+        })
+        .catch(() => {
+          if (active) setOpenSupportCount(0);
+        });
+    };
+
+    refreshNeedsAttentionCount();
+    window.addEventListener(ADMIN_SUPPORT_UPDATED_EVENT, refreshNeedsAttentionCount);
+    window.addEventListener("focus", refreshNeedsAttentionCount);
+
+    return () => {
+      active = false;
+      window.removeEventListener(ADMIN_SUPPORT_UPDATED_EVENT, refreshNeedsAttentionCount);
+      window.removeEventListener("focus", refreshNeedsAttentionCount);
+    };
+  }, []);
+
   const navItems = ADMIN_NAV.map((item) =>
     item.id === "expert" && mounted && pendingCount > 0
       ? { ...item, badge: pendingCount, badgeVariant: "red" as const }
       : item,
   );
+
+  const supportNavItem: AdminNavItem =
+    mounted && openSupportCount > 0
+      ? {
+          id: "support",
+          label: "Support",
+          href: ADMIN_SUPPORT_HREF,
+          badge: openSupportCount,
+          badgeVariant: "red",
+        }
+      : {
+          id: "support",
+          label: "Support",
+          href: ADMIN_SUPPORT_HREF,
+        };
 
   return (
     <div className={`${styles.shell} ${isCollapsed ? styles.shellCollapsed : ""}`.trim()}>
@@ -308,6 +368,7 @@ export default function AdminShell({ children }: AdminShellProps) {
             <NavLink key={item.id} item={item} pathname={pathname} isCollapsed={isCollapsed} />
           ))}
           <UserManagementNavGroup pathname={pathname} isCollapsed={isCollapsed} />
+          <NavLink item={supportNavItem} pathname={pathname} isCollapsed={isCollapsed} />
           <SettingsNavGroup pathname={pathname} isCollapsed={isCollapsed} />
         </nav>
 

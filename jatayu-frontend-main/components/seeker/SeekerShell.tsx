@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useMemo, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, useMemo, type ReactNode } from "react";
 import {
   Bookmark,
   CalendarDays,
@@ -27,6 +27,11 @@ import {
   SEEKER_PROFILE_UPDATED_EVENT,
 } from "@/lib/seekerProfileApi";
 import { clearSeekerAuthSession } from "@/lib/seekerAuth";
+import { getSeekerToken } from "@/lib/api";
+import {
+  getMySupportSummary,
+  MY_SUPPORT_TICKETS_UPDATED_EVENT,
+} from "@/lib/supportApi";
 import styles from "./SeekerShell.module.css";
 
 const NAV_ICONS = {
@@ -54,6 +59,7 @@ function isNavItemActive(id: string, pathname: string, href: string, currentHash
   if (id === "bookings") return normPathname.startsWith("/seeker/bookings/");
   if (id === "profile") return normPathname.startsWith("/seeker/profile/");
   if (id === "saved") return normPathname.startsWith("/seeker/bookmark/");
+  if (id === "support") return normPathname.startsWith("/seeker/support/");
 
   if (itemHash) {
     return normPathname === normBaseHref && currentHash === itemHash;
@@ -69,9 +75,27 @@ type SeekerShellProps = {
 export default function SeekerShell({ children }: SeekerShellProps) {
   const pathname = usePathname();
   const [breadcrumbs, setBreadcrumbs] = useState<ReactNode | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("seeker_sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [currentHash, setCurrentHash] = useState("");
+  const [supportResponseCount, setSupportResponseCount] = useState(0);
   const shellContext = useMemo(() => ({ setBreadcrumbs }), []);
+
+  const handleToggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("seeker_sidebar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const [profile, setProfile] = useState({
     name: SEEKER_PROFILE.name,
@@ -79,6 +103,20 @@ export default function SeekerShell({ children }: SeekerShellProps) {
     category: "",
     isPro: SEEKER_PROFILE.isPro,
   });
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+
+  const initials = useMemo(() => {
+    const parts = (profile.name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+    return parts.slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+  }, [profile.name]);
+
+  const hasValidPhoto = Boolean(
+    profile.avatar &&
+      profile.avatar.trim() &&
+      profile.avatar !== "/assets/img/profile-placeholder.svg" &&
+      failedAvatar !== profile.avatar,
+  );
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -125,6 +163,32 @@ export default function SeekerShell({ children }: SeekerShellProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!getSeekerToken()) return;
+    let active = true;
+
+    const refreshSupportBadge = () => {
+      if (!getSeekerToken()) return;
+      getMySupportSummary("/seeker/support/")
+        .then((res) => {
+          if (active) setSupportResponseCount(res.responseReceivedCount);
+        })
+        .catch(() => {});
+    };
+
+    refreshSupportBadge();
+    window.addEventListener("focus", refreshSupportBadge);
+    window.addEventListener(MY_SUPPORT_TICKETS_UPDATED_EVENT, refreshSupportBadge);
+    window.addEventListener("jatayu:notification", refreshSupportBadge);
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshSupportBadge);
+      window.removeEventListener(MY_SUPPORT_TICKETS_UPDATED_EVENT, refreshSupportBadge);
+      window.removeEventListener("jatayu:notification", refreshSupportBadge);
+    };
+  }, []);
+
   const handleLogout = () => {
     clearSeekerAuthSession();
     window.location.assign("/login");
@@ -138,34 +202,32 @@ export default function SeekerShell({ children }: SeekerShellProps) {
           className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`.trim()}
           aria-label="Seeker navigation"
         >
-          <div className={styles.brandContainer}>
-            {!isCollapsed ? (
-              <>
-                <Link href="/seeker/dashboard" className={styles.brand}>
-                  <span className={styles.brandMark} aria-hidden="true">
-                    J
-                  </span>
-                  <span className={styles.brandText}>Jatayu</span>
-                </Link>
-                <button
-                  type="button"
-                  className={styles.collapseBtn}
-                  onClick={() => setIsCollapsed(!isCollapsed)}
-                  aria-label="Collapse sidebar"
-                >
-                  <PanelLeftClose size={16} />
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className={`${styles.collapseBtn} ${styles.collapseBtnCollapsed}`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                aria-label="Expand sidebar"
-              >
-                <PanelLeftOpen size={16} />
-              </button>
-            )}
+          <div
+            className={`${styles.brandContainer} ${
+              isCollapsed ? styles.brandContainerCollapsed : ""
+            }`}
+          >
+            <Link
+              href="/seeker/dashboard"
+              className={`${styles.brand} ${isCollapsed ? styles.brandCollapsed : ""}`}
+              title="Jatayu"
+            >
+              <span className={styles.brandMark} aria-hidden="true">
+                J
+              </span>
+              {!isCollapsed && <span className={styles.brandText}>Jatayu</span>}
+            </Link>
+            <button
+              type="button"
+              className={`${styles.collapseBtn} ${
+                isCollapsed ? styles.collapseBtnCollapsed : ""
+              }`}
+              onClick={handleToggleCollapse}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            </button>
           </div>
 
           <nav className={styles.navSection} aria-label="Main">
@@ -203,31 +265,55 @@ export default function SeekerShell({ children }: SeekerShellProps) {
                 >
                   <Icon size={16} aria-hidden="true" />
                   {!isCollapsed && <span className={styles.navLabelText}>{item.label}</span>}
+                  {!isCollapsed && item.id === "support" && supportResponseCount > 0 ? (
+                    <span className={`${styles.navBadge} ${styles.navBadgeRed}`}>
+                      {supportResponseCount > 99 ? "99+" : supportResponseCount}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
           </nav>
 
           <div
-            className={`${styles.userCard} ${isCollapsed ? styles.userCardCollapsed : ""
-              }`}
+            className={`${styles.userCard} ${
+              isCollapsed ? styles.userCardCollapsed : ""
+            }`}
           >
-            <Link href={PROFILE_NAV.href} title={profile.name}>
-              {profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:") ? (
-                <img
-                  src={profile.avatar}
-                  alt={profile.name}
-                  className={styles.userAvatar}
-                  style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
-                />
+            <Link
+              href={PROFILE_NAV.href}
+              className={`${styles.userAvatarLink} ${
+                isCollapsed ? styles.userAvatarLinkCollapsed : ""
+              }`}
+              title={profile.name}
+            >
+              {hasValidPhoto ? (
+                profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:") ? (
+                  <img
+                    src={profile.avatar}
+                    alt={profile.name}
+                    className={styles.userAvatar}
+                    style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
+                    onError={() => setFailedAvatar(profile.avatar)}
+                  />
+                ) : (
+                  <Image
+                    src={profile.avatar}
+                    alt={profile.name}
+                    width={36}
+                    height={36}
+                    className={styles.userAvatar}
+                    onError={() => setFailedAvatar(profile.avatar)}
+                  />
+                )
+              ) : initials ? (
+                <div className={styles.userAvatarInitials} aria-hidden="true">
+                  {initials}
+                </div>
               ) : (
-                <Image
-                  src={profile.avatar}
-                  alt={profile.name}
-                  width={36}
-                  height={36}
-                  className={styles.userAvatar}
-                />
+                <div className={styles.userAvatarPlaceholder} aria-hidden="true">
+                  <User size={18} />
+                </div>
               )}
             </Link>
             {!isCollapsed && (
@@ -241,11 +327,13 @@ export default function SeekerShell({ children }: SeekerShellProps) {
             <button
               type="button"
               onClick={handleLogout}
-              className={styles.userMenuBtn}
+              className={`${styles.userMenuBtn} ${
+                isCollapsed ? styles.userMenuBtnCollapsed : ""
+              }`}
               aria-label="Logout"
               title="Logout"
             >
-              <LogOut size={20} aria-hidden="true" />
+              <LogOut size={isCollapsed ? 18 : 20} aria-hidden="true" />
             </button>
           </div>
         </aside>

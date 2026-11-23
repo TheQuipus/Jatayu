@@ -2,7 +2,8 @@ export type ExpertNavItem = {
   id: string;
   label: string;
   href: string;
-  badge?: number;
+  badge?: number | string;
+  badgeVariant?: "red";
 };
 
 export type ProfileChecklistItem = {
@@ -382,6 +383,7 @@ export const MAIN_NAV: ExpertNavItem[] = [
   { id: "reviews", label: "Reviews", href: "/expert/reviews/" },
   { id: "achievements", label: "Achievements", href: "/expert/achievements/" },
   { id: "notifications", label: "Notifications", href: "/expert/notifications/" },
+  { id: "support", label: "Support", href: "/expert/support/" },
 ];
 
 export const EXPERT_SETTINGS_HREF = "/expert/settings/";
@@ -396,7 +398,7 @@ export function formatExpertCurrency(amount: number): string {
   return `₹${amount.toLocaleString("en-IN")}`;
 }
 
-export const UNAPPROVED_ALLOWED_NAV_IDS = new Set(["dashboard", "profile"]);
+export const UNAPPROVED_ALLOWED_NAV_IDS = new Set(["dashboard", "profile", "support"]);
 export const UNAPPROVED_RESTRICTION_TOOLTIP = "You may access these after approval of your profile";
 
 export function isNavRestrictedForExpert(navId: string, isApproved: boolean): boolean {

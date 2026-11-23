@@ -29,6 +29,18 @@ function hasPlaceholderCredential(value) {
   );
 }
 
+export async function getConfiguredSenderEmail() {
+  const fromEmail = String((await getSetting('FROM_EMAIL')) || '').trim();
+  if (fromEmail && !hasPlaceholderCredential(fromEmail)) {
+    return fromEmail;
+  }
+  const smtpUser = String((await getSetting('SMTP_USER')) || '').trim();
+  if (smtpUser && !hasPlaceholderCredential(smtpUser)) {
+    return smtpUser;
+  }
+  return null;
+}
+
 export async function isSmtpConfigured() {
   const smtpHost = await getSetting('SMTP_HOST');
   const smtpPort = await getSetting('SMTP_PORT', '587');
@@ -156,7 +168,7 @@ async function sendViaSmtp({ recipientEmail, recipientName, otpCode, fromEmail, 
 export async function sendGenericEmail({ recipientEmail, recipientName, subject, htmlContent, textContent }) {
   const emailEnabled = await getSettingBool('EMAIL_ENABLED', true);
   const emailProvider = await getSetting('EMAIL_PROVIDER', 'smtp');
-  const fromEmail = await getSetting('FROM_EMAIL') || await getSetting('SMTP_USER');
+  const fromEmail = await getConfiguredSenderEmail();
   const fromName = await getSetting('EMAIL_FROM_NAME', 'Jatayu');
   const brevoApiKey = await getSetting('BREVO_API_KEY');
 
@@ -180,6 +192,7 @@ export async function sendGenericEmail({ recipientEmail, recipientName, subject,
         htmlContent,
         textContent: textContent || subject,
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {

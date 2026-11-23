@@ -70,6 +70,7 @@ export default function NotificationPanel() {
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   const markRead = (id: string) => {
+    setIsOpen(false);
     setNotifications((current) =>
       current.map((n) => (n.id === id ? { ...n, unread: false } : n))
     );
@@ -86,9 +87,17 @@ export default function NotificationPanel() {
   useEffect(() => {
     const map = (item: AppNotification): SeekerNotification => ({ id:item.id, title:item.title, body:item.body,
       timeAgo:new Date(item.createdAt).toLocaleString(), unread:!item.readAt, href:item.href || undefined });
-    fetchNotifications().then((data) => setNotifications(data.items.map(map))).catch(() => undefined);
+    const loadNotifications = () => {
+      fetchNotifications().then((data) => setNotifications(data.items.map(map))).catch(() => undefined);
+    };
+    loadNotifications();
     const receive = (event: Event) => setNotifications((current) => [map((event as CustomEvent<AppNotification>).detail), ...current.filter((n) => n.id !== (event as CustomEvent<AppNotification>).detail.id)]);
-    window.addEventListener("jatayu:notification", receive); return () => window.removeEventListener("jatayu:notification", receive);
+    window.addEventListener("jatayu:notification", receive);
+    window.addEventListener("focus", loadNotifications);
+    return () => {
+      window.removeEventListener("jatayu:notification", receive);
+      window.removeEventListener("focus", loadNotifications);
+    };
   }, []);
 
   useEffect(() => {

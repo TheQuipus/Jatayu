@@ -48,6 +48,7 @@ export const ADMIN_EXPERT_HREF = "/admin/applications";
 export const ADMIN_USERS_HREF = "/admin/users/experts";
 export const ADMIN_USERS_EXPERTS_HREF = "/admin/users/experts";
 export const ADMIN_USERS_SEEKERS_HREF = "/admin/users/seekers";
+export const ADMIN_SUPPORT_HREF = "/admin/support";
 export const ADMIN_SETTINGS_HREF = "/admin/settings";
 export const ADMIN_LOGIN_HREF = "/admin";
 
@@ -61,6 +62,10 @@ export const ADMIN_EXPERT_PATH_PREFIXES = [
 
 export const ADMIN_USERS_PATH_PREFIXES = [
   "/admin/users",
+] as const;
+
+export const ADMIN_SUPPORT_PATH_PREFIXES = [
+  "/admin/support",
 ] as const;
 
 export const ADMIN_PROFILE = {

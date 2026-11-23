@@ -15,11 +15,18 @@ export type NotificationsResponse = {
   unreadCount: number;
   pagination?: { page: number; limit: number; total: number; pages: number };
 };
+function resolveNotificationAuthToken(): string {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+    return getAdminToken() || "";
+  }
+  return getToken() || getAdminToken() || "";
+}
+
 async function call(path: string, init?: RequestInit) {
   const response = await fetch(`${publicApiBase()}/api/notifications${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${getToken() || getAdminToken() || ""}`,
+      Authorization: `Bearer ${resolveNotificationAuthToken()}`,
       "Content-Type": "application/json",
     },
   });
