@@ -58,7 +58,6 @@
   justify-content: center;
   margin-top: 80px;
   transform-style: preserve-3d;
-  overflow: clip;
 }
 
 .rotationCircleWrap {
