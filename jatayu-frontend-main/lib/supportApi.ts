@@ -1,6 +1,10 @@
 import { getExpertToken, getSeekerToken, getToken } from "@/lib/api";
 import { getEmailValidationError } from "@/lib/emailValidation";
 import { publicApiBase } from "@/lib/publicApiBase";
+import type {
+  SupportViewerStatus,
+  SupportViewerStatusKey,
+} from "@/lib/supportStatus";
 
 export const PREDEFINED_SUPPORT_SUBJECTS = [
   "Booking & Scheduling Issue",
@@ -40,9 +44,13 @@ export type SupportTicketRecord = {
   phone: string;
   subject: string;
   description: string;
-  status: "open" | "replied";
+  status: "open" | "closed";
+  lastReplyBy?: "requester" | "admin" | null;
+  viewerStatus?: SupportViewerStatus;
+  statusLabel?: string;
   adminNotifiedAt?: string | null;
   lastRepliedAt?: string | null;
+  closedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -267,22 +275,41 @@ export function dispatchMySupportTicketsUpdated(): void {
   window.dispatchEvent(new CustomEvent(MY_SUPPORT_TICKETS_UPDATED_EVENT));
 }
 
+export type MySupportDbStatus = "open" | "closed";
+export type MySupportLastReplyBy = "requester" | "admin" | null;
+export type MySupportAuthorType = "admin" | "seeker" | "expert";
+
 export type MySupportTicketSummary = {
   id: string;
   ticketNumber: string;
   subject: string;
   description: string;
-  status: "open" | "replied";
+  status: MySupportDbStatus;
+  lastReplyBy: MySupportLastReplyBy;
+  viewerStatus: SupportViewerStatus;
+  statusLabel: string;
   createdAt: string;
   lastRepliedAt: string | null;
+  closedAt: string | null;
   replyCount: number;
 };
 
 export type MySupportReply = {
   id: string;
-  adminName: string;
+  authorType: MySupportAuthorType;
+  authorName: string;
+  adminName?: string;
   message: string;
   createdAt: string;
+};
+
+export type MySupportThreadItem = {
+  id: string;
+  authorType: MySupportAuthorType;
+  authorName: string;
+  message: string;
+  createdAt: string;
+  isInitial: boolean;
 };
 
 export type MySupportTicketDetail = {
@@ -290,16 +317,22 @@ export type MySupportTicketDetail = {
   ticketNumber: string;
   subject: string;
   description: string;
-  status: "open" | "replied";
+  status: MySupportDbStatus;
+  lastReplyBy: MySupportLastReplyBy;
+  viewerStatus: SupportViewerStatus;
+  statusLabel: string;
   createdAt: string;
   lastRepliedAt: string | null;
+  closedAt: string | null;
   replies: MySupportReply[];
+  thread?: MySupportThreadItem[];
 };
 
 export type MySupportTicketsCounts = {
   all: number;
-  open: number;
-  replied: number;
+  in_progress: number;
+  response_received: number;
+  closed: number;
 };
 
 export type MySupportTicketsPagination = {
@@ -319,8 +352,15 @@ export type MySupportTicketDetailResponse = {
   ticket: MySupportTicketDetail;
 };
 
+export type MySupportReplyResponse = {
+  message: string;
+  reply: MySupportReply;
+  ticket: MySupportTicketDetail;
+};
+
 export type MySupportApiError = Error & {
   status?: number;
+  code?: string;
 };
 
 export async function getMySupportTickets(
@@ -331,7 +371,7 @@ export async function getMySupportTickets(
   }: {
     page?: number;
     limit?: number;
-    status?: "all" | "open" | "replied";
+    status?: "all" | Exclude<SupportViewerStatusKey, "new">;
   } = {},
   pathname?: string | null,
 ): Promise<MySupportTicketsResponse> {
@@ -361,6 +401,7 @@ export async function getMySupportTickets(
 
   const data = (await response.json().catch(() => ({}))) as MySupportTicketsResponse & {
     message?: string;
+    code?: string;
   };
 
   if (!response.ok) {
@@ -368,12 +409,18 @@ export async function getMySupportTickets(
       data?.message || "Failed to load support tickets",
     ) as MySupportApiError;
     err.status = response.status;
+    if (typeof data?.code === "string") err.code = data.code;
     throw err;
   }
 
   return {
     items: Array.isArray(data.items) ? data.items : [],
-    counts: data.counts || { all: 0, open: 0, replied: 0 },
+    counts: {
+      all: data.counts?.all ?? 0,
+      in_progress: data.counts?.in_progress ?? 0,
+      response_received: data.counts?.response_received ?? 0,
+      closed: data.counts?.closed ?? 0,
+    },
     pagination: data.pagination || { page, limit, total: 0, totalPages: 1 },
   };
 }
@@ -400,6 +447,7 @@ export async function getMySupportTicket(
 
   const data = (await response.json().catch(() => ({}))) as MySupportTicketDetailResponse & {
     message?: string;
+    code?: string;
   };
 
   if (!response.ok || !data.ticket) {
@@ -407,9 +455,50 @@ export async function getMySupportTicket(
       data?.message || "Support ticket not found",
     ) as MySupportApiError;
     err.status = response.status;
+    if (typeof data?.code === "string") err.code = data.code;
     throw err;
   }
 
+  return data;
+}
+
+export async function createMySupportReply(
+  ticketId: string,
+  message: string,
+  pathname?: string | null,
+): Promise<MySupportReplyResponse> {
+  const token = resolveSupportAuthToken(pathname);
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch(
+    `${publicApiBase()}/api/support/tickets/${encodeURIComponent(ticketId)}/replies`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message }),
+    },
+  );
+
+  const data = (await response.json().catch(() => ({}))) as MySupportReplyResponse & {
+    message?: string;
+    code?: string;
+  };
+
+  if (!response.ok || !data.ticket) {
+    const err = new Error(
+      data?.message || "Failed to send reply. Please try again.",
+    ) as MySupportApiError;
+    err.status = response.status;
+    if (typeof data?.code === "string") err.code = data.code;
+    throw err;
+  }
+
+  dispatchMySupportTicketsUpdated();
   return data;
 }
 

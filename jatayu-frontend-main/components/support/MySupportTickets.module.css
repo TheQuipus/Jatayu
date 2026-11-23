@@ -253,16 +253,22 @@
   text-transform: capitalize;
 }
 
-.statusOpen {
+.statusInProgress {
+  background: #ffffff;
+  color: var(--ink, #111);
+  border: 1px solid var(--ink, #111);
+}
+
+.statusResponseReceived {
   background: color-mix(in srgb, #f59e0b 14%, var(--white, #fff));
   color: #b45309;
   border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
 }
 
-.statusReplied {
-  background: color-mix(in srgb, #10b981 14%, var(--white, #fff));
-  color: #047857;
-  border: 1px solid color-mix(in srgb, #10b981 35%, transparent);
+.statusClosed {
+  background: var(--gallery, #f1f5f9);
+  color: var(--scorpion, #555);
+  border: 1px solid var(--mercury, #e2e8f0);
 }
 
 .ticketSubject {
@@ -430,6 +436,15 @@
   gap: 12px;
 }
 
+.threadScroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .repliesHeaderTitle {
   margin: 0 0 4px;
   font-family: var(--font-body);
@@ -442,13 +457,178 @@
 }
 
 .replyItem {
-  padding: 14px 16px;
-  border-radius: 8px;
+  padding: 13px 15px;
+  border-radius: 10px;
   border: 1px solid var(--mercury, #e2e8f0);
   background-color: var(--seashell, #f8f8f8) !important;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-width: 92%;
+}
+
+.replyItemSupport {
+  align-self: flex-start;
+  background-color: color-mix(in srgb, var(--pomegranate, #ee3124) 5%, #ffffff) !important;
+  border-color: color-mix(in srgb, var(--pomegranate, #ee3124) 22%, var(--mercury, #e2e8f0));
+}
+
+.replyItemRequester {
+  align-self: flex-end;
+  background-color: var(--seashell, #f8f8f8) !important;
+  border-color: var(--mercury, #e2e8f0);
+}
+
+.requesterBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--white, #fff);
+  color: var(--ink, #111);
+  border: 1px solid var(--mercury, #e2e8f0);
+  text-transform: uppercase;
+}
+
+/* Reply Composer */
+.composerForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--mercury, #e2e8f0);
+}
+
+.composerLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.composerLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #111);
+}
+
+.charCount {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--dove-gray, #666);
+}
+
+.charCountWarn {
+  color: var(--pomegranate, #ee3124);
+  font-weight: 600;
+}
+
+.composerTextarea {
+  width: 100%;
+  min-height: 92px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--mercury, #e2e8f0);
+  background: var(--white, #fff);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink, #111);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.composerTextarea:focus {
+  border-color: var(--pomegranate, #ee3124);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pomegranate, #ee3124) 18%, transparent);
+}
+
+.composerTextarea:disabled {
+  background: var(--seashell, #f8f8f8);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.composerError {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pomegranate, #ee3124) 10%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--pomegranate, #ee3124) 28%, transparent);
+  color: var(--pomegranate, #ee3124);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.composerSuccess {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, #10b981 10%, #ffffff);
+  border: 1px solid color-mix(in srgb, #10b981 28%, transparent);
+  color: #065f46;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.composerActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sendReplyBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--pomegranate, #ee3124);
+  color: var(--white, #fff);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.sendReplyBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--pomegranate, #ee3124) 85%, black);
+  transform: translateY(-1px);
+}
+
+.sendReplyBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.closedNotice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background-color: var(--gallery, #f1f5f9) !important;
+  border: 1px solid var(--mercury, #e2e8f0);
+  color: var(--scorpion, #555);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.closedNoticeRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .replyTop {

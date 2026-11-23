@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 import { CheckCircle2, Headphones, X } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
 import DropdownFilter from "@/components/ui/DropdownFilter";
+import Spinner from "@/components/ui/Spinner";
 import {
   fetchSupportMe,
   isAdminRoutePath,
@@ -87,6 +88,8 @@ export default function GlobalSupportButton() {
   const [description, setDescription] = useState("");
 
   const [prefilledForToken, setPrefilledForToken] = useState<string | null>(null);
+  const [accountHasEmail, setAccountHasEmail] = useState(false);
+  const [accountHasPhone, setAccountHasPhone] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SupportFormValidationErrors>({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,16 +127,21 @@ export default function GlobalSupportButton() {
     fetchSupportMe(pathname)
       .then(({ user }) => {
         if (cancelled) return;
-        setEmail((prev) => (!prev.trim() || prefilledForToken !== activeToken ? user.email || "" : prev));
-        setPhone((prev) =>
-          !prev.trim() || prefilledForToken !== activeToken
-            ? normalizeSupportPhone(user.phone || "")
-            : prev,
-        );
+        const accountEmail = (user.email || "").trim();
+        const accountPhone = normalizeSupportPhone(user.phone || "");
+        const hasEmail = Boolean(accountEmail);
+        const hasPhone = /^\d{10}$/.test(accountPhone);
+
+        setAccountHasEmail(hasEmail);
+        setAccountHasPhone(hasPhone);
+        setEmail(hasEmail ? accountEmail : "");
+        setPhone(hasPhone ? accountPhone : "");
         setPrefilledForToken(activeToken);
       })
       .catch(() => {
-        // Keep editable inputs empty or at current values if prefill fails
+        if (cancelled) return;
+        setAccountHasEmail(false);
+        setAccountHasPhone(false);
       });
 
     return () => {
@@ -171,14 +179,14 @@ export default function GlobalSupportButton() {
     };
   }, [isPopoverOpen]);
 
-  // Focus first field when opening form
+  // Focus first editable field when opening form
   useEffect(() => {
-    if (!isPopoverOpen || submittedTicketNumber) return;
+    if (!isPopoverOpen || submittedTicketNumber || accountHasEmail) return;
     const timer = window.setTimeout(() => {
       emailInputRef.current?.focus();
     }, 50);
     return () => window.clearTimeout(timer);
-  }, [isPopoverOpen, submittedTicketNumber]);
+  }, [isPopoverOpen, submittedTicketNumber, accountHasEmail]);
 
   if (!isVisible) {
     return null;
@@ -334,12 +342,15 @@ export default function GlobalSupportButton() {
                   id={emailId}
                   type="email"
                   autoComplete="email"
+                  readOnly={accountHasEmail}
+                  tabIndex={accountHasEmail ? -1 : undefined}
                   className={`${styles.input} ${
-                    fieldErrors.email ? styles.inputError : ""
-                  }`}
+                    accountHasEmail ? styles.inputReadOnly : ""
+                  } ${fieldErrors.email ? styles.inputError : ""}`}
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => {
+                    if (accountHasEmail) return;
                     setEmail(e.target.value);
                     if (fieldErrors.email) {
                       setFieldErrors((prev) => ({ ...prev, email: undefined }));
@@ -347,9 +358,21 @@ export default function GlobalSupportButton() {
                     if (submitError) setSubmitError("");
                   }}
                   disabled={isSubmitting}
+                  aria-readonly={accountHasEmail}
                   aria-invalid={Boolean(fieldErrors.email)}
-                  aria-describedby={fieldErrors.email ? `${emailId}-error` : undefined}
+                  aria-describedby={
+                    fieldErrors.email
+                      ? `${emailId}-error`
+                      : accountHasEmail
+                        ? `${emailId}-helper`
+                        : undefined
+                  }
                 />
+                {accountHasEmail ? (
+                  <p id={`${emailId}-helper`} className={styles.fieldHelperText}>
+                    From your account
+                  </p>
+                ) : null}
                 {fieldErrors.email ? (
                   <p
                     id={`${emailId}-error`}
@@ -372,8 +395,8 @@ export default function GlobalSupportButton() {
                 </div>
                 <div
                   className={`${styles.phoneInputWrap} ${
-                    fieldErrors.phone ? styles.inputError : ""
-                  }`}
+                    accountHasPhone ? styles.phoneInputWrapReadOnly : ""
+                  } ${fieldErrors.phone ? styles.inputError : ""}`}
                 >
                   <span className={styles.phonePrefix} aria-hidden="true">
                     +91
@@ -383,11 +406,16 @@ export default function GlobalSupportButton() {
                     type="tel"
                     inputMode="numeric"
                     autoComplete="tel-national"
-                    className={styles.phoneInput}
+                    readOnly={accountHasPhone}
+                    tabIndex={accountHasPhone ? -1 : undefined}
+                    className={`${styles.phoneInput} ${
+                      accountHasPhone ? styles.phoneInputReadOnly : ""
+                    }`}
                     placeholder="10-digit mobile number"
                     maxLength={10}
                     value={phone}
                     onChange={(e) => {
+                      if (accountHasPhone) return;
                       const normalized = normalizeSupportPhone(e.target.value).slice(
                         0,
                         10,
@@ -399,12 +427,22 @@ export default function GlobalSupportButton() {
                       if (submitError) setSubmitError("");
                     }}
                     disabled={isSubmitting}
+                    aria-readonly={accountHasPhone}
                     aria-invalid={Boolean(fieldErrors.phone)}
                     aria-describedby={
-                      fieldErrors.phone ? `${phoneId}-error` : undefined
+                      fieldErrors.phone
+                        ? `${phoneId}-error`
+                        : accountHasPhone
+                          ? `${phoneId}-helper`
+                          : undefined
                     }
                   />
                 </div>
+                {accountHasPhone ? (
+                  <p id={`${phoneId}-helper`} className={styles.fieldHelperText}>
+                    From your account
+                  </p>
+                ) : null}
                 {fieldErrors.phone ? (
                   <p
                     id={`${phoneId}-error`}
@@ -502,7 +540,9 @@ export default function GlobalSupportButton() {
 
               <ContinueButton
                 type="submit"
-                label={isSubmitting ? "Submitting..." : "Submit Request"}
+                label={isSubmitting ? "Submitting" : "Submit Request"}
+                leadingIcon={isSubmitting ? <Spinner size={15} /> : undefined}
+                showArrow={!isSubmitting}
                 disabled={isSubmitting}
                 className={styles.submitBtn}
               />

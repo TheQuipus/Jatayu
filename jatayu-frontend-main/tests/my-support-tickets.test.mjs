@@ -93,23 +93,29 @@ test("supportApi exports getMySupportTickets, getMySupportTicket, and openGlobal
           subject: "Issue 1",
           description: "Desc",
           status: "open",
+          lastReplyBy: null,
+          viewerStatus: { key: "in_progress", label: "In Progress" },
+          statusLabel: "In Progress",
           createdAt: "2026-11-20T10:00:00.000Z",
           lastRepliedAt: null,
+          closedAt: null,
           replyCount: 0,
         },
       ],
-      counts: { all: 3, open: 1, replied: 2 },
+      counts: { all: 3, in_progress: 1, response_received: 1, closed: 1 },
       pagination: { page: 1, limit: 10, total: 3, totalPages: 1 },
     },
   };
 
   const listRes = await api.getMySupportTickets(
-    { page: 1, limit: 10, status: "open" },
+    { page: 1, limit: 10, status: "in_progress" },
     "/seeker/support",
   );
   assert.equal(listRes.items.length, 1);
-  assert.equal(listRes.counts.open, 1);
-  assert.ok(fetchCalls.at(-1).url.includes("/api/support/tickets?page=1&limit=10&status=open"));
+  assert.equal(listRes.counts.in_progress, 1);
+  assert.equal(listRes.counts.response_received, 1);
+  assert.equal(listRes.counts.closed, 1);
+  assert.ok(fetchCalls.at(-1).url.includes("/api/support/tickets?page=1&limit=10&status=in_progress"));
   assert.equal(fetchCalls.at(-1).init.headers.Authorization, "Bearer seeker-jwt-token");
 
   // 3. getMySupportTicket fetches single ticket
@@ -122,13 +128,19 @@ test("supportApi exports getMySupportTickets, getMySupportTicket, and openGlobal
         ticketNumber: "SUP-1001",
         subject: "Issue 1",
         description: "Desc",
-        status: "replied",
+        status: "open",
+        lastReplyBy: "admin",
+        viewerStatus: { key: "response_received", label: "Response Received" },
+        statusLabel: "Response Received",
         createdAt: "2026-11-20T10:00:00.000Z",
         lastRepliedAt: "2026-11-21T10:00:00.000Z",
+        closedAt: null,
         replies: [
           {
             id: "rep-1",
-            adminName: "Support Team",
+            authorType: "admin",
+            authorName: "Jatayu Support",
+            adminName: "Jatayu Support",
             message: "Fixed",
             createdAt: "2026-11-21T10:00:00.000Z",
           },
@@ -141,6 +153,28 @@ test("supportApi exports getMySupportTickets, getMySupportTicket, and openGlobal
   assert.equal(detailRes.ticket.ticketNumber, "SUP-1001");
   assert.equal(detailRes.ticket.replies.length, 1);
   assert.ok(fetchCalls.at(-1).url.includes("/api/support/tickets/SUP-1001"));
+
+  // 4. createMySupportReply posts reply and dispatches MY_SUPPORT_TICKETS_UPDATED_EVENT
+  nextResponse = {
+    ok: true,
+    status: 201,
+    body: {
+      message: "Reply sent successfully",
+      reply: { id: "rep-2", authorType: "seeker", authorName: "Priya", message: "Thanks!", createdAt: "2026-11-22T10:00:00.000Z" },
+      ticket: {
+        id: "st-1",
+        ticketNumber: "SUP-1001",
+        status: "open",
+        lastReplyBy: "requester",
+        viewerStatus: { key: "in_progress", label: "In Progress" },
+        replies: [],
+      },
+    },
+  };
+  const replyRes = await api.createMySupportReply("st-1", "Thanks!", "/seeker/support");
+  assert.equal(replyRes.ticket.lastReplyBy, "requester");
+  assert.ok(fetchCalls.at(-1).url.includes("/api/support/tickets/st-1/replies"));
+  assert.equal(dispatchedEvents.includes(api.MY_SUPPORT_TICKETS_UPDATED_EVENT), true);
 });
 
 test("Seeker sidebar links Support to /seeker/support and activates on /seeker/support", () => {
@@ -311,4 +345,96 @@ test("ExpertShell and SeekerShell handle collapsed state with clean header, avat
     seekerCssSource.includes(".userMenuBtnCollapsed") && seekerCssSource.includes("width: 36px"),
     "SeekerShell must give collapsed logout button 36px click target",
   );
+});
+
+test("MySupportTickets implements requester status mapping, chip filters, composer visibility, and reply error mapping", () => {
+  const statusHelper = loadModule("../lib/supportStatus.ts");
+  const myTicketsSource = fs.readFileSync(
+    new URL("../components/support/MySupportTickets.tsx", import.meta.url),
+    "utf8",
+  );
+  const myTicketsModule = loadModule("../components/support/MySupportTickets.tsx", {
+    require(id) {
+      if (id === "@/components/ui/Spinner") return () => null;
+      if (id === "@/lib/supportApi") {
+        return {
+          MY_SUPPORT_TICKETS_UPDATED_EVENT: "jatayu:support:tickets_updated",
+          getMySupportTicket: async () => ({}),
+          getMySupportTickets: async () => ({}),
+          createMySupportReply: async () => ({}),
+          openGlobalSupportForm: () => {},
+        };
+      }
+      if (id === "@/lib/supportStatus") return statusHelper;
+      if (id === "./MySupportTickets.module.css") return {};
+      return {};
+    },
+  });
+
+  // 1. Requester status derivation
+  assert.equal(statusHelper.resolveTicketViewerStatus({ status: "open", lastReplyBy: null }, "requester").key, "in_progress");
+  assert.equal(statusHelper.resolveTicketViewerStatus({ status: "open", lastReplyBy: "requester" }, "requester").key, "in_progress");
+  assert.equal(statusHelper.resolveTicketViewerStatus({ status: "open", lastReplyBy: "admin" }, "requester").key, "response_received");
+  assert.equal(statusHelper.resolveTicketViewerStatus({ status: "closed", lastReplyBy: "admin" }, "requester").key, "closed");
+
+  // 2. Filter chips present
+  for (const chipLabel of ["All", "In Progress", "Response Received", "Closed"]) {
+    assert.ok(myTicketsSource.includes(`<span>${chipLabel}</span>`), `Filter chip '${chipLabel}' must be rendered`);
+  }
+
+  // 3. Composer visibility rules
+  assert.equal(myTicketsModule.isRequesterComposerVisible({ status: "open" }), true);
+  assert.equal(myTicketsModule.isRequesterComposerVisible({ status: "closed" }), false);
+  assert.ok(
+    myTicketsSource
+      .replace(/\s+/g, " ")
+      .includes(
+        "This ticket has been closed by Jatayu Support. If you still need help, please raise a new ticket.",
+      ),
+  );
+
+  // 4. Error-code to message mapping
+  assert.deepEqual({ ...myTicketsModule.getRequesterReplyErrorMessage({ status: 502 }) }, {
+    message: "Your reply could not be delivered, please try again",
+    shouldReload: false,
+  });
+  assert.deepEqual({ ...myTicketsModule.getRequesterReplyErrorMessage({ status: 429, code: "SUPPORT_RATE_LIMITED" }) }, {
+    message: "You are sending replies too quickly, please wait a minute",
+    shouldReload: false,
+  });
+  assert.deepEqual({ ...myTicketsModule.getRequesterReplyErrorMessage({ status: 422, message: "Reply message is required" }) }, {
+    message: "Reply message is required",
+    shouldReload: false,
+  });
+  assert.deepEqual({ ...myTicketsModule.getRequesterReplyErrorMessage({ status: 409, code: "SUPPORT_TICKET_CLOSED" }) }, {
+    message: "This ticket has been closed by Jatayu Support.",
+    shouldReload: true,
+  });
+  assert.deepEqual({ ...myTicketsModule.getRequesterReplyErrorMessage(new TypeError("Failed to fetch")) }, {
+    message: "Unable to send reply. Please check your connection and try again.",
+    shouldReload: false,
+  });
+});
+
+test("GlobalSupportButton implements read-only account fields, Spinner submitting state, and inverted trigger colors", () => {
+  const buttonSource = fs.readFileSync(
+    new URL("../components/ui/GlobalSupportButton.tsx", import.meta.url),
+    "utf8",
+  );
+  const buttonCss = fs.readFileSync(
+    new URL("../components/ui/GlobalSupportButton.module.css", import.meta.url),
+    "utf8",
+  );
+
+  // Read-only email/phone when account has them + fallback helper
+  assert.ok(buttonSource.includes("readOnly={accountHasEmail}"));
+  assert.ok(buttonSource.includes("readOnly={accountHasPhone}"));
+  assert.ok(buttonSource.includes("From your account"));
+
+  // Submitting state with Spinner and "Submitting" label
+  assert.ok(buttonSource.includes("<Spinner") && buttonSource.includes('"Submitting"'));
+
+  // Inverted floating button colors: orange default, white when open
+  assert.ok(buttonCss.includes(".trigger {") && buttonCss.includes("background: var(--pomegranate);"));
+  assert.ok(buttonCss.includes(".containerOpen .trigger {") && buttonCss.includes("background: var(--white);"));
 });
