@@ -392,6 +392,12 @@
   }
 
   .speaksCards {
+    --slide-w: calc((min(100vw, 1440px) - 80px) / 3);
+  }
+}
+
+@media (max-width: 820px) {
+  .speaksCards {
     --slide-w: calc((min(100vw, 1440px) - 64px) / 2);
   }
 }

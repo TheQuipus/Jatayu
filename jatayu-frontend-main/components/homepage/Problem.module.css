@@ -245,7 +245,7 @@
 }
 
 /* Responsive Storytelling styles */
-@media (min-width: 1024px) {
+@media (min-width: 1025px) {
   .problemWrapper {
     padding-top: var(--nav-height);
     padding-bottom: 120px;
@@ -420,7 +420,7 @@
   }
 }
 
-@media (min-width: 1024px) and (max-height: 820px) {
+@media (min-width: 1025px) and (max-height: 820px) {
   .problemWrapper {
     padding-top: max(var(--nav-height), 90px);
     padding-bottom: 24px;
@@ -464,7 +464,7 @@
   }
 }
 
-@media (max-width: 1023.98px) {
+@media (max-width: 1024.98px) {
   .problem {
     padding: 60px 0 120px;
   }

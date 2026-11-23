@@ -549,8 +549,8 @@
   .benefitsLines { display: none; }
   .benefitsRuleRow, .benefitsDesc { grid-row: auto; }
   .benefitsDesc { justify-self: start; }
-  .benefitsGrid { grid-template-columns: 1fr; }
-  .benefitsRightCol { grid-template-columns: 1fr; }
+  .benefitsGrid { grid-template-columns: 1fr 1.3fr; gap: 20px; }
+  .benefitsRightCol { grid-template-columns: 1fr; gap: 20px 0; }
   .benefitsFoot {
     grid-column: 1;
     display: flex;
@@ -570,5 +570,7 @@
 }
 
 @media (max-width: 600px) {
+  .benefitsGrid { grid-template-columns: 1fr; }
+  .benefitsRightCol { grid-template-columns: 1fr; }
   .logosTrack { gap: 16px; }
 }
