@@ -294,7 +294,7 @@ export default function Problem() {
       const cardWidth = Math.floor(availableWidth / 6);
 
       // Adapt height, bottom margin, and settle position to viewport height
-      const isCompactH = window.innerHeight <= 820;
+      const isCompactH = window.innerHeight <= 820 || (window.innerWidth >= 1025 && window.innerHeight <= 890);
       const isUltraH = window.innerHeight >= 1000;
       const targetCardHeight = isCompactH
         ? (window.innerHeight <= 740 ? 165 : 175)

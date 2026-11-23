@@ -441,6 +441,28 @@
   }
 }
 
+@media (min-width: 1025px) and (min-height: 821px) and (max-height: 890px) {
+  .problemWrapper {
+    padding-top: max(var(--nav-height), 90px);
+    padding-bottom: 24px;
+  }
+
+  .previewWrap {
+    top: clamp(120px, 15vh, 135px);
+    width: clamp(240px, 30vh, 275px);
+    max-width: clamp(240px, 30vh, 275px);
+  }
+
+  .scardMini {
+    padding: 8px 16px 16px;
+  }
+
+  .scardMiniTitle {
+    margin: clamp(16px, 2vw, 28px) 0 0;
+    font-size: clamp(16px, 1.8vw, 24px);
+  }
+}
+
 @media (max-width: 1023.98px) {
   .problem {
     padding: 60px 0 120px;
