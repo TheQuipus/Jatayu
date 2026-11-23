@@ -318,9 +318,9 @@
   transition: color 0.2s ease, opacity 0.2s ease;
 }
 
-/* Light Variant of Star Divider for Black Card */
+/* Light Variant of Star Divider for Black Card (Prominent White) */
 .starLineLight {
-  opacity: 0.35;
+  opacity: 0.85;
 }
 
 /* Primary Navigation Links (ABOUT, CONTACT, FAQ)
@@ -328,7 +328,7 @@
 */
 .navLinks {
   position: relative;
-  z-index: 10;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   gap: 26px;
@@ -343,6 +343,8 @@
 }
 
 .mainLink {
+  position: relative;
+  z-index: 8;
   display: inline-flex;
   text-decoration: none;
   cursor: pointer;
@@ -377,23 +379,101 @@
   pointer-events: none;
 }
 
-/* Solid Black Container at Bottom (Gray flap completely removed) */
+/* Diagonal Solid Black Wedge Background */
+.blackWedge {
+  position: absolute;
+  inset: 0;
+  background-color: #000000;
+  clip-path: polygon(0% 60.9%, 88.2% 100%, 0% 100%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Origami Charcoal Flap & Flock of Jatayu Birds (Layered above black card content) */
+.origamiContainer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  overflow: hidden;
+}
+
+.charcoalFlapWrapper {
+  position: absolute;
+  inset: 0;
+  filter: drop-shadow(0 -5px 14px rgba(0, 0, 0, 0.45));
+}
+
+.charcoalFlap {
+  position: absolute;
+  inset: 0;
+  background-color: #282A2E;
+  clip-path: polygon(0% 60.9%, 53% 45%, 93% 100%, 88.2% 100%);
+}
+
+/* 5 Jatayu Bird Silhouettes */
+.birdHero {
+  position: absolute;
+  left: 19.4%;
+  top: 52.8%;
+  width: 25.4%;
+  height: auto;
+  opacity: 0.85;
+}
+
+.birdUpperRight {
+  position: absolute;
+  left: 46.4%;
+  top: 59.3%;
+  width: 11.8%;
+  height: auto;
+  opacity: 0.80;
+}
+
+.birdMidLeft {
+  position: absolute;
+  left: 41%;
+  top: 71.1%;
+  width: 10.9%;
+  height: auto;
+  opacity: 0.75;
+}
+
+.birdMidRight {
+  position: absolute;
+  left: 56.9%;
+  top: 73.9%;
+  width: 15.1%;
+  height: auto;
+  opacity: 0.80;
+}
+
+.birdBottomRight {
+  position: absolute;
+  left: 70.9%;
+  top: 86%;
+  width: 9.1%;
+  height: auto;
+  opacity: 0.70;
+}
+
+/* Bottom Footer Container (Content sits at z-index: 4, below the flap at z-index: 6) */
 .blackCard {
   margin-top: auto;
-  background-color: #000000;
+  background-color: transparent;
   padding: 22px 28px 26px 28px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   position: relative;
-  z-index: 10;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+  z-index: 4;
+  max-width: 88%;
 }
 
 .joinHeading {
   font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 40px;
+  font-weight: 600;
   color: #FFFFFF;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -401,29 +481,33 @@
 }
 
 .joinDivider {
-  width: 100%;
+  width: 220px;
+  max-width: 100%;
   pointer-events: none;
+  margin-bottom: 20px;
+  color: #FFFFFF;
 }
 
 .joinLinks {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 26px;
   flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 
 .joinSubLink {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  letter-spacing: 0.01em;
-  transition: color 0.2s ease, transform 0.2s ease;
+  font-family: var(--font-mono), monospace;
+  font-size: 17px;
+  font-weight: 500;
+  color: #FFFFFF;
+  letter-spacing: -0.01em;
+  transition: opacity 0.2s ease, transform 0.2s ease;
   width: fit-content;
 }
 
 .joinSubLink:hover {
-  color: #FFFFFF !important;
+  opacity: 0.75;
   transform: translateX(2px);
 }
 
@@ -433,6 +517,7 @@
   align-items: center;
   gap: 18px;
   margin-top: 2px;
+  margin-bottom: 10px;
 }
 
 .socialIcon {
@@ -440,6 +525,7 @@
   display: grid;
   place-items: center;
   transition: color 0.2s ease, transform 0.2s ease;
+  margin-right: 16px;
 }
 
 .socialIcon:hover {
@@ -451,15 +537,16 @@
 .tricolorBar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
+  max-width: 445px;
   margin-top: 6px;
 }
 
 .barSaffron {
   flex: 1;
   height: 4px;
-  background-color: #FF0000;
+  background-color: #FF8D28;
   border-radius: 2px;
 }
 
@@ -473,7 +560,7 @@
 .barGreen {
   flex: 1;
   height: 4px;
-  background-color: #00A800;
+  background-color: #00DA52;
   border-radius: 2px;
 }
 

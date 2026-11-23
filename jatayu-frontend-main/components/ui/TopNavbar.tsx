@@ -249,6 +249,9 @@ export default function TopNavbar() {
               </div>
             </div>
 
+            {/* Diagonal Solid Black Wedge Background */}
+            <div className={styles.blackWedge} aria-hidden="true" />
+
             {/* Drawer Header */}
             <div className={styles.drawerHeader}>
               <Link
@@ -435,14 +438,24 @@ export default function TopNavbar() {
                   </svg>
                 </a>
                 <a
-                  href="https://linkedin.com"
+                  href="https://youtube.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={styles.socialIcon}
-                  aria-label="LinkedIn"
+                  aria-label="YouTube"
                 >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z" />
+                  <svg
+                    width="19"
+                    height="19"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
+                    <path d="m10 15 5-3-5-3z" fill="currentColor" />
                   </svg>
                 </a>
               </div>
@@ -451,6 +464,49 @@ export default function TopNavbar() {
                 <span className={styles.barSaffron} />
                 <span className={styles.barWhite} />
                 <span className={styles.barGreen} />
+              </div>
+            </div>
+
+            {/* Origami Charcoal Flap & Flock of Jatayu Birds (Layered on top of black card content) */}
+            <div className={styles.origamiContainer} aria-hidden="true">
+              <div className={styles.charcoalFlapWrapper}>
+                <div className={styles.charcoalFlap}>
+                  <Image
+                    src="/assets/img/jatayu-bird-black.png"
+                    alt=""
+                    width={123}
+                    height={103}
+                    className={styles.birdHero}
+                  />
+                  <Image
+                    src="/assets/img/jatayu-bird-black.png"
+                    alt=""
+                    width={57}
+                    height={41}
+                    className={styles.birdUpperRight}
+                  />
+                  <Image
+                    src="/assets/img/jatayu-bird-black.png"
+                    alt=""
+                    width={53}
+                    height={37}
+                    className={styles.birdMidLeft}
+                  />
+                  <Image
+                    src="/assets/img/jatayu-bird-black.png"
+                    alt=""
+                    width={73}
+                    height={52}
+                    className={styles.birdMidRight}
+                  />
+                  <Image
+                    src="/assets/img/jatayu-bird-black.png"
+                    alt=""
+                    width={44}
+                    height={31}
+                    className={styles.birdBottomRight}
+                  />
+                </div>
               </div>
             </div>
 
