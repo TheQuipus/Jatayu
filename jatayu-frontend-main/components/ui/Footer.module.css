@@ -1,8 +1,14 @@
 .stickyShell {
-  --footer-sticky-height: 1000px;
+  --footer-sticky-height: 100vh;
   position: relative;
   height: var(--footer-sticky-height);
   clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+@supports (height: 100svh) {
+  .stickyShell {
+    --footer-sticky-height: 100svh;
+  }
 }
 
 .stickyTrack {
@@ -17,7 +23,7 @@
   padding: 52px 0 28px;
   height: var(--footer-sticky-height);
   position: sticky;
-  top: calc(100vh - var(--footer-sticky-height));
+  top: 0;
   overflow: hidden;
 }
 
