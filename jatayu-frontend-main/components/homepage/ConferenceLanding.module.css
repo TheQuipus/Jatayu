@@ -508,6 +508,16 @@
     height: 680px;
   }
 
+  .animationImageBox img[src*="category-immigration"] {
+    object-position: top center;
+    transform: scale(1.35) translateY(-5%);
+    transform-origin: top center;
+  }
+
+  .animationImageBox:hover img[src*="category-immigration"] {
+    transform: scale(1.38) translateY(-5%);
+  }
+
   .heroBottomBox {
     position: relative;
     padding: 24px 16px;
