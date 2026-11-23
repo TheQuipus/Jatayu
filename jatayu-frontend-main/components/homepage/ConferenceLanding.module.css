@@ -485,9 +485,9 @@
   }
 
   .scrollWrap {
-    height: 280px;
+    height: 380px;
     margin-top: 0;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .rotationCircleBox,
