@@ -299,7 +299,8 @@
   .scardMini {
     width: 100%;
     max-width: none;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: auto;
+    height: 195px;
     min-height: auto;
     z-index: 10;
   }

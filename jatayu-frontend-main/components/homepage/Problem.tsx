@@ -160,14 +160,26 @@ export default function Problem() {
       const paddingLeft = parseFloat(innerStyle.paddingLeft) || 0;
       const paddingTop = parseFloat(innerStyle.paddingTop) || 0;
 
+      // Adapt height, bottom margin, and settle position to viewport height
+      const isCompactH = window.innerHeight <= 820 || (window.innerWidth >= 1025 && window.innerHeight <= 890);
+      const isUltraH = window.innerHeight >= 1000;
+      const targetCardHeight = isCompactH
+        ? (window.innerHeight <= 740 ? 165 : 175)
+        : (isUltraH ? 230 : 195);
+
       // 2. Set cards to absolute positioning relative to their parent container (inner)
       cards.forEach((card, index) => {
+        const isSecondRow = index >= 3;
+        const initialY = isSecondRow
+          ? innerRect.height + 50
+          : startRects[index].top - innerRect.top - paddingTop;
+
         gsap.set(card, {
           position: "absolute",
           left: startRects[index].left - innerRect.left - paddingLeft,
-          top: startRects[index].top - innerRect.top - paddingTop,
+          top: initialY,
           width: startRects[index].width,
-          height: startRects[index].height,
+          height: targetCardHeight,
           x: 0,
           y: 0,
           rotation: 0,
@@ -293,12 +305,6 @@ export default function Problem() {
       const availableWidth = innerRect.width - innerPadding;
       const cardWidth = Math.floor(availableWidth / 6);
 
-      // Adapt height, bottom margin, and settle position to viewport height
-      const isCompactH = window.innerHeight <= 820 || (window.innerWidth >= 1025 && window.innerHeight <= 890);
-      const isUltraH = window.innerHeight >= 1000;
-      const targetCardHeight = isCompactH
-        ? (window.innerHeight <= 740 ? 165 : 175)
-        : (isUltraH ? 230 : 195);
       const bottomMargin = isCompactH ? 16 : (isUltraH ? 40 : 0);
       const finalY = isCompactH
         ? Math.round(innerRect.height - targetCardHeight - bottomMargin)
@@ -401,7 +407,10 @@ export default function Problem() {
         const targetIndex = index < 3 ? index * 2 : (index - 3) * 2 + 1;
         const finalX = targetIndex * cardWidth;
         const startX = startRects[index].left - innerRect.left - paddingLeft;
-        const startY = startRects[index].top - innerRect.top;
+        const isSecondRow = index >= 3;
+        const startY = isSecondRow
+          ? innerRect.height + 50 + paddingTop
+          : startRects[index].top - innerRect.top;
 
         // Calculate card's maximum tilt angle in the Z axis based on its position in the layout
         const maxRot = (targetIndex - 2.5) * 8; // outer cards tilt up to 20 degrees, inner cards tilt less
