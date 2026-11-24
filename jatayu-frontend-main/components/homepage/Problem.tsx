@@ -151,7 +151,7 @@ export default function Problem() {
       }
       mm = gsap.matchMedia();
 
-      mm.add("(min-width: 1025px)", () => {
+      mm.add("(min-width: 1024px)", () => {
       // 1. Capture coordinates relative to the centered container (innerRect) to prevent horizontal centering offsets
       const startRects = cards.map((card) => card.getBoundingClientRect());
       const innerRect = inner.getBoundingClientRect();
@@ -182,7 +182,7 @@ export default function Problem() {
       });
 
       // Adapt height, bottom margin, and settle position to viewport height
-      const isCompactH = window.innerHeight <= 820 || (window.innerWidth >= 1025 && window.innerHeight <= 890);
+      const isCompactH = window.innerHeight <= 820 || (window.innerWidth >= 1024 && window.innerHeight <= 890);
       const isUltraH = window.innerHeight >= 1000;
       const minTargetH = isCompactH
         ? (window.innerHeight <= 740 ? 190 : 195)
