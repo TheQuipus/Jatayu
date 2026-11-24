@@ -300,8 +300,9 @@
     width: 100%;
     max-width: none;
     aspect-ratio: auto;
-    height: 195px;
-    min-height: auto;
+    min-height: 195px;
+    height: auto;
+    padding: 8px clamp(16px, 1.4vw, 24px) clamp(16px, 1.4vw, 24px);
     z-index: 10;
   }
 

@@ -160,12 +160,34 @@ export default function Problem() {
       const paddingLeft = parseFloat(innerStyle.paddingLeft) || 0;
       const paddingTop = parseFloat(innerStyle.paddingTop) || 0;
 
+      // Calculate responsive card sizing
+      const innerPadding = paddingLeft * 2;
+      const availableWidth = innerRect.width - innerPadding;
+      const cardWidth = Math.floor(availableWidth / 6);
+
+      // Measure natural required height across all cards at cardWidth so descriptions are never trimmed
+      let maxContentH = 0;
+      cards.forEach((card) => {
+        const clone = card.cloneNode(true) as HTMLDivElement;
+        clone.style.position = "absolute";
+        clone.style.visibility = "hidden";
+        clone.style.width = `${cardWidth}px`;
+        clone.style.height = "auto";
+        clone.style.minHeight = "auto";
+        clone.style.maxHeight = "none";
+        document.body.appendChild(clone);
+        const scrollH = clone.scrollHeight;
+        document.body.removeChild(clone);
+        if (scrollH > maxContentH) maxContentH = scrollH;
+      });
+
       // Adapt height, bottom margin, and settle position to viewport height
       const isCompactH = window.innerHeight <= 820 || (window.innerWidth >= 1025 && window.innerHeight <= 890);
       const isUltraH = window.innerHeight >= 1000;
-      const targetCardHeight = isCompactH
-        ? (window.innerHeight <= 740 ? 165 : 175)
-        : (isUltraH ? 230 : 195);
+      const minTargetH = isCompactH
+        ? (window.innerHeight <= 740 ? 190 : 195)
+        : (isUltraH ? 230 : 205);
+      const targetCardHeight = Math.max(minTargetH, Math.ceil(maxContentH + 8));
 
       // 2. Set cards to absolute positioning relative to their parent container (inner)
       cards.forEach((card, index) => {
@@ -299,16 +321,11 @@ export default function Problem() {
         );
       };
 
-      // 6. Calculate responsive card sizing and final rows bottom orbit coordinates
-      // availableWidth subtracts inner container padding so 6 cards fit exactly within innerRect without clipping card 6
-      const innerPadding = paddingLeft * 2;
-      const availableWidth = innerRect.width - innerPadding;
-      const cardWidth = Math.floor(availableWidth / 6);
-
-      const bottomMargin = isCompactH ? 16 : (isUltraH ? 40 : 0);
+      // 6. Calculate final rows bottom orbit coordinates
+      const bottomMargin = isCompactH ? 12 : (isUltraH ? 40 : 0);
       const finalY = isCompactH
         ? Math.round(innerRect.height - targetCardHeight - bottomMargin)
-        : (isUltraH ? Math.round(innerRect.height - targetCardHeight - bottomMargin) : 465);
+        : (isUltraH ? Math.round(innerRect.height - targetCardHeight - bottomMargin) : Math.min(465, Math.round(innerRect.height - targetCardHeight - 20)));
 
       const dipScale = isCompactH ? 0.35 : 0.8;
 
