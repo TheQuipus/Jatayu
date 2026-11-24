@@ -34,15 +34,26 @@ export function resetPassword(payload: {
   });
 }
 
+export interface ApiErrorData {
+  code?: string;
+  retryAfterSeconds?: number;
+  resendAttempts?: number;
+  maxResendAttempts?: number;
+  blockedUntil?: string | null;
+  [key: string]: unknown;
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;
+  data?: ApiErrorData;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, data?: ApiErrorData) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -340,7 +351,7 @@ async function apiFetch<T>(
       }
     }
 
-    throw new ApiError(message, response.status, code);
+    throw new ApiError(message, response.status, code, data as ApiErrorData);
   }
 
   return data as T;
@@ -374,6 +385,9 @@ export interface RegisterResponse {
   code?: string;
   /** Returned in development mode for easy testing */
   otp?: string;
+  resendAttempts?: number;
+  maxResendAttempts?: number;
+  blockedUntil?: string | null;
 }
 
 export async function register(payload: RegisterPayload): Promise<RegisterResponse> {
@@ -423,16 +437,32 @@ export interface ResendOtpPayload {
   expertId: string;
 }
 
+export interface ResendStatusResponse {
+  resendAttempts: number;
+  maxResendAttempts: number;
+  blockedUntil: string | null;
+}
+
 export interface ResendOtpResponse {
   message: string;
   email: string;
   phone: string;
+  resendAttempts?: number;
+  maxResendAttempts?: number;
+  blockedUntil?: string | null;
 }
 
 export async function resendOtp(payload: ResendOtpPayload): Promise<ResendOtpResponse> {
   return apiFetch<ResendOtpResponse>("/api/auth/resend-otp", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function getExpertResendStatus(expertId: string): Promise<ResendStatusResponse> {
+  return apiFetch<ResendStatusResponse>("/api/auth/resend-status", {
+    method: "POST",
+    body: JSON.stringify({ expertId }),
   });
 }
 
@@ -447,18 +477,27 @@ export class OtpRequiredError extends Error {
   expertId: string;
   email: string;
   phone: string;
+  resendAttempts?: number;
+  maxResendAttempts?: number;
+  blockedUntil?: string | null;
 
   constructor(payload: {
     message: string;
     expertId: string;
     email: string;
     phone: string;
+    resendAttempts?: number;
+    maxResendAttempts?: number;
+    blockedUntil?: string | null;
   }) {
     super(payload.message);
     this.name = "OtpRequiredError";
     this.expertId = payload.expertId;
     this.email = payload.email;
     this.phone = payload.phone || "";
+    this.resendAttempts = payload.resendAttempts;
+    this.maxResendAttempts = payload.maxResendAttempts;
+    this.blockedUntil = payload.blockedUntil;
   }
 }
 
@@ -493,12 +532,18 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
       expertId: string;
       email: string;
       phone?: string;
+      resendAttempts?: number;
+      maxResendAttempts?: number;
+      blockedUntil?: string | null;
     };
     throw new OtpRequiredError({
       message: otpData.message,
       expertId: otpData.expertId,
       email: otpData.email,
       phone: otpData.phone || "",
+      resendAttempts: otpData.resendAttempts,
+      maxResendAttempts: otpData.maxResendAttempts,
+      blockedUntil: otpData.blockedUntil,
     });
   }
 
@@ -1099,6 +1144,9 @@ export interface SeekerRegisterResponse {
   seekerId: string;
   email: string;
   phone: string;
+  resendAttempts?: number;
+  maxResendAttempts?: number;
+  blockedUntil?: string | null;
 }
 
 export async function registerSeeker(payload: RegisterPayload): Promise<SeekerRegisterResponse> {
@@ -1131,22 +1179,38 @@ export async function resendSeekerOtp(payload: ResendSeekerOtpPayload): Promise<
   });
 }
 
+export async function getSeekerResendStatus(seekerId: string): Promise<ResendStatusResponse> {
+  return apiFetch<ResendStatusResponse>("/api/seeker-auth/resend-status", {
+    method: "POST",
+    body: JSON.stringify({ seekerId }),
+  });
+}
+
 export class SeekerOtpRequiredError extends Error {
   seekerId: string;
   email: string;
   phone: string;
+  resendAttempts?: number;
+  maxResendAttempts?: number;
+  blockedUntil?: string | null;
 
   constructor(payload: {
     message: string;
     seekerId: string;
     email: string;
     phone: string;
+    resendAttempts?: number;
+    maxResendAttempts?: number;
+    blockedUntil?: string | null;
   }) {
     super(payload.message);
     this.name = "SeekerOtpRequiredError";
     this.seekerId = payload.seekerId;
     this.email = payload.email;
     this.phone = payload.phone || "";
+    this.resendAttempts = payload.resendAttempts;
+    this.maxResendAttempts = payload.maxResendAttempts;
+    this.blockedUntil = payload.blockedUntil;
   }
 }
 
@@ -1165,12 +1229,18 @@ export async function seekerLogin(payload: LoginPayload): Promise<AuthResponse> 
       seekerId: string;
       email: string;
       phone?: string;
+      resendAttempts?: number;
+      maxResendAttempts?: number;
+      blockedUntil?: string | null;
     };
     throw new SeekerOtpRequiredError({
       message: otpData.message,
       seekerId: otpData.seekerId,
       email: otpData.email,
       phone: otpData.phone || "",
+      resendAttempts: otpData.resendAttempts,
+      maxResendAttempts: otpData.maxResendAttempts,
+      blockedUntil: otpData.blockedUntil,
     });
   }
 

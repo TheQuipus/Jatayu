@@ -1,0 +1,104 @@
+.wrapper {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resendButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 15px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.15s ease;
+}
+
+.resendButton:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.resendButton:disabled {
+  cursor: not-allowed;
+  text-decoration: none;
+  opacity: 0.6;
+}
+
+.counter {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 15px;
+  letter-spacing: 0.02em;
+}
+
+.blockCallout {
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.blockMessageLine {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+/* Light Studio variant (Checkout modal white card) */
+.light .resendButton {
+  color: var(--pomegranate, #e53b17);
+  font-weight: 500;
+}
+
+.light .resendButton:disabled {
+  color: var(--silver-chalice, #9e9e9e);
+}
+
+.light .counter {
+  color: var(--dove-gray, #686868);
+}
+
+.light .blockCallout {
+  background: color-mix(in srgb, #e53b17 8%, #ffffff);
+  border: 1px solid color-mix(in srgb, #e53b17 28%, #e6e6e6);
+}
+
+.light .blockMessageLine {
+  color: var(--bunker, #0b0d14);
+}
+
+/* Dark OTP panel variant (Expert & Seeker OtpStep) */
+.dark .resendButton {
+  color: var(--white, #ffffff);
+}
+
+.dark .resendButton:disabled {
+  color: #b8b8b8;
+}
+
+.dark .counter {
+  color: #e8e8e8;
+}
+
+.dark .blockCallout {
+  background: color-mix(in srgb, #e53b17 12%, #14171d);
+  border: 1px solid color-mix(in srgb, #e53b17 45%, #34363b);
+}
+
+.dark .blockMessageLine {
+  color: #f5f5f5;
+}

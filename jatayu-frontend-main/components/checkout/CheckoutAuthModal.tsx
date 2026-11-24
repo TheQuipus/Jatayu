@@ -1,6 +1,7 @@
 import { type RefObject, type KeyboardEvent, type ClipboardEvent } from "react";
 import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
+import OtpResendControl from "@/components/auth/OtpResendControl";
 import {
   type CheckoutRegistrationFieldKey,
   type CheckoutRegistrationValues,
@@ -55,6 +56,10 @@ export type CheckoutAuthModalProps = {
   handleRegisterOtpKeyDown: (index: number, event: KeyboardEvent<HTMLInputElement>) => void;
   handleRegisterOtpPaste: (event: ClipboardEvent) => void;
   registerOtpResendSeconds: number;
+  registerOtpIsResending: boolean;
+  registerOtpResendAttempts: number;
+  registerOtpMaxResendAttempts: number;
+  registerOtpBlockedUntil: string | null;
   onResendRegisterOtp: () => void;
   termsAccepted: boolean;
   onTermsAcceptedChange: (accepted: boolean) => void;
@@ -102,6 +107,10 @@ export default function CheckoutAuthModal({
   handleRegisterOtpKeyDown,
   handleRegisterOtpPaste,
   registerOtpResendSeconds,
+  registerOtpIsResending,
+  registerOtpResendAttempts,
+  registerOtpMaxResendAttempts,
+  registerOtpBlockedUntil,
   onResendRegisterOtp,
   termsAccepted,
   onTermsAcceptedChange,
@@ -515,26 +524,15 @@ export default function CheckoutAuthModal({
                 </div>
               </div>
 
-              <p className={styles.registerOtpResendText}>
-                {registerOtpResendSeconds > 0 ? (
-                  <>
-                    <span className={styles.registerOtpResendMuted}>
-                      Resend the code again in{" "}
-                    </span>
-                    <span className={styles.registerOtpResendHighlight}>
-                      {registerOtpResendSeconds} Seconds
-                    </span>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.registerOtpResendLink}
-                    onClick={onResendRegisterOtp}
-                  >
-                    Resend the code
-                  </button>
-                )}
-              </p>
+              <OtpResendControl
+                resendSeconds={registerOtpResendSeconds}
+                isResending={registerOtpIsResending}
+                resendAttempts={registerOtpResendAttempts}
+                maxResendAttempts={registerOtpMaxResendAttempts}
+                blockedUntil={registerOtpBlockedUntil}
+                variant="light"
+                onResend={onResendRegisterOtp}
+              />
 
               <label className={styles.termsAgreement}>
                 <input
