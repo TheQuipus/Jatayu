@@ -399,3 +399,18 @@
 .authToggleBtn:hover .authToggleLabelTrack {
   transform: translateY(-50%);
 }
+
+/* ==========================================================================
+   Desktop Responsive Styles (min-width: 1024px)
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .registerCard {
+    height: clamp(560px, calc(100vh - 112px), 768px);
+    min-height: min(560px, calc(100vh - 112px));
+    max-height: 768px;
+  }
+
+  .registerRightScroll {
+    max-height: calc(100vh - 208px);
+  }
+}
