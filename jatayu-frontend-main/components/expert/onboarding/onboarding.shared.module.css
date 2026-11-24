@@ -376,3 +376,14 @@
     justify-content: space-between;
   }
 }
+
+/* ==========================================================================
+   Desktop Responsive Styles (min-width: 1024px)
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .card {
+    height: clamp(560px, calc(100vh - 112px), 768px);
+    min-height: min(560px, calc(100vh - 112px));
+    max-height: 768px;
+  }
+}
