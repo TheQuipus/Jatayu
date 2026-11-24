@@ -167,6 +167,20 @@ export default function ConferenceLanding() {
     const items = Array.from(scrollWrap.querySelectorAll<HTMLElement>(`.${styles.animationItem}`));
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+    const updateScale = () => {
+      if (typeof window === "undefined") return;
+      if (window.innerWidth < 1024) {
+        scrollWrap.style.removeProperty("--carousel-scale");
+        return;
+      }
+      const availW = window.innerWidth * 0.96;
+      const availH = window.innerHeight - 170; // room below navbar + heading
+      const scaleW = availW / 2650;
+      const scaleH = availH / 760;
+      const scale = Math.min(scaleW, scaleH);
+      scrollWrap.style.setProperty("--carousel-scale", scale.toFixed(4));
+    };
+
     const updateRotation = () => {
       // Crowdix advances the ring by 90 degrees over one viewport of scroll.
       // The motion is intentionally clamped so the carousel settles after the
@@ -214,13 +228,20 @@ export default function ConferenceLanding() {
 
     scrollWrap.style.opacity = "1";
     if (bottomBox) bottomBox.style.opacity = "1";
+    updateScale();
     updateRotation();
+
+    const handleResize = () => {
+      updateScale();
+      updateRotation();
+    };
+
     window.addEventListener("scroll", updateRotation, { passive: true });
-    window.addEventListener("resize", updateRotation);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("scroll", updateRotation);
-      window.removeEventListener("resize", updateRotation);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
