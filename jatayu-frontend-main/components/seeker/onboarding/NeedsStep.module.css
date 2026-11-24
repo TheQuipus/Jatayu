@@ -477,3 +477,43 @@
   font-weight: 600;
   letter-spacing: 0.01em;
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .textareaWrapper {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .needsTextEditor,
+  .needsTextMirror,
+  .needsTextarea {
+    min-height: 100px;
+    height: auto;
+    max-height: 180px;
+    font-size: 15px;
+  }
+
+  .suggestedPill {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .needChipsRow {
+    gap: 6px;
+  }
+
+  .proTipContainer {
+    padding: 10px 0;
+  }
+
+  .proTipTitle {
+    font-size: 12px;
+  }
+
+  .proTipText {
+    font-size: 12px;
+  }
+}

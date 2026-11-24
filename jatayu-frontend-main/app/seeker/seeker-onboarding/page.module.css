@@ -63,3 +63,16 @@
     padding-bottom: 40px;
   }
 }
+
+/* ==========================================================================
+   Phone & Tablet Responsive Styles (max-width: 1023px)
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .pageContainer {
+    min-height: 100dvh;
+    align-items: safe center;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: clamp(16px, 4vw, 40px) clamp(12px, 3vw, 20px);
+  }
+}

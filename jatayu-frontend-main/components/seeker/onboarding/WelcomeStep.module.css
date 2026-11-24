@@ -419,3 +419,40 @@
     display: block;
   }
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .mainTitle {
+    font-size: clamp(24px, 7vw, 32px);
+    margin-top: 8px;
+    margin-bottom: 12px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    margin-bottom: 18px;
+  }
+
+  .badgesRow {
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .topBadge {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .whatNextSection {
+    padding: 16px 14px;
+    margin-bottom: 24px;
+    border-radius: 12px;
+  }
+
+  .nextGrid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
