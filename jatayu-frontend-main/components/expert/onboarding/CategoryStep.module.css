@@ -428,3 +428,13 @@
     transform: rotate(360deg);
   }
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .topicsTooltipBox {
+    max-width: calc(100vw - 32px);
+    left: 0;
+  }
+}

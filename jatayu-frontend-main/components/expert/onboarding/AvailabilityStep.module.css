@@ -244,3 +244,29 @@
     font-size: 10px;
   }
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .hoursPane {
+    --day-btn-size: clamp(30px, 8.5vw, 34px);
+    --day-btn-gap: 4px;
+    margin-bottom: 24px;
+  }
+
+  .dayBtn {
+    font-size: 11px;
+  }
+
+  .slotRow {
+    padding: 12px 10px;
+    gap: 12px;
+  }
+
+  .slotTimes {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
