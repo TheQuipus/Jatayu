@@ -116,3 +116,30 @@
 .otpResendLink:hover {
   opacity: 0.85;
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .otpInputRow {
+    gap: clamp(4px, 1.8vw, 8px);
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .otpInput {
+    width: clamp(36px, calc((100% - 24px) / 6), 52px);
+    min-width: 0;
+    flex: 1 1 0;
+    height: 48px;
+    padding: 10px 0;
+    text-align: center;
+    font-size: 18px;
+  }
+
+  .otpSentText {
+    font-size: 13px;
+    line-height: 18px;
+    margin-bottom: 20px;
+  }
+}
