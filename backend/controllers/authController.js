@@ -37,6 +37,13 @@ import {
   getPasswordLoginLockout,
   recordFailedPasswordLogin,
 } from '../utils/accountLoginLockout.js';
+import {
+  buildResendBlockedPayload,
+  clearOtpResendLimits,
+  getOtpResendStatus,
+  releaseResendAttempt,
+  reserveResendAttempt,
+} from '../utils/otpResendLimit.js';
 
 dotenv.config();
 
@@ -171,7 +178,9 @@ function serializeAuthUser(expert) {
 
 // Cache active OTPs locally; onboarding metadata persists codes and expiry across restarts.
 const tempOtps = new Map();
-const expertOtpCooldown = createOtpCooldownTracker(30_000);
+// Must stay aligned with the frontend OTP resend countdown (30 seconds).
+const OTP_RESEND_COOLDOWN_MS = 30_000;
+const expertOtpCooldown = createOtpCooldownTracker(OTP_RESEND_COOLDOWN_MS);
 
 function generateOtpCode() {
   return String(randomInt(100000, 1000000));
@@ -272,6 +281,7 @@ export const register = async (req, res) => {
 
     await issueOtp(expert);
     expertOtpCooldown.markIssued(expert.id);
+    const resendStatus = await getOtpResendStatus({ email: expert.email, phone: expert.phone });
 
     console.log(`\n======================================================`);
     console.log(`[Expert OTP Sent] Registered: ${expert.fullName}`);
@@ -285,6 +295,7 @@ export const register = async (req, res) => {
       expertId: expert.id,
       email: expert.email,
       phone: expert.phone,
+      ...resendStatus,
     });
   } catch (error) {
     const uniqueConflict = mapRegistrationUniqueError(error, 'expert account');
@@ -364,6 +375,12 @@ export const verifyOtp = async (req, res) => {
       tempOtps.delete(expertId);
       expertOtpCooldown.clear(expertId);
 
+      try {
+        await clearOtpResendLimits({ email: expert.email, phone: expert.phone });
+      } catch {
+        console.warn('[OTP Resend Limit] Failed to clear expert resend limits after verification');
+      }
+
       const token = await issueExpertToken(expert, req, 'otp');
 
       return res.status(200).json({
@@ -408,11 +425,43 @@ export const resendOtp = async (req, res) => {
       });
     }
 
-    if (!expertOtpCooldown.canIssueNow(expert.id)) {
-      return res.status(429).json({ message: 'Please wait before requesting another OTP.' });
+    const resendStatus = await getOtpResendStatus({ email: expert.email, phone: expert.phone });
+    if (resendStatus.blockedUntil) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((Date.parse(resendStatus.blockedUntil) - Date.now()) / 1000),
+      );
+      return res.status(429).json(
+        buildResendBlockedPayload({
+          blockedUntil: resendStatus.blockedUntil,
+          retryAfterSeconds,
+        }),
+      );
     }
 
-    await issueOtp(expert);
+    if (!expertOtpCooldown.canIssueNow(expert.id)) {
+      return res.status(429).json({
+        message: 'Please wait before requesting another OTP.',
+        code: 'OTP_RESEND_COOLDOWN',
+        retryAfterSeconds: Math.max(1, expertOtpCooldown.getRemainingSeconds(expert.id)),
+      });
+    }
+
+    const reservationResult = await reserveResendAttempt({
+      email: expert.email,
+      phone: expert.phone,
+    });
+    if (reservationResult.blocked) {
+      return res.status(429).json(buildResendBlockedPayload(reservationResult));
+    }
+
+    try {
+      await issueOtp(expert);
+    } catch (deliveryError) {
+      await releaseResendAttempt(reservationResult.reservation);
+      throw deliveryError;
+    }
+
     expertOtpCooldown.markIssued(expert.id);
 
     console.log(`[OTP Resent] Expert: ${expert.email} | OTP: (sent via provider)`);
@@ -421,12 +470,53 @@ export const resendOtp = async (req, res) => {
       message: 'Verification code resent to your email and phone.',
       email: expert.email,
       phone: expert.phone,
+      resendAttempts: reservationResult.resendAttempts,
+      maxResendAttempts: reservationResult.maxResendAttempts,
+      blockedUntil: reservationResult.blockedUntil,
     });
   } catch (error) {
     const deliveryResponse = handleOtpDeliveryError(error, res, 'Resend OTP');
     if (deliveryResponse) return deliveryResponse;
     console.error('Resend OTP Error:', error);
     return res.status(500).json({ message: 'Server error during OTP resend', error: error.message });
+  }
+};
+
+/**
+ * Get current OTP resend attempt status without incrementing or issuing an OTP
+ */
+export const resendStatus = async (req, res) => {
+  const { expertId } = req.body;
+
+  if (!expertId) {
+    return res.status(400).json({ message: 'expertId is required' });
+  }
+
+  try {
+    const expert = await Expert.findByPk(expertId);
+    if (!expert) {
+      return res.status(404).json({ message: 'Registration session expired. Please register again.' });
+    }
+
+    if (isExpertBlacklisted(expert)) {
+      return res.status(403).json({
+        message: 'Your profile is Marked as Blacklisted',
+        code: 'CREDENTIALS_BLACKLISTED',
+      });
+    }
+
+    if (isExpertSuspended(expert)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
+
+    const status = await getOtpResendStatus({ email: expert.email, phone: expert.phone });
+    return res.status(200).json(status);
+  } catch (error) {
+    console.error('Resend Status Error:', error);
+    return res.status(500).json({ message: 'Server error checking OTP resend status', error: error.message });
   }
 };
 
@@ -509,12 +599,15 @@ export const login = async (req, res) => {
         expertOtpCooldown.markIssued(expert.id);
       }
 
+      const resendStatus = await getOtpResendStatus({ email: expert.email, phone: expert.phone });
+
       return res.status(403).json({
         message: 'Please verify your account with the OTP sent to your email and phone.',
         requiresOtp: true,
         expertId: expert.id,
         email: expert.email,
         phone: expert.phone,
+        ...resendStatus,
       });
     }
 

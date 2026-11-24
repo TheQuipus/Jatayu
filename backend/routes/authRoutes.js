@@ -1,11 +1,12 @@
 import express from 'express';
-import { register, verifyOtp, resendOtp, login, googleLogin, linkedinLogin, getPublicConfig } from '../controllers/authController.js';
+import { register, verifyOtp, resendOtp, resendStatus, login, googleLogin, linkedinLogin, getPublicConfig } from '../controllers/authController.js';
 
 const router = express.Router();
 
 router.post('/register', register);
 router.post('/verify-otp', verifyOtp);
 router.post('/resend-otp', resendOtp);
+router.post('/resend-status', resendStatus);
 router.post('/login', login);
 router.post('/google', googleLogin);
 router.post('/linkedin', linkedinLogin);

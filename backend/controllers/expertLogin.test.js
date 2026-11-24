@@ -60,7 +60,68 @@ mock.module('../utils/accountLoginLockout.js', {
 });
 mock.module('../services/expertSessionService.js', { namedExports: { issueExpertToken: async () => 'test-expert-token' } });
 mock.module('../utils/expertApplicationQueue.js', { namedExports: { promoteExpertToApplicationQueue: async () => {} } });
-const { login, register, verifyOtp } = await import('./authController.js');
+
+const resendLimitMap = new Map();
+const resendLimitState = {
+  getOtpResendStatus: async ({ email, phone } = {}) => {
+    const key = `${String(email || '').toLowerCase()}|${String(phone || '').slice(-10)}`;
+    const entry = resendLimitMap.get(key);
+    if (!entry || (entry.blockedUntil && entry.blockedUntil <= Date.now())) {
+      return { resendAttempts: 0, maxResendAttempts: 3, blockedUntil: null };
+    }
+    return {
+      resendAttempts: entry.count,
+      maxResendAttempts: 3,
+      blockedUntil: entry.blockedUntil ? new Date(entry.blockedUntil).toISOString() : null,
+    };
+  },
+  reserveResendAttempt: async ({ email, phone } = {}) => {
+    const key = `${String(email || '').toLowerCase()}|${String(phone || '').slice(-10)}`;
+    const entry = resendLimitMap.get(key) || { count: 0, blockedUntil: null };
+    if (entry.blockedUntil && entry.blockedUntil > Date.now()) {
+      return {
+        blocked: true,
+        resendAttempts: 3,
+        maxResendAttempts: 3,
+        blockedUntil: new Date(entry.blockedUntil).toISOString(),
+        retryAfterSeconds: Math.max(1, Math.ceil((entry.blockedUntil - Date.now()) / 1000)),
+      };
+    }
+    const nextCount = Math.min(3, entry.count + 1);
+    const blockedUntil = nextCount >= 3 ? Date.now() + 30 * 60 * 1000 : null;
+    resendLimitMap.set(key, { count: nextCount, blockedUntil });
+    return {
+      blocked: false,
+      resendAttempts: nextCount,
+      maxResendAttempts: 3,
+      blockedUntil: blockedUntil ? new Date(blockedUntil).toISOString() : null,
+      reservation: { key },
+    };
+  },
+  releaseResendAttempt: async (reservation) => {
+    if (!reservation?.key) return;
+    const entry = resendLimitMap.get(reservation.key);
+    if (!entry) return;
+    const nextCount = Math.max(0, entry.count - 1);
+    if (nextCount === 0) resendLimitMap.delete(reservation.key);
+    else resendLimitMap.set(reservation.key, { count: nextCount, blockedUntil: null });
+  },
+  clearOtpResendLimits: async ({ email, phone } = {}) => {
+    const key = `${String(email || '').toLowerCase()}|${String(phone || '').slice(-10)}`;
+    resendLimitMap.delete(key);
+  },
+  buildResendBlockedPayload: ({ blockedUntil, retryAfterSeconds }) => ({
+    message: 'Resend OTP limit reached. Please try again in 30 mins.',
+    code: 'OTP_RESEND_LIMIT_REACHED',
+    resendAttempts: 3,
+    maxResendAttempts: 3,
+    blockedUntil,
+    retryAfterSeconds,
+  }),
+};
+mock.module('../utils/otpResendLimit.js', { namedExports: resendLimitState });
+
+const { login, register, resendOtp, resendStatus, verifyOtp } = await import('./authController.js');
 
 function response() {
   return {
@@ -476,4 +537,85 @@ test('expert verifyOtp locks out after 5 invalid attempts', async (t) => {
   await verifyOtp({ body: { expertId: expert.id, code: '000000' } }, exhausted);
   assert.equal(exhausted.statusCode, 429);
   assert.equal(exhausted.body.code, 'OTP_ATTEMPTS_EXCEEDED');
+});
+
+test('expert resendOtp tracks attempts, enforces 30s cooldown, releases on failure, blocks at 3, and clears on verify', async (t) => {
+  resendLimitMap.clear();
+  const expert = {
+    id: 'resend-limit-expert',
+    email: 'resend-limit-expert@example.com',
+    phone: '9888877777',
+    onboardingStep: 'otp',
+    status: 'draft',
+    isBlacklisted: false,
+    onboardingMetadata: {},
+    save: async () => {},
+  };
+  t.mock.method(Expert, 'findByPk', async (id) => (id === expert.id ? expert : null));
+
+  const statusBefore = response();
+  await resendStatus({ body: { expertId: expert.id } }, statusBefore);
+  assert.equal(statusBefore.statusCode, 200);
+  assert.deepEqual(statusBefore.body, { resendAttempts: 0, maxResendAttempts: 3, blockedUntil: null });
+
+  // Delivery failure does not consume an attempt
+  deliveryFails = true;
+  const failedResend = response();
+  await resendOtp({ body: { expertId: expert.id } }, failedResend);
+  assert.equal(failedResend.statusCode, 503);
+  deliveryFails = false;
+
+  const statusAfterFail = response();
+  await resendStatus({ body: { expertId: expert.id } }, statusAfterFail);
+  assert.equal(statusAfterFail.body.resendAttempts, 0);
+
+  // 1st resend succeeds and starts 30s cooldown
+  const firstResend = response();
+  await resendOtp({ body: { expertId: expert.id } }, firstResend);
+  assert.equal(firstResend.statusCode, 200);
+  assert.equal(firstResend.body.resendAttempts, 1);
+  assert.equal(firstResend.body.maxResendAttempts, 3);
+  assert.equal(firstResend.body.blockedUntil, null);
+
+  // Immediate 2nd resend hits 30s cooldown
+  const cooldownRes = response();
+  await resendOtp({ body: { expertId: expert.id } }, cooldownRes);
+  assert.equal(cooldownRes.statusCode, 429);
+  assert.equal(cooldownRes.body.code, 'OTP_RESEND_COOLDOWN');
+  assert.ok(cooldownRes.body.retryAfterSeconds > 0);
+
+  // Verify clears resend counter
+  const code = expert.onboardingMetadata.pendingOtp.code;
+  const verifyRes = response();
+  await verifyOtp({ body: { expertId: expert.id, code } }, verifyRes);
+  assert.equal(verifyRes.statusCode, 200);
+
+  const statusAfterVerify = response();
+  await resendStatus({ body: { expertId: expert.id } }, statusAfterVerify);
+  assert.equal(statusAfterVerify.body.resendAttempts, 0);
+
+  // Blocked account gets 429 OTP_RESEND_LIMIT_REACHED
+  const blockedExpert = {
+    id: 'blocked-expert-id',
+    email: 'blocked-expert@example.com',
+    phone: '9888866666',
+    onboardingStep: 'otp',
+    status: 'draft',
+    isBlacklisted: false,
+    onboardingMetadata: {},
+    save: async () => {},
+  };
+  t.mock.method(Expert, 'findByPk', async (id) => (id === blockedExpert.id ? blockedExpert : null));
+  await resendLimitState.reserveResendAttempt({ email: blockedExpert.email, phone: blockedExpert.phone });
+  await resendLimitState.reserveResendAttempt({ email: blockedExpert.email, phone: blockedExpert.phone });
+  await resendLimitState.reserveResendAttempt({ email: blockedExpert.email, phone: blockedExpert.phone });
+
+  const blockedRes = response();
+  await resendOtp({ body: { expertId: blockedExpert.id } }, blockedRes);
+  assert.equal(blockedRes.statusCode, 429);
+  assert.equal(blockedRes.body.code, 'OTP_RESEND_LIMIT_REACHED');
+  assert.equal(blockedRes.body.resendAttempts, 3);
+  assert.equal(blockedRes.body.maxResendAttempts, 3);
+  assert.ok(blockedRes.body.blockedUntil);
+  assert.ok(blockedRes.body.retryAfterSeconds > 0);
 });

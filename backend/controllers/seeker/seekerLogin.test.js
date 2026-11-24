@@ -58,7 +58,68 @@ mock.module('../../utils/accountLoginLockout.js', {
     clearPasswordLoginIpFailures: async (...args) => seekerLoginLockoutState.clearPasswordLoginIpFailures(...args),
   },
 });
-const { login, register, resendOtp, verifyOtp } = await import('./seekerAuthController.js');
+
+const resendLimitMap = new Map();
+const resendLimitState = {
+  getOtpResendStatus: async ({ email, phone } = {}) => {
+    const key = `${String(email || '').toLowerCase()}|${String(phone || '').slice(-10)}`;
+    const entry = resendLimitMap.get(key);
+    if (!entry || (entry.blockedUntil && entry.blockedUntil <= Date.now())) {
+      return { resendAttempts: 0, maxResendAttempts: 3, blockedUntil: null };
+    }
+    return {
+      resendAttempts: entry.count,
+      maxResendAttempts: 3,
+      blockedUntil: entry.blockedUntil ? new Date(entry.blockedUntil).toISOString() : null,
+    };
+  },
+  reserveResendAttempt: async ({ email, phone } = {}) => {
+    const key = `${String(email || '').toLowerCase()}|${String(phone || '').slice(-10)}`;
+    const entry = resendLimitMap.get(key) || { count: 0, blockedUntil: null };
+    if (entry.blockedUntil && entry.blockedUntil > Date.now()) {
+      return {
+        blocked: true,
+        resendAttempts: 3,
+        maxResendAttempts: 3,
+        blockedUntil: new Date(entry.blockedUntil).toISOString(),
+        retryAfterSeconds: Math.max(1, Math.ceil((entry.blockedUntil - Date.now()) / 1000)),
+      };
+    }
+    const nextCount = Math.min(3, entry.count + 1);
+    const blockedUntil = nextCount >= 3 ? Date.now() + 30 * 60 * 1000 : null;
+    resendLimitMap.set(key, { count: nextCount, blockedUntil });
+    return {
+      blocked: false,
+      resendAttempts: nextCount,
+      maxResendAttempts: 3,
+      blockedUntil: blockedUntil ? new Date(blockedUntil).toISOString() : null,
+      reservation: { key },
+    };
+  },
+  releaseResendAttempt: async (reservation) => {
+    if (!reservation?.key) return;
+    const entry = resendLimitMap.get(reservation.key);
+    if (!entry) return;
+    const nextCount = Math.max(0, entry.count - 1);
+    if (nextCount === 0) resendLimitMap.delete(reservation.key);
+    else resendLimitMap.set(reservation.key, { count: nextCount, blockedUntil: null });
+  },
+  clearOtpResendLimits: async ({ email, phone } = {}) => {
+    const key = `${String(email || '').toLowerCase()}|${String(phone || '').slice(-10)}`;
+    resendLimitMap.delete(key);
+  },
+  buildResendBlockedPayload: ({ blockedUntil, retryAfterSeconds }) => ({
+    message: 'Resend OTP limit reached. Please try again in 30 mins.',
+    code: 'OTP_RESEND_LIMIT_REACHED',
+    resendAttempts: 3,
+    maxResendAttempts: 3,
+    blockedUntil,
+    retryAfterSeconds,
+  }),
+};
+mock.module('../../utils/otpResendLimit.js', { namedExports: resendLimitState });
+
+const { login, register, resendOtp, resendStatus, verifyOtp } = await import('./seekerAuthController.js');
 
 function response() {
   return {
@@ -720,4 +781,74 @@ test('seeker login and OTP flows strictly block suspended seeker with 403 ACCOUN
   );
   assert.equal(resendRes.statusCode, 403);
   assert.equal(resendRes.body.code, 'ACCOUNT_SUSPENDED');
+});
+
+test('seeker resendOtp returns attempt fields, handles delivery failure, blocks at 3, and clears on verify', async (t) => {
+  resendLimitMap.clear();
+  const seeker = {
+    id: 'resend-limit-seeker',
+    email: 'resend-limit-seeker@example.com',
+    phone: '9777788888',
+    onboardingStep: 'otp',
+    status: 'draft',
+    onboardingMetadata: {},
+    save: async () => {},
+  };
+  t.mock.method(Seeker, 'findByPk', async (id) => (id === seeker.id ? seeker : null));
+
+  const statusBefore = response();
+  await resendStatus({ body: { seekerId: seeker.id } }, statusBefore);
+  assert.equal(statusBefore.statusCode, 200);
+  assert.deepEqual(statusBefore.body, { resendAttempts: 0, maxResendAttempts: 3, blockedUntil: null });
+
+  deliveryFails = true;
+  const failed = response();
+  await resendOtp({ body: { seekerId: seeker.id } }, failed);
+  assert.equal(failed.statusCode, 503);
+  deliveryFails = false;
+
+  const first = response();
+  await resendOtp({ body: { seekerId: seeker.id } }, first);
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.body.resendAttempts, 1);
+  assert.equal(first.body.maxResendAttempts, 3);
+  assert.equal(first.body.blockedUntil, null);
+
+  const cooldown = response();
+  await resendOtp({ body: { seekerId: seeker.id } }, cooldown);
+  assert.equal(cooldown.statusCode, 429);
+  assert.equal(cooldown.body.code, 'OTP_RESEND_COOLDOWN');
+  assert.ok(cooldown.body.retryAfterSeconds > 0);
+
+  const code = seeker.onboardingMetadata.pendingOtp.code;
+  const verified = response();
+  await verifyOtp({ body: { seekerId: seeker.id, code } }, verified);
+  assert.equal(verified.statusCode, 200);
+
+  const statusAfterVerify = response();
+  await resendStatus({ body: { seekerId: seeker.id } }, statusAfterVerify);
+  assert.equal(statusAfterVerify.body.resendAttempts, 0);
+
+  const blockedSeeker = {
+    id: 'blocked-seeker-id',
+    email: 'blocked-seeker@example.com',
+    phone: '9777799999',
+    onboardingStep: 'otp',
+    status: 'draft',
+    onboardingMetadata: {},
+    save: async () => {},
+  };
+  t.mock.method(Seeker, 'findByPk', async (id) => (id === blockedSeeker.id ? blockedSeeker : null));
+  await resendLimitState.reserveResendAttempt({ email: blockedSeeker.email, phone: blockedSeeker.phone });
+  await resendLimitState.reserveResendAttempt({ email: blockedSeeker.email, phone: blockedSeeker.phone });
+  await resendLimitState.reserveResendAttempt({ email: blockedSeeker.email, phone: blockedSeeker.phone });
+
+  const blocked = response();
+  await resendOtp({ body: { seekerId: blockedSeeker.id } }, blocked);
+  assert.equal(blocked.statusCode, 429);
+  assert.equal(blocked.body.code, 'OTP_RESEND_LIMIT_REACHED');
+  assert.equal(blocked.body.resendAttempts, 3);
+  assert.equal(blocked.body.maxResendAttempts, 3);
+  assert.ok(blocked.body.blockedUntil);
+  assert.ok(blocked.body.retryAfterSeconds > 0);
 });

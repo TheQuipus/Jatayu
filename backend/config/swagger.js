@@ -40,7 +40,10 @@ const authPaths = (prefix, tag) => ({
     post: operation({ tag, summary: 'Verify registration OTP', requestBody: jsonBody() }),
   },
   [`${prefix}/resend-otp`]: {
-    post: operation({ tag, summary: 'Resend OTP', requestBody: jsonBody() }),
+    post: operation({ tag, summary: 'Resend OTP (max 3 attempts per 30 mins)', requestBody: jsonBody() }),
+  },
+  [`${prefix}/resend-status`]: {
+    post: operation({ tag, summary: 'Get OTP resend attempt status', requestBody: jsonBody() }),
   },
   [`${prefix}/login`]: {
     post: operation({ tag, summary: 'Log in', requestBody: jsonBody() }),

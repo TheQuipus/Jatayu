@@ -41,13 +41,22 @@ import {
   getPasswordLoginLockout,
   recordFailedPasswordLogin,
 } from '../../utils/accountLoginLockout.js';
+import {
+  buildResendBlockedPayload,
+  clearOtpResendLimits,
+  getOtpResendStatus,
+  releaseResendAttempt,
+  reserveResendAttempt,
+} from '../../utils/otpResendLimit.js';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
 
 const seekerTempOtps = new Map();
-const seekerOtpCooldown = createOtpCooldownTracker(30_000);
+// Must stay aligned with the frontend OTP resend countdown (30 seconds).
+const OTP_RESEND_COOLDOWN_MS = 30_000;
+const seekerOtpCooldown = createOtpCooldownTracker(OTP_RESEND_COOLDOWN_MS);
 
 function canIssueSeekerOtpNow(seekerId) {
   return seekerOtpCooldown.canIssueNow(seekerId);
@@ -198,6 +207,7 @@ export const register = async (req, res) => {
 
     await issueOtp(seeker);
     markSeekerOtpIssued(seeker.id);
+    const resendStatus = await getOtpResendStatus({ email: seeker.email, phone: seeker.phone });
 
     console.log(`\n======================================================`);
     console.log(`[Seeker OTP Sent] Registered: ${seeker.fullName}`);
@@ -211,6 +221,7 @@ export const register = async (req, res) => {
       seekerId: seeker.id,
       email: seeker.email,
       phone: seeker.phone,
+      ...resendStatus,
     });
   } catch (error) {
     const uniqueConflict = mapRegistrationUniqueError(error, 'account');
@@ -277,6 +288,12 @@ export const verifyOtp = async (req, res) => {
       seekerTempOtps.delete(seekerId);
       seekerOtpCooldown.clear(seekerId);
 
+      try {
+        await clearOtpResendLimits({ email: seeker.email, phone: seeker.phone });
+      } catch {
+        console.warn('[OTP Resend Limit] Failed to clear seeker resend limits after verification');
+      }
+
       return res.status(200).json({
         message: 'Account verified successfully',
         token: buildSeekerToken(seeker),
@@ -309,11 +326,43 @@ export const resendOtp = async (req, res) => {
       });
     }
 
-    if (!canIssueSeekerOtpNow(seeker.id)) {
-      return res.status(429).json({ message: 'Please wait before requesting another OTP.' });
+    const resendStatus = await getOtpResendStatus({ email: seeker.email, phone: seeker.phone });
+    if (resendStatus.blockedUntil) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((Date.parse(resendStatus.blockedUntil) - Date.now()) / 1000),
+      );
+      return res.status(429).json(
+        buildResendBlockedPayload({
+          blockedUntil: resendStatus.blockedUntil,
+          retryAfterSeconds,
+        }),
+      );
     }
 
-    await issueOtp(seeker);
+    if (!canIssueSeekerOtpNow(seeker.id)) {
+      return res.status(429).json({
+        message: 'Please wait before requesting another OTP.',
+        code: 'OTP_RESEND_COOLDOWN',
+        retryAfterSeconds: Math.max(1, seekerOtpCooldown.getRemainingSeconds(seeker.id)),
+      });
+    }
+
+    const reservationResult = await reserveResendAttempt({
+      email: seeker.email,
+      phone: seeker.phone,
+    });
+    if (reservationResult.blocked) {
+      return res.status(429).json(buildResendBlockedPayload(reservationResult));
+    }
+
+    try {
+      await issueOtp(seeker);
+    } catch (deliveryError) {
+      await releaseResendAttempt(reservationResult.reservation);
+      throw deliveryError;
+    }
+
     markSeekerOtpIssued(seeker.id);
 
     console.log(`[Seeker OTP Resent] ${seeker.email} | OTP: (sent via provider)`);
@@ -322,12 +371,43 @@ export const resendOtp = async (req, res) => {
       message: 'Verification code resent to your email and phone.',
       email: seeker.email,
       phone: seeker.phone,
+      resendAttempts: reservationResult.resendAttempts,
+      maxResendAttempts: reservationResult.maxResendAttempts,
+      blockedUntil: reservationResult.blockedUntil,
     });
   } catch (error) {
     const deliveryResponse = handleOtpDeliveryError(error, res, 'Seeker resend OTP');
     if (deliveryResponse) return deliveryResponse;
     console.error('Seeker Resend OTP Error:', error);
     return res.status(500).json({ message: 'Server error during OTP resend', error: error.message });
+  }
+};
+
+export const resendStatus = async (req, res) => {
+  const { seekerId } = req.body;
+
+  if (!seekerId) {
+    return res.status(400).json({ message: 'seekerId is required' });
+  }
+
+  try {
+    const seeker = await Seeker.findByPk(seekerId);
+    if (!seeker) {
+      return res.status(404).json({ message: 'Registration session expired. Please register again.' });
+    }
+
+    if (isSeekerSuspended(seeker)) {
+      return res.status(403).json({
+        message: 'Your Profile has been suspended. Contact Us?',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
+
+    const status = await getOtpResendStatus({ email: seeker.email, phone: seeker.phone });
+    return res.status(200).json(status);
+  } catch (error) {
+    console.error('Seeker Resend Status Error:', error);
+    return res.status(500).json({ message: 'Server error checking OTP resend status', error: error.message });
   }
 };
 
@@ -394,17 +474,20 @@ export const login = async (req, res) => {
     // Only verifyOtp may issue the authenticated session for this flow.
     const existingPendingOtp = seekerTempOtps.get(seeker.id) || readOtpFromModel(seeker);
     if (!canIssueSeekerOtpNow(seeker.id) && hasActivePendingOtp(existingPendingOtp)) {
+      const resendStatus = await getOtpResendStatus({ email: seeker.email, phone: seeker.phone });
       return res.status(403).json({
         message: 'Please verify your account with the OTP sent to your email and phone.',
         requiresOtp: true,
         seekerId: seeker.id,
         email: seeker.email,
         phone: seeker.phone,
+        ...resendStatus,
       });
     }
 
     await issueOtp(seeker);
     markSeekerOtpIssued(seeker.id);
+    const resendStatus = await getOtpResendStatus({ email: seeker.email, phone: seeker.phone });
 
     return res.status(403).json({
       message: 'Please verify your account with the OTP sent to your email and phone.',
@@ -412,6 +495,7 @@ export const login = async (req, res) => {
       seekerId: seeker.id,
       email: seeker.email,
       phone: seeker.phone,
+      ...resendStatus,
     });
   } catch (error) {
     const deliveryResponse = handleOtpDeliveryError(error, res, 'Seeker login');
