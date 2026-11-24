@@ -46,3 +46,20 @@
   text-align: center;
   transform: translateX(-50%);
 }
+
+/* ==========================================================================
+   Desktop Responsive Styles (min-width: 1024px)
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .pageContainer {
+    align-items: safe center;
+    overflow-x: hidden;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 899px) {
+  .pageContainer {
+    padding-top: 72px;
+    padding-bottom: 40px;
+  }
+}
