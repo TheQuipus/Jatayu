@@ -550,5 +550,13 @@
   .scrollWrap {
     height: calc(850px * var(--carousel-scale, 0.55));
   }
+
+  .animationImageBox {
+    overflow: visible;
+  }
+
+  .categoryOverlay {
+    transform: none;
+  }
 }
 
