@@ -11,6 +11,7 @@ import {
   Bell,
   CalendarDays,
   DollarSign,
+  Headphones,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -40,8 +41,12 @@ import { getExpertProfile } from "@/lib/expertStore";
 import { fetchExpertProfileData, fetchExpertProfileRecord } from "@/lib/expertProfileApi";
 import { clearAuthSession, getStoredAuthUser } from "@/lib/expertAuth";
 import { getStoredRequests } from "@/lib/expertRequests";
-import { getExpertRequests } from "@/lib/api";
+import { getExpertRequests, getExpertToken } from "@/lib/api";
 import { fetchNotificationUnreadCount } from "@/lib/notificationApi";
+import {
+  getMySupportSummary,
+  MY_SUPPORT_TICKETS_UPDATED_EVENT,
+} from "@/lib/supportApi";
 import styles from "./ExpertShell.module.css";
 
 const NAV_ICONS = {
@@ -50,6 +55,7 @@ const NAV_ICONS = {
   availability: CalendarDays,
   requests: Inbox,
   notifications: Bell,
+  support: Headphones,
   earnings: DollarSign,
   reviews: Star,
   achievements: Award,
@@ -65,6 +71,7 @@ function isNavItemActive(id: string, pathname: string, href: string, currentHash
   if (id === "availability") return pathname.startsWith("/expert/availability/");
   if (id === "requests") return pathname.startsWith("/expert/requests/");
   if (id === "notifications") return pathname.startsWith("/expert/notifications/");
+  if (id === "support") return pathname.startsWith("/expert/support/");
   if (id === "profile") return pathname.startsWith(EXPERT_PROFILE_HREF);
   if (id === "achievements") return pathname.startsWith("/expert/achievements/");
   if (id === "settings") return pathname.startsWith("/expert/settings/");
@@ -156,7 +163,11 @@ function NavLink({
       {!isCollapsed && <span>{item.label}</span>}
       {item.badge ? (
         <span
-          className={`${styles.navBadge} ${isCollapsed ? styles.navBadgeDot : ""}`}
+          className={`${styles.navBadge} ${
+            (item as ExpertNavItem & { badgeVariant?: "red" }).badgeVariant === "red"
+              ? styles.navBadgeRed
+              : ""
+          } ${isCollapsed ? styles.navBadgeDot : ""}`}
           title={isCollapsed ? `${item.badge} unread` : undefined}
         >
           {isCollapsed ? "" : item.badge}
@@ -171,9 +182,26 @@ export default function ExpertShell({ children }: ExpertShellProps) {
   const router = useRouter();
   const [breadcrumbs, setBreadcrumbs] = useState<ReactNode | null>(null);
   const [currentHash, setCurrentHash] = useState("");
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("expert_sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [bannerNotice, setBannerNotice] = useState<string | null>(null);
   const shellContext = useMemo(() => ({ setBreadcrumbs }), []);
+
+  const handleToggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("expert_sidebar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const [isApproved, setIsApproved] = useState<boolean>(() => {
     const stored = getStoredAuthUser();
@@ -188,6 +216,7 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     return 0;
   });
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [supportResponseCount, setSupportResponseCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -274,6 +303,32 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!getExpertToken()) return;
+    let isSubscribed = true;
+
+    const refreshSupportBadge = () => {
+      if (!getExpertToken()) return;
+      getMySupportSummary("/expert/support/")
+        .then((res) => {
+          if (isSubscribed) setSupportResponseCount(res.responseReceivedCount);
+        })
+        .catch(() => {});
+    };
+
+    refreshSupportBadge();
+    window.addEventListener("focus", refreshSupportBadge);
+    window.addEventListener(MY_SUPPORT_TICKETS_UPDATED_EVENT, refreshSupportBadge);
+    window.addEventListener("jatayu:notification", refreshSupportBadge);
+
+    return () => {
+      isSubscribed = false;
+      window.removeEventListener("focus", refreshSupportBadge);
+      window.removeEventListener(MY_SUPPORT_TICKETS_UPDATED_EVENT, refreshSupportBadge);
+      window.removeEventListener("jatayu:notification", refreshSupportBadge);
+    };
+  }, []);
+
   const dynamicMainNav = useMemo(() => {
     return MAIN_NAV.map((item) => {
       if (item.id === "requests") {
@@ -283,9 +338,16 @@ export default function ExpertShell({ children }: ExpertShellProps) {
         };
       }
       if (item.id === "notifications") return { ...item, badge: notificationUnreadCount };
+      if (item.id === "support" && supportResponseCount > 0) {
+        return {
+          ...item,
+          badge: supportResponseCount > 99 ? "99+" : supportResponseCount,
+          badgeVariant: "red" as const,
+        };
+      }
       return item;
     });
-  }, [notificationUnreadCount, requestsBadgeCount]);
+  }, [notificationUnreadCount, requestsBadgeCount, supportResponseCount]);
 
   useEffect(() => {
     setCurrentHash(window.location.hash);
@@ -303,6 +365,20 @@ export default function ExpertShell({ children }: ExpertShellProps) {
     role: EXPERT_PROFILE.role,
     avatar: EXPERT_PROFILE.avatar,
   });
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+
+  const initials = useMemo(() => {
+    const parts = (profile.name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+    return parts.slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+  }, [profile.name]);
+
+  const hasValidPhoto = Boolean(
+    profile.avatar &&
+      profile.avatar.trim() &&
+      profile.avatar !== "/assets/img/profile-placeholder.svg" &&
+      failedAvatar !== profile.avatar,
+  );
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -342,10 +418,14 @@ export default function ExpertShell({ children }: ExpertShellProps) {
           className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`}
           aria-label="Expert navigation"
         >
-          <div className={styles.brandRow}>
+          <div
+            className={`${styles.brandRow} ${
+              isCollapsed ? styles.brandRowCollapsed : ""
+            }`}
+          >
             <Link
               href={EXPERT_DASHBOARD_HREF}
-              className={styles.brand}
+              className={`${styles.brand} ${isCollapsed ? styles.brandCollapsed : ""}`}
               title="Jatayu Expert"
             >
               <span className={styles.brandMark} aria-hidden="true">
@@ -355,8 +435,10 @@ export default function ExpertShell({ children }: ExpertShellProps) {
             </Link>
             <button
               type="button"
-              onClick={() => setIsCollapsed((prev) => !prev)}
-              className={styles.collapseToggleBtn}
+              onClick={handleToggleCollapse}
+              className={`${styles.collapseToggleBtn} ${
+                isCollapsed ? styles.collapseToggleBtnCollapsed : ""
+              }`}
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
@@ -385,30 +467,51 @@ export default function ExpertShell({ children }: ExpertShellProps) {
           </nav>
 
           <div
-            className={`${styles.userCard} ${isCollapsed ? styles.userCardCollapsed : ""
-              }`}
+            className={`${styles.userCard} ${
+              isCollapsed ? styles.userCardCollapsed : ""
+            }`}
           >
-            {profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:") ? (
-              <img
-                src={profile.avatar}
-                alt={profile.name}
-                className={styles.userAvatar}
-                style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
-              />
-            ) : (
-              <Image
-                src={profile.avatar}
-                alt={profile.name}
-                width={36}
-                height={36}
-                className={styles.userAvatar}
-              />
-            )}
+            <Link
+              href={EXPERT_PROFILE_HREF}
+              className={`${styles.userAvatarLink} ${
+                isCollapsed ? styles.userAvatarLinkCollapsed : ""
+              }`}
+              title={profile.name || "Expert Profile"}
+            >
+              {hasValidPhoto ? (
+                profile.avatar.startsWith("blob:") || profile.avatar.startsWith("data:") ? (
+                  <img
+                    src={profile.avatar}
+                    alt={profile.name}
+                    className={styles.userAvatar}
+                    style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
+                    onError={() => setFailedAvatar(profile.avatar)}
+                  />
+                ) : (
+                  <Image
+                    src={profile.avatar}
+                    alt={profile.name}
+                    width={36}
+                    height={36}
+                    className={styles.userAvatar}
+                    onError={() => setFailedAvatar(profile.avatar)}
+                  />
+                )
+              ) : initials ? (
+                <div className={styles.userAvatarInitials} aria-hidden="true">
+                  {initials}
+                </div>
+              ) : (
+                <div className={styles.userAvatarPlaceholder} aria-hidden="true">
+                  <User size={18} />
+                </div>
+              )}
+            </Link>
             {!isCollapsed && (
-              <div className={styles.userMeta}>
+              <Link href={EXPERT_PROFILE_HREF} className={styles.userMeta} title={profile.name}>
                 <span className={styles.userName}>{profile.name}</span>
                 <span className={styles.userRole}>{profile.role}</span>
-              </div>
+              </Link>
             )}
             <button
               type="button"
@@ -416,11 +519,13 @@ export default function ExpertShell({ children }: ExpertShellProps) {
                 clearAuthSession();
                 window.location.assign(EXPERT_LOGIN_HREF);
               }}
-              className={styles.userMenuBtn}
+              className={`${styles.userMenuBtn} ${
+                isCollapsed ? styles.userMenuBtnCollapsed : ""
+              }`}
               aria-label="Logout"
               title="Logout"
             >
-              <LogOut size={20} aria-hidden="true" />
+              <LogOut size={isCollapsed ? 18 : 20} aria-hidden="true" />
             </button>
           </div>
         </aside>

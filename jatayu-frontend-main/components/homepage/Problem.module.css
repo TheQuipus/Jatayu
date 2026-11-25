@@ -114,7 +114,7 @@
 }
 
 .scardMini {
-  background: var(--fold-card);
+  background: var(--fold-card, var(--white));
   border-radius: 0;
   padding: 8px 24px 24px;
   display: flex;
@@ -122,7 +122,7 @@
   row-gap: 0px;
   min-height: 200px;
   width: 100%;
-  border: 1px solid var(--fold-card-border);
+  border: 1px solid var(--fold-card-border, var(--mercury));
   clip-path: polygon(10% 3.179%,
       12.647% 0%,
       91.177% 0%,
@@ -162,7 +162,7 @@
   letter-spacing: -.02em;
   padding: 0 12px 12px 12px;
   min-height: calc(14px * 1.2 * 2);
-  color: var(--fold-card-muted);
+  color: var(--fold-card-muted, var(--dove-gray));
 }
 
 .scardMiniLabel .mark {
@@ -171,13 +171,13 @@
 }
 
 .scardMiniFeatured {
-  background: var(--fold-active-card);
-  border-color: var(--fold-active-card);
-  color: var(--fold-active-text);
+  background: var(--fold-active-card, var(--bunker));
+  border-color: var(--fold-active-card, var(--bunker));
+  color: var(--fold-active-text, var(--white));
 }
 
 .scardMiniFeatured .scardMiniLabel {
-  color: var(--fold-active-muted);
+  color: var(--fold-active-muted, rgba(255, 255, 255, 0.7));
 }
 
 .scardMiniTitle {
@@ -196,7 +196,7 @@
   font-size: 16px;
   line-height: 1.05;
   letter-spacing: -0.03em;
-  color: var(--fold-card-text);
+  color: var(--fold-card-text, var(--bunker));
   white-space: normal;
   transition: color 0.3s;
   min-height: 40px;
@@ -204,7 +204,7 @@
 
 .scardMiniRule {
   height: 1px;
-  background: var(--fold-card-border);
+  background: var(--fold-card-border, var(--mercury));
   transition: background-color 0.3s;
   margin: 10px 0px;
 }
@@ -214,19 +214,19 @@
   font-family: var(--font-mono);
   font-size: 15px;
   line-height: 1.3;
-  color: var(--fold-card-muted);
+  color: var(--fold-card-muted, var(--dove-gray));
   transition: color 0.3s;
 }
 
 /* Active Highlight Style matching featured style */
 .scardMini.active {
-  background: var(--fold-active-card);
-  border-color: var(--fold-active-card);
-  color: var(--fold-active-text);
+  background: var(--fold-active-card, var(--bunker));
+  border-color: var(--fold-active-card, var(--bunker));
+  color: var(--fold-active-text, var(--white));
 }
 
 .scardMini.active .scardMiniLabel {
-  color: var(--fold-active-muted);
+  color: var(--fold-active-muted, rgba(255, 255, 255, 0.7));
 }
 
 .scardMini.active .scardMiniQuote,
@@ -237,7 +237,7 @@
 
 .scardMini.active .scardMiniTitle {
   display: block;
-  color: var(--fold-active-text);
+  color: var(--fold-active-text, var(--white));
 }
 
 /* Responsive Storytelling styles */

@@ -25,6 +25,7 @@ import { seedDefaultAdmin } from './utils/seedDefaultAdmin.js';
 import { createOpenApiDocument } from './config/swagger.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import passwordRecoveryRoutes from './routes/passwordRecoveryRoutes.js';
+import supportRoutes from './routes/supportRoutes.js';
 import { sendNotification, sendUpcomingExpertReminders, setNotificationSocketServer } from './services/notificationService.js';
 import { Booking, BookingExtension, Expert, ExpertSession } from './models/index.js';
 import { isExpertBlacklisted, isExpertSuspended } from './controllers/authController.js';
@@ -105,6 +106,7 @@ app.use('/api/public/experts', publicExpertRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/password-recovery', passwordRecoveryRoutes);
+app.use('/api/support', supportRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

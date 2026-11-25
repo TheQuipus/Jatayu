@@ -41,6 +41,11 @@
   gap: 12px;
 }
 
+.resetBtn {
+  font-size: 14px;
+  padding: 6px 0;
+}
+
 
 
 .questionStepContext {
@@ -93,13 +98,19 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  min-height: 220px;
+  min-height: 200px;
   margin: 0;
   border: 1px solid var(--mercury);
   border-radius: 0;
   background: var(--white);
-  padding: 16px 18px 64px;
+  padding: 16px 18px 12px;
   box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.textareaBox:focus-within {
+  border-color: #FF3B30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4);
 }
 
 .contextChipsRow {
@@ -177,8 +188,11 @@
   color: var(--silver-chalice);
 }
 
-.textarea:focus {
-  outline: none;
+.textarea:focus,
+.textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 
 .textarea:-webkit-autofill,
@@ -192,19 +206,41 @@
   transition: background-color 5000s ease-in-out 0s;
 }
 
+.boxFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  width: 100%;
+  margin-top: auto;
+}
+
+.pillsHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tonePillButton {
+  min-width: auto;
+  padding: 6px 10px 6px 0;
+}
+
+.tonePillButton:not([aria-pressed="true"]):not(:hover) {
+  color: var(--scorpion);
+}
+
 .charCounter {
-  position: absolute;
-  right: 16px;
-  bottom: 12px;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--silver-chalice);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .aiAssistTextBtn {
-  position: absolute;
-  left: 12px;
-  bottom: 10px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -234,81 +270,6 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;
-}
-
-.aiImprovePanel {
-  width: 100%;
-}
-
-.improvementChipsWrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.improvementChip {
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border: 1px solid var(--mercury);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--gallery) 45%, var(--white));
-  color: var(--scorpion);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  white-space: nowrap;
-  cursor: pointer;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.improvementChipSelected {
-  background: var(--pomegranate);
-  border-color: var(--pomegranate);
-  color: var(--white);
-}
-
-.aiImproveHint {
-  margin: 16px 0 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--scorpion);
-}
-
-.aiApplyBtn {
-  margin-top: 20px;
-  padding: 0;
-  background: none;
-  border: none;
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  color: #E53B17;
-  cursor: pointer;
-  outline: none;
-}
-
-.aiApplyBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.aiApplyBtn:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.aiApplyShinyText {
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
 }
 
 .proTip {

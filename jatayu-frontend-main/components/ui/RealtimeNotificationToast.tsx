@@ -10,7 +10,9 @@ type Notice = { id: string; title: string; body: string; href?: string | null };
 export default function RealtimeNotificationToast() {
   const [notice, setNotice] = useState<Notice | null>(null);
   useEffect(() => {
-    const token = getToken() || getAdminToken();
+    const isAdminRoute =
+      typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+    const token = isAdminRoute ? getAdminToken() : getToken() || getAdminToken();
     if (!token) return;
     const socket = connectSocket(token);
     const receive = (item: Notice) => {

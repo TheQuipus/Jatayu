@@ -211,14 +211,14 @@ function resolveAuthToken(path: string, explicitToken?: string | null): string |
   if (path.startsWith("/api/admin/")) {
     return getAdminToken();
   }
-  if (path.startsWith("/api/notifications")) {
+  if (path.startsWith("/api/notifications") || path.startsWith("/api/support")) {
     if (typeof window !== "undefined") {
       const pathname = window.location.pathname;
-      if (pathname.startsWith("/seeker")) return getSeekerToken();
-      if (pathname.startsWith("/expert")) return getExpertToken();
-      if (pathname.startsWith("/admin")) return getAdminToken();
+      if (pathname.startsWith("/seeker") || pathname.startsWith("/checkout")) return getSeekerToken() || getExpertToken();
+      if (pathname.startsWith("/expert")) return getExpertToken() || getSeekerToken();
+      if (pathname.startsWith("/admin") && path.startsWith("/api/notifications")) return getAdminToken();
     }
-    return getExpertToken() || getSeekerToken() || getAdminToken();
+    return getExpertToken() || getSeekerToken() || (path.startsWith("/api/notifications") ? getAdminToken() : null);
   }
   return getToken();
 }

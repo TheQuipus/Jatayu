@@ -359,6 +359,19 @@ function SeekerOnboardingPageContent() {
     if (savedTopics) {
       setSelectedTopics(savedTopics.map(String));
     }
+    const metadata =
+      data.onboardingMetadata && typeof data.onboardingMetadata === "object"
+        ? (data.onboardingMetadata as Record<string, unknown>)
+        : null;
+    const savedNeedsSubject =
+      typeof data.needsSubject === "string"
+        ? data.needsSubject
+        : typeof metadata?.needsSubject === "string"
+          ? metadata.needsSubject
+          : typeof metadata?.subject === "string"
+            ? metadata.subject
+            : null;
+    if (typeof savedNeedsSubject === "string") setNeedsSubject(savedNeedsSubject);
     if (typeof data.needsText === "string") setNeedsText(data.needsText);
     if (Array.isArray(data.selectedNeedChips)) {
       setSelectedNeedChips(data.selectedNeedChips.map(String));
@@ -486,7 +499,14 @@ function SeekerOnboardingPageContent() {
     setIsSavingStep(true);
     setStepSaveError(null);
     try {
-      await updateSeekerOnboarding(payload);
+      const response = await updateSeekerOnboarding(payload);
+      if (response?.seeker && typeof response.seeker === "object") {
+        saveStoredSeekerProfile(
+          mapBackendSeekerToProfile(
+            response.seeker as Parameters<typeof mapBackendSeekerToProfile>[0],
+          ),
+        );
+      }
       if (typeof window !== "undefined") {
         window.scrollTo({ top: 0, behavior: "instant" });
       }
@@ -572,6 +592,9 @@ function SeekerOnboardingPageContent() {
         step: "format",
         needsText,
         selectedNeedChips,
+        ...(needsSubject.trim()
+          ? { onboardingMetadata: { needsSubject: needsSubject.trim() } }
+          : {}),
       },
       "format",
     );
@@ -621,7 +644,7 @@ function SeekerOnboardingPageContent() {
     setSubmissionError(null);
 
     try {
-      await submitSeekerOnboarding({
+      const response = await submitSeekerOnboarding({
         selectedCategory,
         selectedTopics,
         needsText,
@@ -634,8 +657,16 @@ function SeekerOnboardingPageContent() {
         profilePhotoSrc,
         onboardingMetadata: {
           source: "seeker-onboarding",
+          ...(needsSubject.trim() ? { needsSubject: needsSubject.trim() } : {}),
         },
       });
+      if (response?.seeker && typeof response.seeker === "object") {
+        saveStoredSeekerProfile(
+          mapBackendSeekerToProfile(
+            response.seeker as Parameters<typeof mapBackendSeekerToProfile>[0],
+          ),
+        );
+      }
       setStep("success");
     } catch (error) {
       setSubmissionError(
@@ -815,6 +846,7 @@ function SeekerOnboardingPageContent() {
     clearSeekerAuthSession();
     setSelectedCategory("");
     setSelectedTopics([]);
+    setNeedsSubject("");
     setNeedsText("");
     setSelectedNeedChips([]);
     setSelectedFormats([]);
