@@ -247,8 +247,8 @@
 /* Responsive Storytelling styles */
 @media (min-width: 1024px) {
   .problemWrapper {
-    padding-top: var(--nav-height);
-    padding-bottom: 120px;
+    padding-top: clamp(88px, 13.33svh, var(--nav-height));
+    padding-bottom: clamp(18px, 5svh, 60px);
     height: 100svh;
     min-height: 100svh;
   }
@@ -266,7 +266,15 @@
     width: 100%;
     height: 100%;
     display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-content: start;
+  }
+
+  .problemHead {
+    grid-column: 1 / 5;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
   }
 
   .problemTitle {
@@ -275,9 +283,9 @@
   }
 
   .problemTitleQuote {
-    font-size: clamp(34px, 4.2vw, 70px);
-    min-height: calc(clamp(34px, 4.2vw, 70px) * 0.95 * 5);
-    max-height: calc(clamp(34px, 4.2vw, 70px) * 0.95 * 5);
+    font-size: clamp(30px, min(4.2vw, 6.8vh), 70px);
+    min-height: calc(clamp(30px, min(4.2vw, 6.8vh), 70px) * 0.95 * 5);
+    max-height: calc(clamp(30px, min(4.2vw, 6.8vh), 70px) * 0.95 * 5);
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 5;
@@ -300,9 +308,9 @@
     width: 100%;
     max-width: none;
     aspect-ratio: auto;
-    min-height: 195px;
+    min-height: 185px;
     height: auto;
-    padding: 8px clamp(16px, 1.4vw, 24px) clamp(16px, 1.4vw, 24px);
+    padding: 8px clamp(14px, 1.4vw, 24px) clamp(14px, 1.4vw, 24px);
     z-index: 10;
   }
 
@@ -310,8 +318,8 @@
     display: block;
     position: absolute;
     left: 50%;
-    width: 300px;
-    max-width: 300px;
+    width: clamp(200px, 28vh, 360px);
+    max-width: clamp(200px, 28vh, 360px);
     aspect-ratio: 1 / 1;
     height: auto;
     top: 140px;
@@ -416,52 +424,8 @@
   }
 
   .scardMiniTitle {
-    margin: clamp(24px, 3.5vw, 56px) 0 0;
-    font-size: clamp(18px, 2vw, 30px);
-  }
-}
-
-@media (min-width: 1024px) and (max-height: 820px) {
-  .problemWrapper {
-    padding-top: max(var(--nav-height), 90px);
-    padding-bottom: 24px;
-  }
-
-  .previewWrap {
-    top: clamp(135px, 18vh, 140px);
-    width: clamp(240px, 34vh, 290px);
-    max-width: clamp(240px, 34vh, 290px);
-  }
-
-  .scardMini {
-    padding: 8px 16px 16px;
-  }
-
-  .scardMiniTitle {
-    margin: clamp(16px, 2vw, 28px) 0 0;
-    font-size: clamp(16px, 1.8vw, 24px);
-  }
-}
-
-@media (min-width: 1024px) and (min-height: 821px) and (max-height: 890px) {
-  .problemWrapper {
-    padding-top: max(var(--nav-height), 90px);
-    padding-bottom: 24px;
-  }
-
-  .previewWrap {
-    top: clamp(120px, 15vh, 135px);
-    width: clamp(240px, 30vh, 275px);
-    max-width: clamp(240px, 30vh, 275px);
-  }
-
-  .scardMini {
-    padding: 8px 16px 16px;
-  }
-
-  .scardMiniTitle {
-    margin: clamp(16px, 2vw, 28px) 0 0;
-    font-size: clamp(16px, 1.8vw, 24px);
+    margin: clamp(16px, min(3vw, 4vh), 56px) 0 0;
+    font-size: clamp(16px, min(2vw, 3vh), 30px);
   }
 }
 
@@ -516,49 +480,5 @@
 @media (max-width: 600px) {
   .statCards {
     grid-template-columns: 1fr;
-  }
-}
-
-/* Desktop layout integrity for 1024px and wider */
-@media (min-width: 1024px) {
-  .problemWrapper {
-    padding-top: var(--nav-height);
-    height: 100svh;
-    min-height: 100svh;
-  }
-
-  .problem {
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    padding: 0;
-  }
-
-  .problemInner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-content: start;
-  }
-
-  .problemHead {
-    grid-column: 1 / 5;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-items: start;
-  }
-
-  .previewWrap {
-    display: block;
-  }
-
-  .statCards {
-    grid-column: 2 / 5;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: repeat(2, auto);
-    margin-left: 0;
   }
 }

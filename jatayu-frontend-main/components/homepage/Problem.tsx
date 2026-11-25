@@ -142,10 +142,12 @@ export default function Problem() {
     if (cards.length === 0 || !cardsContainer || !previewWrap) return;
 
     let mm: gsap.MatchMedia | null = null;
+    let isDisposed = false;
     let lastW = typeof window !== "undefined" ? window.innerWidth : 0;
     let lastH = typeof window !== "undefined" ? window.innerHeight : 0;
 
     const setupAnimation = () => {
+      if (isDisposed) return;
       if (mm) {
         mm.revert();
       }
@@ -155,6 +157,7 @@ export default function Problem() {
       // 1. Capture coordinates relative to the centered container (innerRect) to prevent horizontal centering offsets
       const startRects = cards.map((card) => card.getBoundingClientRect());
       const innerRect = inner.getBoundingClientRect();
+      const descWrapRect = descRef.current?.parentElement?.getBoundingClientRect();
 
       const innerStyle = window.getComputedStyle(inner);
       const paddingLeft = parseFloat(innerStyle.paddingLeft) || 0;
@@ -181,13 +184,36 @@ export default function Problem() {
         if (scrollH > maxContentH) maxContentH = scrollH;
       });
 
-      // Adapt height, bottom margin, and settle position to viewport height
-      const isCompactH = window.innerHeight <= 820 || (window.innerWidth >= 1024 && window.innerHeight <= 890);
-      const isUltraH = window.innerHeight >= 1000;
-      const minTargetH = isCompactH
-        ? (window.innerHeight <= 740 ? 190 : 195)
-        : (isUltraH ? 230 : 205);
+      // Continuously adapt card height, bottom margin, and orbit depth to viewport height
+      const minTargetH = Math.min(230, Math.max(185, Math.round(window.innerHeight * 0.228)));
       const targetCardHeight = Math.max(minTargetH, Math.ceil(maxContentH + 8));
+
+      const bottomMargin = Math.round(Math.min(36, Math.max(8, innerRect.height * 0.03)));
+      const finalY = Math.round(innerRect.height - targetCardHeight - bottomMargin);
+
+      // Continuously size and position portrait preview between description bottom and card row top
+      const descBottomLocal = descWrapRect ? Math.round(descWrapRect.bottom - innerRect.top) : 120;
+      const spaceForPreview = Math.max(180, finalY - descBottomLocal);
+      const minBottomGap = Math.round(Math.min(36, Math.max(16, spaceForPreview * 0.08)));
+      const minTopGap = Math.round(Math.min(48, Math.max(16, spaceForPreview * 0.09)));
+      const maxWidthByCol = Math.round(Math.max(180, (innerRect.width - innerPadding) * 0.22));
+      const previewSize = Math.round(
+        Math.min(380, maxWidthByCol, Math.max(160, spaceForPreview - minTopGap - minBottomGap))
+      );
+      const slack = Math.max(24, spaceForPreview - previewSize);
+      const bottomGap = Math.min(minBottomGap, Math.round(slack * 0.45));
+      const previewTop = Math.round(Math.max(descBottomLocal + 12, finalY - bottomGap - previewSize));
+
+      gsap.set(previewWrap, {
+        top: previewTop,
+        width: previewSize,
+        maxWidth: previewSize,
+        height: previewSize,
+      });
+
+      const hRatio = Math.min(1, Math.max(0, (window.innerHeight - 720) / 200));
+      const orbitRadius = Math.round(140 + 100 * hRatio);
+      const dipScale = 0.35 + 0.45 * hRatio;
 
       // 2. Set cards to absolute positioning relative to their parent container (inner)
       cards.forEach((card, index) => {
@@ -286,7 +312,6 @@ export default function Problem() {
       };
 
       // 5. Left and Right text updater with direct DOM manipulation for smooth performance
-      let textTween: gsap.core.Tween | null = null;
       const updateText = (
         eyebrowText: string,
         titleText: string,
@@ -295,40 +320,28 @@ export default function Problem() {
         isQuote = false
       ) => {
         if (!eyebrowRef.current || !titleRef.current || !kickerRef.current || !descRef.current) return;
+        const targets = [eyebrowRef.current, titleRef.current, kickerRef.current, descRef.current];
 
-        if (textTween) textTween.kill();
+        gsap.killTweensOf(targets);
 
-        textTween = gsap.to(
-          [eyebrowRef.current, titleRef.current, kickerRef.current, descRef.current],
-          {
-            opacity: 0,
-            duration: 0.15,
-            onComplete: () => {
-              if (!eyebrowRef.current || !titleRef.current || !kickerRef.current || !descRef.current) return;
+        gsap.to(targets, {
+          opacity: 0,
+          duration: 0.12,
+          onComplete: () => {
+            if (!eyebrowRef.current || !titleRef.current || !kickerRef.current || !descRef.current) return;
 
-              eyebrowRef.current.innerHTML = `<i class="dot"></i>${eyebrowText}`;
-              titleRef.current.innerHTML = titleText;
-              titleRef.current.classList.toggle(styles.problemTitleQuote, isQuote);
-              kickerRef.current.textContent = kickerText;
-              descRef.current.textContent = descText;
+            eyebrowRef.current.innerHTML = `<i class="dot"></i>${eyebrowText}`;
+            titleRef.current.innerHTML = titleText;
+            titleRef.current.classList.toggle(styles.problemTitleQuote, isQuote);
+            kickerRef.current.textContent = kickerText;
+            descRef.current.textContent = descText;
 
-              gsap.to(
-                [eyebrowRef.current, titleRef.current, kickerRef.current, descRef.current],
-                { opacity: 1, duration: 0.2 }
-              );
-            },
-          }
-        );
+            gsap.to(targets, { opacity: 1, duration: 0.18 });
+          },
+        });
       };
 
-      // 6. Calculate final rows bottom orbit coordinates
-      const bottomMargin = isCompactH ? 12 : (isUltraH ? 40 : 0);
-      const finalY = isCompactH
-        ? Math.round(innerRect.height - targetCardHeight - bottomMargin)
-        : (isUltraH ? Math.round(innerRect.height - targetCardHeight - bottomMargin) : Math.min(465, Math.round(innerRect.height - targetCardHeight - 20)));
-
-      const dipScale = isCompactH ? 0.35 : 0.8;
-
+      // 6. Track active persona index across scroll progress
       let lastActiveIndex = -1;
 
       // Refresh measures this fold while Hero's pin spacer is reverted, so the
@@ -440,7 +453,6 @@ export default function Problem() {
             height: targetCardHeight,
             onUpdate: function () {
               const p = this.progress();
-              const orbitRadius = isCompactH ? 140 : 240;
               const angle = Math.PI - Math.PI * p;
               const curveX = Math.cos(angle) * orbitRadius;
               const curveY = Math.sin(angle) * orbitRadius;
@@ -486,6 +498,16 @@ export default function Problem() {
 
     setupAnimation();
 
+    // Re-measure card text height & layout if web fonts finish loading after initial mount
+    if (typeof document !== "undefined" && document.fonts && document.fonts.status !== "loaded") {
+      document.fonts.ready.then(() => {
+        if (!isDisposed) {
+          setupAnimation();
+          ScrollTrigger.refresh();
+        }
+      });
+    }
+
     const handleResize = () => {
       if (window.innerWidth !== lastW || window.innerHeight !== lastH) {
         lastW = window.innerWidth;
@@ -496,6 +518,7 @@ export default function Problem() {
     window.addEventListener("resize", handleResize);
 
     return () => {
+      isDisposed = true;
       clearTimeout(timer);
       window.removeEventListener("resize", handleResize);
       // Revert only this section's matchMedia / ScrollTriggers — never kill Hero's.
