@@ -14,17 +14,14 @@
   overflow-x: hidden;
   box-sizing: border-box;
   color: #ffffff;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 .panelContainer::-webkit-scrollbar {
-  width: 4px;
-}
-
-.panelContainer::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Atmospheric Background Image Layer */
@@ -32,7 +29,7 @@
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: url('/assets/img/conference/category-creator.jpg');
+  /* background-image: url('/assets/img/conference/category-creator.jpg'); */
   background-size: cover;
   background-position: center;
   opacity: 0.22;
@@ -46,37 +43,6 @@
   z-index: 1;
   background: radial-gradient(circle at 30% 30%, rgba(20, 24, 34, 0.7) 0%, rgba(10, 11, 16, 0.96) 80%);
   pointer-events: none;
-}
-
-/* Ghost Watermark Typography */
-.ghostWatermark {
-  position: absolute;
-  top: 90px;
-  left: 36px;
-  font-family: var(--font-sora, 'Sora', sans-serif);
-  font-size: clamp(38px, 6vw, 76px);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  color: rgba(255, 255, 255, 0.05);
-  text-transform: uppercase;
-  pointer-events: none;
-  user-select: none;
-  white-space: nowrap;
-  z-index: 1;
-}
-
-.ghostSubtitle {
-  position: absolute;
-  top: 72px;
-  left: 48px;
-  font-family: var(--font-space-mono, ui-monospace, monospace);
-  font-size: 11px;
-  letter-spacing: 0.28em;
-  color: rgba(255, 255, 255, 0.22);
-  text-transform: uppercase;
-  pointer-events: none;
-  user-select: none;
-  z-index: 1;
 }
 
 /* Main Content Wrapper */
@@ -95,7 +61,7 @@
 .headerSection {
   margin-top: 40px;
   margin-bottom: 24px;
-  position: relative;
+  /* position: relative; */
 }
 
 .categoryEyebrow {
@@ -152,7 +118,7 @@
   display: flex;
   align-items: center;
   margin-top: 16px;
-  margin-bottom: 28px;
+  margin-bottom: clamp(36px, 5vh, 56px);
   width: 100%;
   max-width: 680px;
 }
@@ -178,6 +144,10 @@
   left: 0;
   margin-top: 8px;
   width: 320px;
+  max-height: clamp(340px, 60vh, 480px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   background: #14161F;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
@@ -228,29 +198,89 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* 3-Column Capsule Grid matching Figma Image 4b */
-.capsuleGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(200px, 236px));
-  column-gap: clamp(14px, 1.8vw, 20px);
-  row-gap: 16px;
-  margin-top: 4px;
-  align-items: start;
-  width: fit-content;
-  max-width: 750px;
+/* Marquee Viewport & Animated Tracks (Testimonial Motion) */
+@keyframes marqueeLeft {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-25%);
+  }
+}
+
+@keyframes marqueeRight {
+  0% {
+    transform: translateX(-25%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.marqueeViewport {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+  padding: 8px 0 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.marqueeRowLeft {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  will-change: transform;
+  animation: marqueeLeft var(--marquee-duration, 16s) linear infinite;
+  overflow: visible;
+}
+
+.marqueeRowRight {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  will-change: transform;
+  animation: marqueeRight var(--marquee-duration, 16s) linear infinite;
+  overflow: visible;
+}
+
+.marqueeRowActive {
+  z-index: 50 !important;
+}
+
+.marqueeViewport:hover .marqueeRowLeft,
+.marqueeViewport:hover .marqueeRowRight,
+.marqueePaused .marqueeRowLeft,
+.marqueePaused .marqueeRowRight {
+  animation-play-state: paused !important;
 }
 
 /* Capsule Slot - Isolating position for zero layout shift */
 .capsuleSlot {
   position: relative;
-  width: 100%;
+  width: 236px;
   max-width: 236px;
   height: 54px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.capsuleSlotActive {
+  z-index: 60;
 }
 
 /* Capsule Pill matching Figma Group 51 specs (236px x 54px) */
 .capsulePill {
-  width: 100%;
+  flex-shrink: 0;
+  width: 236px;
   max-width: 236px;
   height: 54px;
   box-sizing: border-box;
@@ -275,7 +305,7 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 0 12px rgba(255, 92, 1, 0.2);
 }
 
-/* Hovered Capsule State -> "LET'S TALK" Pill Button (Image 3 & 4) */
+/* Hovered Capsule State -> "LET'S TALK" Pill Button (Image 2 - black variant) */
 .letsTalkPill {
   width: 100%;
   max-width: 236px;
@@ -283,57 +313,87 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 14px 6px 20px;
+  justify-content: center;
+  gap: 14px;
+  padding: 6px 16px 6px 18px;
   border-radius: 9999px;
   background: #0B0D14;
-  border: 1.5px solid #f8f7f7;
-  /* box-shadow: 0 4px 20px rgba(255, 92, 1, 0.3), 0 0 14px rgba(255, 92, 1, 0.2); */
+  border: 1.5px solid #FFFFFF;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 
-.letsTalkPill:hover {
-  /* background: #000000; */
-  border-color: white;
-  /* transform: translateY(-2px) scale(1.02); */
-  /* box-shadow: 0 6px 24px rgba(255, 92, 1, 0.45), 0 0 18px rgba(255, 92, 1, 0.3); */
+.letsTalkPill:hover,
+.capsuleSlotActive .letsTalkPill {
+  background: #000000;
+  border-color: #FFFFFF;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8), 0 0 14px rgba(255, 255, 255, 0.2);
 }
 
 .letsTalkText {
-  font-family: var(--font-sora, 'Sora', sans-serif);
-  font-size: 13px;
+  display: block;
+  overflow: hidden;
+  height: 1em;
+  line-height: 1;
+  white-space: nowrap;
+  font-family: var(--font-display, var(--font-sora), sans-serif);
+  font-size: 13.5px;
   font-weight: 700;
-  padding-left: 35px;
-  letter-spacing: 0.08em;
+  letter-spacing: -0.02em;
   color: #FFFFFF;
   text-transform: uppercase;
+}
+
+.labelTrack {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.letsTalkPill:hover .labelTrack,
+.capsuleSlotActive .labelTrack {
+  transform: translateY(-50%);
+}
+
+.labelUp {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .letsTalkIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: transparent;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
 }
 
-.letsTalkPill:hover .letsTalkIcon {
+.letsTalkIcon img {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+
+.letsTalkPill:hover .letsTalkIcon,
+.capsuleSlotActive .letsTalkIcon {
   transform: rotate(45deg);
 }
 
-/* Floating Hover Preview Card (Image 3 & 4) */
+/* Floating Hover Preview Card (Image 2 & 3) */
 .hoverCard {
   position: absolute;
   left: 0;
   width: 236px;
-  height: 280px;
-  z-index: 50;
+  height: 252px;
+  z-index: 70;
   pointer-events: auto;
   background: #14161F;
   clip-path: polygon(
@@ -364,17 +424,37 @@
     10% 8.736%,
     10% 3.179%
   );
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 0, 0, 0.5);
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.25));
   overflow: hidden;
   cursor: pointer;
 }
 
 .hoverCardAbove {
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 8px);
+}
+
+.hoverCardAbove::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 14px;
+  background: transparent;
 }
 
 .hoverCardBelow {
-  top: calc(100% + 10px);
+  top: calc(100% + 8px);
+}
+
+.hoverCardBelow::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 100%;
+  height: 14px;
+  background: transparent;
 }
 
 .cardBadgeWrap {

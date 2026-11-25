@@ -430,3 +430,22 @@ export const MENU_CATEGORIES: MenuCategoryItem[] = [
   },
 ];
 
+// All Unique Expert Profiles across all categories
+export const ALL_EXPERTS: MenuExpertProfile[] = Array.from(
+  new Map(
+    MENU_CATEGORIES.flatMap((c) => c.experts).map((e) => [e.name, e])
+  ).values()
+);
+
+export const ALL_CATEGORY: MenuCategoryItem = {
+  id: "all",
+  displayName: "ALL",
+  fullName: "ALL EXPERTS",
+  experts: ALL_EXPERTS,
+};
+
+export const MENU_CATEGORIES_WITH_ALL: MenuCategoryItem[] = [
+  ALL_CATEGORY,
+  ...MENU_CATEGORIES,
+];
+

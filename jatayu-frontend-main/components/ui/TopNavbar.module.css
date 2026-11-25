@@ -87,13 +87,13 @@
   background: #128807;
 }
 
-/* Dimmed Backdrop Overlay (Image 3) */
+/* Dimmed Backdrop Overlay with Atmospheric Blur Gradient  */
 .overlay {
   position: fixed;
   inset: 0;
   background: rgba(8, 10, 16, 0.65);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* -webkit-backdrop-filter: blur(12px); */
   z-index: 24;
   opacity: 0;
   pointer-events: none;
@@ -105,7 +105,7 @@
   pointer-events: auto;
 }
 
-/* Slide-out Menu Drawer - 12-Column Page Grid Positioning (refer Image 2) */
+/* Slide-out Menu Drawer - 12-Column Page Grid Positioning */
 .drawer {
   position: fixed;
   top: 0;
@@ -117,6 +117,7 @@
   transform: translateX(100%);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
+  overflow: hidden !important;
 }
 
 .drawerOpen {
@@ -132,6 +133,7 @@
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: stretch;
   pointer-events: none;
+  overflow: hidden !important;
 }
 
 /* Expert Conference Category Panel (Columns 1 to 7) */
@@ -139,7 +141,7 @@
   grid-column: 1 / 8;
   height: 100%;
   position: relative;
-  overflow: hidden;
+  overflow: hidden !important;
   pointer-events: auto;
   opacity: 0;
   transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
@@ -155,24 +157,22 @@
   grid-column: 8 / 14;
   background-color: #FF5C01;
   height: 100%;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  box-shadow: -12px 0 45px rgba(8, 10, 16, 0.45);
+  /* box-shadow: -12px 0 45px rgba(8, 10, 16, 0.45); */
   pointer-events: auto;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 .drawerContent::-webkit-scrollbar {
-  width: 4px;
-}
-
-.drawerContent::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Giant Brand Wordmark (JATAYU) from Target Design (Image 2) & Figma Specs:
@@ -188,12 +188,13 @@
   pointer-events: none;
   user-select: none;
   z-index: 1;
-  overflow: visible;
+  overflow: hidden !important;
 }
 
 .watermark {
   position: absolute;
-  top: 840px;
+  bottom: calc(-210px + clamp(24px, 6vh, 60px));
+  bottom: calc(-210px + clamp(24px, 6dvh, 60px));
   left: 43px;
   width: 860px;
   height: 210px;
@@ -242,19 +243,33 @@
 .closeBtn {
   background: transparent;
   border: none;
-  color: #000000;
   cursor: pointer;
   padding: 6px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
-.closeBtn:hover {
-  background-color: rgba(0, 0, 0, 0.12);
-  color: #FFFFFF !important;
-  transform: scale(1.1);
+.closeBtn:focus-visible {
+  outline: 2px solid #FFFFFF;
+  outline-offset: 2px;
+}
+
+.closeIcon {
+  display: block;
+  width: 30px;
+  height: 30px;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.closeBtn:hover .closeIcon {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .closeIcon {
+    transition: none;
+  }
 }
 
 /* Login Row Grid: Expert LOGIN | Seeker LOGIN as Single Unified Buttons
@@ -404,90 +419,82 @@
   position: absolute;
   inset: 0;
   background-color: #000000;
-  clip-path: polygon(0% 60.9%, 88.2% 100%, 0% 100%);
-  z-index: 3;
+  clip-path: polygon(0% 60.9%, 91.5% 100%, 0% 100%);
+  z-index: 2;
   pointer-events: none;
+  opacity: 1;
 }
 
-/* Origami Charcoal Flap & Flock of Jatayu Birds (Layered above black card content) */
-.origamiContainer {
+/* 3D Interactive Paper-Peel Layer (Three.js WebGL) */
+.peelContainer {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 6;
-  overflow: hidden;
+  overflow: hidden !important;
 }
 
-.charcoalFlapWrapper {
+.peelCanvas {
   position: absolute;
   inset: 0;
-  filter: drop-shadow(0 -5px 14px rgba(0, 0, 0, 0.45));
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
-.charcoalFlap {
+/* 1. Resting Hit-Zone: Bottom-left corner */
+.restingHitZone {
   position: absolute;
-  inset: 0;
-  background-color: #282A2E;
-  clip-path: polygon(0% 60.9%, 53% 45%, 93% 100%, 88.2% 100%);
+  left: 0;
+  bottom: 0;
+  width: clamp(180px, 46%, 360px);
+  height: clamp(160px, 28%, 320px);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 10;
+  touch-action: manipulation;
 }
 
-/* 5 Jatayu Bird Silhouettes */
-.birdHero {
+/* 2. Expanded Active Hit-Zone: Covers lower region when open */
+.activeHitZone {
   position: absolute;
-  left: 19.4%;
-  top: 52.8%;
-  width: 25.4%;
-  height: auto;
-  opacity: 0.85;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  height: 48%;
+  pointer-events: none;
+  z-index: 5;
+  touch-action: manipulation;
 }
 
-.birdUpperRight {
-  position: absolute;
-  left: 46.4%;
-  top: 59.3%;
-  width: 11.8%;
-  height: auto;
-  opacity: 0.80;
-}
-
-.birdMidLeft {
-  position: absolute;
-  left: 41%;
-  top: 71.1%;
-  width: 10.9%;
-  height: auto;
-  opacity: 0.75;
-}
-
-.birdMidRight {
-  position: absolute;
-  left: 56.9%;
-  top: 73.9%;
-  width: 15.1%;
-  height: auto;
-  opacity: 0.80;
-}
-
-.birdBottomRight {
-  position: absolute;
-  left: 70.9%;
-  top: 86%;
-  width: 9.1%;
-  height: auto;
-  opacity: 0.70;
-}
-
-/* Bottom Footer Container (Content sits at z-index: 4, below the flap at z-index: 6) */
+/* Bottom Footer Container (Content sits fixed at the footer of the menu) */
 .blackCard {
   margin-top: auto;
   background-color: transparent;
-  padding: 22px 28px 26px 28px;
+  padding: clamp(12px, 2vh, 22px) 28px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(6px, 1.2vh, 12px);
   position: relative;
-  z-index: 4;
   max-width: 88%;
+  box-sizing: border-box;
+  overflow: hidden !important;
+  opacity: 1;
+  pointer-events: auto;
+  transition: z-index 0.2s ease;
+}
+
+.blackCardResting {
+  z-index: 4;
+}
+
+.blackCardPeeled {
+  z-index: 20;
 }
 
 .joinHeading {
@@ -517,6 +524,11 @@
 }
 
 .joinSubLink {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
   font-family: var(--font-mono), monospace;
   font-size: 17px;
   font-weight: 500;
@@ -524,6 +536,7 @@
   letter-spacing: -0.01em;
   transition: opacity 0.2s ease, transform 0.2s ease;
   width: fit-content;
+  text-align: left;
 }
 
 .joinSubLink:hover {
@@ -541,6 +554,11 @@
 }
 
 .socialIcon {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
   color: rgba(255, 255, 255, 0.8);
   display: grid;
   place-items: center;
@@ -582,6 +600,96 @@
   height: 4px;
   background-color: #00DA52;
   border-radius: 2px;
+}
+
+.inner {
+  position: relative;
+}
+
+.ourExpertsBtn {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 3px);
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  white-space: nowrap;
+  z-index: 21;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.ourExpertsBtnDark {
+  color: #ffffff;
+  /* border-color: rgba(255, 255, 255, 0.22); */
+  /* background: rgba(255, 255, 255, 0.08); */
+}
+
+.ourExpertsBtnLight {
+  color: #111111;
+  /* border-color: rgba(0, 0, 0, 0.16); */
+  /* background: rgba(255, 255, 255, 0.72); */
+}
+
+.ourExpertsBtn:hover {
+  transform: translate(-50%, calc(-50% - 1px));
+  border-color: rgba(255, 92, 1, 0.65);
+}
+
+.ourExpertsBtn:focus-visible {
+  outline: 2px solid #ff5c01;
+  outline-offset: 2px;
+}
+
+.ourExpertsBtnStatic {
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+.ourExpertsBtnStatic:hover {
+  transform: translate(-50%, -50%) !important;
+  border-color: transparent !important;
+}
+
+.ourExpertsStaticText {
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1;
+  text-decoration: underline;
+  letter-spacing: -0.03em;
+  color: inherit;
+  text-transform: uppercase;
+  margin-top: 6px;
+  user-select: none;
+}
+
+.ourExpertsShinyText {
+  font-family: var(--font-body);
+  font-weight: 600;
+  /* font-weight: 600; */
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--nav-fg);
+  text-transform: uppercase;
+  margin-top: 6px;
+  transition: opacity 0.2s ease;
+}
+
+@media (max-width: 600px) {
+  .ourExpertsBtn {
+    padding: 5px 10px;
+  }
+
+  .ourExpertsShinyText,
+  .ourExpertsStaticText {
+    font-size: 12px;
+  }
 }
 
 /* Responsive Grid Adaptation */

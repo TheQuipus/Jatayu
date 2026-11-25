@@ -5,7 +5,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, Check } from "lucide-react";
-import { MENU_CATEGORIES, MenuCategoryItem, MenuExpertProfile } from "@/data/menuCategories";
+import {
+  MENU_CATEGORIES,
+  MENU_CATEGORIES_WITH_ALL,
+  MenuCategoryItem,
+  MenuExpertProfile,
+} from "@/data/menuCategories";
 import { getExpertDetailHref } from "@/lib/experts";
 import styles from "./MenuCategoryPanel.module.css";
 
@@ -17,7 +22,7 @@ export default function MenuCategoryPanel({ onCloseMenu }: MenuCategoryPanelProp
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<MenuCategoryItem>(MENU_CATEGORIES[0]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [hoveredExpertId, setHoveredExpertId] = useState<string | null>(null);
+  const [hoveredItemKey, setHoveredItemKey] = useState<string | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -52,8 +57,8 @@ export default function MenuCategoryPanel({ onCloseMenu }: MenuCategoryPanelProp
 
   const handleSelectCategory = (cat: MenuCategoryItem) => {
     setActiveCategory(cat);
+    setHoveredItemKey(null);
     setIsDropdownOpen(false);
-    setHoveredExpertId(null);
   };
 
   const handleNavigate = (expert: MenuExpertProfile) => {
@@ -64,19 +69,154 @@ export default function MenuCategoryPanel({ onCloseMenu }: MenuCategoryPanelProp
     router.push(href);
   };
 
+  // Distribute experts across rows without repetition (no redundant/repeated capsules)
+  const experts = activeCategory.experts;
+  // If 6 or more experts, use 3 rows. If 2-5 experts, use 2 rows. If 1 expert, use 1 row.
+  const numRows = experts.length > 6 ? 3 : experts.length > 3 ? 2 : 1;
+
+  const rows: MenuExpertProfile[][] = Array.from({ length: numRows }, () => []);
+  experts.forEach((expert, i) => {
+    rows[i % numRows].push(expert);
+  });
+
+  // Dynamic animation duration - brisk and responsive speed
+  const marqueeDuration = `${Math.min(Math.max(experts.length * 2.8, 14), 28)}s`;
+
+  const renderCapsuleSlot = (
+    expert: MenuExpertProfile,
+    itemKey: string,
+    isHovered: boolean,
+    isFirstRow: boolean
+  ) => {
+    return (
+      <div
+        key={itemKey}
+        className={`${styles.capsuleSlot} ${isHovered ? styles.capsuleSlotActive : ""}`}
+        onMouseEnter={() => setHoveredItemKey(itemKey)}
+        onMouseLeave={() => setHoveredItemKey(null)}
+      >
+        {/* Floating Hover Preview Card (Image 2) */}
+        <AnimatePresence>
+          {isHovered && (
+            <motion.div
+              initial={{ opacity: 0, y: isFirstRow ? 8 : -8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: isFirstRow ? 6 : -6, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className={`${styles.hoverCard} ${
+                isFirstRow ? styles.hoverCardBelow : styles.hoverCardAbove
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNavigate(expert);
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleNavigate(expert);
+                }
+              }}
+              aria-label={`View profile for ${expert.name}`}
+            >
+              <div className={styles.cardImageWrap}>
+                <Image
+                  src={expert.image}
+                  alt={expert.name}
+                  fill
+                  className={styles.cardImage}
+                  sizes="236px"
+                />
+                <div className={styles.cardGradientOverlay} />
+              </div>
+              <div className={styles.cardMeta}>
+                <div className={styles.cardNameRow}>
+                  <span className={styles.cardStatusDot} />
+                  <span className={styles.cardName}>{expert.name}</span>
+                </div>
+                <div className={styles.cardPriceRow}>
+                  From ₹{expert.price || 499}
+                </div>
+                <div className={styles.cardDivider} />
+                <p className={styles.cardDesc}>{expert.quote}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Hovered State -> "LET'S TALK" Pill Button vs Normal Capsule */}
+        {isHovered ? (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNavigate(expert);
+            }}
+            className={styles.letsTalkPill}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNavigate(expert);
+              }
+            }}
+            aria-label={`Let's talk with ${expert.name}`}
+          >
+            <span className={styles.letsTalkText}>
+              <span className={styles.labelTrack}>
+                <span className={styles.labelUp}>LET&apos;S TALK</span>
+                <span className={styles.labelUp} aria-hidden="true">
+                  LET&apos;S TALK
+                </span>
+              </span>
+            </span>
+            <span className={styles.letsTalkIcon} aria-hidden="true">
+              <img
+                src="/assets/buttonsvg.svg"
+                alt=""
+                width={26}
+                height={26}
+              />
+            </span>
+          </div>
+        ) : (
+          <div
+            onClick={() => handleNavigate(expert)}
+            className={styles.capsulePill}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleNavigate(expert);
+              }
+            }}
+            aria-label={`View profile for ${expert.name}, ${expert.role}`}
+          >
+            <div className={styles.capsuleAvatarWrapper}>
+              <Image
+                src={expert.image}
+                alt={expert.name}
+                fill
+                sizes="38px"
+                className="object-cover object-top"
+              />
+            </div>
+            <div className={styles.capsuleTextWrapper}>
+              <div className={styles.capsuleName}>{expert.name}</div>
+              <div className={styles.capsuleRole}>{expert.role}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className={styles.panelContainer}>
-      {/* Dramatic Background Stage Imagery */}
-      {/* <div className={styles.bgLayer} aria-hidden="true" />
-      <div className={styles.bgOverlay} aria-hidden="true" /> */}
-
-      {/* Ghost Typography Watermarks */}
-      {/* <div className={styles.ghostSubtitle} aria-hidden="true">
-        YOU ARE INVITED TO OUR ANNUAL
-      </div>
-      <div className={styles.ghostWatermark} aria-hidden="true">
-        EXPERT CONFERENCE
-      </div> */}
 
       {/* Main Content Layout */}
       <div className={styles.contentWrapper}>
@@ -102,7 +242,7 @@ export default function MenuCategoryPanel({ onCloseMenu }: MenuCategoryPanelProp
             </span>
           </button>
 
-          {/* Dropdown Menu List - 8 Categories from Image 2 */}
+          {/* Dropdown Menu List - Categories with ALL Option */}
           <AnimatePresence>
             {isDropdownOpen && (
               <motion.div
@@ -113,7 +253,7 @@ export default function MenuCategoryPanel({ onCloseMenu }: MenuCategoryPanelProp
                 className={styles.dropdownMenu}
                 role="listbox"
               >
-                {MENU_CATEGORIES.map((cat) => {
+                {MENU_CATEGORIES_WITH_ALL.map((cat) => {
                   const isSelected = cat.id === activeCategory.id;
                   return (
                     <button
@@ -147,140 +287,39 @@ export default function MenuCategoryPanel({ onCloseMenu }: MenuCategoryPanelProp
           </div>
         </div>
 
-        {/* 3-Column Capsule Grid - Figma Image 4b */}
+        {/* Continuous Testimonial Marquee Viewport */}
         <motion.div
           key={activeCategory.id}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: "easeOut" }}
-          className={styles.capsuleGrid}
+          className={`${styles.marqueeViewport} ${
+            hoveredItemKey ? styles.marqueePaused : ""
+          }`}
         >
-          {activeCategory.experts.map((expert, idx) => {
-            const isHovered = hoveredExpertId === expert.id;
-            const isRow1 = idx < 3;
+          {rows.map((rowExperts, rowIdx) => {
+            const isFirstRow = rowIdx === 0;
+            const isRowActive = hoveredItemKey?.startsWith(`r${rowIdx}-`);
+            const rowClass =
+              rowIdx % 2 === 0
+                ? styles.marqueeRowLeft
+                : styles.marqueeRowRight;
 
             return (
               <div
-                key={expert.id}
-                className={styles.capsuleSlot}
-                onMouseEnter={() => setHoveredExpertId(expert.id)}
-                onMouseLeave={() => setHoveredExpertId(null)}
+                key={`row-${rowIdx}`}
+                className={`${rowClass} ${isRowActive ? styles.marqueeRowActive : ""}`}
+                style={{ "--marquee-duration": marqueeDuration } as React.CSSProperties}
               >
-                {/* Floating Hover Preview Card (Image 3 & 4) */}
-                <AnimatePresence>
-                  {isHovered && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.94, y: isRow1 ? -6 : 6 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.12 } }}
-                      transition={{ duration: 0.18, ease: "easeOut" }}
-                      className={`${styles.hoverCard} ${
-                        isRow1 ? styles.hoverCardBelow : styles.hoverCardAbove
-                      }`}
-                      onClick={() => handleNavigate(expert)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleNavigate(expert);
-                        }
-                      }}
-                      aria-label={`View profile for ${expert.name}`}
-                    >
-                      {/* Top Category Badge */}
-                      <div className={styles.cardBadgeWrap}>
-                        <span className={styles.cardBadge}>
-                          <span className={styles.cardBadgeDot} />
-                          {expert.category.toUpperCase()}
-                        </span>
-                      </div>
-
-                      {/* Expert Portrait Image */}
-                      <div className={styles.cardImageWrap}>
-                        <Image
-                          src={expert.image}
-                          alt={expert.name}
-                          fill
-                          sizes="236px"
-                          className={styles.cardImage}
-                        />
-                      </div>
-
-                      {/* Gradient Overlay for Legibility */}
-                      <div className={styles.cardGradientOverlay} />
-
-                      {/* Bottom Meta Information */}
-                      <div className={styles.cardMeta}>
-                        <div className={styles.cardNameRow}>
-                          <span className={styles.cardStatusDot} />
-                          <span className={styles.cardName}>{expert.name}</span>
-                        </div>
-                        <div className={styles.cardPriceRow}>
-                          From ₹{expert.price || 499} / Rating {expert.rating || 4.9} / Reply {expert.replyTime || "15 min"}
-                        </div>
-                        <div className={styles.cardDivider} />
-                        <p className={styles.cardDesc}>{expert.quote}</p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Capsule / LET'S TALK Button State */}
-                {isHovered ? (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.15 }}
-                    onClick={() => handleNavigate(expert)}
-                    className={styles.letsTalkPill}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleNavigate(expert);
-                      }
-                    }}
-                    aria-label={`Let's Talk with ${expert.name}`}
-                  >
-                    <span className={styles.letsTalkText}>LET&apos;S TALK</span>
-                    <span className={styles.letsTalkIcon}>
-                      <img src="/assets/buttonsvg.svg" alt="" width={26} height={26} />
-                    </span>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.2, delay: idx * 0.04 }}
-                    onClick={() => handleNavigate(expert)}
-                    className={styles.capsulePill}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleNavigate(expert);
-                      }
-                    }}
-                    aria-label={`View profile for ${expert.name}, ${expert.role}`}
-                  >
-                    <div className={styles.capsuleAvatarWrapper}>
-                      <Image
-                        src={expert.image}
-                        alt={expert.name}
-                        fill
-                        sizes="38px"
-                        className="object-cover object-top"
-                      />
-                    </div>
-                    <div className={styles.capsuleTextWrapper}>
-                      <div className={styles.capsuleName}>{expert.name}</div>
-                      <div className={styles.capsuleRole}>{expert.role}</div>
-                    </div>
-                  </motion.div>
-                )}
+                {rowExperts.map((expert, idx) => {
+                  const itemKey = `r${rowIdx}-${expert.id}-${idx}`;
+                  return renderCapsuleSlot(
+                    expert,
+                    itemKey,
+                    hoveredItemKey === itemKey,
+                    isFirstRow
+                  );
+                })}
               </div>
             );
           })}
