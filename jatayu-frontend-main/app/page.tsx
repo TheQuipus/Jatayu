@@ -46,7 +46,7 @@ export default function Home() {
       <ConferenceLanding />
       <SectionWithGrid color="#17191E" fadeLines><Hero /></SectionWithGrid>
       <SectionWithGrid color="#FFFFFF"><Services /></SectionWithGrid>     
-      <SectionWithGrid color="#FFFFFF"><Problem /></SectionWithGrid>
+      <Problem />
       <SectionWithGrid color="#fff"><Portfolio /></SectionWithGrid>
       <SectionWithGrid color="#17191E"><ExpertAdvice /></SectionWithGrid>
       <SectionWithGrid color="#fff"><Trust /></SectionWithGrid>
