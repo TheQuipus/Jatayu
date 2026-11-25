@@ -536,7 +536,10 @@
 /* Desktop-only spacing override: keep heading centred between OUR EXPERTS and carousel */
 @media (min-width: 1024px) {
   .section {
+    height: auto;
+    min-height: max(650px, 100svh);
     padding-top: 52px;
+    padding-bottom: calc(110px * var(--carousel-scale, 0.55));
     justify-content: flex-start;
   }
 
