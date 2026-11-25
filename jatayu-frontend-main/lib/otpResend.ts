@@ -172,3 +172,43 @@ export function applyResendError(
       : "Could not resend verification code.",
   };
 }
+
+export const OTP_RESEND_LIMIT_REACHED_CODE = "OTP_RESEND_LIMIT_REACHED";
+
+export function extractOtpBlockDeadline(error: unknown, now = Date.now()): number | null {
+  if (!error || typeof error !== "object") return null;
+  const err = error as { status?: number; code?: string; data?: OtpResendErrorLike["data"] };
+  const code = err.data?.code || err.code;
+  if (err.status !== 429 || code !== OTP_RESEND_LIMIT_REACHED_CODE) {
+    return null;
+  }
+
+  const blockedUntil = err.data?.blockedUntil;
+  if (typeof blockedUntil === "string" && blockedUntil) {
+    const parsed = Date.parse(blockedUntil);
+    if (Number.isFinite(parsed) && parsed > now) {
+      return parsed;
+    }
+  }
+
+  const retrySeconds = Number(err.data?.retryAfterSeconds);
+  if (Number.isFinite(retrySeconds) && retrySeconds > 0) {
+    return computeCooldownEndsAt(retrySeconds, now);
+  }
+
+  return null;
+}
+
+export function formatBlockRemaining(seconds: number): string {
+  const safe = Math.max(0, Math.floor(Number(seconds) || 0));
+  if (safe >= 60) {
+    const mins = Math.floor(safe / 60);
+    const secs = safe % 60;
+    return `${mins} min ${secs} s`;
+  }
+  return `${safe} s`;
+}
+
+export function formatOtpLoginBlockMessage(remainingSeconds: number): string {
+  return `OTP limit reached. Please try again in ${formatBlockRemaining(remainingSeconds)}.`;
+}

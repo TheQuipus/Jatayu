@@ -44,6 +44,7 @@ const {
   RESEND_WINDOW_MS,
   buildResendLimitKeys,
   clearOtpResendLimits,
+  getActiveOtpResendBlock,
   getOtpResendStatus,
   releaseResendAttempt,
   reserveResendAttempt,
@@ -217,4 +218,23 @@ test('keys are hashed and contain no raw email or phone', () => {
     assert.equal(key.includes('example.com'), false);
     assert.equal(key.includes(phone), false);
   }
+});
+
+test('getActiveOtpResendBlock is read-only and returns the longer remaining block across email and phone', async () => {
+  rows.clear();
+  const baseNow = 80_000_000;
+  const email = 'dual-block@example.com';
+  const phone = '9888811111';
+
+  assert.equal(await getActiveOtpResendBlock({ email, phone, now: baseNow }), null);
+  assert.equal(rows.size, 0);
+
+  const [keyA, keyB] = buildResendLimitKeys({ email, phone });
+  rows.set(keyA, { key: keyA, value: JSON.stringify({ count: 3, firstAttemptAt: baseNow, blockedUntil: baseNow + 120_000 }) });
+  rows.set(keyB, { key: keyB, value: JSON.stringify({ count: 3, firstAttemptAt: baseNow, blockedUntil: baseNow + 300_000 }) });
+
+  const block = await getActiveOtpResendBlock({ email, phone, now: baseNow });
+  assert.equal(block.code, 'OTP_RESEND_LIMIT_REACHED');
+  assert.equal(block.retryAfterSeconds, 300);
+  assert.equal(block.blockedUntil, new Date(baseNow + 300_000).toISOString());
 });

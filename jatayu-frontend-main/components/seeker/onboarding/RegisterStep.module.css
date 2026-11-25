@@ -65,6 +65,18 @@
   flex: 1;
 }
 
+.loginBlockError {
+  margin: 8px 0 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #FF3B30;
+  text-align: center;
+  background: transparent;
+  border: none;
+}
+
 .forgotPasswordLink {
   margin-left: auto;
   font-family: var(--font-body);

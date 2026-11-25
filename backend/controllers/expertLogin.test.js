@@ -118,6 +118,16 @@ const resendLimitState = {
     blockedUntil,
     retryAfterSeconds,
   }),
+  getActiveOtpResendBlock: async ({ email, phone, now = Date.now() } = {}) => {
+    const status = await resendLimitState.getOtpResendStatus({ email, phone });
+    if (!status.blockedUntil) return null;
+    const blockedMs = Date.parse(status.blockedUntil);
+    if (!Number.isFinite(blockedMs) || blockedMs <= now) return null;
+    return resendLimitState.buildResendBlockedPayload({
+      blockedUntil: status.blockedUntil,
+      retryAfterSeconds: Math.max(1, Math.ceil((blockedMs - now) / 1000)),
+    });
+  },
 };
 mock.module('../utils/otpResendLimit.js', { namedExports: resendLimitState });
 
@@ -618,4 +628,53 @@ test('expert resendOtp tracks attempts, enforces 30s cooldown, releases on failu
   assert.equal(blockedRes.body.maxResendAttempts, 3);
   assert.ok(blockedRes.body.blockedUntil);
   assert.ok(blockedRes.body.retryAfterSeconds > 0);
+});
+
+test('blocked expert login returns 429 without sending OTP, wrong password returns 401, and expired block allows login OTP', async (t) => {
+  deliveries.length = 0;
+  failures.clear();
+  const passwordHash = await bcrypt.hash('Secret123!', 10);
+  const expert = {
+    id: 'expert-login-block-test',
+    email: 'blocked-login-expert@example.com',
+    phone: '9888855555',
+    password: passwordHash,
+    onboardingStep: 'otp',
+    twoFactorEnabled: true,
+    status: 'draft',
+    isBlacklisted: false,
+    onboardingMetadata: {},
+    save: async () => {},
+  };
+
+  t.mock.method(Expert, 'findOne', async ({ where: { email } }) => (email === expert.email ? expert : null));
+
+  const key = `${expert.email}|${expert.phone}`;
+  const futureBlockedUntil = new Date(Date.now() + 12 * 60 * 1000).toISOString();
+  resendLimitMap.set(key, { count: 3, blockedUntil: futureBlockedUntil });
+
+  // Wrong password while blocked still returns 401 (no block leak)
+  const wrongPwRes = response();
+  await login({ body: { email: expert.email, password: 'WrongPassword!' }, headers: {} }, wrongPwRes);
+  assert.equal(wrongPwRes.statusCode, 401);
+  assert.equal(wrongPwRes.body.message, 'Invalid email or password');
+  assert.equal(deliveries.length, 0);
+
+  // Valid password while blocked returns 429 without sending OTP or changing counter/block
+  const blockedLoginRes = response();
+  await login({ body: { email: expert.email, password: 'Secret123!' }, headers: {} }, blockedLoginRes);
+  assert.equal(blockedLoginRes.statusCode, 429);
+  assert.equal(blockedLoginRes.body.code, 'OTP_RESEND_LIMIT_REACHED');
+  assert.equal(blockedLoginRes.body.blockedUntil, futureBlockedUntil);
+  assert.ok(blockedLoginRes.body.retryAfterSeconds > 0);
+  assert.equal(deliveries.length, 0);
+  assert.deepEqual(resendLimitMap.get(key), { count: 3, blockedUntil: futureBlockedUntil });
+
+  // After block expires, login sends OTP normally
+  resendLimitMap.set(key, { count: 3, blockedUntil: new Date(Date.now() - 1000).toISOString() });
+  const unblockedRes = response();
+  await login({ body: { email: expert.email, password: 'Secret123!' }, headers: {} }, unblockedRes);
+  assert.equal(unblockedRes.statusCode, 403);
+  assert.equal(unblockedRes.body.requiresOtp, true);
+  assert.equal(deliveries.length, 1);
 });

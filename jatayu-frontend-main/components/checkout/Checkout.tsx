@@ -73,6 +73,7 @@ import {
 } from "@/lib/api";
 import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
 import { useOtpResend } from "@/hooks/useOtpResend";
+import { useLoginOtpBlock } from "@/hooks/useLoginOtpBlock";
 import { OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/otpResend";
 import {
   deriveSeekerQuestionPrefill,
@@ -108,6 +109,11 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+  const {
+    blockMessage: loginBlockMessage,
+    handleLoginBlockError,
+    clearBlock: clearLoginBlock,
+  } = useLoginOtpBlock();
   const [bookingOptions, setBookingOptions] = useState<BookingOptions | null>(null);
   const [bookingError, setBookingError] = useState("");
   const [confirmedBookingId, setConfirmedBookingId] = useState("");
@@ -630,6 +636,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setLoginSubmitAttempted(true);
     if (!loginEmail.trim() || !loginPassword.trim() || isSubmittingLogin) return;
 
+    clearLoginBlock();
     setIsSubmittingLogin(true);
     try {
       const authRes = await seekerLogin({
@@ -648,6 +655,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       setShowAuthModal(false);
       setCurrentStep(4);
     } catch (err) {
+      if (handleLoginBlockError(err)) {
+        return;
+      }
       if (err instanceof SeekerOtpRequiredError) {
         savePendingSeekerOtpSession({
           seekerId: err.seekerId,
@@ -985,11 +995,18 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   isAuthLogin={isAuthLogin}
                   onSetIsAuthLogin={setIsAuthLogin}
                   loginEmail={loginEmail}
-                  onLoginEmailChange={setLoginEmail}
+                  onLoginEmailChange={(value) => {
+                    setLoginEmail(value);
+                    clearLoginBlock();
+                  }}
                   loginPassword={loginPassword}
-                  onLoginPasswordChange={setLoginPassword}
+                  onLoginPasswordChange={(value) => {
+                    setLoginPassword(value);
+                    clearLoginBlock();
+                  }}
                   loginSubmitAttempted={loginSubmitAttempted}
                   isSubmittingLogin={isSubmittingLogin}
+                  loginBlockMessage={loginBlockMessage}
                   onLoginSubmit={handleLoginSubmit}
                   registerFirstName={registerFirstName}
                   onRegisterFirstNameChange={setRegisterFirstName}

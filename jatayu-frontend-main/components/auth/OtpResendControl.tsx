@@ -62,13 +62,13 @@ export default function OtpResendControl({
       </div>
 
       {blocked ? (
-        <div className={styles.blockCallout} role="status" aria-live="polite">
+        <ul className={styles.blockList} role="status" aria-live="polite">
           {OTP_RESEND_BLOCK_MESSAGES.map((line) => (
-            <p key={line} className={styles.blockMessageLine}>
+            <li key={line} className={styles.blockMessageLine}>
               {line}
-            </p>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : null}
     </div>
   );

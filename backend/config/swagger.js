@@ -46,7 +46,19 @@ const authPaths = (prefix, tag) => ({
     post: operation({ tag, summary: 'Get OTP resend attempt status', requestBody: jsonBody() }),
   },
   [`${prefix}/login`]: {
-    post: operation({ tag, summary: 'Log in', requestBody: jsonBody() }),
+    post: operation({
+      tag,
+      summary: 'Log in',
+      requestBody: jsonBody(),
+      responses: {
+        200: response('Authenticated session'),
+        400: response('Invalid request'),
+        401: response('Invalid email or password'),
+        403: response('OTP verification required or account restricted'),
+        429: response('Too many login attempts or active OTP resend block (OTP_RESEND_LIMIT_REACHED with retryAfterSeconds and blockedUntil)'),
+        500: response('Server error'),
+      },
+    }),
   },
   [`${prefix}/google`]: {
     post: operation({ tag, summary: 'Authenticate with Google', requestBody: jsonBody() }),

@@ -550,3 +550,15 @@
     flex-direction: column;
   }
 }
+
+.loginBlockError {
+  margin: 8px 0 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--pomegranate, #e53b17);
+  text-align: center;
+  background: transparent;
+  border: none;
+}

@@ -42,12 +42,15 @@
   letter-spacing: 0.02em;
 }
 
-.blockCallout {
-  border-radius: 8px;
-  padding: 10px 12px;
+.blockList {
+  margin: 0;
+  padding-left: 16px;
+  list-style: disc;
+  background: transparent;
+  border: none;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .blockMessageLine {
@@ -72,11 +75,6 @@
   color: var(--dove-gray, #686868);
 }
 
-.light .blockCallout {
-  background: color-mix(in srgb, #e53b17 8%, #ffffff);
-  border: 1px solid color-mix(in srgb, #e53b17 28%, #e6e6e6);
-}
-
 .light .blockMessageLine {
   color: var(--bunker, #0b0d14);
 }
@@ -92,11 +90,6 @@
 
 .dark .counter {
   color: #e8e8e8;
-}
-
-.dark .blockCallout {
-  background: color-mix(in srgb, #e53b17 12%, #14171d);
-  border: 1px solid color-mix(in srgb, #e53b17 45%, #34363b);
 }
 
 .dark .blockMessageLine {

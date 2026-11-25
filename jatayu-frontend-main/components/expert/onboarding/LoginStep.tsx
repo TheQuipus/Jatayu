@@ -11,6 +11,7 @@ import styles from "./RegisterStep.module.css";
 import { login, OtpRequiredError, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 import { savePendingOtpSession } from "@/lib/expertAuth";
+import { useLoginOtpBlock } from "@/hooks/useLoginOtpBlock";
 import { EXPERT_SIGNUP_HREF } from "@/lib/joinAsExpertNav";
 
 type LoginStepProps = {
@@ -111,6 +112,7 @@ export default function LoginStep({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const { blockMessage, handleLoginBlockError, clearBlock } = useLoginOtpBlock();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -146,6 +148,7 @@ export default function LoginStep({
   const submitLogin = async () => {
     setSubmitAttempted(true);
     setSubmitError(null);
+    clearBlock();
     if (!canSubmit || isSubmitting) return;
 
     setIsSubmitting(true);
@@ -156,6 +159,9 @@ export default function LoginStep({
       });
       onContinue(response);
     } catch (error) {
+      if (handleLoginBlockError(error)) {
+        return;
+      }
       if (error instanceof OtpRequiredError) {
         savePendingOtpSession({
           expertId: error.expertId,
@@ -201,7 +207,10 @@ export default function LoginStep({
                   className={register.textFieldWithIcon}
                   placeholder="Aryan23@gmail.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearBlock();
+                  }}
                   onBlur={() => markTouched("email")}
                   autoComplete="email"
                   aria-invalid={Boolean(fieldError("email"))}
@@ -226,7 +235,10 @@ export default function LoginStep({
                   className={`${register.textFieldWithIcon} ${styles.textFieldWithToggle}`}
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearBlock();
+                  }}
                   onBlur={() => markTouched("password")}
                   autoComplete="current-password"
                   aria-invalid={Boolean(fieldError("password"))}
@@ -278,6 +290,12 @@ export default function LoginStep({
             className={`${styles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : styles.registerSubmitBtnInactive}`}
             arrowSize={16}
           />
+
+          {blockMessage ? (
+            <p className={styles.loginBlockError} role="alert" aria-live="polite">
+              {blockMessage}
+            </p>
+          ) : null}
 
           <ExpertSocialAuth
             onSuccess={onContinue}

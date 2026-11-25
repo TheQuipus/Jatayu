@@ -164,3 +164,40 @@ test("OTP_RESEND_LIMIT_REACHED 429 sets (3/3) and blocked state", () => {
   assert.equal(state.blockedUntil, blockedUntil);
   assert.equal(otpResend.isResendBlocked(state, t0), true);
 });
+
+test("blocked OtpResendControl renders bulleted ul/li list without red box callout styles", () => {
+  const now = Date.now();
+  const futureIso = new Date(now + 10 * 60 * 1000).toISOString();
+  const tree = renderControl({
+    resendSeconds: 0,
+    isResending: false,
+    resendAttempts: 3,
+    maxResendAttempts: 3,
+    blockedUntil: futureIso,
+    variant: "dark",
+    onResend: () => {},
+  });
+
+  const findByType = (node, tag, acc = []) => {
+    if (!node || typeof node !== "object") return acc;
+    if (Array.isArray(node)) {
+      for (const child of node) findByType(child, tag, acc);
+      return acc;
+    }
+    if (node.type === tag) acc.push(node);
+    if (node.props?.children) findByType(node.props.children, tag, acc);
+    return acc;
+  };
+
+  const lists = findByType(tree, "ul");
+  const items = findByType(tree, "li");
+  assert.equal(lists.length, 1);
+  assert.equal(items.length, 3);
+
+  const css = fs.readFileSync(
+    path.join(import.meta.dirname, "..", "components/auth/OtpResendControl.module.css"),
+    "utf8",
+  );
+  assert.doesNotMatch(css, /\.blockCallout/);
+  assert.match(css, /\.blockList\s*\{[^}]*background:\s*transparent;\s*border:\s*none;/s);
+});

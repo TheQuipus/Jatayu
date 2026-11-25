@@ -84,10 +84,12 @@ async function lockSettingRow(key, transaction) {
   return Setting.findByPk(key, { transaction, lock: transaction.LOCK.UPDATE });
 }
 
+export const OTP_RESEND_LIMIT_REACHED_CODE = 'OTP_RESEND_LIMIT_REACHED';
+
 export function buildResendBlockedPayload({ blockedUntil, retryAfterSeconds }) {
   return {
     message: 'Resend OTP limit reached. Please try again in 30 mins.',
-    code: 'OTP_RESEND_LIMIT_REACHED',
+    code: OTP_RESEND_LIMIT_REACHED_CODE,
     resendAttempts: MAX_RESEND_ATTEMPTS,
     maxResendAttempts: MAX_RESEND_ATTEMPTS,
     blockedUntil,
@@ -132,6 +134,24 @@ export async function getOtpResendStatus({ email, phone, now = Date.now() } = {}
     maxResendAttempts: MAX_RESEND_ATTEMPTS,
     blockedUntil: blocked ? new Date(maxBlockedUntil).toISOString() : null,
   };
+}
+
+/**
+ * Read-only check returning the 429 blocked payload if either email or phone
+ * currently has an active 30-minute OTP resend block, or null otherwise.
+ */
+export async function getActiveOtpResendBlock({ email, phone, now = Date.now() } = {}) {
+  const status = await getOtpResendStatus({ email, phone, now });
+  if (!status.blockedUntil) return null;
+
+  const blockedMs = Date.parse(status.blockedUntil);
+  if (!Number.isFinite(blockedMs) || blockedMs <= now) return null;
+
+  const retryAfterSeconds = Math.max(1, Math.ceil((blockedMs - now) / 1000));
+  return buildResendBlockedPayload({
+    blockedUntil: status.blockedUntil,
+    retryAfterSeconds,
+  });
 }
 
 /**

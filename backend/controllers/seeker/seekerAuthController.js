@@ -44,6 +44,7 @@ import {
 import {
   buildResendBlockedPayload,
   clearOtpResendLimits,
+  getActiveOtpResendBlock,
   getOtpResendStatus,
   releaseResendAttempt,
   reserveResendAttempt,
@@ -468,6 +469,11 @@ export const login = async (req, res) => {
     await clearPasswordLoginIpFailures(sourceIp);
     if (clearedLockout.lockedUntil) {
       return res.status(429).json(buildPasswordLoginLockedResponse(clearedLockout.lockedUntil));
+    }
+
+    const activeResendBlock = await getActiveOtpResendBlock({ email: seeker.email, phone: seeker.phone });
+    if (activeResendBlock) {
+      return res.status(429).json(activeResendBlock);
     }
 
     // Password validation starts a fresh OTP challenge on every login.

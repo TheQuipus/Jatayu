@@ -555,7 +555,7 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
       message = "Invalid email or password";
     }
     const code = (data as { code?: string }).code;
-    throw new ApiError(message, response.status, code);
+    throw new ApiError(message, response.status, code, data as ApiErrorData);
   }
 
   return data as AuthResponse;
@@ -1251,7 +1251,8 @@ export async function seekerLogin(payload: LoginPayload): Promise<AuthResponse> 
     if (isIncorrectCredentialsMessage(message)) {
       message = "Invalid email or password";
     }
-    throw new Error(message);
+    const code = (data as { code?: string }).code;
+    throw new ApiError(message, response.status, code, data as ApiErrorData);
   }
 
   return data as AuthResponse;

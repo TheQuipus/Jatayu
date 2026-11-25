@@ -25,6 +25,7 @@ export type CheckoutAuthModalProps = {
   onLoginPasswordChange: (value: string) => void;
   loginSubmitAttempted: boolean;
   isSubmittingLogin: boolean;
+  loginBlockMessage?: string | null;
   onLoginSubmit: () => void;
   // Register form state
   registerFirstName: string;
@@ -78,6 +79,7 @@ export default function CheckoutAuthModal({
   onLoginPasswordChange,
   loginSubmitAttempted,
   isSubmittingLogin,
+  loginBlockMessage,
   onLoginSubmit,
   registerFirstName,
   onRegisterFirstNameChange,
@@ -257,6 +259,12 @@ export default function CheckoutAuthModal({
                     className={styles.registerSendOtpBtn}
                   />
                 </div>
+
+                {loginBlockMessage ? (
+                  <p className={styles.loginBlockError} role="alert" aria-live="polite">
+                    {loginBlockMessage}
+                  </p>
+                ) : null}
 
                 <div className={styles.authSwitchRow}>
                   <span>Don&apos;t have an account?</span>

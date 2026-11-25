@@ -40,6 +40,7 @@ import {
 import {
   buildResendBlockedPayload,
   clearOtpResendLimits,
+  getActiveOtpResendBlock,
   getOtpResendStatus,
   releaseResendAttempt,
   reserveResendAttempt,
@@ -593,6 +594,11 @@ export const login = async (req, res) => {
 
     // Signup verification is mandatory; later logins respect the expert's 2FA setting.
     if (expert.onboardingStep === 'otp' || expert.twoFactorEnabled) {
+      const activeResendBlock = await getActiveOtpResendBlock({ email: expert.email, phone: expert.phone });
+      if (activeResendBlock) {
+        return res.status(429).json(activeResendBlock);
+      }
+
       const existingPendingOtp = tempOtps.get(expert.id) || readOtpFromModel(expert);
       if (expertOtpCooldown.canIssueNow(expert.id) || !hasActivePendingOtp(existingPendingOtp)) {
         await issueOtp(expert);
