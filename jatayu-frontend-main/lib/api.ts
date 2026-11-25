@@ -1361,6 +1361,7 @@ export interface FeaturedMatchQuery {
   category?: string;
   topics?: string[];
   limit?: number;
+  throwOnError?: boolean;
 }
 
 export async function getFeaturedMatches(
@@ -1393,7 +1394,8 @@ export async function getFeaturedMatches(
 
       return rawList.map((item) => normalizeExpert(item));
     })
-    .catch(() => {
+    .catch((err) => {
+      if (query?.throwOnError) throw err;
       return [];
     });
 }
@@ -1481,6 +1483,7 @@ export interface PublicExpertApiItem {
   replyTime?: string | null;
   replyTimeMinutes?: number | null;
   availabilities?: PublicExpertAvailability[];
+  matchTier?: number;
 }
 
 export interface PaginationInfo {

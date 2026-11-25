@@ -367,7 +367,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const breadcrumbItems = useMemo(
     () => [
-      { label: "Discover", href: seeker ? "/seeker/discover/" : "/expert/" },
+      { label: seeker ? "Our Experts" : "Discover", href: seeker ? "/seeker/discover/" : "/expert/" },
       {
         label: expert.name,
         href: seeker
