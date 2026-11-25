@@ -174,9 +174,9 @@ export default function ConferenceLanding() {
         return;
       }
       const availW = window.innerWidth * 0.96;
-      const availH = window.innerHeight - 170; // room below navbar + heading
+      const availH = window.innerHeight - 165; // room below navbar + heading
       const scaleW = availW / 2650;
-      const scaleH = availH / 760;
+      const scaleH = availH / 960;
       const scale = Math.min(scaleW, scaleH);
       scrollWrap.style.setProperty("--carousel-scale", scale.toFixed(4));
     };
