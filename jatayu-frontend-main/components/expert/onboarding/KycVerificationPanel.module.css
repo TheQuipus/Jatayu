@@ -1651,3 +1651,43 @@
 .cameraVerificationBtn:focus-visible:not(:disabled) .beginBtnLabelTrack {
   transform: translateY(-50%);
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .methodGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .methodCardBox {
+    padding: 16px 12px;
+  }
+
+  .digilockerBox {
+    padding: 20px 14px 16px;
+  }
+
+  .digilockerBox .cardHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .digilockerBox .cardDesc,
+  .cameraVerificationBox .cardDesc,
+  .digilockerBox .digilockerError {
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  .digilockerBox .cardChecklist {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .digilockerBox .instantApprovedBadge {
+    white-space: normal;
+  }
+}

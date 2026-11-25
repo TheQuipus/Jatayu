@@ -156,3 +156,30 @@
     max-width: 100%;
   }
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .registerTitle {
+    font-size: clamp(24px, 7vw, 32px);
+    line-height: 1.1;
+  }
+
+  .registerDescription {
+    font-size: 15px;
+    line-height: 1.45;
+    margin-bottom: 20px;
+  }
+
+  .registerFeaturesGrid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .featureTag {
+    padding: 8px 0;
+    font-size: 14px;
+  }
+}
+

@@ -7,7 +7,9 @@
   position: relative;
   height: 1399px;
   background: #000;
-  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
+  contain: paint;
   padding-top: 100px;
 }
 
@@ -68,8 +70,8 @@
 
 /* Perspective container */
 .rotationCircleBox {
-  width: 1200px;
-  max-width: 1200px;
+  width: min(1200px, 100vw);
+  max-width: 100%;
   height: 0;
   display: flex;
   align-items: center;
@@ -79,7 +81,8 @@
 /* The spinning hub — rotateY is applied via inline style */
 .animationBox {
   position: relative;
-  width: 1200px;
+  width: min(1200px, 100vw);
+  max-width: 100%;
   height: 0;
   flex: 1;
   display: flex;
@@ -112,12 +115,29 @@
   pointer-events: none;
 }
 
-.item01 { transform: rotateY(30deg); }
-.item02 { transform: rotateY(60deg); }
-.item03 { transform: rotateY(90deg); }
-.item04 { transform: rotateY(120deg); }
-.item05 { transform: rotateY(150deg); }
-.item06 { transform: rotateY(180deg); }
+.item01 {
+  transform: rotateY(30deg);
+}
+
+.item02 {
+  transform: rotateY(60deg);
+}
+
+.item03 {
+  transform: rotateY(90deg);
+}
+
+.item04 {
+  transform: rotateY(120deg);
+}
+
+.item05 {
+  transform: rotateY(150deg);
+}
+
+.item06 {
+  transform: rotateY(180deg);
+}
 
 /* ── Image boxes ──────────────────────────────────────────── */
 .animationImageBox {
@@ -458,14 +478,38 @@
 }
 
 @media (max-width: 480px) {
+  .section {
+    height: auto;
+    min-height: auto;
+    padding-top: max(56px, env(safe-area-inset-top, 56px));
+    padding-bottom: 28px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: clamp(16px, 3vh, 28px);
+  }
+
+  .heroContent {
+    margin-top: clamp(16px, 2.5vh, 24px);
+    padding: 0 16px;
+  }
+
+  .heroTitle {
+    font-size: clamp(32px, 9vw, 48px);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
   .scrollWrap {
-    height: 340px;
-    margin-top: 56px;
+    height: 380px;
+    margin-top: 0;
+    overflow: visible;
   }
 
   .rotationCircleBox,
   .animationBox {
-    width: 800px;
+    width: min(800px, 200vw);
   }
 
   .animationItem {
@@ -479,5 +523,248 @@
   .boxTop {
     width: 475px;
     height: 680px;
+  }
+
+  .animationImageBox img[src*="category-immigration"] {
+    object-position: top center;
+    transform: scale(1.35) translateY(-5%);
+    transform-origin: top center;
+  }
+
+  .animationImageBox:hover img[src*="category-immigration"] {
+    transform: scale(1.38) translateY(-5%);
+  }
+
+  .heroBottomBox {
+    position: relative;
+    padding: 24px 16px;
+    gap: 20px;
+  }
+
+  .heroInfoBox {
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .primaryBtn {
+    min-height: 44px;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 1024px) {
+  .section {
+    height: 100svh;
+    min-height: 650px;
+    padding-top: clamp(64px, 7vh, 84px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: clip;
+  }
+
+  .heroContent {
+    margin-top: 0;
+    padding: 0 16px;
+    gap: clamp(4px, 0.8vh, 8px);
+    flex-shrink: 0;
+  }
+
+  .heroSubtitle {
+    font-size: clamp(10px, 0.85vw, 13px);
+    letter-spacing: 0.18em;
+  }
+
+  .heroTitle {
+    font-size: clamp(38px, 4.6vw, 80px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+  }
+
+  .scrollWrap {
+    flex: 0 0 auto;
+    width: 100%;
+    height: calc(980px * var(--carousel-scale, 0.55));
+    min-height: 0;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .rotationCircleBox {
+    transform: scale(var(--carousel-scale, 0.65)) translateX(30px);
+    transform-origin: center center;
+    will-change: transform;
+  }
+}
+
+/* Desktop-only spacing override: keep heading centred between OUR EXPERTS and carousel */
+@media (min-width: 1024px) {
+  .section {
+    height: auto;
+    min-height: max(650px, 100svh);
+    padding-top: 52px;
+    padding-bottom: calc(110px * var(--carousel-scale, 0.55));
+    justify-content: flex-start;
+  }
+
+  .heroContent {
+    margin-top: calc(315px * var(--carousel-scale, 0.55));
+  }
+
+  .scrollWrap {
+    height: calc(850px * var(--carousel-scale, 0.55));
+  }
+
+  .animationImageBox {
+    overflow: visible;
+  }
+
+  .categoryOverlay {
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   Phone & Tablet fixes (max-width: 1023px and 1024px portrait only)
+   Desktop (>= 1024px landscape) is untouched.
+   ========================================================================== */
+@media (max-width: 1023px) {
+
+  /* Problem A: prevent 3D compositor black tile clipping on rotated cards */
+  .animationImageBox {
+    overflow: visible;
+  }
+
+  .categoryOverlay {
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+
+  /* Center the 2300px ring hub at exact 50% of .animationBox */
+  .animationItem {
+    left: 50%;
+    margin-left: -1150px;
+  }
+
+  .animationImageBox img[src*="category-immigration"],
+  .animationImageBox:hover img[src*="category-immigration"] {
+    transform: none;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 1023px) {
+  .section {
+    height: auto;
+    min-height: auto;
+    padding-top: clamp(64px, 8vh, 96px);
+    padding-bottom: clamp(32px, 5vh, 56px);
+    overflow: clip;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: clamp(20px, 3vh, 36px);
+  }
+
+  .heroContent {
+    margin-top: 0;
+    padding: 0 24px;
+  }
+
+  .heroTitle {
+    font-size: clamp(40px, 7.5vw, 76px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+  }
+
+  .scrollWrap {
+    height: clamp(380px, 52vw, 560px);
+    margin-top: 0;
+    overflow: visible;
+  }
+
+  .rotationCircleBox {
+    width: 100%;
+    transform: scale(0.38);
+    transform-origin: center center;
+  }
+
+  .animationBox {
+    width: 100%;
+  }
+
+  .animationItem {
+    left: 50%;
+    margin-left: -1700px;
+  }
+}
+
+@media (min-width: 651px) and (max-width: 850px) {
+  .rotationCircleBox {
+    transform: scale(0.46);
+  }
+}
+
+@media (min-width: 851px) and (max-width: 1023px) {
+  .rotationCircleBox {
+    transform: scale(0.54);
+  }
+}
+
+/* 1024x1366 portrait tablet only (never matches 1024x768 desktop landscape) */
+@media (min-width: 1024px) and (max-width: 1024px) and (orientation: portrait) {
+  .section {
+    height: auto;
+    min-height: auto;
+    padding-top: clamp(72px, 7vh, 96px);
+    padding-bottom: 48px;
+    justify-content: flex-start;
+    gap: 28px;
+    overflow: clip;
+  }
+
+  .heroContent {
+    margin-top: 0;
+    padding: 0 24px;
+  }
+
+  .heroTitle {
+    font-size: clamp(44px, 7.2vw, 76px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+  }
+
+  .scrollWrap {
+    height: 560px;
+    margin-top: 0;
+    overflow: visible;
+  }
+
+  .rotationCircleBox {
+    width: 100%;
+    transform: scale(0.56);
+    transform-origin: center center;
+  }
+
+  .animationBox {
+    width: 100%;
+  }
+
+  .animationItem {
+    left: 50%;
+    margin-left: -1700px;
+  }
+
+  .animationImageBox {
+    overflow: visible;
+  }
+
+  .categoryOverlay {
+    transform: none;
   }
 }

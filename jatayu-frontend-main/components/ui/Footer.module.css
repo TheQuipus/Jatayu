@@ -1,8 +1,14 @@
 .stickyShell {
-  --footer-sticky-height: 1000px;
+  --footer-sticky-height: 100vh;
   position: relative;
   height: var(--footer-sticky-height);
   clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+@supports (height: 100svh) {
+  .stickyShell {
+    --footer-sticky-height: 100svh;
+  }
 }
 
 .stickyTrack {
@@ -17,7 +23,7 @@
   padding: 52px 0 28px;
   height: var(--footer-sticky-height);
   position: sticky;
-  top: calc(100vh - var(--footer-sticky-height));
+  top: 0;
   overflow: hidden;
 }
 
@@ -74,7 +80,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: start;
-  margin-top: 160px;
+  margin-top: clamp(80px, 11vw, 160px);
   position: relative;
   z-index: 2;
 }
@@ -150,7 +156,7 @@
   margin-top: 2px;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 38px;
+  font-size: clamp(28px, 2.64vw, 38px);
   letter-spacing: -0.03em;
   color: #fff;
   line-height: 1.05;
@@ -184,7 +190,7 @@
   bottom: 64px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 370px;
+  font-size: clamp(180px, 25.7vw, 370px);
   letter-spacing: -0.04em;
   line-height: 0.75;
   color: #121419;
@@ -199,7 +205,7 @@
   justify-content: space-between;
   align-items: flex-end;
   gap: 16px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   margin-top: auto;
   position: relative;
   z-index: 3;
@@ -295,5 +301,78 @@
   .metaLinks {
     flex-wrap: wrap;
     gap: 10px;
+  }
+}
+
+/* Phone-only responsiveness (max-width: 480px) */
+@media (max-width: 480px) {
+  .footer {
+    padding: 28px 0 20px;
+  }
+
+  .footerInner {
+    gap: 20px;
+  }
+
+  .mainGrid {
+    margin-top: 10px;
+    gap: 20px;
+  }
+
+  .linkGroup {
+    gap: 4px;
+  }
+
+  .linkGroup a,
+  .phoneLink {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 4px;
+  }
+
+  .emailLink {
+    font-size: clamp(24px, 7vw, 36px);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    word-break: break-all;
+  }
+
+  .backTopWrap {
+    margin-bottom: 4px;
+  }
+
+  .backTopWrap a {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 4px;
+  }
+
+  .brandWord {
+    font-size: clamp(48px, 16vw, 76px);
+    line-height: 0.85;
+    margin-top: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .footerMeta {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .metaLinks {
+    gap: 8px;
+  }
+
+  .metaLinks a {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 4px;
   }
 }

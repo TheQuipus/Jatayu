@@ -10,7 +10,7 @@
 }
 
 .aboutUsTitle {
-  font-size: 70px;
+  font-size: clamp(42px, 4.86vw, 70px);
   grid-column: 1 / span 2;
 }
 
@@ -20,7 +20,7 @@
 
 .titleAccess {
   color: var(--green);
-  white-space: nowrap;
+  text-wrap: balance;
   display: inline-block;
 }
 
@@ -145,6 +145,14 @@
 
 
 @media (max-width: 1024px) {
+  .aboutUsTitle {
+    font-size: clamp(34px, 6.5vw, 56px);
+  }
+
+  .titleAccess {
+    white-space: normal;
+  }
+
   .aboutUsTop {
     grid-template-columns: 1fr;
     gap: 24px;
@@ -193,3 +201,69 @@
   }
 
 }
+
+/* ==========================================================================
+   Phone-only styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .aboutUs {
+    padding: 60px 0;
+  }
+
+  .aboutUsTop {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .aboutUsMeta {
+    order: -1;
+    grid-column: auto;
+    justify-self: start;
+  }
+
+  .aboutUsTitle {
+    grid-column: auto;
+    font-size: clamp(28px, 8.5vw, 40px);
+    line-height: 0.95;
+    word-break: break-word;
+  }
+
+  .aboutUsCta {
+    grid-column: auto;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .aboutUsDesc {
+    grid-column: auto;
+    font-size: 14px;
+    line-height: 1.45;
+    max-width: 100%;
+  }
+
+  .aboutUsRule {
+    grid-column: auto;
+  }
+
+  .featureGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .featureCard {
+    padding: 16px 20px 20px;
+    min-height: auto;
+    width: 100%;
+  }
+
+  .featureTitle {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+
+  .featureDesc {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}
+

@@ -247,3 +247,27 @@
 .forgotPasswordLink:focus-visible .forgotPasswordTrack {
   transform: translateY(-50%);
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .socialButtonsRow {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .registerForm {
+    gap: 16px;
+  }
+
+  .registerFormIntro {
+    margin-bottom: 18px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .forgotPasswordLink {
+    font-size: 12px;
+  }
+}

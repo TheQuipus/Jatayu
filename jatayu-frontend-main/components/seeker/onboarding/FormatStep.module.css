@@ -212,3 +212,37 @@
 .switchTrack:hover:not(.switchTrackActive) {
   background: rgba(255, 255, 255, 0.18);
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .toggleCard {
+    padding: 14px 14px;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .toggleTitle {
+    font-size: 13px;
+  }
+
+  .toggleDesc {
+    font-size: 11px;
+  }
+
+  .formatPriceRow {
+    margin-right: 12px;
+    padding-left: 10px;
+    width: 64px;
+  }
+
+  .lengthsRow {
+    gap: 8px;
+  }
+
+  .lengthPill {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}
