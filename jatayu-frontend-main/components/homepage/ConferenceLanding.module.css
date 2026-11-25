@@ -115,12 +115,29 @@
   pointer-events: none;
 }
 
-.item01 { transform: rotateY(30deg); }
-.item02 { transform: rotateY(60deg); }
-.item03 { transform: rotateY(90deg); }
-.item04 { transform: rotateY(120deg); }
-.item05 { transform: rotateY(150deg); }
-.item06 { transform: rotateY(180deg); }
+.item01 {
+  transform: rotateY(30deg);
+}
+
+.item02 {
+  transform: rotateY(60deg);
+}
+
+.item03 {
+  transform: rotateY(90deg);
+}
+
+.item04 {
+  transform: rotateY(120deg);
+}
+
+.item05 {
+  transform: rotateY(150deg);
+}
+
+.item06 {
+  transform: rotateY(180deg);
+}
 
 /* ── Image boxes ──────────────────────────────────────────── */
 .animationImageBox {
@@ -611,3 +628,143 @@
   }
 }
 
+/* ==========================================================================
+   Phone & Tablet fixes (max-width: 1023px and 1024px portrait only)
+   Desktop (>= 1024px landscape) is untouched.
+   ========================================================================== */
+@media (max-width: 1023px) {
+
+  /* Problem A: prevent 3D compositor black tile clipping on rotated cards */
+  .animationImageBox {
+    overflow: visible;
+  }
+
+  .categoryOverlay {
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+
+  /* Center the 2300px ring hub at exact 50% of .animationBox */
+  .animationItem {
+    left: 50%;
+    margin-left: -1150px;
+  }
+
+  .animationImageBox img[src*="category-immigration"],
+  .animationImageBox:hover img[src*="category-immigration"] {
+    transform: none;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 1023px) {
+  .section {
+    height: auto;
+    min-height: auto;
+    padding-top: clamp(64px, 8vh, 96px);
+    padding-bottom: clamp(32px, 5vh, 56px);
+    overflow: clip;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: clamp(20px, 3vh, 36px);
+  }
+
+  .heroContent {
+    margin-top: 0;
+    padding: 0 24px;
+  }
+
+  .heroTitle {
+    font-size: clamp(40px, 7.5vw, 76px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+  }
+
+  .scrollWrap {
+    height: clamp(380px, 52vw, 560px);
+    margin-top: 0;
+    overflow: visible;
+  }
+
+  .rotationCircleBox {
+    width: 100%;
+    transform: scale(0.38);
+    transform-origin: center center;
+  }
+
+  .animationBox {
+    width: 100%;
+  }
+
+  .animationItem {
+    left: 50%;
+    margin-left: -1700px;
+  }
+}
+
+@media (min-width: 651px) and (max-width: 850px) {
+  .rotationCircleBox {
+    transform: scale(0.46);
+  }
+}
+
+@media (min-width: 851px) and (max-width: 1023px) {
+  .rotationCircleBox {
+    transform: scale(0.54);
+  }
+}
+
+/* 1024x1366 portrait tablet only (never matches 1024x768 desktop landscape) */
+@media (min-width: 1024px) and (max-width: 1024px) and (orientation: portrait) {
+  .section {
+    height: auto;
+    min-height: auto;
+    padding-top: clamp(72px, 7vh, 96px);
+    padding-bottom: 48px;
+    justify-content: flex-start;
+    gap: 28px;
+    overflow: clip;
+  }
+
+  .heroContent {
+    margin-top: 0;
+    padding: 0 24px;
+  }
+
+  .heroTitle {
+    font-size: clamp(44px, 7.2vw, 76px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+  }
+
+  .scrollWrap {
+    height: 560px;
+    margin-top: 0;
+    overflow: visible;
+  }
+
+  .rotationCircleBox {
+    width: 100%;
+    transform: scale(0.56);
+    transform-origin: center center;
+  }
+
+  .animationBox {
+    width: 100%;
+  }
+
+  .animationItem {
+    left: 50%;
+    margin-left: -1700px;
+  }
+
+  .animationImageBox {
+    overflow: visible;
+  }
+
+  .categoryOverlay {
+    transform: none;
+  }
+}
