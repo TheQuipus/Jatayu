@@ -1,6 +1,5 @@
 .services {
   position: relative;
-  z-index: 5;
   padding: 120px 0;
   background: var(--fold-background);
   color: var(--fold-text);

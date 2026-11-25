@@ -45,8 +45,8 @@ export default function Home() {
       <SmoothScroll />
       <ConferenceLanding />
       <SectionWithGrid color="#17191E" fadeLines><Hero /></SectionWithGrid>
-      <SectionWithGrid color="#17191E"><Services /></SectionWithGrid>     
-      <SectionWithGrid color="#17191E"><Problem /></SectionWithGrid>
+      <SectionWithGrid color="#FFFFFF"><Services /></SectionWithGrid>     
+      <SectionWithGrid color="#FFFFFF"><Problem /></SectionWithGrid>
       <SectionWithGrid color="#fff"><Portfolio /></SectionWithGrid>
       <SectionWithGrid color="#17191E"><ExpertAdvice /></SectionWithGrid>
       <SectionWithGrid color="#fff"><Trust /></SectionWithGrid>
