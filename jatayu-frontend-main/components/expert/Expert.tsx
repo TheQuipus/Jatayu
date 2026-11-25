@@ -14,7 +14,25 @@ export type ExpertFilterKey =
   | "price"
   | "availability";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import { getPublicExperts, getSeekerDiscoverExperts, type PublicExpertsQueryParams } from "@/lib/api";
+import {
+  getPublicExperts,
+  getSeekerDiscoverExperts,
+  getSeekerToken,
+  type PublicExpertsQueryParams,
+} from "@/lib/api";
+import {
+  SEEKER_PREDEFINED_CATEGORIES,
+  SEEKER_PRESET_LANGUAGES,
+  getSeekerCategoryLabel,
+} from "@/lib/seekerCategories";
+import {
+  DISCOVER_ABSOLUTE_MAX_PRICE,
+  DISCOVER_ABSOLUTE_MIN_PRICE,
+  areFiltersEqualToPreselect,
+  deriveSeekerDiscoverPreselect,
+  type SeekerDiscoverPreselect,
+} from "@/lib/seekerDiscoverPreselect";
+import { fetchSeekerProfileData } from "@/lib/seekerProfileApi";
 import {
   availabilityFilters,
   expertiseTags,
@@ -31,10 +49,14 @@ import {
 import { useBookmarks } from "@/lib/useBookmarks";
 import styles from "./Expert.module.css";
 
-const ABSOLUTE_MIN_PRICE = 0;
-const ABSOLUTE_MAX_PRICE = 300000;
+const ABSOLUTE_MIN_PRICE = DISCOVER_ABSOLUTE_MIN_PRICE;
+const ABSOLUTE_MAX_PRICE = DISCOVER_ABSOLUTE_MAX_PRICE;
 
-const topicOptions = expertiseTags.map((tag) => ({ value: tag, label: tag }));
+const publicTopicOptions = expertiseTags.map((tag) => ({ value: tag, label: tag }));
+const seekerTopicOptions = SEEKER_PREDEFINED_CATEGORIES.map((cat) => ({
+  value: cat.id,
+  label: cat.label,
+}));
 const ratingOptions = ratingFilters.map((filter) => ({
   value: filter.id,
   label: filter.label,
@@ -56,9 +78,10 @@ function toggleSelection<T extends string>(values: T[], value: T): T[] {
     : [...values, value];
 }
 
-function getOptionLabel(key: ExpertFilterKey, value: string): string {
+function getOptionLabel(key: ExpertFilterKey, value: string, seeker = false): string {
   switch (key) {
     case "topic":
+      return seeker ? getSeekerCategoryLabel(value) : value;
     case "language":
       return value;
     case "rating":
@@ -169,10 +192,30 @@ export default function Expert({
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
-  const availableLanguages = useMemo(
+  const [isPreselectReady, setIsPreselectReady] = useState(!seeker);
+  const [isPreselectBannerActive, setIsPreselectBannerActive] = useState(false);
+  const [isUsingFallbackList, setIsUsingFallbackList] = useState(false);
+  const [apiLanguages, setApiLanguages] = useState<string[]>([]);
+  const preselectRef = useRef<SeekerDiscoverPreselect | null>(null);
+
+  const staticLanguages = useMemo(
     () => getAvailableLanguages(featuredExperts),
-    []
+    [],
   );
+
+  const availableLanguages = useMemo(() => {
+    if (!seeker) return staticLanguages;
+    const merged = new Map<string, string>();
+    for (const lang of [...staticLanguages, ...SEEKER_PRESET_LANGUAGES, ...apiLanguages]) {
+      const trimmed = String(lang || "").trim();
+      if (trimmed && !merged.has(trimmed.toLowerCase())) {
+        merged.set(trimmed.toLowerCase(), trimmed);
+      }
+    }
+    return [...merged.values()].sort((a, b) => a.localeCompare(b));
+  }, [seeker, staticLanguages, apiLanguages]);
+
+  const topicOptions = seeker ? seekerTopicOptions : publicTopicOptions;
 
   const languageOptions = useMemo(
     () => availableLanguages.map((language) => ({ value: language, label: language })),
@@ -222,6 +265,7 @@ export default function Expert({
   }, [searchQuery, availableLanguages]);
 
   const selectSuggestion = (suggestion: { text: string }) => {
+    clearPreselectBanner();
     setSearchQuery(suggestion.text);
     setIsOpen(false);
     setActiveIndex(-1);
@@ -257,13 +301,13 @@ export default function Expert({
     const items: AppliedFilter[] = [];
 
     selectedTopics.forEach((value) => {
-      items.push({ key: "topic", value, label: getOptionLabel("topic", value) });
+      items.push({ key: "topic", value, label: getOptionLabel("topic", value, seeker) });
     });
     selectedLanguages.forEach((value) => {
-      items.push({ key: "language", value, label: getOptionLabel("language", value) });
+      items.push({ key: "language", value, label: getOptionLabel("language", value, seeker) });
     });
     selectedRatings.forEach((value) => {
-      items.push({ key: "rating", value, label: getOptionLabel("rating", value) });
+      items.push({ key: "rating", value, label: getOptionLabel("rating", value, seeker) });
     });
     if (priceRange[0] > ABSOLUTE_MIN_PRICE || priceRange[1] < ABSOLUTE_MAX_PRICE) {
       items.push({
@@ -273,7 +317,7 @@ export default function Expert({
       });
     }
     selectedAvailabilities.forEach((value) => {
-      items.push({ key: "availability", value, label: getOptionLabel("availability", value) });
+      items.push({ key: "availability", value, label: getOptionLabel("availability", value, seeker) });
     });
 
     return items;
@@ -283,6 +327,7 @@ export default function Expert({
     selectedRatings,
     priceRange,
     selectedAvailabilities,
+    seeker,
   ]);
 
   const filteredExperts = useMemo(() => {
@@ -401,14 +446,85 @@ export default function Expert({
     sortBy,
   ]);
 
-  // Fetch data from API (/api/public/experts)
+  // Preselect onboarding filters for logged-in seekers before first fetch
   useEffect(() => {
+    if (!seeker) return;
+
+    let cancelled = false;
+    const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const urlCategory = urlParams?.get("category")?.trim() || "";
+
+    const baseLangPool = [
+      ...getAvailableLanguages(featuredExperts),
+      ...SEEKER_PRESET_LANGUAGES,
+    ];
+
+    const token = getSeekerToken();
+    const profilePromise = token
+      ? Promise.race([
+          fetchSeekerProfileData(),
+          new Promise<null>((resolve) => {
+            setTimeout(() => resolve(null), 3000);
+          }),
+        ])
+      : Promise.resolve(null);
+
+    void profilePromise
+      .then((profile) => {
+        if (cancelled || !profile) return;
+
+        const preselect = deriveSeekerDiscoverPreselect(
+          {
+            category: urlCategory ? undefined : profile.category,
+            selectedLanguages: profile.selectedLanguages,
+            selectedBudget: profile.selectedBudget,
+          },
+          baseLangPool,
+        );
+
+        const hasAnyPreselect =
+          preselect.categories.length > 0 ||
+          preselect.languages.length > 0 ||
+          preselect.priceRange[1] < ABSOLUTE_MAX_PRICE;
+
+        if (hasAnyPreselect) {
+          preselectRef.current = preselect;
+          if (preselect.categories.length > 0) {
+            setSelectedTopics(preselect.categories as ExpertiseTag[]);
+          }
+          if (preselect.languages.length > 0) {
+            setSelectedLanguages(preselect.languages);
+          }
+          if (preselect.priceRange[1] < ABSOLUTE_MAX_PRICE) {
+            setPriceRange(preselect.priceRange);
+          }
+          setIsPreselectBannerActive(true);
+        }
+      })
+      .catch(() => {
+        // Proceed unfiltered on profile fetch failure
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsPreselectReady(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [seeker]);
+
+  // Fetch data from API (/api/public/experts or /api/seeker/discover)
+  useEffect(() => {
+    if (!isPreselectReady) return;
     let isCancelled = false;
 
     async function fetchExpertsData() {
       if (page === 1) {
         setIsLoading(true);
         setFallbackSuggestions([]);
+        setIsUsingFallbackList(false);
       } else {
         setIsLoadingMore(true);
       }
@@ -434,10 +550,13 @@ export default function Expert({
         if (isCancelled) return;
 
         setUsingApi(true);
-        if (page === 1) {
-          setFallbackSuggestions(res.suggestions || []);
+        if (seeker && Array.isArray(res.filters?.languages) && res.filters.languages.length > 0) {
+          setApiLanguages(res.filters.languages);
         }
+
         if (res.experts && res.experts.length > 0) {
+          setFallbackSuggestions([]);
+          setIsUsingFallbackList(false);
           setApiExperts((prev) => {
             if (page === 1) return res.experts;
             const existingIds = new Set(prev.map((item) => item.id || item.name));
@@ -445,8 +564,38 @@ export default function Expert({
             return [...prev, ...newItems];
           });
           setHasNextPage(res.pagination.hasNextPage);
+        } else if (
+          seeker &&
+          page === 1 &&
+          preselectRef.current !== null &&
+          areFiltersEqualToPreselect(
+            {
+              selectedTopics,
+              selectedLanguages,
+              selectedRatings,
+              priceRange,
+              selectedAvailabilities,
+              searchQuery,
+            },
+            preselectRef.current,
+          )
+        ) {
+          const fallbackRes = await getSeekerDiscoverExperts({
+            page: 1,
+            limit: 12,
+            sortBy,
+          });
+          if (isCancelled) return;
+          setApiExperts(fallbackRes.experts || []);
+          setHasNextPage(Boolean(fallbackRes.pagination?.hasNextPage));
+          setIsUsingFallbackList(true);
+          setFallbackSuggestions([]);
         } else {
-          if (page === 1) setApiExperts([]);
+          if (page === 1) {
+            setApiExperts([]);
+            setFallbackSuggestions(!seeker ? (res.suggestions || []) : []);
+          }
+          setIsUsingFallbackList(false);
           setHasNextPage(false);
         }
       } catch (err) {
@@ -454,6 +603,7 @@ export default function Expert({
         setUsingApi(false);
         if (page === 1) {
           setFallbackSuggestions([]);
+          setIsUsingFallbackList(false);
           setApiExperts(filteredExperts);
         }
         setHasNextPage(false);
@@ -471,6 +621,8 @@ export default function Expert({
       isCancelled = true;
     };
   }, [
+    isPreselectReady,
+    seeker,
     page,
     searchQuery,
     selectedTopics,
@@ -503,9 +655,15 @@ export default function Expert({
   }, [hasNextPage, isLoading, isLoadingMore]);
 
   const displayedExpertsList = usingApi ? apiExperts : filteredExperts;
-  const displayedFallbackSuggestions = seeker && usingApi ? fallbackSuggestions : [];
+  const displayedFallbackSuggestions = !seeker && usingApi ? fallbackSuggestions : [];
+
+  const clearPreselectBanner = () => {
+    setIsPreselectBannerActive(false);
+    setIsUsingFallbackList(false);
+  };
 
   const removeAppliedFilter = (key: ExpertFilterKey, value: string) => {
+    clearPreselectBanner();
     switch (key) {
       case "topic":
         setSelectedTopics((current) => current.filter((item) => item !== value));
@@ -526,6 +684,7 @@ export default function Expert({
   };
 
   const clearAllFilters = () => {
+    clearPreselectBanner();
     setSelectedTopics([]);
     setSelectedLanguages([]);
     setSelectedRatings([]);
@@ -633,12 +792,16 @@ export default function Expert({
                   placeholder="Categories"
                   options={topicOptions}
                   selectedValues={selectedTopics}
-                  onToggleValue={(value) =>
+                  onToggleValue={(value) => {
+                    clearPreselectBanner();
                     setSelectedTopics((current) =>
                       toggleSelection(current, value as ExpertiseTag)
-                    )
-                  }
-                  onClear={() => setSelectedTopics([])}
+                    );
+                  }}
+                  onClear={() => {
+                    clearPreselectBanner();
+                    setSelectedTopics([]);
+                  }}
                   defaultOpen={true}
                 />
                 <ExpertFilterSection
@@ -646,29 +809,40 @@ export default function Expert({
                   placeholder="Languages"
                   options={languageOptions}
                   selectedValues={selectedLanguages}
-                  onToggleValue={(value) =>
-                    setSelectedLanguages((current) => toggleSelection(current, value))
-                  }
-                  onClear={() => setSelectedLanguages([])}
+                  onToggleValue={(value) => {
+                    clearPreselectBanner();
+                    setSelectedLanguages((current) => toggleSelection(current, value));
+                  }}
+                  onClear={() => {
+                    clearPreselectBanner();
+                    setSelectedLanguages([]);
+                  }}
                 />
                 <ExpertFilterSection
                   filterKey="rating"
                   placeholder="Ratings"
                   options={ratingOptions}
                   selectedValues={selectedRatings}
-                  onToggleValue={(value) =>
+                  onToggleValue={(value) => {
+                    clearPreselectBanner();
                     setSelectedRatings((current) =>
                       toggleSelection(current, value as RatingFilterId)
-                    )
-                  }
-                  onClear={() => setSelectedRatings([])}
+                    );
+                  }}
+                  onClear={() => {
+                    clearPreselectBanner();
+                    setSelectedRatings([]);
+                  }}
                 />
                 <PriceFilterSection
                   minPrice={priceRange[0]}
                   maxPrice={priceRange[1]}
                   absoluteMin={ABSOLUTE_MIN_PRICE}
                   absoluteMax={ABSOLUTE_MAX_PRICE}
-                  onChange={(min, max) => setPriceRange([min, max])}
+                  onChange={(min, max) => {
+                    clearPreselectBanner();
+                    setPriceRange([min, max]);
+                  }}
                   defaultOpen={true}
                 />
                 <ExpertFilterSection
@@ -676,12 +850,16 @@ export default function Expert({
                   placeholder="Availability"
                   options={availabilityOptions}
                   selectedValues={selectedAvailabilities}
-                  onToggleValue={(value) =>
+                  onToggleValue={(value) => {
+                    clearPreselectBanner();
                     setSelectedAvailabilities((current) =>
                       toggleSelection(current, value as AvailabilityFilterId)
-                    )
-                  }
-                  onClear={() => setSelectedAvailabilities([])}
+                    );
+                  }}
+                  onClear={() => {
+                    clearPreselectBanner();
+                    setSelectedAvailabilities([]);
+                  }}
                 />
               </div>
             </aside>
@@ -704,6 +882,7 @@ export default function Expert({
                       placeholder="Search..."
                       value={searchQuery}
                       onChange={(event) => {
+                        clearPreselectBanner();
                         setSearchQuery(event.target.value);
                         setIsOpen(true);
                         setActiveIndex(-1);
@@ -807,22 +986,26 @@ export default function Expert({
               </div>
 
               <div className={styles.speaksCards}>
-                {displayedFallbackSuggestions.length > 0 ? (
-                  <div
-                    role="status"
-                    style={{
-                      gridColumn: "1 / -1",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 4,
-                      padding: 16,
-                      borderRadius: 12,
-                      background: "#fff7ed",
-                      color: "var(--ink)",
-                    }}
-                  >
-                    <strong>No exact matches found</strong>
-                    <span style={{ color: "var(--dove-gray)", fontSize: 14 }}>
+                {seeker && isPreselectBannerActive && !isLoading && displayedExpertsList.length > 0 ? (
+                  <div className={styles.recommendedBanner} role="status">
+                    <div className={styles.recommendedBannerHeader}>
+                      <span className={styles.recommendedBannerDot} aria-hidden="true" />
+                      <strong className={styles.recommendedBannerTitle}>Recommended profiles</strong>
+                    </div>
+                    <span className={styles.recommendedBannerSubline}>
+                      {isUsingFallbackList
+                        ? "Nothing matches all your preferences exactly, so here are the closest experts. Adjust the filters anytime."
+                        : "Picked for you based on your preferences. Adjust the filters anytime."}
+                    </span>
+                  </div>
+                ) : null}
+                {!seeker && displayedFallbackSuggestions.length > 0 ? (
+                  <div className={styles.recommendedBanner} role="status">
+                    <div className={styles.recommendedBannerHeader}>
+                      <span className={styles.recommendedBannerDot} aria-hidden="true" />
+                      <strong className={styles.recommendedBannerTitle}>Recommended profiles</strong>
+                    </div>
+                    <span className={styles.recommendedBannerSubline}>
                       These related experts may still be a good fit.
                     </span>
                   </div>

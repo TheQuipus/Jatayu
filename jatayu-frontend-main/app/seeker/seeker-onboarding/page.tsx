@@ -10,6 +10,7 @@ import {
   Coins,
   Heart,
 } from "lucide-react";
+import { SEEKER_PREDEFINED_CATEGORIES } from "@/lib/seekerCategories";
 import styles from "./page.module.css";
 import WelcomeStep from "@/components/seeker/onboarding/WelcomeStep";
 import CategoryStep from "@/components/seeker/onboarding/CategoryStep";
@@ -59,21 +60,20 @@ import {
 } from "@/lib/seekerAuth";
 import { getOtpBackStep } from "@/lib/otpFlow";
 
+const CATEGORY_ICONS: Record<string, typeof Briefcase> = {
+  "career-work": Briefcase,
+  "legal-compliance": Scale,
+  "business-entrepreneurship": LineChart,
+  "personal-growth": Heart,
+  "finance-investment": Coins,
+};
+
 const categories = [
-  { id: "career-work", label: "Career & Work", icon: Briefcase },
-  { id: "legal-compliance", label: "Legal & Compliance", icon: Scale },
-  { id: "business-entrepreneurship", label: "Business & Entrepreneurship", icon: LineChart },
-  { id: "personal-growth", label: "Personal Growth", icon: Heart },
-  { id: "finance-investment", label: "Finance & Investment", icon: Coins },
-  { id: "software", label: "Software & Development", icon: Briefcase },
-  { id: "design", label: "Design & Creative", icon: Briefcase },
-  { id: "business", label: "Business & Consulting", icon: Briefcase },
-  { id: "marketing", label: "Marketing & Growth", icon: Briefcase },
-  { id: "finance", label: "Finance & Tax", icon: Briefcase },
-  { id: "health", label: "Health & Wellness", icon: Briefcase },
-  { id: "legal", label: "Legal & Founder Contracts", icon: Briefcase },
-  { id: "product", label: "Product Management", icon: Briefcase },
-  { id: "data", label: "Data & Analytics", icon: Briefcase },
+  ...SEEKER_PREDEFINED_CATEGORIES.map((category) => ({
+    id: category.id,
+    label: category.label,
+    icon: CATEGORY_ICONS[category.id] ?? Briefcase,
+  })),
   { id: "other-not-sure", label: "Other", icon: Lightbulb },
 ];
 

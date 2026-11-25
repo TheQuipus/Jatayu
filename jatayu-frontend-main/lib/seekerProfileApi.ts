@@ -12,6 +12,8 @@ export type SeekerProfileData = {
   needsSubject?: string;
   needsText?: string;
   selectedNeedChips?: string[];
+  selectedBudget?: string;
+  selectedLanguages?: string[];
 };
 
 export type SeekerQuestionPrefill = {
@@ -57,6 +59,8 @@ type BackendSeekerProfile = {
   needsSubject?: string;
   needsText?: string;
   selectedNeedChips?: unknown;
+  selectedBudget?: string;
+  selectedLanguages?: unknown;
   onboardingMetadata?: Record<string, unknown> | null;
 };
 
@@ -139,6 +143,8 @@ export function getStoredSeekerProfile(): SeekerProfileData {
         needsSubject: typeof parsed.needsSubject === "string" ? parsed.needsSubject : "",
         needsText: typeof parsed.needsText === "string" ? parsed.needsText : "",
         selectedNeedChips: normalizeNeedChipIds(parsed.selectedNeedChips),
+        selectedBudget: typeof parsed.selectedBudget === "string" ? parsed.selectedBudget : "",
+        selectedLanguages: normalizeStringArrayField(parsed.selectedLanguages),
       };
     }
   } catch {
@@ -231,6 +237,8 @@ export function mapBackendSeekerToProfile(
     needsSubject: (typeof data.needsSubject === "string" ? data.needsSubject : rawMetadataSubject).trim(),
     needsText: typeof data.needsText === "string" ? data.needsText : "",
     selectedNeedChips: normalizeNeedChipIds(data.selectedNeedChips),
+    selectedBudget: typeof data.selectedBudget === "string" ? data.selectedBudget.trim() : "",
+    selectedLanguages: normalizeStringArrayField(data.selectedLanguages),
   };
 }
 
@@ -294,6 +302,15 @@ export async function fetchSeekerProfileData(): Promise<SeekerProfileData> {
       existing.selectedNeedChips?.length
     ) {
       mapped.selectedNeedChips = existing.selectedNeedChips;
+    }
+    if (!mapped.selectedBudget && existing.selectedBudget) {
+      mapped.selectedBudget = existing.selectedBudget;
+    }
+    if (
+      (!mapped.selectedLanguages || mapped.selectedLanguages.length === 0) &&
+      existing.selectedLanguages?.length
+    ) {
+      mapped.selectedLanguages = existing.selectedLanguages;
     }
   }
   saveStoredSeekerProfile(mapped);
