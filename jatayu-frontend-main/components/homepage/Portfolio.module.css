@@ -18,12 +18,12 @@
 .portfolioHead :global(.display) { 
   grid-column: 2 / 5;
   grid-row: 1;
-  font-size: 100px; 
+  font-size: clamp(48px, 6.95vw, 100px); 
   line-height: .95; 
 }
 
 .titleFirstLine {
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .titleSecondLine {
@@ -32,7 +32,7 @@
 }
 
 .titleThirdLine {
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .portfolioHead > :global(.eyebrow) {
@@ -178,6 +178,15 @@
   .portfolioGrid { grid-template-columns: repeat(2, 1fr); }
   .portfolioLines { display: none; }
   .portfolioHead { grid-template-columns: 1fr; position: static; pointer-events: auto; }
+  .portfolioHead :global(.display) {
+    grid-column: auto;
+    font-size: clamp(40px, 8.5vw, 72px);
+    line-height: 0.95;
+  }
+  .titleFirstLine,
+  .titleThirdLine {
+    white-space: normal;
+  }
   .portfolioGrid { margin-top: 0; }
   .portfolioHead p { grid-column: 1; }
   .descRule { display: none; }
@@ -191,3 +200,65 @@
 @media (max-width: 600px) {
   .portfolioGrid { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================================
+   Phone-only styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .portfolio {
+    padding: 40px 0 60px;
+  }
+
+  .portfolioHead {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 28px;
+    position: static;
+    pointer-events: auto;
+  }
+
+  .portfolioHead > :global(.eyebrow) {
+    grid-column: auto;
+    grid-row: auto;
+    width: fit-content;
+    margin: 0;
+  }
+
+  .portfolioHead :global(.display) {
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+    word-break: break-word;
+  }
+
+  .portfolioHead p {
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 0;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .portfolioGrid {
+    grid-template-columns: 1fr;
+    gap: 20px 0;
+  }
+
+  .pcardBar {
+    min-height: 44px;
+    padding: 12px 6px;
+    font-size: 12px;
+  }
+
+  .categoryLabel {
+    font-size: clamp(22px, 7vw, 32px);
+    line-height: 1.1;
+  }
+}
+

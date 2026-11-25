@@ -420,3 +420,58 @@
 .authToggleBtn:hover .labelTrack {
   transform: translateY(-50%);
 }
+
+/* ==========================================================================
+   Desktop Responsive Styles (min-width: 1024px)
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .registerCard {
+    height: clamp(560px, calc(100vh - 112px), 768px);
+    min-height: min(560px, calc(100vh - 112px));
+    max-height: 768px;
+  }
+
+  .registerRightScroll {
+    max-height: calc(100vh - 208px);
+  }
+}
+
+/* ==========================================================================
+   Phone & Tablet Responsive Styles (max-width: 1023px)
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .registerCard {
+    min-height: auto;
+    height: auto;
+    max-height: none;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 1023px) {
+  .registerCard {
+    width: 100%;
+    max-width: min(100%, 720px);
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .registerCard {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .registerRight {
+    padding: 24px 16px;
+  }
+
+  .authToggle {
+    font-size: 14px;
+    line-height: 18px;
+  }
+
+  .authToggleBtn {
+    font-size: 13px;
+  }
+}

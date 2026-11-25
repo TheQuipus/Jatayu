@@ -437,3 +437,31 @@
 .switchThumbActive {
   transform: translateX(20px);
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .toggleCard {
+    padding: 16px 14px;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .toggleTitle {
+    font-size: 14px;
+  }
+
+  .toggleDesc {
+    font-size: 12px;
+  }
+
+  .lengthsRow {
+    gap: 8px;
+  }
+
+  .lengthPill {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

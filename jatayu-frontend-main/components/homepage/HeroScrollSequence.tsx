@@ -52,13 +52,22 @@ function drawCover(
   sourceWidth: number,
   sourceHeight: number
 ) {
+  if (sourceWidth <= 0 || sourceHeight <= 0) return;
   const scale = Math.max(canvasWidth / sourceWidth, canvasHeight / sourceHeight);
   const drawWidth = sourceWidth * scale;
   const drawHeight = sourceHeight * scale;
   const dx = (canvasWidth - drawWidth) / 2;
   const dy = (canvasHeight - drawHeight) / 2;
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  ctx.drawImage(source, dx, dy, drawWidth, drawHeight);
+  try {
+    ctx.drawImage(source, dx, dy, drawWidth, drawHeight);
+  } catch (err) {
+    // If the image bitmap was detached or closed concurrently during scrubbing/unmount, safely ignore
+    if (err instanceof DOMException && err.name === "InvalidStateError") {
+      return;
+    }
+    throw err;
+  }
 }
 
 export default function HeroScrollSequence({ sectionRef }: HeroScrollSequenceProps) {
@@ -123,7 +132,10 @@ export default function HeroScrollSequence({ sectionRef }: HeroScrollSequencePro
 
     const ensureBitmap = async (index: number) => {
       const existing = bitmapsRef.current[index];
-      if (existing) return existing;
+      if (existing && existing.width > 0 && existing.height > 0) return existing;
+      if (existing) {
+        bitmapsRef.current[index] = null;
+      }
 
       const inflight = inflightRef.current.get(index);
       if (inflight) return inflight;
@@ -159,7 +171,7 @@ export default function HeroScrollSequence({ sectionRef }: HeroScrollSequencePro
       releaseOutsideWindow(index);
 
       const bitmap = await ensureBitmap(index);
-      if (!bitmap || isDisposed || !ctx) return;
+      if (!bitmap || isDisposed || !ctx || bitmap.width === 0 || bitmap.height === 0) return;
       if (frameRef.current !== index) return;
 
       sizeCanvas();
@@ -288,6 +300,8 @@ export default function HeroScrollSequence({ sectionRef }: HeroScrollSequencePro
 
     void boot();
 
+    const inflightMap = inflightRef.current;
+
     return () => {
       isDisposed = true;
       window.removeEventListener("resize", handleWindowResize);
@@ -298,7 +312,7 @@ export default function HeroScrollSequence({ sectionRef }: HeroScrollSequencePro
       bitmapsRef.current.forEach((bitmap) => bitmap?.close());
       bitmapsRef.current = Array.from({ length: FRAME_COUNT }, () => null);
       blobsRef.current = Array.from({ length: FRAME_COUNT }, () => null);
-      inflightRef.current.clear();
+      inflightMap.clear();
     };
   }, [sectionRef]);
 

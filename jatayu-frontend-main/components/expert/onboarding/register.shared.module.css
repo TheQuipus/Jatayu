@@ -399,3 +399,49 @@
 .authToggleBtn:hover .authToggleLabelTrack {
   transform: translateY(-50%);
 }
+
+/* ==========================================================================
+   Desktop Responsive Styles (min-width: 1024px)
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .registerCard {
+    height: clamp(560px, calc(100vh - 112px), 768px);
+    min-height: min(560px, calc(100vh - 112px));
+    max-height: 768px;
+  }
+
+  .registerRightScroll {
+    max-height: calc(100vh - 208px);
+  }
+}
+
+/* ==========================================================================
+   Phone & Tablet Responsive Styles (max-width: 1023px)
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .registerCard {
+    min-height: auto;
+    max-height: none;
+    height: auto;
+  }
+
+  .registerRight {
+    padding: clamp(24px, 4vw, 36px) clamp(16px, 3.5vw, 28px);
+  }
+}
+
+@media (max-width: 480px) {
+  .registerCard {
+    width: 100%;
+    border-radius: 16px;
+  }
+
+  .registerRight {
+    padding: 24px 16px;
+  }
+
+  .authToggle {
+    font-size: 14px;
+  }
+}
+

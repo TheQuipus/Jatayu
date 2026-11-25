@@ -53,6 +53,17 @@
   --grid-col: 348px;
   --grid-cols: 4;
   --grid-content: calc(var(--grid-col) * var(--grid-cols));
+}
+
+@media (min-width: 1441px) {
+  :root {
+    /* 24px at 1440, 40px at 1600, 72px at 1920; capped at 1840px content */
+    --pad: clamp(24px, calc(24px + (100vw - 1440px) * 0.1), 72px);
+    --maxw: 1840px;
+  }
+}
+
+:root {
 
   /* navbar (light surface default) */
   --nav-height: 120px;
@@ -476,10 +487,9 @@ section {
 .section-grid-lines {
   position: absolute;
   inset: 0;
-  width: min(100%, var(--maxw));
-  margin: 0 auto;
-  left: 50%;
-  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
   display: flex;
   justify-content: space-between;
   padding: 0 var(--pad);
