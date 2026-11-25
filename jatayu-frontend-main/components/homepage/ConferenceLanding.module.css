@@ -533,3 +533,10 @@
   }
 }
 
+/* Desktop-only spacing override: reduce gap between heading and centre cards */
+@media (min-width: 1024px) {
+  .scrollWrap {
+    height: calc(850px * var(--carousel-scale, 0.55));
+  }
+}
+
