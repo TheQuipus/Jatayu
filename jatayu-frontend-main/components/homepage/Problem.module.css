@@ -482,3 +482,59 @@
     grid-template-columns: 1fr;
   }
 }
+/* ==========================================================================
+   Phone-only styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .problem {
+    padding: 60px 0 80px;
+  }
+
+  .problemTitle {
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin-top: 14px;
+    word-break: break-word;
+  }
+
+  .problemKicker {
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
+  .problemDescWrap {
+    margin-top: 16px;
+    min-height: auto;
+  }
+
+  .problemDesc {
+    font-size: 14px;
+    line-height: 1.45;
+    max-width: 100%;
+    min-height: auto;
+  }
+
+  .statCards {
+    margin-top: 24px;
+    gap: 16px;
+    grid-template-columns: 1fr;
+  }
+
+  .scardMini {
+    padding: 16px 20px 20px;
+    min-height: auto;
+    width: 100%;
+  }
+
+  .scardMiniQuote {
+    font-size: clamp(14px, 4vw, 16px);
+    min-height: auto;
+    line-height: 1.35;
+  }
+
+  .scardMiniDesc {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}
