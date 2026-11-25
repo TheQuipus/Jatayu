@@ -170,6 +170,7 @@ export default function ConferenceLanding() {
     const updateScale = () => {
       if (typeof window === "undefined") return;
       if (window.innerWidth < 1024) {
+        section.style.removeProperty("--carousel-scale");
         scrollWrap.style.removeProperty("--carousel-scale");
         return;
       }
@@ -178,6 +179,7 @@ export default function ConferenceLanding() {
       const scaleW = availW / 2650;
       const scaleH = availH / 960;
       const scale = Math.min(scaleW, scaleH);
+      section.style.setProperty("--carousel-scale", scale.toFixed(4));
       scrollWrap.style.setProperty("--carousel-scale", scale.toFixed(4));
     };
 

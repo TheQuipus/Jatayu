@@ -533,8 +533,17 @@
   }
 }
 
-/* Desktop-only spacing override: reduce gap between heading and centre cards */
+/* Desktop-only spacing override: keep heading centred between OUR EXPERTS and carousel */
 @media (min-width: 1024px) {
+  .section {
+    padding-top: 52px;
+    justify-content: flex-start;
+  }
+
+  .heroContent {
+    margin-top: calc(315px * var(--carousel-scale, 0.55));
+  }
+
   .scrollWrap {
     height: calc(850px * var(--carousel-scale, 0.55));
   }
