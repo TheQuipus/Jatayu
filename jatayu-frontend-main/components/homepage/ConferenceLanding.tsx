@@ -119,7 +119,7 @@ function CategoryPanel({
     <div className={`${styles.animationImageBox} ${sideClass}`}>
       <img
         src={category.imageSrc}
-        loading="lazy"
+        loading="eager"
         alt={category.altText}
         className={styles.animationItemImage}
       />
@@ -202,15 +202,12 @@ export default function ConferenceLanding() {
         const rotRad = (rot * Math.PI) / 180;
         const sinVal = Math.sin(rotRad);
 
-        // In the concave amphitheater carousel, cards on the back arc (facing the camera)
-        // are the ones the user sees and should interact with.
-        // Left card normal points towards camera when sin(rot) < 0.
-        // Right card normal points towards camera when sin(rot) > 0.
-        // Cards on the front arc (facing away, between camera and carousel center)
-        // must have pointer-events: none and visibility: hidden so they never block
-        // hover effects and clicks on the visible cards behind them.
-        const isLeftFacing = sinVal < 0.05;
-        const isRightFacing = sinVal > -0.05;
+        // On desktop, keep edge cards visible and interactive until they rotate past
+        // the horizontal viewport edges (|sin(rot)| >= 0.42), preventing cards from
+        // vanishing or popping in while still inside the screen frame.
+        const edgeThreshold = window.innerWidth >= 1024 ? 0.42 : 0.05;
+        const isLeftFacing = sinVal < edgeThreshold;
+        const isRightFacing = sinVal > -edgeThreshold;
 
         const leftCard = item.children[0] as HTMLElement | undefined;
         const rightCard = item.children[1] as HTMLElement | undefined;
