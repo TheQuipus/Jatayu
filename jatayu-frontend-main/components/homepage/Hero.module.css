@@ -148,13 +148,6 @@
   color: var(--silver-chalice);
 }
 
-@media (min-width: 1025px) and (max-width: 1280px) {
-  .heroTitle {
-    grid-column: 2 / 4;
-    font-size: clamp(48px, 5.5vw, 76px);
-  }
-}
-
 .heroStats .stat:nth-child(3),
 .heroStats .stat:nth-child(4) {
   transform: translateY(-10px);
@@ -340,11 +333,17 @@
 @media (min-width: 1024px) and (max-width: 1280px) {
   .heroTitle {
     grid-column: 2 / 4;
+    align-self: end;
     font-size: clamp(44px, 5.2vw, 76px);
   }
 
+  .heroAsideAnchor {
+    height: auto;
+    align-self: end;
+  }
+
   .heroAside {
-    margin-top: clamp(16px, 3.5vw, 65px);
+    margin-top: 0;
     gap: clamp(14px, 1.8vw, 24px);
   }
 
@@ -366,9 +365,22 @@
     gap: clamp(8px, 1.2vw, 16px) clamp(6px, 1vw, 16px);
   }
 
+  .statNum {
+    font-size: clamp(22px, 2.2vw, 32px);
+  }
+
+  .statLabel {
+    font-size: clamp(10px, 0.85vw, 12.5px);
+    letter-spacing: -0.02em;
+  }
+
   .heroJoinCta,
   .heroCta {
-    margin-top: clamp(24px, 3.5vw, 60px);
+    margin-top: clamp(28px, 4vw, 64px);
+  }
+
+  .heroActionBtnWrap {
+    --contact-avatar-size: clamp(46px, 4.4vw, 56px);
   }
 
   .heroJoinBtn,
@@ -376,7 +388,7 @@
     padding-left: clamp(12px, 1.4vw, 20px);
     padding-right: clamp(14px, 1.6vw, 24px);
     gap: clamp(6px, 0.9vw, 12px);
-    font-size: clamp(12px, 1.05vw, 15px);
+    font-size: clamp(11px, 1.05vw, 14px);
   }
 }
 
