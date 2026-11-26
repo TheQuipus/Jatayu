@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, Check } from "lucide-react";
 import {
+  ALL_CATEGORY,
   MENU_CATEGORIES,
   MENU_CATEGORIES_WITH_ALL,
   MenuCategoryItem,
@@ -20,7 +21,7 @@ interface MenuCategoryPanelProps {
 
 export default function MenuCategoryPanel({ onCloseMenu }: MenuCategoryPanelProps) {
   const router = useRouter();
-  const [activeCategory, setActiveCategory] = useState<MenuCategoryItem>(MENU_CATEGORIES[0]);
+  const [activeCategory, setActiveCategory] = useState<MenuCategoryItem>(ALL_CATEGORY);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [hoveredItemKey, setHoveredItemKey] = useState<string | null>(null);
 
@@ -285,6 +286,9 @@ export default function MenuCategoryPanel({ onCloseMenu }: MenuCategoryPanelProp
             <span className={styles.starIcon}>✦</span>
             <div className={styles.dividerLine} />
           </div>
+
+          {/* Section Subheading matching Design System */}
+          <div className={styles.topExpertsHeading}>TOP EXPERTS</div>
         </div>
 
         {/* Continuous Testimonial Marquee Viewport */}
