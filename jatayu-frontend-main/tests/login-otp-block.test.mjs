@@ -58,6 +58,11 @@ test("formatBlockRemaining and formatOtpLoginBlockMessage format minutes and sec
     otpResend.formatOtpLoginBlockMessage(28 * 60 + 12),
     "OTP limit reached. Please try again in 28 min 12 s.",
   );
+  const parts = otpResend.formatOtpLoginBlockParts(19);
+  assert.equal(parts.prefix, "OTP limit reached. Please try again in ");
+  assert.equal(parts.countdown, "19 s");
+  assert.equal(parts.suffix, ".");
+  assert.equal(`${parts.prefix}${parts.countdown}${parts.suffix}`, otpResend.formatOtpLoginBlockMessage(19));
   assert.equal(otpResend.cooldownRemainingSeconds(1_000_000, 1_000_000), 0);
 });
 
@@ -74,7 +79,14 @@ test("seeker and expert LoginStep render blockMessage below Login button, keep L
     const loginBtnIdx = source.indexOf('label={isSubmitting ? "Logging in..." : "Login"}');
     const blockMsgIdx = source.indexOf("styles.loginBlockError");
     assert.ok(loginBtnIdx > 0 && blockMsgIdx > loginBtnIdx, `${file} must render blockMessage below Login button`);
+    assert.match(source, /<span className=\{styles\.loginBlockCountdown\}>\{blockParts\.countdown\}<\/span>/);
   }
+
+  const checkoutModalSource = fs.readFileSync(
+    path.join(import.meta.dirname, "..", "components/checkout/CheckoutAuthModal.tsx"),
+    "utf8",
+  );
+  assert.match(checkoutModalSource, /<span className=\{styles\.loginBlockCountdown\}>\{parts\.countdown\}<\/span>/);
 
   const checkoutSource = fs.readFileSync(
     path.join(import.meta.dirname, "..", "components/checkout/Checkout.tsx"),

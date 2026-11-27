@@ -2,6 +2,7 @@ import { type RefObject, type KeyboardEvent, type ClipboardEvent } from "react";
 import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
 import OtpResendControl from "@/components/auth/OtpResendControl";
+import { formatOtpLoginBlockParts } from "@/lib/otpResend";
 import {
   type CheckoutRegistrationFieldKey,
   type CheckoutRegistrationValues,
@@ -25,6 +26,7 @@ export type CheckoutAuthModalProps = {
   onLoginPasswordChange: (value: string) => void;
   loginSubmitAttempted: boolean;
   isSubmittingLogin: boolean;
+  loginBlockedSeconds?: number;
   loginBlockMessage?: string | null;
   onLoginSubmit: () => void;
   // Register form state
@@ -79,6 +81,7 @@ export default function CheckoutAuthModal({
   onLoginPasswordChange,
   loginSubmitAttempted,
   isSubmittingLogin,
+  loginBlockedSeconds,
   loginBlockMessage,
   onLoginSubmit,
   registerFirstName,
@@ -262,7 +265,18 @@ export default function CheckoutAuthModal({
 
                 {loginBlockMessage ? (
                   <p className={styles.loginBlockError} role="alert" aria-live="polite">
-                    {loginBlockMessage}
+                    {typeof loginBlockedSeconds === "number" && loginBlockedSeconds > 0 ? (() => {
+                      const parts = formatOtpLoginBlockParts(loginBlockedSeconds);
+                      return (
+                        <>
+                          {parts.prefix}
+                          <span className={styles.loginBlockCountdown}>{parts.countdown}</span>
+                          {parts.suffix}
+                        </>
+                      );
+                    })() : (
+                      loginBlockMessage
+                    )}
                   </p>
                 ) : null}
 

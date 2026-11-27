@@ -209,6 +209,19 @@ export function formatBlockRemaining(seconds: number): string {
   return `${safe} s`;
 }
 
+export function formatOtpLoginBlockParts(remainingSeconds: number): {
+  prefix: string;
+  countdown: string;
+  suffix: string;
+} {
+  return {
+    prefix: "OTP limit reached. Please try again in ",
+    countdown: formatBlockRemaining(remainingSeconds),
+    suffix: ".",
+  };
+}
+
 export function formatOtpLoginBlockMessage(remainingSeconds: number): string {
-  return `OTP limit reached. Please try again in ${formatBlockRemaining(remainingSeconds)}.`;
+  const { prefix, countdown, suffix } = formatOtpLoginBlockParts(remainingSeconds);
+  return `${prefix}${countdown}${suffix}`;
 }

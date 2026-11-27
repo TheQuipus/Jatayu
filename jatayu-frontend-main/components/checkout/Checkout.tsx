@@ -110,6 +110,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
   const {
+    blockedSeconds: loginBlockedSeconds,
     blockMessage: loginBlockMessage,
     handleLoginBlockError,
     clearBlock: clearLoginBlock,
@@ -1006,6 +1007,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   }}
                   loginSubmitAttempted={loginSubmitAttempted}
                   isSubmittingLogin={isSubmittingLogin}
+                  loginBlockedSeconds={loginBlockedSeconds}
                   loginBlockMessage={loginBlockMessage}
                   onLoginSubmit={handleLoginSubmit}
                   registerFirstName={registerFirstName}

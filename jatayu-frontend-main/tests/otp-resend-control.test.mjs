@@ -69,6 +69,7 @@ function renderControl(props) {
         actionRow: "actionRow",
         resendButton: "resendButton",
         counter: "counter",
+        counterBlocked: "counterBlocked",
         blockCallout: "blockCallout",
         blockMessageLine: "blockMessageLine",
       },
@@ -200,4 +201,57 @@ test("blocked OtpResendControl renders bulleted ul/li list without red box callo
   );
   assert.doesNotMatch(css, /\.blockCallout/);
   assert.match(css, /\.blockList\s*\{[^}]*background:\s*transparent;\s*border:\s*none;/s);
+});
+
+test("counterBlocked class applies only when blocked (not during 0/3-2/3 or 30s cooldown) and shares disabled color and opacity", () => {
+  const findCounterSpan = (node) => {
+    if (!node || typeof node !== "object") return null;
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = findCounterSpan(item);
+        if (found) return found;
+      }
+      return null;
+    }
+    if (node.type === "span" && String(node.props?.className || "").includes("counter")) {
+      return node;
+    }
+    return node.props?.children ? findCounterSpan(node.props.children) : null;
+  };
+
+  for (const [attempts, resendSeconds] of [[0, 30], [1, 30], [2, 15], [2, 0]]) {
+    const tree = renderControl({
+      resendSeconds,
+      isResending: false,
+      resendAttempts: attempts,
+      maxResendAttempts: 3,
+      blockedUntil: null,
+      variant: "dark",
+      onResend: () => {},
+    });
+    const counterSpan = findCounterSpan(tree);
+    assert.ok(counterSpan);
+    assert.equal(counterSpan.props.className.includes("counterBlocked"), false);
+  }
+
+  const blockedTree = renderControl({
+    resendSeconds: 0,
+    isResending: false,
+    resendAttempts: 3,
+    maxResendAttempts: 3,
+    blockedUntil: null,
+    variant: "light",
+    onResend: () => {},
+  });
+  const blockedSpan = findCounterSpan(blockedTree);
+  assert.ok(blockedSpan);
+  assert.equal(blockedSpan.props.className.includes("counterBlocked"), true);
+
+  const css = fs.readFileSync(
+    path.join(import.meta.dirname, "..", "components/auth/OtpResendControl.module.css"),
+    "utf8",
+  );
+  assert.match(css, /\.resendButton:disabled,\s*\.counterBlocked\s*\{[^}]*opacity:\s*0\.6;/s);
+  assert.match(css, /\.light\s+\.resendButton:disabled,\s*\.light\s+\.counterBlocked\s*\{[^}]*color:\s*var\(--silver-chalice,\s*#9e9e9e\);/s);
+  assert.match(css, /\.dark\s+\.resendButton:disabled,\s*\.dark\s+\.counterBlocked\s*\{[^}]*color:\s*#b8b8b8;/s);
 });

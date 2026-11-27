@@ -56,7 +56,10 @@ export default function OtpResendControl({
         >
           {buttonLabel}
         </button>
-        <span className={styles.counter} aria-label={`Resend attempts ${counterText}`}>
+        <span
+          className={`${styles.counter} ${blocked ? styles.counterBlocked : ""}`.trim()}
+          aria-label={`Resend attempts ${counterText}`}
+        >
           {counterText}
         </span>
       </div>

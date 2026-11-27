@@ -32,6 +32,10 @@
 .resendButton:disabled {
   cursor: not-allowed;
   text-decoration: none;
+}
+
+.resendButton:disabled,
+.counterBlocked {
   opacity: 0.6;
 }
 
@@ -67,7 +71,8 @@
   font-weight: 500;
 }
 
-.light .resendButton:disabled {
+.light .resendButton:disabled,
+.light .counterBlocked {
   color: var(--silver-chalice, #9e9e9e);
 }
 
@@ -84,7 +89,8 @@
   color: var(--white, #ffffff);
 }
 
-.dark .resendButton:disabled {
+.dark .resendButton:disabled,
+.dark .counterBlocked {
   color: #b8b8b8;
 }
 

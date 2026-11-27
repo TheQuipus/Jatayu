@@ -11,6 +11,7 @@ import { seekerLogin, SeekerOtpRequiredError, type AuthResponse } from "@/lib/ap
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 import { savePendingSeekerOtpSession, SEEKER_SIGNUP_HREF } from "@/lib/seekerAuth";
 import { useLoginOtpBlock } from "@/hooks/useLoginOtpBlock";
+import { formatOtpLoginBlockParts } from "@/lib/otpResend";
 import SeekerSocialAuth from "./SeekerSocialAuth";
 
 type LoginStepProps = {
@@ -66,7 +67,8 @@ export default function LoginStep({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const { blockMessage, handleLoginBlockError, clearBlock } = useLoginOtpBlock();
+  const { blockedSeconds, blockMessage, handleLoginBlockError, clearBlock } = useLoginOtpBlock();
+  const blockParts = blockMessage ? formatOtpLoginBlockParts(blockedSeconds) : null;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -213,9 +215,13 @@ export default function LoginStep({
               </div>
 
               {/* ADD THIS HERE: Matches the email field error placement exactly */}
-              {fieldError("password") && (
+              {fieldError("password") ? (
                 <span className={register.fieldErrorBelow}>{fieldError("password")}</span>
-              )}
+              ) : submitError ? (
+                <span className={styles.passwordSubmitError} role="alert">
+                  {submitError}
+                </span>
+              ) : null}
             </div>
 
             <div className={styles.forgotPasswordRow}>
@@ -241,12 +247,6 @@ export default function LoginStep({
             </div>
           </div>
 
-          {submitError && (
-            <p className={styles.forgotPasswordError} role="alert">
-              {submitError}
-            </p>
-          )}
-
           <ContinueButton
             type="submit"
             label={isSubmitting ? "Logging in..." : "Login"}
@@ -255,9 +255,11 @@ export default function LoginStep({
             arrowSize={16}
           />
 
-          {blockMessage ? (
+          {blockParts ? (
             <p className={styles.loginBlockError} role="alert" aria-live="polite">
-              {blockMessage}
+              {blockParts.prefix}
+              <span className={styles.loginBlockCountdown}>{blockParts.countdown}</span>
+              {blockParts.suffix}
             </p>
           ) : null}
 
