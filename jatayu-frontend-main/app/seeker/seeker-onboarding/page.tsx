@@ -59,6 +59,7 @@ import {
   savePendingSeekerOtpSession,
 } from "@/lib/seekerAuth";
 import { getOtpBackStep } from "@/lib/otpFlow";
+import { notifyOnboardingStepChange } from "@/lib/onboardingHeaderState";
 
 const CATEGORY_ICONS: Record<string, typeof Briefcase> = {
   "career-work": Briefcase,
@@ -484,6 +485,7 @@ function SeekerOnboardingPageContent() {
     if (window.location.pathname + window.location.search !== targetUrl) {
       window.history.replaceState(null, "", targetUrl);
     }
+    notifyOnboardingStepChange();
   }, [routeInitialized, step]);
 
   const handleStartJourney = () => {

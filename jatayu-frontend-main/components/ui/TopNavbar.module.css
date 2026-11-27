@@ -44,6 +44,14 @@
   opacity: 0.85;
 }
 
+.logoStatic {
+  cursor: default;
+}
+
+.logoStatic:hover {
+  opacity: 1;
+}
+
 .logoMark {
   margin-left: 2px;
   font-size: 9px;
