@@ -405,3 +405,35 @@
     margin: 0 auto 36px;
   }
 }
+
+/* ==========================================================================
+   Phone Responsive Styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .loadingWrapper {
+    padding: 40px 16px;
+  }
+
+  .loadingTitle {
+    font-size: clamp(24px, 7vw, 28px);
+  }
+
+  .loadingSubtitle {
+    font-size: 14px;
+  }
+
+  .matchesGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 100%;
+  }
+
+  .resultsBody {
+    min-height: auto;
+    max-height: none;
+  }
+
+  .featuredTitle {
+    font-size: 18px;
+  }
+}

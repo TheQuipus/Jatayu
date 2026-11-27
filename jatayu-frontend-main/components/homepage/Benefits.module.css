@@ -12,16 +12,16 @@
 
 .benefitsTitle { 
   grid-column: 2 / span 2;
-  font-size: 100px; 
+  font-size: clamp(48px, 6.95vw, 100px); 
   line-height: .92; 
 }
 
 .titleLineNoWrap {
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .titleLeadNoWrap {
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .benefitsTitle .tMuted { 
@@ -538,12 +538,19 @@
 
 @media (max-width: 1024px) {
   .benefitsHead { grid-template-columns: 1fr; }
+  .benefitsTitle {
+    font-size: clamp(38px, 8vw, 70px);
+  }
+  .titleLineNoWrap,
+  .titleLeadNoWrap {
+    white-space: normal;
+  }
   .benefitsTitle, .benefitsLines, .benefitsRuleRow, .benefitsDesc { grid-column: 1; }
   .benefitsLines { display: none; }
   .benefitsRuleRow, .benefitsDesc { grid-row: auto; }
   .benefitsDesc { justify-self: start; }
-  .benefitsGrid { grid-template-columns: 1fr; }
-  .benefitsRightCol { grid-template-columns: 1fr; }
+  .benefitsGrid { grid-template-columns: 1fr 1.3fr; gap: 20px; }
+  .benefitsRightCol { grid-template-columns: 1fr; gap: 20px 0; }
   .benefitsFoot {
     grid-column: 1;
     display: flex;
@@ -563,5 +570,56 @@
 }
 
 @media (max-width: 600px) {
+  .benefitsGrid { grid-template-columns: 1fr; }
+  .benefitsRightCol { grid-template-columns: 1fr; }
   .logosTrack { gap: 16px; }
 }
+
+/* ==========================================================================
+   Phone-only styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .benefits {
+    padding: 60px 0;
+  }
+
+  .benefitsHead {
+    margin-bottom: 24px;
+  }
+
+  .benefitsTitle {
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+    word-break: break-word;
+  }
+
+  .benefitsDesc {
+    font-size: 14px;
+    line-height: 1.45;
+    margin-top: 14px;
+  }
+
+  .benefitsGrid {
+    gap: 20px;
+  }
+
+  .benefitsGrid > .bcard:first-child .bcardPortrait {
+    --portrait-pad-x: 20px;
+    --portrait-pad-top: 16px;
+  }
+
+  .bcard h3 {
+    font-size: 15px;
+  }
+
+  .bcard p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .logos {
+    overflow: hidden;
+    width: 100%;
+  }
+}
+

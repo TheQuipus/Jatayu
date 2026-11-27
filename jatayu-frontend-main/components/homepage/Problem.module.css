@@ -9,9 +9,9 @@
 
 .problem {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   padding: 60px 0 calc(120px + 95px);
-  background: var(--fold-background);
+  background: transparent;
 }
 
 .problemInner {
@@ -240,11 +240,15 @@
   color: var(--fold-active-text, var(--white));
 }
 
+.previewWrap {
+  display: none;
+}
+
 /* Responsive Storytelling styles */
-@media (min-width: 1025px) {
+@media (min-width: 1024px) {
   .problemWrapper {
-    padding-top: var(--nav-height);
-    padding-bottom: 120px;
+    padding-top: clamp(88px, 13.33svh, var(--nav-height));
+    padding-bottom: clamp(18px, 5svh, 60px);
     height: 100svh;
     min-height: 100svh;
   }
@@ -262,12 +266,26 @@
     width: 100%;
     height: 100%;
     display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-content: start;
   }
 
+  .problemHead {
+    grid-column: 1 / 5;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .problemTitle {
+    font-size: clamp(38px, 4.8vw, 70px);
+    max-width: calc(100% - 24px);
+  }
+
   .problemTitleQuote {
-    min-height: calc(70px * 0.95 * 5);
-    max-height: calc(70px * 0.95 * 5);
+    font-size: clamp(30px, min(4.2vw, 6.8vh), 70px);
+    min-height: calc(clamp(30px, min(4.2vw, 6.8vh), 70px) * 0.95 * 5);
+    max-height: calc(clamp(30px, min(4.2vw, 6.8vh), 70px) * 0.95 * 5);
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 5;
@@ -289,8 +307,10 @@
   .scardMini {
     width: 100%;
     max-width: none;
-    aspect-ratio: 1 / 1;
-    min-height: auto;
+    aspect-ratio: auto;
+    min-height: 185px;
+    height: auto;
+    padding: 8px clamp(14px, 1.4vw, 24px) clamp(14px, 1.4vw, 24px);
     z-index: 10;
   }
 
@@ -298,8 +318,8 @@
     display: block;
     position: absolute;
     left: 50%;
-    width: 300px;
-    max-width: 300px;
+    width: clamp(200px, 28vh, 360px);
+    max-width: clamp(200px, 28vh, 360px);
     aspect-ratio: 1 / 1;
     height: auto;
     top: 140px;
@@ -389,27 +409,27 @@
   }
 
   .scardMiniLabel {
-    font-size: 12px;
+    font-size: clamp(10px, 0.85vw, 13px);
     line-height: 1.2;
     min-height: calc(14px * 1.2 * 2);
     padding: 0 0px 12px 15px;
   }
 
   .scardMiniQuote {
-    font-size: 14px;
+    font-size: clamp(11px, 0.95vw, 15px);
   }
 
   .scardMiniDesc {
-    font-size: 12px;
+    font-size: clamp(10px, 0.85vw, 13px);
   }
 
   .scardMiniTitle {
-    margin: 56px 0 0;
-    font-size: 28px;
+    margin: clamp(16px, min(3vw, 4vh), 56px) 0 0;
+    font-size: clamp(16px, min(2vw, 3vh), 30px);
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023.98px) {
   .problem {
     padding: 60px 0 120px;
   }
@@ -460,5 +480,92 @@
 @media (max-width: 600px) {
   .statCards {
     grid-template-columns: 1fr;
+  }
+}
+/* ==========================================================================
+   Phone-only styles (max-width: 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .problem {
+    padding: max(72px, env(safe-area-inset-top, 72px)) 0 60px;
+  }
+
+  .problemHead {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .problemHead > :global(.eyebrow) {
+    order: 1;
+    grid-column: auto;
+    grid-row: auto;
+    width: fit-content;
+    margin: 0;
+  }
+
+  .problemTitle {
+    order: 2;
+    grid-column: auto;
+    grid-row: auto;
+    font-size: clamp(30px, 8.5vw, 42px);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    margin-top: 0;
+    word-break: break-word;
+  }
+
+  .problemKicker {
+    order: 3;
+    grid-column: auto;
+    grid-row: auto;
+    font-size: 13px;
+    margin-top: 0;
+    color: var(--fold-text);
+  }
+
+  .problemDescWrap {
+    order: 4;
+    grid-column: auto;
+    grid-row: auto;
+    margin-top: 0;
+    min-height: auto;
+  }
+
+  .problemDesc {
+    font-size: 14px;
+    line-height: 1.45;
+    max-width: 100%;
+    min-height: auto;
+    color: var(--fold-muted);
+  }
+
+  .previewWrap {
+    display: none;
+  }
+
+  .statCards {
+    margin-top: 0;
+    gap: 16px;
+    grid-template-columns: 1fr;
+  }
+
+  .scardMini {
+    padding: 16px 20px 20px;
+    min-height: auto;
+    width: 100%;
+  }
+
+  .scardMiniQuote {
+    font-size: clamp(14px, 4vw, 16px);
+    min-height: auto;
+    line-height: 1.35;
+  }
+
+  .scardMiniDesc {
+    font-size: 13px;
+    line-height: 1.4;
   }
 }

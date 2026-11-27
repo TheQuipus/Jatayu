@@ -119,7 +119,7 @@ function CategoryPanel({
     <div className={`${styles.animationImageBox} ${sideClass}`}>
       <img
         src={category.imageSrc}
-        loading="lazy"
+        loading="eager"
         alt={category.altText}
         className={styles.animationItemImage}
       />
@@ -167,6 +167,22 @@ export default function ConferenceLanding() {
     const items = Array.from(scrollWrap.querySelectorAll<HTMLElement>(`.${styles.animationItem}`));
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+    const updateScale = () => {
+      if (typeof window === "undefined") return;
+      if (window.innerWidth < 1024) {
+        section.style.removeProperty("--carousel-scale");
+        scrollWrap.style.removeProperty("--carousel-scale");
+        return;
+      }
+      const availW = window.innerWidth * 0.96;
+      const availH = window.innerHeight - 165; // room below navbar + heading
+      const scaleW = availW / 2650;
+      const scaleH = availH / 960;
+      const scale = Math.min(scaleW, scaleH);
+      section.style.setProperty("--carousel-scale", scale.toFixed(4));
+      scrollWrap.style.setProperty("--carousel-scale", scale.toFixed(4));
+    };
+
     const updateRotation = () => {
       // Crowdix advances the ring by 90 degrees over one viewport of scroll.
       // The motion is intentionally clamped so the carousel settles after the
@@ -188,15 +204,12 @@ export default function ConferenceLanding() {
         const rotRad = (rot * Math.PI) / 180;
         const sinVal = Math.sin(rotRad);
 
-        // In the concave amphitheater carousel, cards on the back arc (facing the camera)
-        // are the ones the user sees and should interact with.
-        // Left card normal points towards camera when sin(rot) < 0.
-        // Right card normal points towards camera when sin(rot) > 0.
-        // Cards on the front arc (facing away, between camera and carousel center)
-        // must have pointer-events: none and visibility: hidden so they never block
-        // hover effects and clicks on the visible cards behind them.
-        const isLeftFacing = sinVal < 0.05;
-        const isRightFacing = sinVal > -0.05;
+        // On desktop, keep edge cards visible and interactive until they rotate past
+        // the horizontal viewport edges (|sin(rot)| >= 0.42), preventing cards from
+        // vanishing or popping in while still inside the screen frame.
+        const edgeThreshold = window.innerWidth >= 1024 ? 0.42 : 0.05;
+        const isLeftFacing = sinVal < edgeThreshold;
+        const isRightFacing = sinVal > -edgeThreshold;
 
         const leftCard = item.children[0] as HTMLElement | undefined;
         const rightCard = item.children[1] as HTMLElement | undefined;
@@ -214,13 +227,20 @@ export default function ConferenceLanding() {
 
     scrollWrap.style.opacity = "1";
     if (bottomBox) bottomBox.style.opacity = "1";
+    updateScale();
     updateRotation();
+
+    const handleResize = () => {
+      updateScale();
+      updateRotation();
+    };
+
     window.addEventListener("scroll", updateRotation, { passive: true });
-    window.addEventListener("resize", updateRotation);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("scroll", updateRotation);
-      window.removeEventListener("resize", updateRotation);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 

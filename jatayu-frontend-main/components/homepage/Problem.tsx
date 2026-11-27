@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -141,26 +141,93 @@ export default function Problem() {
 
     if (cards.length === 0 || !cardsContainer || !previewWrap) return;
 
-    const mm = gsap.matchMedia();
+    let mm: gsap.MatchMedia | null = null;
+    let isDisposed = false;
+    let lastW = typeof window !== "undefined" ? window.innerWidth : 0;
+    let lastH = typeof window !== "undefined" ? window.innerHeight : 0;
 
-    mm.add("(min-width: 1025px)", () => {
+    const setupAnimation = () => {
+      if (isDisposed) return;
+      if (mm) {
+        mm.revert();
+      }
+      mm = gsap.matchMedia();
+
+      mm.add("(min-width: 1024px)", () => {
       // 1. Capture coordinates relative to the centered container (innerRect) to prevent horizontal centering offsets
       const startRects = cards.map((card) => card.getBoundingClientRect());
       const innerRect = inner.getBoundingClientRect();
-      const titleRect = titleRef.current ? titleRef.current.getBoundingClientRect() : { bottom: 300 };
+      const descWrapRect = descRef.current?.parentElement?.getBoundingClientRect();
 
       const innerStyle = window.getComputedStyle(inner);
       const paddingLeft = parseFloat(innerStyle.paddingLeft) || 0;
       const paddingTop = parseFloat(innerStyle.paddingTop) || 0;
 
+      // Calculate responsive card sizing
+      const innerPadding = paddingLeft * 2;
+      const availableWidth = innerRect.width - innerPadding;
+      const cardWidth = Math.floor(availableWidth / 6);
+
+      // Measure natural required height across all cards at cardWidth so descriptions are never trimmed
+      let maxContentH = 0;
+      cards.forEach((card) => {
+        const clone = card.cloneNode(true) as HTMLDivElement;
+        clone.style.position = "absolute";
+        clone.style.visibility = "hidden";
+        clone.style.width = `${cardWidth}px`;
+        clone.style.height = "auto";
+        clone.style.minHeight = "auto";
+        clone.style.maxHeight = "none";
+        document.body.appendChild(clone);
+        const scrollH = clone.scrollHeight;
+        document.body.removeChild(clone);
+        if (scrollH > maxContentH) maxContentH = scrollH;
+      });
+
+      // Continuously adapt card height, bottom margin, and orbit depth to viewport height
+      const minTargetH = Math.min(230, Math.max(185, Math.round(window.innerHeight * 0.228)));
+      const targetCardHeight = Math.max(minTargetH, Math.ceil(maxContentH + 8));
+
+      const bottomMargin = Math.round(Math.min(36, Math.max(8, innerRect.height * 0.03)));
+      const finalY = Math.round(innerRect.height - targetCardHeight - bottomMargin);
+
+      // Continuously size and position portrait preview between description bottom and card row top
+      const descBottomLocal = descWrapRect ? Math.round(descWrapRect.bottom - innerRect.top) : 120;
+      const spaceForPreview = Math.max(180, finalY - descBottomLocal);
+      const minBottomGap = Math.round(Math.min(36, Math.max(16, spaceForPreview * 0.08)));
+      const minTopGap = Math.round(Math.min(48, Math.max(16, spaceForPreview * 0.09)));
+      const maxWidthByCol = Math.round(Math.max(180, (innerRect.width - innerPadding) * 0.22));
+      const previewSize = Math.round(
+        Math.min(380, maxWidthByCol, Math.max(160, spaceForPreview - minTopGap - minBottomGap))
+      );
+      const slack = Math.max(24, spaceForPreview - previewSize);
+      const bottomGap = Math.min(minBottomGap, Math.round(slack * 0.45));
+      const previewTop = Math.round(Math.max(descBottomLocal + 12, finalY - bottomGap - previewSize));
+
+      gsap.set(previewWrap, {
+        top: previewTop,
+        width: previewSize,
+        maxWidth: previewSize,
+        height: previewSize,
+      });
+
+      const hRatio = Math.min(1, Math.max(0, (window.innerHeight - 720) / 200));
+      const orbitRadius = Math.round(140 + 100 * hRatio);
+      const dipScale = 0.35 + 0.45 * hRatio;
+
       // 2. Set cards to absolute positioning relative to their parent container (inner)
       cards.forEach((card, index) => {
+        const isSecondRow = index >= 3;
+        const initialY = isSecondRow
+          ? innerRect.height + 50
+          : startRects[index].top - innerRect.top - paddingTop;
+
         gsap.set(card, {
           position: "absolute",
-          left: startRects[index].left - innerRect.left - paddingLeft - 1,
-          top: startRects[index].top - innerRect.top - paddingTop,
+          left: startRects[index].left - innerRect.left - paddingLeft,
+          top: initialY,
           width: startRects[index].width,
-          height: startRects[index].height,
+          height: targetCardHeight,
           x: 0,
           y: 0,
           rotation: 0,
@@ -245,7 +312,6 @@ export default function Problem() {
       };
 
       // 5. Left and Right text updater with direct DOM manipulation for smooth performance
-      let textTween: gsap.core.Tween | null = null;
       const updateText = (
         eyebrowText: string,
         titleText: string,
@@ -254,45 +320,36 @@ export default function Problem() {
         isQuote = false
       ) => {
         if (!eyebrowRef.current || !titleRef.current || !kickerRef.current || !descRef.current) return;
+        const targets = [eyebrowRef.current, titleRef.current, kickerRef.current, descRef.current];
 
-        if (textTween) textTween.kill();
+        gsap.killTweensOf(targets);
 
-        textTween = gsap.to(
-          [eyebrowRef.current, titleRef.current, kickerRef.current, descRef.current],
-          {
-            opacity: 0,
-            duration: 0.15,
-            onComplete: () => {
-              if (!eyebrowRef.current || !titleRef.current || !kickerRef.current || !descRef.current) return;
+        gsap.to(targets, {
+          opacity: 0,
+          duration: 0.12,
+          onComplete: () => {
+            if (!eyebrowRef.current || !titleRef.current || !kickerRef.current || !descRef.current) return;
 
-              eyebrowRef.current.innerHTML = `<i class="dot"></i>${eyebrowText}`;
-              titleRef.current.innerHTML = titleText;
-              titleRef.current.classList.toggle(styles.problemTitleQuote, isQuote);
-              kickerRef.current.textContent = kickerText;
-              descRef.current.textContent = descText;
+            eyebrowRef.current.innerHTML = `<i class="dot"></i>${eyebrowText}`;
+            titleRef.current.innerHTML = titleText;
+            titleRef.current.classList.toggle(styles.problemTitleQuote, isQuote);
+            kickerRef.current.textContent = kickerText;
+            descRef.current.textContent = descText;
 
-              gsap.to(
-                [eyebrowRef.current, titleRef.current, kickerRef.current, descRef.current],
-                { opacity: 1, duration: 0.2 }
-              );
-            },
-          }
-        );
+            gsap.to(targets, { opacity: 1, duration: 0.18 });
+          },
+        });
       };
 
-      // 6. Calculate final rows bottom orbit coordinates relative to innerRect (which is centered on screen)
-      const cardWidth = 232; // Target width in the bottom row
-
-      // Settle cards near the bottom of the nav-offset viewport
-      const finalY = innerRect.height - (window.innerHeight - 750) - 45;
-
+      // 6. Track active persona index across scroll progress
       let lastActiveIndex = -1;
 
       // Refresh measures this fold while Hero's pin spacer is reverted, so the
       // stored start is short by that pin and the fold locks on over Services.
       const gridWrap = wrapper.closest(".section-grid-wrap");
-      const previousWrap = gridWrap?.previousElementSibling instanceof HTMLElement
-        ? gridWrap.previousElementSibling
+      const previousElement = gridWrap ? gridWrap.previousElementSibling : wrapper.previousElementSibling;
+      const previousWrap = previousElement instanceof HTMLElement
+        ? previousElement
         : null;
 
       const timeline = gsap.timeline({
@@ -314,7 +371,9 @@ export default function Problem() {
               ? previousWrap.getBoundingClientRect().bottom + window.scrollY
               : foldTop;
             const start = Math.round(Math.max(foldTop, servicesClear));
-            if (Math.abs(self.start - start) > 1) (self as any).setPositions(start, start + 5000, true);
+            if (Math.abs(self.start - start) > 1) {
+              (self as unknown as { setPositions: (s: number, e: number, r?: boolean) => void }).setPositions(start, start + 5000, true);
+            }
           },
           onToggle: (self) => {
             gsap.set(gridWrap ?? wrapper, { zIndex: self.isActive ? 20 : "" });
@@ -376,9 +435,12 @@ export default function Problem() {
       cards.forEach((card, index) => {
         // Interleave first and second rows in the final row to prevent diagonal crossing and extra Z rotation
         const targetIndex = index < 3 ? index * 2 : (index - 3) * 2 + 1;
-        const finalX = targetIndex * cardWidth - 1;
-        const startX = startRects[index].left - innerRect.left - paddingLeft - 1;
-        const startY = startRects[index].top - innerRect.top;
+        const finalX = targetIndex * cardWidth;
+        const startX = startRects[index].left - innerRect.left - paddingLeft;
+        const isSecondRow = index >= 3;
+        const startY = isSecondRow
+          ? innerRect.height + 50 + paddingTop
+          : startRects[index].top - innerRect.top;
 
         // Calculate card's maximum tilt angle in the Z axis based on its position in the layout
         const maxRot = (targetIndex - 2.5) * 8; // outer cards tilt up to 20 degrees, inner cards tilt less
@@ -388,10 +450,9 @@ export default function Problem() {
           {
             duration: 2,
             width: cardWidth,
-            height: 195,
+            height: targetCardHeight,
             onUpdate: function () {
               const p = this.progress();
-              const orbitRadius = 240;
               const angle = Math.PI - Math.PI * p;
               const curveX = Math.cos(angle) * orbitRadius;
               const curveY = Math.sin(angle) * orbitRadius;
@@ -407,7 +468,7 @@ export default function Problem() {
                 x: (finalX - startX) * p + curveX * 0.7 * Math.sin(Math.PI * p),
                 // Plus sign (+ curveY) dips cards DOWNWARD in an arc to settle at the bottom row
                 // Multiplying by Math.sin(Math.PI * p) starts and ends the vertical curve with 0 slope, preventing jumps
-                y: (finalY - startY) * p + curveY * 0.8 * Math.sin(Math.PI * p),
+                y: (finalY - startY) * p + curveY * dipScale * Math.sin(Math.PI * p),
                 rotation: rotation,
                 rotationX: 0,
                 rotationY: 0,
@@ -433,11 +494,35 @@ export default function Problem() {
         });
       });
     });
+    };
+
+    setupAnimation();
+
+    // Re-measure card text height & layout if web fonts finish loading after initial mount
+    if (typeof document !== "undefined" && document.fonts && document.fonts.status !== "loaded") {
+      document.fonts.ready.then(() => {
+        if (!isDisposed) {
+          setupAnimation();
+          ScrollTrigger.refresh();
+        }
+      });
+    }
+
+    const handleResize = () => {
+      if (window.innerWidth !== lastW || window.innerHeight !== lastH) {
+        lastW = window.innerWidth;
+        lastH = window.innerHeight;
+        setupAnimation();
+      }
+    };
+    window.addEventListener("resize", handleResize);
 
     return () => {
+      isDisposed = true;
       clearTimeout(timer);
+      window.removeEventListener("resize", handleResize);
       // Revert only this section's matchMedia / ScrollTriggers — never kill Hero's.
-      mm.revert();
+      if (mm) mm.revert();
     };
   }, [pathname]);
 
@@ -449,6 +534,13 @@ export default function Problem() {
         className={`${styles.problemWrapper} lightfold`}
         data-nav-surface="light"
       >
+        <div
+          className="section-grid-lines"
+          aria-hidden="true"
+          style={{ "--section-grid-line-color": "#FFFFFF" } as CSSProperties}
+        >
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
         <section ref={sectionRef} className={styles.problem}>
           <div ref={innerRef} className={`container ${styles.problemInner}`}>
 

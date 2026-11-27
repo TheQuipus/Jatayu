@@ -259,3 +259,57 @@
   line-height: 1.35;
   text-align: right;
 }
+
+/* ==========================================================================
+   Phone & Tablet Responsive Styles (max-width: 1023px)
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .reviewIdentityColumns {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    width: 100%;
+  }
+
+  .expertCardWrapper {
+    width: 100%;
+    max-width: 336px;
+    height: auto;
+    min-height: 380px;
+    margin: 0 auto;
+  }
+
+  .reviewCenterCol {
+    padding: 0 !important;
+    width: 100%;
+  }
+
+  .reviewSplitRow {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .reviewBlockCard {
+    padding: 18px 16px;
+  }
+
+  .termsBar {
+    padding: 12px 0;
+    margin-bottom: 24px;
+  }
+
+  .termsText {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 480px) {
+  .expertCardWrapper {
+    max-width: 100%;
+  }
+
+  .submissionError {
+    text-align: left;
+    max-width: 100%;
+  }
+}
