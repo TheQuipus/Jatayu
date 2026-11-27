@@ -224,7 +224,23 @@ export default function TopNavbar() {
             className={styles.logo}
             aria-label="Go to homepage"
           >
-            JATAYU
+            <span className={styles.logoStack}>
+              <Image
+                src="/assets/img/jatayu-logo-white.svg"
+                alt="JATAYU"
+                fill
+                priority
+                className={`${styles.logoImg} ${onDark ? styles.logoImgVisible : styles.logoImgHidden}`}
+              />
+              <Image
+                src="/assets/img/jatayu-logo-black.png"
+                alt=""
+                fill
+                priority
+                aria-hidden="true"
+                className={`${styles.logoImg} ${onDark ? styles.logoImgHidden : styles.logoImgVisible}`}
+              />
+            </span>
             <sup className={styles.logoMark}>®</sup>
           </Link>
 

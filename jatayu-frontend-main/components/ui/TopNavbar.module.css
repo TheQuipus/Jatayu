@@ -29,26 +29,46 @@
 .logo {
   display: inline-flex;
   align-items: flex-start;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: -0.03em;
+  flex-shrink: 0;
   color: var(--nav-fg);
-  text-transform: uppercase;
   margin-top: 6px;
-  transition: opacity 0.2s ease;
+  transition: color 0.25s ease, opacity 0.2s ease;
 }
 
 .logo:hover {
   opacity: 0.85;
 }
 
+.logoStack {
+  position: relative;
+  display: block;
+  width: 135px;
+  height: 45px;
+}
+
+.logoImg {
+  object-fit: contain;
+  object-position: left center;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+.logoImgVisible {
+  opacity: 1;
+}
+
+.logoImgHidden {
+  opacity: 0;
+}
+
 .logoMark {
   margin-left: 2px;
-  font-size: 9px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
   line-height: 1;
-  transform: translateY(4px);
+  transform: translateY(8px);
 }
 
 /* Hamburger Trigger Button */
@@ -135,18 +155,21 @@
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: stretch;
   pointer-events: none;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 /* Expert Conference Category Panel (Columns 1 to 7) */
 .categoryPanelCol {
   grid-column: 1 / 8;
+  min-width: 0;
   height: 100%;
   position: relative;
   overflow: hidden !important;
   pointer-events: auto;
   opacity: 0;
   transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+  margin-left: min(calc(-1 * var(--pad)), calc((var(--maxw) - 100vw) / 2 - var(--pad)));
+  padding-left: 0;
   padding-right: 0;
   box-sizing: border-box;
 }
@@ -684,6 +707,16 @@
 }
 
 @media (max-width: 600px) {
+  .logoStack {
+    width: 99px;
+    height: 33px;
+  }
+
+  .logoMark {
+    font-size: 9px;
+    transform: translateY(5px);
+  }
+
   .ourExpertsBtn {
     padding: 5px 10px;
   }
