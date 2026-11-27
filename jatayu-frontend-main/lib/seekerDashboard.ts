@@ -112,7 +112,7 @@ export const ACTIVITY_STATS = [
 
 export const MAIN_NAV: SeekerNavItem[] = [
   { id: "home", label: "Home", href: "/seeker/dashboard/" },
-  { id: "discover", label: "Discover", href: "/seeker/discover/" },
+  { id: "discover", label: "Our Experts", href: "/seeker/discover/" },
   { id: "bookings", label: "Bookings", href: "/seeker/bookings/", badge: 2 },
 ];
 
@@ -519,8 +519,6 @@ export function getBookingById(id: string): BookingDetail | undefined {
 export function getBookingDetailHref(id: string): string {
   return `/seeker/bookings/${id}`;
 }
-
-export const RECOMMENDED_EXPERTS = featuredExperts.slice(0, 3);
 
 export const SAVED_EXPERTS: SavedExpertEntry[] = [
   { expert: featuredExperts[6], rating: 4.7 },

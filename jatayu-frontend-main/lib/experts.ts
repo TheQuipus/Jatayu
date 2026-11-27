@@ -52,6 +52,7 @@ export type Expert = {
   formatPrices?: Record<string, string | number>;
   availabilities?: ExpertAvailability[];
   timezone?: string;
+  matchTier?: number;
 };
 
 const sampleAnswerByTopic: Record<ExpertiseTag, { question: string; answer: string }[]> = {
@@ -954,6 +955,7 @@ export function normalizeExpert(rawData: Record<string, unknown>): Expert {
     formatPrices,
     availabilities,
     timezone: typeof data.timezone === "string" ? data.timezone : undefined,
+    matchTier: typeof data.matchTier === "number" ? data.matchTier : undefined,
     sampleAnswers,
     reviews,
   };

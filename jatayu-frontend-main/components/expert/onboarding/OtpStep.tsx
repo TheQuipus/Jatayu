@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { ArrowLeft } from "lucide-react";
 import RegisterLeftPanel from "@/components/expert/onboarding/RegisterLeftPanel";
+import OtpResendControl from "@/components/auth/OtpResendControl";
+import { useOtpResend } from "@/hooks/useOtpResend";
 import register from "./register.shared.module.css";
 import styles from "./OtpStep.module.css";
-import { resendOtp, verifyOtp, type AuthResponse } from "@/lib/api";
+import {
+  getExpertResendStatus,
+  resendOtp,
+  verifyOtp,
+  type AuthResponse,
+} from "@/lib/api";
 
 type OtpStepProps = {
   expertId: string;
@@ -16,7 +23,6 @@ type OtpStepProps = {
 };
 
 const OTP_LENGTH = 6;
-const RESEND_SECONDS = 24;
 
 function maskPhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -39,20 +45,28 @@ function maskEmail(email: string): string {
 
 export default function OtpStep({ expertId, phone, email, onBack, onContinue }: OtpStepProps) {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
-  const [resendSeconds, setResendSeconds] = useState(RESEND_SECONDS);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const verifyingRef = useRef(false);
 
-  useEffect(() => {
-    if (resendSeconds <= 0) return;
-    const timer = setInterval(() => {
-      setResendSeconds((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendSeconds]);
+  const {
+    resendAttempts,
+    maxResendAttempts,
+    blockedUntil,
+    resendSeconds,
+    isResending,
+    handleResend,
+  } = useOtpResend({
+    active: Boolean(expertId),
+    fetchStatus: useCallback(() => getExpertResendStatus(expertId), [expertId]),
+    onResendRequest: useCallback(() => resendOtp({ expertId }), [expertId]),
+    onSuccess: useCallback(() => {
+      setDigits(Array(OTP_LENGTH).fill(""));
+      inputRefs.current[0]?.focus();
+    }, []),
+    onError: setError,
+  });
 
   const verifyCode = useCallback(
     async (code: string) => {
@@ -120,24 +134,6 @@ export default function OtpStep({ expertId, phone, email, onBack, onContinue }: 
     inputRefs.current[focusIndex]?.focus();
   };
 
-  const handleResend = async () => {
-    if (resendSeconds > 0 || isResending) return;
-
-    setIsResending(true);
-    setError(null);
-
-    try {
-      await resendOtp({ expertId });
-      setResendSeconds(RESEND_SECONDS);
-      setDigits(Array(OTP_LENGTH).fill(""));
-      inputRefs.current[0]?.focus();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not resend verification code.");
-    } finally {
-      setIsResending(false);
-    }
-  };
-
   return (
     <section className={register.registerCard}>
       <RegisterLeftPanel />
@@ -191,23 +187,15 @@ export default function OtpStep({ expertId, phone, email, onBack, onContinue }: 
           <p className={styles.otpResendText}>Verifying code...</p>
         ) : null}
 
-        <p className={styles.otpResendText}>
-          {resendSeconds > 0 ? (
-            <>
-              <span className={styles.otpResendMuted}>Resend the code again in </span>
-              <span className={styles.otpResendHighlight}>{resendSeconds} Seconds</span>
-            </>
-          ) : (
-            <button
-              type="button"
-              className={styles.otpResendLink}
-              onClick={() => void handleResend()}
-              disabled={isResending}
-            >
-              {isResending ? "Resending..." : "Resend the code"}
-            </button>
-          )}
-        </p>
+        <OtpResendControl
+          resendSeconds={resendSeconds}
+          isResending={isResending}
+          resendAttempts={resendAttempts}
+          maxResendAttempts={maxResendAttempts}
+          blockedUntil={blockedUntil}
+          variant="dark"
+          onResend={() => void handleResend()}
+        />
       </div>
     </section>
   );

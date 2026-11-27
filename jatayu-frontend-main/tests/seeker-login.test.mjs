@@ -66,3 +66,21 @@ for (const [user, expected] of [
     assert.equal(assigned, expected);
   });
 }
+
+test('seeker LoginStep renders submitError below password input with 14px passwordSubmitError class', () => {
+  const source = fs.readFileSync(
+    path.join(import.meta.dirname, '..', 'components/seeker/onboarding/LoginStep.tsx'),
+    'utf8',
+  );
+  const pwIdx = source.indexOf('id="loginPassword"');
+  const submitErrIdx = source.indexOf('styles.passwordSubmitError');
+  const forgotIdx = source.indexOf('styles.forgotPasswordRow');
+  const loginBtnIdx = source.indexOf('label={isSubmitting ? "Logging in..." : "Login"}');
+  assert.ok(pwIdx > 0 && submitErrIdx > pwIdx && submitErrIdx < forgotIdx && forgotIdx < loginBtnIdx);
+
+  const css = fs.readFileSync(
+    path.join(import.meta.dirname, '..', 'components/seeker/onboarding/RegisterStep.module.css'),
+    'utf8',
+  );
+  assert.match(css, /\.passwordSubmitError\s*\{[^}]*font-size:\s*14px;[^}]*color:\s*#FF3B30;/s);
+});

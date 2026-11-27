@@ -155,3 +155,45 @@ test('does not convert database errors into fallback suggestions', async (t) => 
     failure,
   );
 });
+
+test('category filter normalizes category ids to expert labels without breaking exact label or custom category filters', async (t) => {
+  t.mock.method(experts, 'findAll', async () => [
+    expert('health-expert', { category: 'Health & Wellness' }),
+    expert('sw-expert', { category: 'Software Engineering' }),
+    expert('custom-expert', { category: 'Vastu Shastra' }),
+  ]);
+
+  const byId = await findPublicExperts(filters({ category: 'health' }));
+  assert.deepEqual(byId.experts.map((item) => item.id), ['health-expert']);
+
+  const byLabel = await findPublicExperts(filters({ category: 'Health & Wellness' }));
+  assert.deepEqual(byLabel.experts.map((item) => item.id), ['health-expert']);
+
+  const bySwId = await findPublicExperts(filters({ category: 'software' }));
+  assert.deepEqual(bySwId.experts.map((item) => item.id), ['sw-expert']);
+
+  const byCustom = await findPublicExperts(filters({ category: 'Vastu Shastra' }));
+  assert.deepEqual(byCustom.experts.map((item) => item.id), ['custom-expert']);
+});
+
+test('mixed-category regression: filtering by exact expert label returns identical expert set and custom category matches itself', async (t) => {
+  t.mock.method(experts, 'findAll', async () => [
+    expert('e-health-1', { category: 'Health & Wellness' }),
+    expert('e-health-2', { category: 'Health & Wellness' }),
+    expert('e-sw', { category: 'Software Engineering' }),
+    expert('e-fin', { category: 'Finance & VC' }),
+    expert('e-custom', { category: 'Vedic Astrology' }),
+  ]);
+
+  const healthRes = await findPublicExperts(filters({ category: 'Health & Wellness' }));
+  assert.deepEqual(healthRes.experts.map((item) => item.id), ['e-health-1', 'e-health-2']);
+
+  const swRes = await findPublicExperts(filters({ category: 'Software Engineering' }));
+  assert.deepEqual(swRes.experts.map((item) => item.id), ['e-sw']);
+
+  const finRes = await findPublicExperts(filters({ category: 'Finance & VC' }));
+  assert.deepEqual(finRes.experts.map((item) => item.id), ['e-fin']);
+
+  const customRes = await findPublicExperts(filters({ category: 'Vedic Astrology' }));
+  assert.deepEqual(customRes.experts.map((item) => item.id), ['e-custom']);
+});

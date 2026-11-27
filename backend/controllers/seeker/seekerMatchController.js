@@ -40,7 +40,9 @@ function paginateResults(matches, page, limit) {
 export const getFeaturedMatches = async (req, res) => {
   try {
     const { limit, seeker } = await loadSeekerForMatchRequest(req);
-    const matches = await findFeaturedMatches(seeker, undefined, req.query);
+    const matches = await findFeaturedMatches(seeker, undefined, req.query, {
+      treatCategoryTopicsAsRankingOnly: true,
+    });
     const limitedMatches = matches.slice(0, limit);
     return res.status(200).json({
       matches: limitedMatches,
@@ -49,6 +51,8 @@ export const getFeaturedMatches = async (req, res) => {
         category: seeker.category,
         topics: seeker.topics || [],
         selectedFormats: seeker.selectedFormats || [],
+        selectedBudget: seeker.selectedBudget || null,
+        selectedLanguages: seeker.selectedLanguages || [],
       },
     });
   } catch (error) {

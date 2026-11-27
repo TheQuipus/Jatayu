@@ -68,7 +68,6 @@ export type ContextImprovementStyleId = (typeof CONTEXT_IMPROVEMENT_STYLES)[numb
 export const DEFAULT_CONTEXT_IMPROVE_HINT = DEFAULT_AI_IMPROVE_HINT;
 
 export const CHECKOUT_OTP_LENGTH = 6;
-export const CHECKOUT_OTP_RESEND_SECONDS = 24;
 
 export type CheckoutRegistrationFieldKey =
   | "firstName"

@@ -32,7 +32,6 @@ import { type Expert, expertSlug } from "@/lib/experts";
 import BookingConfirmation from "./BookingConfirmation";
 import {
   CHECKOUT_OTP_LENGTH,
-  CHECKOUT_OTP_RESEND_SECONDS,
   CHECKOUT_REGISTRATION_TOUCHED_DEFAULT,
   MIN_CONTEXT_LENGTH,
   INITIAL_PAYMENT_DETAILS,
@@ -60,6 +59,7 @@ import {
   registerSeeker,
   verifySeekerOtp,
   resendSeekerOtp,
+  getSeekerResendStatus,
   seekerLogin,
   SeekerOtpRequiredError,
   setSeekerId,
@@ -72,6 +72,9 @@ import {
   updateSeekerOnboarding,
 } from "@/lib/api";
 import { savePendingSeekerOtpSession } from "@/lib/seekerAuth";
+import { useOtpResend } from "@/hooks/useOtpResend";
+import { useLoginOtpBlock } from "@/hooks/useLoginOtpBlock";
+import { OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/otpResend";
 import {
   deriveSeekerQuestionPrefill,
   fetchSeekerProfileData,
@@ -106,6 +109,12 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+  const {
+    blockedSeconds: loginBlockedSeconds,
+    blockMessage: loginBlockMessage,
+    handleLoginBlockError,
+    clearBlock: clearLoginBlock,
+  } = useLoginOtpBlock();
   const [bookingOptions, setBookingOptions] = useState<BookingOptions | null>(null);
   const [bookingError, setBookingError] = useState("");
   const [confirmedBookingId, setConfirmedBookingId] = useState("");
@@ -341,9 +350,6 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
   const [registerOtpDigits, setRegisterOtpDigits] = useState<string[]>(
     Array(CHECKOUT_OTP_LENGTH).fill("")
   );
-  const [registerOtpResendSeconds, setRegisterOtpResendSeconds] = useState(
-    CHECKOUT_OTP_RESEND_SECONDS
-  );
   const registerOtpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [useCredits, setUseCredits] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId | null>(null);
@@ -368,7 +374,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
 
   const breadcrumbItems = useMemo(
     () => [
-      { label: "Discover", href: seeker ? "/seeker/discover/" : "/expert/" },
+      { label: seeker ? "Our Experts" : "Discover", href: seeker ? "/seeker/discover/" : "/expert/" },
       {
         label: expert.name,
         href: seeker
@@ -466,13 +472,36 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setRegisterTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  useEffect(() => {
-    if (!registerOtpSent || registerOtpResendSeconds <= 0) return;
-    const timer = setInterval(() => {
-      setRegisterOtpResendSeconds((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [registerOtpSent, registerOtpResendSeconds]);
+  const {
+    resendAttempts: registerOtpResendAttempts,
+    maxResendAttempts: registerOtpMaxResendAttempts,
+    blockedUntil: registerOtpBlockedUntil,
+    resendSeconds: registerOtpResendSeconds,
+    isResending: registerOtpIsResending,
+    handleResend: handleResendRegisterOtp,
+    resetCooldown: resetRegisterOtpCooldown,
+  } = useOtpResend({
+    active: Boolean(registerOtpSent && currentSeekerId),
+    initialCooldownSeconds: OTP_RESEND_COOLDOWN_SECONDS,
+    fetchStatus: () =>
+      currentSeekerId
+        ? getSeekerResendStatus(currentSeekerId)
+        : Promise.resolve({ resendAttempts: 0, maxResendAttempts: 3, blockedUntil: null }),
+    onResendRequest: async () => {
+      if (!currentSeekerId) {
+        throw new Error("Registration session expired. Please register again.");
+      }
+      return resendSeekerOtp({ seekerId: currentSeekerId });
+    },
+    onSuccess: () => {
+      setRegisterOtpVerified(false);
+      setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
+      registerOtpInputRefs.current[0]?.focus();
+    },
+    onError: (msg: string | null) => {
+      if (msg) setBookingError(msg);
+    },
+  });
 
   const previousRegisterContactRef = useRef({
     phone: registerPhone,
@@ -488,8 +517,8 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     if (!registerOtpSent || !contactChanged) return;
     setRegisterOtpVerified(false);
     setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
-    setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
-  }, [registerPhone, registerEmail, registerOtpSent]);
+    resetRegisterOtpCooldown();
+  }, [registerPhone, registerEmail, registerOtpSent, resetRegisterOtpCooldown]);
 
   const updateRegisterOtpDigit = useCallback((index: number, value: string) => {
     const char = value.replace(/\D/g, "").slice(-1);
@@ -593,36 +622,22 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
     setRegisterOtpSent(true);
     setRegisterOtpVerified(false);
     setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
-    setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
+    resetRegisterOtpCooldown();
     queueMicrotask(() => registerOtpInputRefs.current[0]?.focus());
-  };
-
-  const handleResendRegisterOtp = async () => {
-    if (registerOtpResendSeconds > 0) return;
-    if (currentSeekerId) {
-      try {
-        await resendSeekerOtp({ seekerId: currentSeekerId });
-      } catch (err) {
-        console.warn("Resend OTP notice:", err);
-      }
-    }
-    setRegisterOtpVerified(false);
-    setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
-    setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
-    registerOtpInputRefs.current[0]?.focus();
   };
 
   const resetRegisterOtpState = () => {
     setRegisterOtpSent(false);
     setRegisterOtpVerified(false);
     setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
-    setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
+    resetRegisterOtpCooldown();
   };
 
   const handleLoginSubmit = async () => {
     setLoginSubmitAttempted(true);
     if (!loginEmail.trim() || !loginPassword.trim() || isSubmittingLogin) return;
 
+    clearLoginBlock();
     setIsSubmittingLogin(true);
     try {
       const authRes = await seekerLogin({
@@ -641,6 +656,9 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       setShowAuthModal(false);
       setCurrentStep(4);
     } catch (err) {
+      if (handleLoginBlockError(err)) {
+        return;
+      }
       if (err instanceof SeekerOtpRequiredError) {
         savePendingSeekerOtpSession({
           seekerId: err.seekerId,
@@ -655,7 +673,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
         setRegisterOtpSent(true);
         setRegisterOtpVerified(false);
         setRegisterOtpDigits(Array(CHECKOUT_OTP_LENGTH).fill(""));
-        setRegisterOtpResendSeconds(CHECKOUT_OTP_RESEND_SECONDS);
+        resetRegisterOtpCooldown();
         setBookingError("");
         setShowAuthModal(true);
         return;
@@ -978,11 +996,19 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   isAuthLogin={isAuthLogin}
                   onSetIsAuthLogin={setIsAuthLogin}
                   loginEmail={loginEmail}
-                  onLoginEmailChange={setLoginEmail}
+                  onLoginEmailChange={(value) => {
+                    setLoginEmail(value);
+                    clearLoginBlock();
+                  }}
                   loginPassword={loginPassword}
-                  onLoginPasswordChange={setLoginPassword}
+                  onLoginPasswordChange={(value) => {
+                    setLoginPassword(value);
+                    clearLoginBlock();
+                  }}
                   loginSubmitAttempted={loginSubmitAttempted}
                   isSubmittingLogin={isSubmittingLogin}
+                  loginBlockedSeconds={loginBlockedSeconds}
+                  loginBlockMessage={loginBlockMessage}
                   onLoginSubmit={handleLoginSubmit}
                   registerFirstName={registerFirstName}
                   onRegisterFirstNameChange={setRegisterFirstName}
@@ -1014,7 +1040,11 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
                   handleRegisterOtpKeyDown={handleRegisterOtpKeyDown}
                   handleRegisterOtpPaste={handleRegisterOtpPaste}
                   registerOtpResendSeconds={registerOtpResendSeconds}
-                  onResendRegisterOtp={handleResendRegisterOtp}
+                  registerOtpIsResending={registerOtpIsResending}
+                  registerOtpResendAttempts={registerOtpResendAttempts}
+                  registerOtpMaxResendAttempts={registerOtpMaxResendAttempts}
+                  registerOtpBlockedUntil={registerOtpBlockedUntil}
+                  onResendRegisterOtp={() => void handleResendRegisterOtp()}
                   termsAccepted={termsAccepted}
                   onTermsAcceptedChange={setTermsAccepted}
                   canContinueStep5={canContinueStep5}

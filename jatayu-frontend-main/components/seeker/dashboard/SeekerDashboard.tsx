@@ -2,15 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import PrimaryButton from "@/components/ui/PrimaryButton";
-import ExpertCard from "@/components/ui/ExpertCard";
+import RecommendedExpertsSection, { RECOMMENDED_EXPERTS_COUNT } from "./RecommendedExpertsSection";
 import problemStyles from "@/components/homepage/Problem.module.css";
+import { getFeaturedMatches } from "@/lib/api";
+import type { Expert } from "@/lib/experts";
 import {
   ACTIVITY_STATS,
   EXPERT_UPDATES,
-  RECOMMENDED_EXPERTS,
   SAVED_EXPERTS,
   SEEKER_PROFILE,
   TRENDING_CATEGORIES,
@@ -31,11 +32,55 @@ const DASHBOARD_TRENDING_PREVIEW = TRENDING_CATEGORIES.slice(0, 6);
 export default function SeekerDashboard() {
   const [activeCategory, setActiveCategory] = useState<string>(TRENDING_CATEGORIES[0]);
   const { bookmarkedExperts, toggleBookmark } = useBookmarks();
+  const [recommendedMatches, setRecommendedMatches] = useState<Expert[]>([]);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(true);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
   const [profile, setProfile] = useState({
     name: SEEKER_PROFILE.name,
     avatar: SEEKER_PROFILE.avatar,
     isPro: SEEKER_PROFILE.isPro,
   });
+
+  const handleRetryMatches = useCallback(() => {
+    setIsLoadingMatches(true);
+    setMatchesError(null);
+    void getFeaturedMatches({ limit: RECOMMENDED_EXPERTS_COUNT, throwOnError: true })
+      .then((data) => {
+        setRecommendedMatches(data.slice(0, RECOMMENDED_EXPERTS_COUNT));
+      })
+      .catch(() => {
+        setRecommendedMatches([]);
+        setMatchesError("Unable to load recommended experts right now.");
+      })
+      .finally(() => {
+        setIsLoadingMatches(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    void getFeaturedMatches({ limit: RECOMMENDED_EXPERTS_COUNT, throwOnError: true })
+      .then((data) => {
+        if (!isCancelled) {
+          setRecommendedMatches(data.slice(0, RECOMMENDED_EXPERTS_COUNT));
+          setMatchesError(null);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setRecommendedMatches([]);
+          setMatchesError("Unable to load recommended experts right now.");
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingMatches(false);
+        }
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -162,29 +207,14 @@ export default function SeekerDashboard() {
           </ul>
         </section>
 
-        <section className={`${styles.contentSection} ${styles.featuredSection}`}>
-          <div className={styles.featuredHeaderRow}>
-            <h2 className={styles.featuredTitle}>
-              Recommended for You
-            </h2>
-            <Link href="/seeker/discover" className={styles.sortedText}>
-              See all
-            </Link>
-          </div>
-          <div className={styles.recommendedGrid}>
-            {RECOMMENDED_EXPERTS.map((expert, index) => (
-              <ExpertCard
-                key={expert.name}
-                expert={expert}
-                isBookmarked={bookmarkedExperts.has(expert.name)}
-                onBookmarkToggle={() => toggleBookmark(expert.name)}
-                seeker
-                priority={index < 2}
-                className={styles.recommendedCard}
-              />
-            ))}
-          </div>
-        </section>
+        <RecommendedExpertsSection
+          matches={recommendedMatches}
+          isLoading={isLoadingMatches}
+          error={matchesError}
+          onRetry={handleRetryMatches}
+          bookmarkedExperts={bookmarkedExperts}
+          onBookmarkToggle={toggleBookmark}
+        />
 
         <div className={styles.bottomGrid}>
           <section className={styles.contentSection}>

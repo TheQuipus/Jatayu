@@ -173,7 +173,12 @@ test('the onboarding URL is not synchronized from the default register step befo
         },
       },
     };
-    vm.runInNewContext(`(${callback})()`, { routeInitialized, step, window });
+    vm.runInNewContext(`(${callback})()`, {
+      routeInitialized,
+      step,
+      window,
+      notifyOnboardingStepChange: () => {},
+    });
   };
 
   runEffect(false, 'register', '?resume=otp');
@@ -181,4 +186,21 @@ test('the onboarding URL is not synchronized from the default register step befo
 
   runEffect(true, 'otp', '?flow=signup');
   assert.deepEqual(updates, ['/expert/expert-onboarding/?resume=otp']);
+});
+
+test('expert LoginStep renders submitError below password input with 14px passwordSubmitError class', () => {
+  const source = fs.readFileSync(
+    path.join(import.meta.dirname, '..', 'components/expert/onboarding/LoginStep.tsx'),
+    'utf8',
+  );
+  const pwIdx = source.indexOf('id="loginPassword"');
+  const submitErrIdx = source.indexOf('styles.passwordSubmitError');
+  const forgotIdx = source.indexOf('styles.forgotPasswordRow');
+  assert.ok(pwIdx > 0 && submitErrIdx > pwIdx && submitErrIdx < forgotIdx);
+
+  const css = fs.readFileSync(
+    path.join(import.meta.dirname, '..', 'components/expert/onboarding/RegisterStep.module.css'),
+    'utf8',
+  );
+  assert.match(css, /\.passwordSubmitError\s*\{[^}]*font-size:\s*14px;[^}]*color:\s*#FF3B30;/s);
 });
