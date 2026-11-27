@@ -6,6 +6,9 @@
 }
 
 .servicesSeeker {
+  position: static;
+  z-index: auto;
+  background: transparent;
   padding-top: 25px;
   padding-bottom: 80px;
   --expert-seeker-services-offset: 25px;

@@ -160,4 +160,13 @@ test("Expert.tsx keeps public expertiseTags untouched, applies seeker preselecti
   assert.match(expertSource, /Picked for you based on your preferences\. Adjust the filters anytime\./);
   assert.match(expertSource, /Nothing matches all your preferences exactly, so here are the closest experts\. Adjust the filters anytime\./);
   assert.doesNotMatch(expertSource, /No exact matches found/);
+
+  const expertCss = fs.readFileSync(
+    path.join(import.meta.dirname, "..", "components/expert/Expert.module.css"),
+    "utf8",
+  );
+  assert.match(
+    expertCss,
+    /\.servicesSeeker\s*\{[^}]*position:\s*static;[^}]*z-index:\s*auto;[^}]*background:\s*transparent;/s,
+  );
 });
