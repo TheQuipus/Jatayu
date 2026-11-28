@@ -311,8 +311,7 @@ export default function TopNavbar() {
                 <span />
                 <span />
               </button>
-            </>
-          )}
+          
         </div>
       </header>
 
