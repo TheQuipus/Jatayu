@@ -1,7 +1,11 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { Admin } from '../models/index.js';
 import { requestAdminOtp, verifyAdminOtp } from '../utils/adminLoginOtp.js';
+import {
+  getAdminIdleConfig,
+  issueAdminSessionAndToken,
+  revokeAdminSession,
+} from '../services/adminSessionService.js';
 import {
   buildPasswordLoginLockedResponse,
   buildPasswordLoginRateLimitResponse,
@@ -81,19 +85,11 @@ export const adminLogin = async (req, res) => {
       }
     }
 
-    const token = jwt.sign(
-      {
-        id: admin.id,
-        email: admin.email,
-        fullName: admin.fullName,
-        role: admin.role,
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' },
-    );
+    const { token, idleConfig } = await issueAdminSessionAndToken(admin, req);
 
     return res.status(200).json({
       token,
+      idleConfig,
       user: {
         id: admin.id,
         email: admin.email,
@@ -120,9 +116,45 @@ export const getAdminMe = async (req, res) => {
       return res.status(404).json({ message: 'Admin not found' });
     }
 
-    return res.status(200).json(admin);
+    const idleConfig = req.adminIdleConfig || (await getAdminIdleConfig());
+
+    return res.status(200).json({
+      ...admin.toJSON(),
+      idleConfig,
+      lastActivityAt: req.adminSession?.lastActivityAt || null,
+    });
   } catch (error) {
     console.error('Get Admin Me Error:', error);
     return res.status(500).json({ message: 'Server error retrieving admin profile', error: error.message });
+  }
+};
+
+/**
+ * Explicit admin activity heartbeat to keep session alive
+ */
+export const adminHeartbeat = async (req, res) => {
+  try {
+    const idleConfig = req.adminIdleConfig || (await getAdminIdleConfig());
+    return res.status(200).json({
+      ok: true,
+      lastActivityAt: req.adminSession?.lastActivityAt || new Date().toISOString(),
+      idleConfig,
+    });
+  } catch (error) {
+    console.error('Admin Heartbeat Error:', error);
+    return res.status(500).json({ message: 'Server error extending admin session', error: error.message });
+  }
+};
+
+/**
+ * Revoke current admin session on manual or idle logout
+ */
+export const adminLogout = async (req, res) => {
+  try {
+    await revokeAdminSession(req.admin?.jti);
+    return res.status(200).json({ ok: true, message: 'Admin session ended' });
+  } catch (error) {
+    console.error('Admin Logout Error:', error);
+    return res.status(500).json({ message: 'Server error closing admin session', error: error.message });
   }
 };

@@ -7,17 +7,21 @@ import styles from "./Workflow.module.css";
 import PrimaryButton from "../ui/PrimaryButton";
 
 const carouselOne = [
-  "/assets/img/team3.png",
-  "/assets/img/team1.png",
-  "/assets/img/team2.png",
-  "/assets/img/team4.png",
+  "/assets/img/influencers/nikhil-kamath-card.jpg",
+  "/assets/img/influencers/dr-tanaya-card.jpg",
+  "/assets/img/influencers/raj-shamani-card.jpg",
+  "/assets/img/influencers/manasi-chaudhari-card.jpg",
+  "/assets/img/influencers/vikas-khanna-card.jpg",
+  "/assets/img/influencers/alakh-pandey-card.jpg",
 ];
 
 const carouselTwo = [
-  "/images/uZoBg8iHrnM8hSPmjt5zorl84Ea08c.png",
-  "/assets/img/benefits-woman.png",
-  "/assets/img/team2.png",
-  "/assets/img/team1.png",
+  "/assets/img/influencers/dr-pal-card.jpg",
+  "/assets/img/influencers/harsha-bhogle-card.jpg",
+  "/assets/img/influencers/prakash-raj-card.jpg",
+  "/assets/img/influencers/technical-guruji-card.jpg",
+  "/assets/img/influencers/dhruv-rathee-card.jpg",
+  "/assets/img/influencers/hitesh-choudhary-card.jpg",
 ];
 
 export default function Workflow() {
@@ -69,8 +73,8 @@ export default function Workflow() {
                         alt="Expert portrait"
                         width={169}
                         height={204}
-                        priority={src === "/assets/img/team1.png" && i === 1}
-                        loading={src === "/assets/img/team1.png" || src === "/assets/img/team2.png" ? "eager" : undefined}
+                        priority={i === 0}
+                        loading={i < 2 ? "eager" : undefined}
                       />
                     </figure>
                   ))}
@@ -112,8 +116,8 @@ export default function Workflow() {
                         alt="Expert portrait"
                         width={169}
                         height={204}
-                        priority={src === "/assets/img/team1.png" && i === 3}
-                        loading={src === "/assets/img/team1.png" || src === "/assets/img/team2.png" ? "eager" : undefined}
+                        priority={i === 0}
+                        loading={i < 2 ? "eager" : undefined}
                       />
                     </figure>
                   ))}

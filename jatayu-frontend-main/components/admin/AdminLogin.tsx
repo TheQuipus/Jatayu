@@ -12,6 +12,11 @@ import otpStyles from "@/components/expert/onboarding/OtpStep.module.css";
 import pageStyles from "@/app/expert/expert-onboarding/page.module.css";
 import { ADMIN_DASHBOARD_HREF } from "@/lib/adminDashboard";
 import { adminLogin, getAdminMe, getAdminToken, setAdminToken } from "@/lib/api";
+import {
+  recordAdminActivity,
+  sanitizeAdminNextPath,
+  setCachedAdminIdleConfig,
+} from "@/lib/adminIdleSession";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 
 type FieldKey = "email" | "password";
@@ -60,7 +65,23 @@ export default function AdminLogin() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+  const [nextPath, setNextPath] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const reason = params.get("reason");
+    const safeNext = sanitizeAdminNextPath(params.get("next"));
+    setNextPath(safeNext);
+
+    if (reason === "idle_timeout") {
+      setSessionNotice("Your admin session expired due to inactivity. Please sign in again to continue.");
+    } else if (reason === "session_revoked" || reason === "session_expired") {
+      setSessionNotice("Your admin session has ended. Please sign in again.");
+    }
+  }, []);
 
   useEffect(() => {
     if (otpRequested) inputRefs.current[0]?.focus();
@@ -71,7 +92,11 @@ export default function AdminLogin() {
     if (!token) return;
 
     getAdminMe()
-      .then(() => router.replace(ADMIN_DASHBOARD_HREF))
+      .then(() => {
+        const params = new URLSearchParams(window.location.search);
+        const safeNext = sanitizeAdminNextPath(params.get("next"));
+        router.replace(safeNext ?? ADMIN_DASHBOARD_HREF);
+      })
       .catch(() => {
         // Invalid token — stay on login page.
       });
@@ -161,7 +186,11 @@ export default function AdminLogin() {
         return;
       }
       setAdminToken(response.token);
-      router.push(ADMIN_DASHBOARD_HREF);
+      if (response.idleConfig) {
+        setCachedAdminIdleConfig(response.idleConfig);
+      }
+      recordAdminActivity(true);
+      router.push(nextPath ?? ADMIN_DASHBOARD_HREF);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Login failed.");
     } finally {
@@ -188,6 +217,23 @@ export default function AdminLogin() {
           <p className={formStyles.registerFormIntro}>
             Enter your details to login
           </p>
+
+          {sessionNotice ? (
+            <div
+              role="status"
+              style={{
+                marginBottom: "16px",
+                padding: "10px 14px",
+                border: "1px solid rgba(229, 59, 23, 0.35)",
+                background: "rgba(229, 59, 23, 0.08)",
+                color: "var(--pomegranate)",
+                fontSize: "13px",
+                lineHeight: 1.45,
+              }}
+            >
+              {sessionNotice}
+            </div>
+          ) : null}
 
           <form className={formStyles.registerForm} onSubmit={handleSubmit} noValidate>
             <div className={register.fieldGroup}>

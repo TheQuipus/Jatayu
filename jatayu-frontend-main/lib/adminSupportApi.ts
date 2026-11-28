@@ -1,4 +1,5 @@
 import { getAdminToken } from "@/lib/api";
+import { handleAdminApiUnauthorized } from "@/lib/adminIdleSession";
 import { publicApiBase } from "@/lib/publicApiBase";
 import type {
   SupportViewerStatus,
@@ -122,14 +123,16 @@ async function adminSupportRequest<T>(path: string, init?: RequestInit): Promise
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const code = typeof data?.code === "string" ? data.code : undefined;
+    handleAdminApiUnauthorized(response.status, code);
     const err = new Error(
       typeof data?.message === "string" && data.message.trim()
         ? data.message
         : "Unable to load support tickets",
     ) as AdminSupportApiError;
     err.status = response.status;
-    if (typeof data?.code === "string") {
-      err.code = data.code;
+    if (code) {
+      err.code = code;
     }
     throw err;
   }

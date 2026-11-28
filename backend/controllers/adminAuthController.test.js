@@ -3,7 +3,7 @@ import { mock, test } from 'node:test';
 import bcrypt from 'bcryptjs';
 import dns from 'node:dns';
 import nodemailer from 'nodemailer';
-import { Admin, Setting } from '../models/index.js';
+import { Admin, AdminSession, Setting } from '../models/index.js';
 
 const lockouts = new Map();
 const lockoutKey = (type, id, sourceIp = '127.0.0.1') => `${type}:${id}:${sourceIp}`;
@@ -50,6 +50,10 @@ mock.module('../utils/accountLoginLockout.js', {
 });
 
 const { adminLogin } = await import('./adminAuthController.js');
+
+test.beforeEach(() => {
+  mock.method(AdminSession, 'create', async (data) => data);
+});
 
 test('admin validates credentials before sending a single-use email OTP', async (t) => {
   const previous = process.env.ADMIN_LOGIN_OTP_ENABLED;

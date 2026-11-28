@@ -13,6 +13,7 @@ import {
   fetchAdminSettingsFromBackend,
   saveAdminSettingsToBackend,
 } from "@/lib/adminSettingsSync";
+import { setCachedAdminIdleConfig } from "@/lib/adminIdleSession";
 
 export function useAdminSettings() {
   const [settings, setSettings] = useState<AdminSettings>(DEFAULT_ADMIN_SETTINGS);
@@ -29,6 +30,10 @@ export function useAdminSettings() {
         const remoteSettings = await fetchAdminSettingsFromBackend();
         if (!active) return;
         saveAdminSettings(remoteSettings);
+        setCachedAdminIdleConfig({
+          idleTimeoutMinutes: remoteSettings.security.adminIdleTimeoutMinutes,
+          idleWarningSeconds: remoteSettings.security.adminIdleWarningSeconds,
+        });
         setSettings(remoteSettings);
       } catch (err) {
         console.warn("Failed to load admin settings from backend, using local cache.", err);
@@ -60,6 +65,10 @@ export function useAdminSettings() {
     try {
       await saveAdminSettingsToBackend(next);
       saveAdminSettings(next);
+      setCachedAdminIdleConfig({
+        idleTimeoutMinutes: next.security.adminIdleTimeoutMinutes,
+        idleWarningSeconds: next.security.adminIdleWarningSeconds,
+      });
       setSettings(next);
       setSavedAt(Date.now());
     } catch (err) {

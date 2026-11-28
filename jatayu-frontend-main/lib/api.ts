@@ -9,6 +9,7 @@ import type { ClientRequest, RequestStatus } from "@/lib/expertRequests";
 import type { IdentityToneOptions } from "@/lib/expertIdentitySuggest";
 import { publicApiBase } from "@/lib/publicApiBase";
 import { parseUtcDate, formatUtcToLocalDate, formatUtcToLocalTime, formatUtcRelativeTime } from "@/lib/dateTimeUtils";
+import { handleAdminApiUnauthorized, type AdminIdleConfig } from "@/lib/adminIdleSession";
 import type { ApplicationStatus } from "./expertApplicationSubmission";
 
 const BASE_URL = publicApiBase();
@@ -264,6 +265,15 @@ async function apiFetch<T>(
     const code = (data as { code?: string }).code;
 
     if (typeof window !== "undefined") {
+      const isProtectedAdminRequest =
+        (path.startsWith("/api/admin/") &&
+          !path.startsWith("/api/admin/auth/login") &&
+          !path.startsWith("/api/admin/auth/logout")) ||
+        (path.startsWith("/api/notifications") && window.location.pathname.startsWith("/admin/"));
+      if (response.status === 401 && isProtectedAdminRequest) {
+        handleAdminApiUnauthorized(response.status, code);
+      }
+
       const isSeekerRoute = path.startsWith("/api/seeker/") || path.startsWith("/api/seeker-auth/");
       const isExpertRoute = path.startsWith("/api/expert/") || path.startsWith("/api/auth/");
 
@@ -852,11 +862,14 @@ export interface AdminAuthUser {
   email: string;
   fullName: string;
   role: string;
+  idleConfig?: AdminIdleConfig;
+  lastActivityAt?: string | null;
 }
 
 export interface AdminAuthResponse {
   token: string;
   user: AdminAuthUser;
+  idleConfig?: AdminIdleConfig;
 }
 
 export type AdminOtpRequiredResponse = { requiresOtp: true; message: string };
@@ -880,6 +893,26 @@ export async function getAdminMe(): Promise<AdminAuthUser> {
   return adminApiFetch<AdminAuthUser>("/api/admin/auth/me", {
     method: "GET",
   });
+}
+
+export async function adminHeartbeat(): Promise<{
+  ok: boolean;
+  lastActivityAt: string;
+  idleConfig: AdminIdleConfig;
+}> {
+  return adminApiFetch("/api/admin/auth/heartbeat", {
+    method: "POST",
+  });
+}
+
+export async function adminLogout(): Promise<void> {
+  try {
+    await adminApiFetch<{ ok: boolean }>("/api/admin/auth/logout", {
+      method: "POST",
+    });
+  } catch {
+    // Best-effort revocation; client still clears local session.
+  }
 }
 
 // ---------------------------------------------------------------------------

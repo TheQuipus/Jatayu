@@ -2,7 +2,12 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { getAdminMe, getAdminToken } from "@/lib/api";
+import { getAdminMe, getAdminToken, removeAdminToken } from "@/lib/api";
+import {
+  recordAdminActivity,
+  sanitizeAdminNextPath,
+  setCachedAdminIdleConfig,
+} from "@/lib/adminIdleSession";
 
 export default function AdminAuthGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -14,15 +19,32 @@ export default function AdminAuthGuard({ children }: { children: ReactNode }) {
     async function verifySession() {
       const token = getAdminToken();
       if (!token) {
-        router.replace("/admin");
+        const currentPath =
+          typeof window !== "undefined"
+            ? sanitizeAdminNextPath(`${window.location.pathname}${window.location.search}`)
+            : null;
+        router.replace(currentPath ? `/admin?next=${encodeURIComponent(currentPath)}` : "/admin");
         return;
       }
 
       try {
-        await getAdminMe();
+        const user = await getAdminMe();
+        if (user?.idleConfig) {
+          setCachedAdminIdleConfig(user.idleConfig);
+        }
+        recordAdminActivity(false);
         if (active) setReady(true);
       } catch {
-        router.replace("/admin");
+        removeAdminToken();
+        const currentPath =
+          typeof window !== "undefined"
+            ? sanitizeAdminNextPath(`${window.location.pathname}${window.location.search}`)
+            : null;
+        router.replace(
+          currentPath
+            ? `/admin?reason=session_expired&next=${encodeURIComponent(currentPath)}`
+            : "/admin?reason=session_expired",
+        );
       }
     }
 

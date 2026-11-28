@@ -78,6 +78,9 @@ test("adminSupportApi calls admin support endpoints with Bearer token and dispat
       if (id === "@/lib/publicApiBase") {
         return { publicApiBase: () => "http://localhost:5000" };
       }
+      if (id === "@/lib/adminIdleSession") {
+        return { handleAdminApiUnauthorized: () => {} };
+      }
       throw new Error(`Unexpected import: ${id}`);
     },
     fetch: async (url, init) => {

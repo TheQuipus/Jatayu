@@ -120,6 +120,27 @@ export type AiSettings = {
   apiKey: string;
 };
 
+export type SecuritySettings = {
+  adminIdleTimeoutMinutes: number;
+  adminIdleWarningSeconds: number;
+};
+
+export const ADMIN_IDLE_TIMEOUT_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "1 min (Testing)" },
+  { value: 5, label: "5 min" },
+  { value: 10, label: "10 min" },
+  { value: 15, label: "15 min" },
+  { value: 30, label: "30 min" },
+  { value: 60, label: "60 min" },
+  { value: 0, label: "Disabled" },
+];
+
+export const ADMIN_IDLE_WARNING_OPTIONS: { value: number; label: string }[] = [
+  { value: 30, label: "30 seconds" },
+  { value: 60, label: "60 seconds" },
+  { value: 120, label: "2 minutes" },
+];
+
 export type AdminSettings = {
   sms: SmsSettings;
   smtp: SmtpSettings;
@@ -128,6 +149,7 @@ export type AdminSettings = {
   communication: CommunicationSettings;
   auth: AuthCredentialsSettings;
   ai: AiSettings;
+  security: SecuritySettings;
   templates: MessageTemplate[];
 };
 
@@ -139,6 +161,7 @@ export type SettingsSection =
   | "booking"
   | "communication"
   | "ai"
+  | "security"
   | "templates";
 
 export const SETTINGS_SECTIONS: {
@@ -157,6 +180,7 @@ export const SETTINGS_SECTIONS: {
   { id: "booking", label: "Booking", description: "Booking request and seeker poke controls" },
   { id: "communication", label: "Communication", description: "Agora voice, video, and live chat configuration" },
   { id: "ai", label: "AI Config", description: "AI provider model name and API credentials" },
+  { id: "security", label: "Security", description: "Admin idle wait timeout and session warning controls" },
   { id: "templates", label: "Templates", description: "SMS and email notification templates for experts and seekers" },
 ];
 
@@ -310,6 +334,10 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   ai: {
     name: "OpenAI GPT-4",
     apiKey: "",
+  },
+  security: {
+    adminIdleTimeoutMinutes: 5,
+    adminIdleWarningSeconds: 60,
   },
   templates: [
     {
@@ -488,6 +516,7 @@ function mergeWithDefaults(partial: Partial<AdminSettings>): AdminSettings {
       digilocker: { ...DEFAULT_ADMIN_SETTINGS.auth.digilocker, ...partial.auth?.digilocker },
     },
     ai: { ...DEFAULT_ADMIN_SETTINGS.ai, ...partial.ai },
+    security: { ...DEFAULT_ADMIN_SETTINGS.security, ...partial.security },
     templates: templates.length > 0 ? templates : DEFAULT_ADMIN_SETTINGS.templates,
   };
 }

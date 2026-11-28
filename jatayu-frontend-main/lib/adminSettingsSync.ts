@@ -27,6 +27,12 @@ function readPositiveNumber(map: Record<string, string>, key: string, fallback: 
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function readIdleTimeoutMinutes(map: Record<string, string>, key: string, fallback: number): number {
+  if (!(key in map) || map[key] === "") return fallback;
+  const value = Number(map[key]);
+  return Number.isInteger(value) && value >= 0 && value <= 1440 ? value : fallback;
+}
+
 function readSmsProvider(map: Record<string, string>): SmsProvider {
   const provider = readString(map, "SMS_PROVIDER", DEFAULT_ADMIN_SETTINGS.sms.provider);
   if (provider === "twilio" || provider === "msg91" || provider === "textlocal") {
@@ -180,6 +186,18 @@ export function mapBackendSettingsToAdmin(map: Record<string, string>): AdminSet
       name: readString(map, "AI_PROVIDER_NAME", DEFAULT_ADMIN_SETTINGS.ai.name),
       apiKey: readString(map, "AI_API_KEY"),
     },
+    security: {
+      adminIdleTimeoutMinutes: readIdleTimeoutMinutes(
+        map,
+        "ADMIN_IDLE_TIMEOUT_MINUTES",
+        DEFAULT_ADMIN_SETTINGS.security.adminIdleTimeoutMinutes,
+      ),
+      adminIdleWarningSeconds: readPositiveNumber(
+        map,
+        "ADMIN_IDLE_WARNING_SECONDS",
+        DEFAULT_ADMIN_SETTINGS.security.adminIdleWarningSeconds,
+      ),
+    },
     templates: DEFAULT_ADMIN_SETTINGS.templates,
   };
 }
@@ -226,6 +244,8 @@ export function mapAdminSettingsToBackend(settings: AdminSettings): Record<strin
     DIGILOCKER_SCOPES: settings.auth.digilocker.scopes,
     AI_PROVIDER_NAME: settings.ai.name,
     AI_API_KEY: settings.ai.apiKey,
+    ADMIN_IDLE_TIMEOUT_MINUTES: String(settings.security.adminIdleTimeoutMinutes),
+    ADMIN_IDLE_WARNING_SECONDS: String(settings.security.adminIdleWarningSeconds),
     BOOKING_POKE_INITIAL_DELAY_HOURS: String(settings.booking.pokeInitialDelayHours),
     BOOKING_MINIMUM_LEAD_TIME_MINUTES: String(settings.booking.minimumLeadTimeMinutes),
     BOOKING_EXTENSION_OFFER_BEFORE_MINUTES: String(settings.booking.extensionOfferBeforeMinutes),

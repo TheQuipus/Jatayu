@@ -1,4 +1,5 @@
 import { getAdminToken } from "@/lib/api";
+import { handleAdminApiUnauthorized } from "@/lib/adminIdleSession";
 import type { ExpertUser, UserStatus } from "@/lib/adminUserManagement";
 import { publicApiBase } from "@/lib/publicApiBase";
 
@@ -55,7 +56,10 @@ async function adminExpertRequest<T>(path: string, init?: RequestInit): Promise<
     },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || "Unable to load expert records");
+  if (!response.ok) {
+    handleAdminApiUnauthorized(response.status, typeof data?.code === "string" ? data.code : undefined);
+    throw new Error(data.message || "Unable to load expert records");
+  }
   return data as T;
 }
 

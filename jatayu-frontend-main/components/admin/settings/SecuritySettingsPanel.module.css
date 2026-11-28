@@ -1,0 +1,52 @@
+.summaryCard {
+  padding: 16px 20px;
+  border: 1px solid var(--mercury);
+  background: color-mix(in srgb, var(--gallery) 55%, var(--white));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.summaryTitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.summaryBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--pomegranate) 12%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--pomegranate) 30%, transparent);
+  color: var(--pomegranate);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.summaryBadgeMuted {
+  background: color-mix(in srgb, var(--dove-gray) 10%, var(--white));
+  border-color: var(--mercury);
+  color: var(--dove-gray);
+}
+
+.summaryText {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dove-gray);
+}
+

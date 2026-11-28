@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { Expert, ExpertSession } from '../models/index.js';
 import { isExpertBlacklisted, isExpertSuspended } from '../controllers/authController.js';
+import { AdminSessionError, validateAdminSession } from '../services/adminSessionService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_change_me_in_production';
 
@@ -39,9 +40,17 @@ export async function protectNotification(req, res, next) {
       }
     }
 
+    if (user.role === 'admin') {
+      const isPassive = String(req.get?.('x-admin-activity') || '').toLowerCase() === 'passive';
+      await validateAdminSession(user, { touch: !isPassive });
+    }
+
     req.user = user;
     return next();
-  } catch {
+  } catch (error) {
+    if (error instanceof AdminSessionError) {
+      return res.status(401).json({ message: error.message, code: error.code });
+    }
     return res.status(401).json({ message: 'Not authorized' });
   }
 }
