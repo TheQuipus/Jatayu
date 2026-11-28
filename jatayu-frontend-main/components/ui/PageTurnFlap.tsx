@@ -315,9 +315,9 @@ export default function PageTurnFlap({ isOpen, onPeelChange }: PageTurnFlapProps
           float breeze = 0.5 + 0.38 * sin(uTime * 2.0) + 0.12 * sin(uTime * 3.4 + 1.2);
           float cornerWeight = pow(aDistRatio, 2.2);
 
-          float liftY = (34.0 + 20.0 * breeze) * yScale * cornerWeight;
-          float curlX = (16.0 + 10.0 * breeze) * xScale * cornerWeight;
-          float liftZ = (28.0 + 16.0 * breeze) * cornerWeight;
+          float liftY = (62.0 + 36.0 * breeze) * yScale * cornerWeight;
+          float curlX = (28.0 + 18.0 * breeze) * xScale * cornerWeight;
+          float liftZ = (50.0 + 24.0 * breeze) * cornerWeight;
 
           vec3 restPos = aFlatPosition + vec3(curlX, liftY, liftZ);
 

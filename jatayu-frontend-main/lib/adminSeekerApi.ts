@@ -1,4 +1,5 @@
 import { getAdminToken } from "@/lib/api";
+import { handleAdminApiUnauthorized } from "@/lib/adminIdleSession";
 import type { SeekerUser, UserStatus } from "@/lib/adminUserManagement";
 import type { SeekerOnboardingAnalytics } from "@/lib/seekerDropoutTracker";
 import { publicApiBase } from "@/lib/publicApiBase";
@@ -19,7 +20,10 @@ async function adminSeekerRequest<T>(path: string, init?: RequestInit): Promise<
     },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || "Unable to load seeker records");
+  if (!response.ok) {
+    handleAdminApiUnauthorized(response.status, typeof data?.code === "string" ? data.code : undefined);
+    throw new Error(data.message || "Unable to load seeker records");
+  }
   return data as T;
 }
 

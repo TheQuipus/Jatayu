@@ -88,7 +88,7 @@ export default function NotificationPanel() {
     const map = (item: AppNotification): SeekerNotification => ({ id:item.id, title:item.title, body:item.body,
       timeAgo:new Date(item.createdAt).toLocaleString(), unread:!item.readAt, href:item.href || undefined });
     const loadNotifications = () => {
-      fetchNotifications().then((data) => setNotifications(data.items.map(map))).catch(() => undefined);
+      fetchNotifications(1, 50, { passive: true }).then((data) => setNotifications(data.items.map(map))).catch(() => undefined);
     };
     loadNotifications();
     const receive = (event: Event) => setNotifications((current) => [map((event as CustomEvent<AppNotification>).detail), ...current.filter((n) => n.id !== (event as CustomEvent<AppNotification>).detail.id)]);

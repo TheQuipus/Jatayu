@@ -30,6 +30,7 @@ import { sendNotification, sendUpcomingExpertReminders, setNotificationSocketSer
 import { Booking, BookingExtension, Expert, ExpertSession } from './models/index.js';
 import { isExpertBlacklisted, isExpertSuspended } from './controllers/authController.js';
 import { approveExtension } from './services/bookingExtensionService.js';
+import { AdminSessionError, validateAdminSession } from './services/adminSessionService.js';
 import jwt from 'jsonwebtoken';
 
 dotenv.config();
@@ -164,9 +165,16 @@ const startServer = async () => {
           }
         }
 
+        if (user.role === 'admin') {
+          await validateAdminSession(user, { touch: false });
+        }
+
         socket.user = user;
         next();
       } catch (err) {
+        if (err instanceof AdminSessionError) {
+          return next(new Error(err.code));
+        }
         const allowedErrors = ['CREDENTIALS_BLACKLISTED', 'ACCOUNT_SUSPENDED'];
         next(new Error(allowedErrors.includes(err.message) ? err.message : 'Unauthorized'));
       }

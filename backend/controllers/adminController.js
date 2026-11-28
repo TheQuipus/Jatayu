@@ -1,6 +1,7 @@
 import { Setting } from '../models/index.js';
 import { ADMIN_OTP_PREFIX } from '../utils/adminLoginOtp.js';
 import { PASSWORD_RESET_PREFIX } from '../utils/passwordRecovery.js';
+import { invalidateAdminIdleConfigCache } from '../services/adminSessionService.js';
 
 const SECRET_SETTING_KEYS = new Set([
   'AI_API_KEY',
@@ -49,6 +50,24 @@ export const updateSettings = async (req, res) => {
   }
 
   try {
+    if ('ADMIN_IDLE_TIMEOUT_MINUTES' in settings) {
+      const parsedTimeout = Number(String(settings.ADMIN_IDLE_TIMEOUT_MINUTES).trim());
+      if (!Number.isInteger(parsedTimeout) || parsedTimeout < 0 || parsedTimeout > 1440) {
+        return res.status(400).json({
+          message: 'ADMIN_IDLE_TIMEOUT_MINUTES must be 0 (Disabled) or a whole number between 1 and 1440.',
+        });
+      }
+    }
+
+    if ('ADMIN_IDLE_WARNING_SECONDS' in settings) {
+      const parsedWarning = Number(String(settings.ADMIN_IDLE_WARNING_SECONDS).trim());
+      if (!Number.isInteger(parsedWarning) || parsedWarning < 10 || parsedWarning > 300) {
+        return res.status(400).json({
+          message: 'ADMIN_IDLE_WARNING_SECONDS must be a whole number between 10 and 300.',
+        });
+      }
+    }
+
     for (const [key, value] of Object.entries(settings)) {
       if (key.startsWith(ADMIN_OTP_PREFIX)) continue;
       if (key.startsWith(PASSWORD_RESET_PREFIX)) continue;
@@ -62,6 +81,8 @@ export const updateSettings = async (req, res) => {
         value: String(value)
       });
     }
+
+    invalidateAdminIdleConfigCache();
 
     return res.status(200).json({ message: 'Settings updated successfully' });
   } catch (error) {

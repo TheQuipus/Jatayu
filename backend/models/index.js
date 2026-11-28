@@ -5,6 +5,7 @@ import Credential from './Credential.js';
 import Availability from './Availability.js';
 import Setting from './Setting.js';
 import Admin from './Admin.js';
+import AdminSession from './AdminSession.js';
 import SeekerCreditTransaction from './seeker/SeekerCreditTransaction.js';
 import RazorpayWebhookEvent from './seeker/RazorpayWebhookEvent.js';
 import Booking from './seeker/Booking.js';
@@ -78,6 +79,8 @@ Booking.hasMany(BookingCalendarEvent, { foreignKey: 'bookingId', as: 'calendarEv
 BookingCalendarEvent.belongsTo(Booking, { foreignKey: 'bookingId', as: 'booking' });
 
 // Admin-module relationships (same database connection)
+Admin.hasMany(AdminSession, { foreignKey: 'adminId', as: 'sessions', onDelete: 'CASCADE' });
+AdminSession.belongsTo(Admin, { foreignKey: 'adminId', as: 'admin' });
 SupportTicket.hasMany(SupportReply, { foreignKey: 'ticketId', as: 'replies', onDelete: 'CASCADE' });
 SupportReply.belongsTo(SupportTicket, { foreignKey: 'ticketId', as: 'ticket' });
 
@@ -92,6 +95,7 @@ export {
   Availability,
   Setting,
   Admin,
+  AdminSession,
   SeekerCreditTransaction,
   RazorpayWebhookEvent,
   Booking,

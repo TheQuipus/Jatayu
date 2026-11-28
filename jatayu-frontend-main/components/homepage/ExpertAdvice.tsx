@@ -10,31 +10,31 @@ const steps = [
   {
     num: "001",
     title: "Choose your need",
-    image: "/assets/img/team3.png",
+    image: "/assets/img/accordion/step-001-choose-need.jpg",
     desc: "Select career, finance, legal, startup, business, education, or mentorship.",
   },
   {
     num: "002",
     title: "Discover verified experts",
-    image: "/assets/img/team4.png",
+    image: "/assets/img/accordion/step-002-verified-experts.jpg",
     desc: "Compare experts by language, price, rating, availability, and expertise.",
   },
   {
     num: "003",
     title: "Start small",
-    image: "/assets/img/team1.png",
+    image: "/assets/img/accordion/step-003-start-small.jpg",
     desc: "Book a micro-consultation from ₹49 or choose a deeper session.",
   },
   {
     num: "004",
     title: "Get human guidance",
-    image: "/assets/img/team2.png",
+    image: "/assets/img/accordion/step-004-human-guidance.jpg",
     desc: "Talk through chat, call, video, or scheduled consultation.",
   },
   {
     num: "005",
     title: "Continue the relationship",
-    image: "/assets/img/consultant.png",
+    image: "/assets/img/accordion/step-005-continue-relationship.jpg",
     desc: "Follow experts, join events, buy tickets, or book future sessions.",
   },
 ] as const;
@@ -176,7 +176,7 @@ export default function ExpertAdvice() {
                       src={step.image}
                       alt=""
                       className={styles.hoverPreviewImg}
-                      loading={step.image === "/assets/img/team1.png" || step.image === "/assets/img/team2.png" ? "eager" : undefined}
+                      loading="eager"
                     />
                   ))}
                 </div>

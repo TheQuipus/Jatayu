@@ -1,4 +1,5 @@
 import { getAdminToken, getToken } from "@/lib/api";
+import { handleAdminApiUnauthorized } from "@/lib/adminIdleSession";
 import { publicApiBase } from "@/lib/publicApiBase";
 export type AppNotification = {
   id: string;
@@ -22,21 +23,30 @@ function resolveNotificationAuthToken(): string {
   return getToken() || getAdminToken() || "";
 }
 
-async function call(path: string, init?: RequestInit) {
+async function call(path: string, init?: RequestInit & { passive?: boolean }) {
+  const isAdminPath = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+  const { passive, ...fetchInit } = init || {};
   const response = await fetch(`${publicApiBase()}/api/notifications${path}`, {
-    ...init,
+    ...fetchInit,
     headers: {
       Authorization: `Bearer ${resolveNotificationAuthToken()}`,
       "Content-Type": "application/json",
+      ...(isAdminPath && passive ? { "X-Admin-Activity": "passive" } : {}),
+      ...(fetchInit.headers || {}),
     },
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (isAdminPath) {
+      handleAdminApiUnauthorized(response.status, typeof data?.code === "string" ? data.code : undefined);
+    }
+    throw new Error(data.message || "Notification request failed");
+  }
   return data;
 }
 
-export const fetchNotifications = (page = 1, limit = 50) =>
-  call(`?page=${page}&limit=${limit}`) as Promise<NotificationsResponse>;
+export const fetchNotifications = (page = 1, limit = 50, options?: { passive?: boolean }) =>
+  call(`?page=${page}&limit=${limit}`, { passive: options?.passive }) as Promise<NotificationsResponse>;
 export const fetchNotificationUnreadCount = async () =>
   Number((await fetchNotifications(1, 1)).unreadCount) || 0;
 export const readNotification = (id: string) =>

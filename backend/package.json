@@ -17,7 +17,8 @@
     "migrate:booking-messages": "node scripts/migrateBookingMessages.js",
     "migrate:expert-security": "node scripts/migrateExpertSecurity.js",
     "migrate:expert-columns": "node scripts/migrateExpertColumns.js",
-    "migrate:calendar-sync": "node scripts/migrateCalendarSync.js"
+    "migrate:calendar-sync": "node scripts/migrateCalendarSync.js",
+    "migrate:admin-sessions": "node scripts/migrateAdminSessions.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^6.0.2",

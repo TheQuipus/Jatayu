@@ -8,7 +8,7 @@ import {
   sendDropoutFollowUp,
   getApplicationStats,
 } from '../controllers/adminApplicationController.js';
-import { adminLogin, getAdminMe } from '../controllers/adminAuthController.js';
+import { adminHeartbeat, adminLogin, adminLogout, getAdminMe } from '../controllers/adminAuthController.js';
 import { protectAdmin } from '../middleware/adminAuthMiddleware.js';
 import {
   getApplicationDigilockerDocumentFile,
@@ -29,6 +29,8 @@ const router = express.Router();
 
 router.post('/auth/login', adminLogin);
 router.get('/auth/me', protectAdmin, getAdminMe);
+router.post('/auth/heartbeat', protectAdmin, adminHeartbeat);
+router.post('/auth/logout', protectAdmin, adminLogout);
 
 router.get('/settings', protectAdmin, getSettings);
 router.put('/settings', protectAdmin, updateSettings);

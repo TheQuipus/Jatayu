@@ -12,6 +12,7 @@ import {
   Radio,
   Save,
   Send,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import ContinueButton from "@/components/ui/ContinueButton";
@@ -29,7 +30,9 @@ import BookingSettingsPanel from "./BookingSettingsPanel";
 import CommunicationSettingsPanel from "./CommunicationSettingsPanel";
 import SmsSettingsPanel from "./SmsSettingsPanel";
 import SmtpSettingsPanel from "./SmtpSettingsPanel";
+import SecuritySettingsPanel from "./SecuritySettingsPanel";
 import TemplatesPanel from "./TemplatesPanel";
+import { recordAdminActivity } from "@/lib/adminIdleSession";
 import styles from "./AdminSettings.module.css";
 
 export default function AdminSettings({ section }: { section: SettingsSection }) {
@@ -81,6 +84,9 @@ export default function AdminSettings({ section }: { section: SettingsSection })
   const handleSave = async () => {
     setSaveError(null);
     try {
+      if (activeSection === "security") {
+        recordAdminActivity(true);
+      }
       await save(draft);
       setTestStatus(null);
     } catch (err) {
@@ -154,7 +160,7 @@ export default function AdminSettings({ section }: { section: SettingsSection })
             <p className={styles.pageSubtitle}>{sectionMeta.description}</p>
           </div>
           <div className={styles.headerActions}>
-            {activeSection !== "templates" ? (
+            {activeSection !== "templates" && activeSection !== "security" ? (
               <SecondaryCTA
                 label="Send Test"
                 showArrow={false}
@@ -227,6 +233,7 @@ export default function AdminSettings({ section }: { section: SettingsSection })
                   {activeSection === "booking" && <CalendarClock size={18} />}
                   {activeSection === "communication" && <Radio size={18} />}
                   {activeSection === "ai" && <Bot size={18} />}
+                  {activeSection === "security" && <ShieldCheck size={18} />}
                 </div>
                 <div>
                   <h3 className={styles.panelHeaderTitle}>{sectionMeta.label} Configuration</h3>
@@ -292,6 +299,13 @@ export default function AdminSettings({ section }: { section: SettingsSection })
                 draft={draft.ai}
                 saved={settings.ai}
                 onChange={(ai) => setDraft((current) => ({ ...current, ai }))}
+              />
+            ) : null}
+
+            {activeSection === "security" ? (
+              <SecuritySettingsPanel
+                draft={draft.security}
+                onChange={(security) => setDraft((current) => ({ ...current, security }))}
               />
             ) : null}
 

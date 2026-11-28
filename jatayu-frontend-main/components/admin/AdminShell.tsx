@@ -37,11 +37,14 @@ import {
   getAdminSupportNeedsAttentionCount,
 } from "@/lib/adminSupportApi";
 import {
+  adminLogout,
   getAdminApplicationStats,
   getAdminMe,
-  removeAdminToken,
   type AdminAuthUser,
 } from "@/lib/api";
+import { useAdminIdleTimeout } from "@/hooks/useAdminIdleTimeout";
+import AdminIdleWarningModal from "@/components/admin/AdminIdleWarningModal";
+import { triggerAdminSessionLogout } from "@/lib/adminIdleSession";
 import {
   SETTINGS_SECTIONS,
   getSettingsSectionHref,
@@ -248,6 +251,14 @@ export default function AdminShell({ children }: AdminShellProps) {
   const [adminUser, setAdminUser] = useState<AdminAuthUser | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [openSupportCount, setOpenSupportCount] = useState(0);
+  const {
+    idleTimeoutMinutes,
+    warningOpen,
+    remainingSeconds,
+    isExtending,
+    staySignedIn,
+    logoutNow,
+  } = useAdminIdleTimeout();
 
   useEffect(() => {
     let active = true;
@@ -329,6 +340,14 @@ export default function AdminShell({ children }: AdminShellProps) {
   return (
     <div className={`${styles.shell} ${isCollapsed ? styles.shellCollapsed : ""}`.trim()}>
       <RealtimeNotificationToast />
+      <AdminIdleWarningModal
+        isOpen={warningOpen}
+        remainingSeconds={remainingSeconds}
+        idleTimeoutMinutes={idleTimeoutMinutes}
+        isExtending={isExtending}
+        onStaySignedIn={staySignedIn}
+        onLogoutNow={logoutNow}
+      />
       <aside
         className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ""}`.trim()}
         aria-label="Admin navigation"
@@ -393,8 +412,9 @@ export default function AdminShell({ children }: AdminShellProps) {
           <button
             type="button"
             onClick={() => {
-              removeAdminToken();
-              window.location.assign("/admin");
+              void adminLogout().finally(() => {
+                triggerAdminSessionLogout("manual");
+              });
             }}
             className={styles.userMenuBtn}
             aria-label="Logout"

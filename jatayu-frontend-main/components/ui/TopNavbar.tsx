@@ -242,21 +242,30 @@ export default function TopNavbar() {
         }`}
       >
         <div className={`container ${styles.inner}`}>
-          {isWizardMinimalHeader ? (
-            <span className={`${styles.logo} ${styles.logoStatic}`}>
-              JATAYU
-              <sup className={styles.logoMark}>®</sup>
+          <Link
+            href="/"
+            className={styles.logo}
+            aria-label="Go to homepage"
+          >
+            <span className={styles.logoStack}>
+              <Image
+                src="/assets/img/jatayu-logo-white.svg"
+                alt="JATAYU"
+                fill
+                priority
+                className={`${styles.logoImg} ${onDark ? styles.logoImgVisible : styles.logoImgHidden}`}
+              />
+              <Image
+                src="/assets/img/jatayu-logo-black.png"
+                alt=""
+                fill
+                priority
+                aria-hidden="true"
+                className={`${styles.logoImg} ${onDark ? styles.logoImgHidden : styles.logoImgVisible}`}
+              />
             </span>
-          ) : (
-            <>
-              <Link
-                href="/"
-                className={styles.logo}
-                aria-label="Go to homepage"
-              >
-                JATAYU
-                <sup className={styles.logoMark}>®</sup>
-              </Link>
+            <sup className={styles.logoMark}>®</sup>
+          </Link>
 
               {isExpertPage ? (
                 <div
@@ -302,8 +311,7 @@ export default function TopNavbar() {
                 <span />
                 <span />
               </button>
-            </>
-          )}
+          
         </div>
       </header>
 

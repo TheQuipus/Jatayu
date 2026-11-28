@@ -856,7 +856,7 @@ export default function Checkout({ expert, seeker = false }: CheckoutProps) {
       setBookingConfirmed(true);
       clearBookingIdempotencyKey(fingerprint);
     } catch (err) {
-      console.error("Failed to process Razorpay payment:", err);
+      // console.error("Failed to process Razorpay payment:", err);
       const errMsg = err instanceof Error ? err.message : "Unable to complete booking";
       if (errMsg.toLowerCase().includes("not authorized") || errMsg.toLowerCase().includes("sign in")) {
         removeSeekerToken();
