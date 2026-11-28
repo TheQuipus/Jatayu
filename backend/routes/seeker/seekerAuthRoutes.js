@@ -3,6 +3,7 @@ import {
   register,
   verifyOtp,
   resendOtp,
+  resendStatus,
   login,
   googleLogin,
   linkedinLogin,
@@ -14,6 +15,7 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/verify-otp', verifyOtp);
 router.post('/resend-otp', resendOtp);
+router.post('/resend-status', resendStatus);
 router.post('/login', login);
 router.post('/google', googleLogin);
 router.post('/linkedin', linkedinLogin);

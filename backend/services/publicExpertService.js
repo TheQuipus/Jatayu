@@ -1,4 +1,5 @@
 import { Availability, Credential, Expert } from '../models/index.js';
+import { normalizeCategoryKey } from '../utils/expertCategory.js';
 
 function parseJson(value, fallback) {
   if (value === null || value === undefined) return fallback;
@@ -125,8 +126,21 @@ function matchesAny(selected, available) {
   return selected.some((value) => normalizedAvailable.includes(normalized(value)));
 }
 
+function matchesCategoryFilter(selectedCategories, expert) {
+  if (selectedCategories.length === 0) return true;
+  const expertCategoryKey = normalizeCategoryKey(expert.category);
+  const expertRawFields = [expert.category, ...expert.topics].map(normalized).filter(Boolean);
+
+  return selectedCategories.some((selected) => {
+    const selectedRaw = normalized(selected);
+    if (selectedRaw && expertRawFields.includes(selectedRaw)) return true;
+    const selectedKey = normalizeCategoryKey(selected);
+    return Boolean(selectedKey && expertCategoryKey && selectedKey === expertCategoryKey);
+  });
+}
+
 export function matchesNonSearchFilters(expert, filters) {
-  if (!matchesAny(filters.categories, [expert.category, ...expert.topics])) return false;
+  if (!matchesCategoryFilter(filters.categories, expert)) return false;
   if (!matchesAny(filters.languages, expert.languages)) return false;
   if (filters.ratings.length > 0 && !filters.ratings.some((minimumRating) => expert.rating >= minimumRating)) return false;
   if (filters.minPrice !== null && (expert.price === null || expert.price < filters.minPrice)) return false;

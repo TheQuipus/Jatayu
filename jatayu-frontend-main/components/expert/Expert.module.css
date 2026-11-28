@@ -6,6 +6,9 @@
 }
 
 .servicesSeeker {
+  position: static;
+  z-index: auto;
+  background: transparent;
   padding-top: 25px;
   padding-bottom: 80px;
   --expert-seeker-services-offset: 25px;
@@ -785,6 +788,46 @@
   line-height: 1.5;
   color: var(--dove-gray);
   text-align: center;
+}
+
+.recommendedBanner {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--seashell, #f8f5f2);
+  border: 1px solid var(--mercury, #e6e6e6);
+  color: var(--ink);
+}
+
+.recommendedBannerHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recommendedBannerDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pomegranate, #e53b17);
+  flex-shrink: 0;
+}
+
+.recommendedBannerTitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.recommendedBannerSubline {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--scorpion, #5e5e5e);
 }
 
 .speaksCards {

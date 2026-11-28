@@ -93,7 +93,7 @@ export default function ExpertDetail({ expert, seeker = false }: ExpertDetailPro
 
   const breadcrumbItems = useMemo(
     () => [
-      { label: "Discover", href: seeker ? "/seeker/discover" : "/expert" },
+      { label: seeker ? "Our Experts" : "Discover", href: seeker ? "/seeker/discover" : "/expert" },
       { label: primaryTopic },
       { label: expert.name },
     ],

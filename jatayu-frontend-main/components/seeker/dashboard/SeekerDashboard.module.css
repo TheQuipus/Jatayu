@@ -348,3 +348,42 @@
     grid-template-columns: 1fr;
   }
 }
+
+.recommendedStatePanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 20px;
+  border: 1px solid var(--mercury);
+  border-radius: 14px;
+  background: var(--white);
+  flex-wrap: wrap;
+}
+
+.recommendedStateText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--scorpion);
+}
+
+.recommendedStateLink,
+.recommendedRetryBtn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pomegranate);
+  background: transparent;
+  border: 1px solid var(--pomegranate);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.recommendedStateLink:hover,
+.recommendedRetryBtn:hover {
+  background: var(--pomegranate);
+  color: var(--white);
+}

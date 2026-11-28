@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Expert from "@/components/expert/Expert";
 
 export const metadata: Metadata = {
-  title: "Discover Experts — Jatayu",
+  title: "Our Experts — Jatayu",
   description: "Browse verified experts across India.",
 };
 

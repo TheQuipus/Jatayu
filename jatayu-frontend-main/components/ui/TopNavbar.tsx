@@ -9,6 +9,10 @@ import styles from "./TopNavbar.module.css";
 import MenuCategoryPanel from "./MenuCategoryPanel";
 import PageTurnFlap from "./PageTurnFlap";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
+import {
+  ONBOARDING_STEP_CHANGE_EVENT,
+  isPostOtpOnboardingHeader,
+} from "@/lib/onboardingHeaderState";
 import ShinyText from "./ShinyText";
 
 function isAdminLoginPage(pathname: string | null) {
@@ -75,6 +79,25 @@ export default function TopNavbar() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isFooterPeeled, setIsFooterPeeled] = useState(false);
+  const [isWizardMinimalHeader, setIsWizardMinimalHeader] = useState(false);
+
+  useEffect(() => {
+    const syncWizardHeader = () => {
+      const nextMinimal = isPostOtpOnboardingHeader(pathname, window.location.search);
+      setIsWizardMinimalHeader(nextMinimal);
+      if (nextMinimal) {
+        setIsOpen(false);
+      }
+    };
+
+    syncWizardHeader();
+    window.addEventListener(ONBOARDING_STEP_CHANGE_EVENT, syncWizardHeader);
+    window.addEventListener("popstate", syncWizardHeader);
+    return () => {
+      window.removeEventListener(ONBOARDING_STEP_CHANGE_EVENT, syncWizardHeader);
+      window.removeEventListener("popstate", syncWizardHeader);
+    };
+  }, [pathname]);
 
   // Reset footer peel when drawer closes
   useEffect(() => {
@@ -244,50 +267,52 @@ export default function TopNavbar() {
             <sup className={styles.logoMark}>®</sup>
           </Link>
 
-          {isExpertPage ? (
-            <div
-              className={`${styles.ourExpertsBtn} ${styles.ourExpertsBtnStatic} ${
-                onDark ? styles.ourExpertsBtnDark : styles.ourExpertsBtnLight
-              }`}
-              aria-current="page"
-            >
-              <span className={styles.ourExpertsStaticText}>
-                Our Experts
-              </span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className={`${styles.ourExpertsBtn} ${
-                onDark ? styles.ourExpertsBtnDark : styles.ourExpertsBtnLight
-              }`}
-              onClick={handleOurExpertsClick}
-              aria-label="Our Experts"
-            >
-              <ShinyText
-                text="Our Experts"
-                // icon="sparkles"
-                // iconSize={14}
-                speed={2.5}
-                color={onDark ? "#FFFFFF" : "#111111"}
-                shineColor={onDark ? "#FF5C01" : "#E53B17"}
-                className={styles.ourExpertsShinyText}
-              />
-            </button>
-          )}
+              {isExpertPage ? (
+                <div
+                  className={`${styles.ourExpertsBtn} ${styles.ourExpertsBtnStatic} ${
+                    onDark ? styles.ourExpertsBtnDark : styles.ourExpertsBtnLight
+                  }`}
+                  aria-current="page"
+                >
+                  <span className={styles.ourExpertsStaticText}>
+                    Our Experts
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={`${styles.ourExpertsBtn} ${
+                    onDark ? styles.ourExpertsBtnDark : styles.ourExpertsBtnLight
+                  }`}
+                  onClick={handleOurExpertsClick}
+                  aria-label="Our Experts"
+                >
+                  <ShinyText
+                    text="Our Experts"
+                    // icon="sparkles"
+                    // iconSize={14}
+                    speed={2.5}
+                    color={onDark ? "#FFFFFF" : "#111111"}
+                    shineColor={onDark ? "#FF5C01" : "#E53B17"}
+                    className={styles.ourExpertsShinyText}
+                  />
+                </button>
+              )}
 
-          <button
-            className={`${styles.menuButton} ${
-              isOpen ? styles.isOpen : ""
-            }`}
-            onClick={() => setIsOpen(true)}
-            aria-label="Open menu"
-            aria-expanded={isOpen}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
+              <button
+                className={`${styles.menuButton} ${
+                  isOpen ? styles.isOpen : ""
+                }`}
+                onClick={() => setIsOpen(true)}
+                aria-label="Open menu"
+                aria-expanded={isOpen}
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+            </>
+          )}
         </div>
       </header>
 

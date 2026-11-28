@@ -81,6 +81,7 @@ import {
 import { buildExpertAccountStatus, type ExpertAccountStatus } from "@/lib/expertOnboardingStatus";
 import { EXPERT_LOGIN_HREF } from "@/lib/joinAsExpertNav";
 import { getOtpBackStep } from "@/lib/otpFlow";
+import { notifyOnboardingStepChange } from "@/lib/onboardingHeaderState";
 import { generateUUID } from "@/lib/uuid";
 import {
   getExpertProfileLocation,
@@ -652,6 +653,7 @@ function ExpertOnboardingPageContent() {
     if (window.location.pathname + window.location.search !== targetUrl) {
       window.history.replaceState(null, "", targetUrl);
     }
+    notifyOnboardingStepChange();
   }, [routeInitialized, step]);
 
   useEffect(() => {

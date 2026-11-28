@@ -39,29 +39,6 @@
   opacity: 0.85;
 }
 
-.logoStack {
-  position: relative;
-  display: block;
-  width: 135px;
-  height: 45px;
-}
-
-.logoImg {
-  object-fit: contain;
-  object-position: left center;
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-  user-select: none;
-}
-
-.logoImgVisible {
-  opacity: 1;
-}
-
-.logoImgHidden {
-  opacity: 0;
-}
-
 .logoMark {
   margin-left: 2px;
   font-family: var(--font-display);

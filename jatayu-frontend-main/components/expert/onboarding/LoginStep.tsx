@@ -11,6 +11,8 @@ import styles from "./RegisterStep.module.css";
 import { login, OtpRequiredError, type AuthResponse } from "@/lib/api";
 import { getEmailValidationError, normalizeEmail } from "@/lib/emailValidation";
 import { savePendingOtpSession } from "@/lib/expertAuth";
+import { useLoginOtpBlock } from "@/hooks/useLoginOtpBlock";
+import { formatOtpLoginBlockParts } from "@/lib/otpResend";
 import { EXPERT_SIGNUP_HREF } from "@/lib/joinAsExpertNav";
 
 type LoginStepProps = {
@@ -111,6 +113,8 @@ export default function LoginStep({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const { blockedSeconds, blockMessage, handleLoginBlockError, clearBlock } = useLoginOtpBlock();
+  const blockParts = blockMessage ? formatOtpLoginBlockParts(blockedSeconds) : null;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -146,6 +150,7 @@ export default function LoginStep({
   const submitLogin = async () => {
     setSubmitAttempted(true);
     setSubmitError(null);
+    clearBlock();
     if (!canSubmit || isSubmitting) return;
 
     setIsSubmitting(true);
@@ -156,6 +161,9 @@ export default function LoginStep({
       });
       onContinue(response);
     } catch (error) {
+      if (handleLoginBlockError(error)) {
+        return;
+      }
       if (error instanceof OtpRequiredError) {
         savePendingOtpSession({
           expertId: error.expertId,
@@ -201,7 +209,10 @@ export default function LoginStep({
                   className={register.textFieldWithIcon}
                   placeholder="Aryan23@gmail.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearBlock();
+                  }}
                   onBlur={() => markTouched("email")}
                   autoComplete="email"
                   aria-invalid={Boolean(fieldError("email"))}
@@ -226,7 +237,10 @@ export default function LoginStep({
                   className={`${register.textFieldWithIcon} ${styles.textFieldWithToggle}`}
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearBlock();
+                  }}
                   onBlur={() => markTouched("password")}
                   autoComplete="current-password"
                   aria-invalid={Boolean(fieldError("password"))}
@@ -246,15 +260,23 @@ export default function LoginStep({
               </div>
               
               {/* Error message placed in the exact same container location as Email */}
-              {(fieldError("password") || submitError) && (
+              {fieldError("password") ? (
                 <span
                   className={register.fieldErrorBelow}
                   role="alert"
                   style={{ pointerEvents: "auto", zIndex: 10 }}
                 >
-                  {renderAuthErrorMessage(fieldError("password") || submitError)}
+                  {renderAuthErrorMessage(fieldError("password"))}
                 </span>
-              )}
+              ) : submitError ? (
+                <span
+                  className={styles.passwordSubmitError}
+                  role="alert"
+                  style={{ pointerEvents: "auto", zIndex: 10 }}
+                >
+                  {renderAuthErrorMessage(submitError)}
+                </span>
+              ) : null}
             </div>
 
             <div className={styles.forgotPasswordRow}>
@@ -278,6 +300,14 @@ export default function LoginStep({
             className={`${styles.registerSubmitBtn} ${canSubmit && !isSubmitting ? "" : styles.registerSubmitBtnInactive}`}
             arrowSize={16}
           />
+
+          {blockParts ? (
+            <p className={styles.loginBlockError} role="alert" aria-live="polite">
+              {blockParts.prefix}
+              <span className={styles.loginBlockCountdown}>{blockParts.countdown}</span>
+              {blockParts.suffix}
+            </p>
+          ) : null}
 
           <ExpertSocialAuth
             onSuccess={onContinue}

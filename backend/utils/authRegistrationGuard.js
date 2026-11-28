@@ -90,6 +90,12 @@ export function createOtpCooldownTracker(windowMs = 30_000, maxEntries = 10_000)
       const lastIssuedAt = timestamps.get(id) || 0;
       return !lastIssuedAt || Date.now() - lastIssuedAt >= windowMs;
     },
+    getRemainingSeconds(id) {
+      const lastIssuedAt = timestamps.get(id) || 0;
+      if (!lastIssuedAt) return 0;
+      const remainingMs = windowMs - (Date.now() - lastIssuedAt);
+      return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
+    },
     markIssued(id) {
       const now = Date.now();
       if (timestamps.size >= maxEntries) {
